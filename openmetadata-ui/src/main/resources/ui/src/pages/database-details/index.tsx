@@ -36,9 +36,9 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import Tags from '../../components/tags/tags';
 import {
-  getDatasetDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
+  getTableDetailsPath,
   pagingObject,
 } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -241,6 +241,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
             <div className="tw-pl-2" data-testid="description-container">
               <Description
+                blurWithBodyBG
                 description={description}
                 entityName={databaseName}
                 isEdit={isEdit}
@@ -305,7 +306,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                 <Link
                                   to={
                                     table.fullyQualifiedName
-                                      ? getDatasetDetailsPath(
+                                      ? getTableDetailsPath(
                                           table.fullyQualifiedName
                                         )
                                       : ''
@@ -326,7 +327,9 @@ const DatabaseDetails: FunctionComponent = () => {
                               </td>
                               <td className="tableBody-cell">
                                 <p>
-                                  {getOwnerFromId(table?.owner?.id)?.name ||
+                                  {getOwnerFromId(table?.owner?.id)
+                                    ?.displayName ||
+                                    getOwnerFromId(table?.owner?.id)?.name ||
                                     '--'}
                                 </p>
                               </td>

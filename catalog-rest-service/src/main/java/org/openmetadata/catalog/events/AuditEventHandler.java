@@ -13,19 +13,17 @@
 
 package org.openmetadata.catalog.events;
 
-import java.util.Date;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.type.EntityReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class AuditEventHandler implements EventHandler {
-  private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     // Nothing to do
@@ -37,14 +35,12 @@ public class AuditEventHandler implements EventHandler {
     if (responseContext.getEntity() != null) {
       String path = requestContext.getUriInfo().getPath();
       String username = requestContext.getSecurityContext().getUserPrincipal().getName();
-      Date nowAsISO = new Date();
-
       try {
         EntityReference entityReference = Entity.getEntityReference(responseContext.getEntity());
         AuditLog auditLog =
             new AuditLog()
                 .withPath(path)
-                .withDateTime(nowAsISO)
+                .withTimestamp(System.currentTimeMillis())
                 .withEntityId(entityReference.getId())
                 .withEntityType(entityReference.getType())
                 .withMethod(AuditLog.Method.fromValue(method))

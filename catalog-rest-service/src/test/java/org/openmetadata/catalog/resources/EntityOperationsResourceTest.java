@@ -14,27 +14,31 @@
 package org.openmetadata.catalog.resources;
 
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest<T> {
   public EntityOperationsResourceTest(
-      String entityName,
+      String entityType,
       Class<T> entityClass,
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
       String fields,
       boolean supportsFollowers,
       boolean supportsOwner,
-      boolean supportsTags) {
+      boolean supportsTags,
+      boolean supportsAuthorizedMetadataOperations) {
     super(
-        entityName,
+        entityType,
         entityClass,
         entityListClass,
         collectionName,
         fields,
         supportsFollowers,
         supportsOwner,
-        supportsTags);
+        supportsTags,
+        supportsAuthorizedMetadataOperations);
   }
 
   // Override the resource path name of regular entities api/v1/<entities> to api/operations/v1/<operations>

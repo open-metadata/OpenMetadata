@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.services;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,13 +24,13 @@ import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource.StorageServiceList;
@@ -41,6 +40,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService> {
   public StorageServiceResourceTest() {
     super(
@@ -49,6 +49,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
         StorageServiceList.class,
         "services/storageServices",
         "",
+        false,
         false,
         false,
         false);
@@ -97,34 +98,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
-  @Test
-  void delete_ExistentService_as_admin_200(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    StorageService storageService = createEntity(create(test), authHeaders);
-    deleteEntity(storageService.getId(), authHeaders);
-  }
-
-  @Test
-  void delete_as_user_401(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    StorageService storageService = createEntity(create(test), authHeaders);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteEntity(storageService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void delete_notExistentStorageService() {
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception,
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.STORAGE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
   private CreateStorageService create(TestInfo test) {
     return create(getEntityName(test));
   }
@@ -133,8 +106,8 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     return create(getEntityName(test, index));
   }
 
-  private CreateStorageService create(String entityName) {
-    return new CreateStorageService().withName(entityName).withServiceType(StorageServiceType.S3);
+  private CreateStorageService create(String name) {
+    return new CreateStorageService().withName(name).withServiceType(StorageServiceType.S3);
   }
 
   @Override
@@ -176,7 +149,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

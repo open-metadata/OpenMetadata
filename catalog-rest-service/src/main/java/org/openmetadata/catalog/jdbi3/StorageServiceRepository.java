@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
@@ -94,6 +93,11 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }
@@ -109,7 +113,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -154,7 +158,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

@@ -18,7 +18,7 @@ import { EntityCounts, FormatedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getIngestionWorkflows } from '../../axiosAPIs/ingestionWorkflowAPI';
+import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -86,7 +86,7 @@ const MyDataPage = () => {
       getAllServices()
         .then((res) => setCountServices(res.length))
         .catch(() => setCountServices(0));
-      getIngestionWorkflows(['owner,tags, status'])
+      getAirflowPipelines([], '', '?limit=1000000')
         .then((res) => setIngestionCount(res.data.data.length))
         .catch(() => setIngestionCount(0));
     }

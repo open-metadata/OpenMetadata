@@ -18,8 +18,8 @@ import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
-  getDatasetDetailsPath,
   getPipelineDetailsPath,
+  getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
@@ -54,9 +54,8 @@ export const usageSeverity = (value: number): string => {
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
   const ordinalPercentile = ordinalize(percentile);
-  const strSeverity = usageSeverity(percentile);
-  const usagePercentile = `${strSeverity}${
-    isLiteral ? ' usage' : ''
+  const usagePercentile = `${
+    isLiteral ? 'Usage' : ''
   } - ${ordinalPercentile} pctile`;
 
   return usagePercentile;
@@ -206,7 +205,7 @@ export const getEntityLink = (
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
-      return getDatasetDetailsPath(fullyQualifiedName);
+      return getTableDetailsPath(fullyQualifiedName);
   }
 };
 

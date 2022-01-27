@@ -15,7 +15,6 @@ package org.openmetadata.catalog.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,13 +27,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
@@ -47,6 +46,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService> {
   public DashboardServiceResourceTest() {
     super(
@@ -55,6 +55,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         DashboardServiceList.class,
         "services/dashboardServices",
         "",
+        false,
         false,
         false,
         false);
@@ -215,34 +216,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
-  @Test
-  void delete_ExistentDashboardService_as_admin_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DashboardService dashboardService = createEntity(create(test), authHeaders);
-    deleteEntity(dashboardService.getId(), authHeaders);
-  }
-
-  @Test
-  void delete_as_user_401(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DashboardService dashboardService = createEntity(create(test), authHeaders);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteEntity(dashboardService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void delete_notExistentDashboardService() {
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception,
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.DASHBOARD_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
   private CreateDashboardService create(TestInfo test) throws URISyntaxException {
     return create(getEntityName(test));
   }
@@ -251,9 +224,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     return create(getEntityName(test, index));
   }
 
-  private CreateDashboardService create(String entityName) throws URISyntaxException {
+  private CreateDashboardService create(String name) throws URISyntaxException {
     return new CreateDashboardService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
         .withDashboardUrl(new URI("http://192.1.1.1:0"))
         .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
@@ -305,7 +278,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

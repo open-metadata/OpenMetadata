@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -44,11 +45,20 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public DatabaseResourceTest() {
     super(
-        Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS, false, true, false);
+        Entity.DATABASE,
+        Database.class,
+        DatabaseList.class,
+        "databases",
+        DatabaseResource.FIELDS,
+        false,
+        true,
+        false,
+        true);
   }
 
   @BeforeAll
@@ -127,12 +137,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
-    Database database = createDatabase(create(test), adminAuthHeaders());
-    deleteEntity(database.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyDatabase_4xx() {
     // TODO
   }
@@ -149,7 +153,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     String fields = "owner";
     database =
         byName
-            ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(database.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(database.getId(), fields, adminAuthHeaders());
     assertListNotNull(database.getOwner(), database.getService(), database.getServiceType());
     assertListNull(database.getTables(), database.getUsageSummary());
@@ -158,7 +162,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     fields = "owner,tables,usageSummary";
     database =
         byName
-            ? getEntityByName(database.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(database.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(database.getId(), fields, adminAuthHeaders());
     assertListNotNull(
         database.getOwner(),
@@ -173,8 +177,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     return create(getEntityName(test));
   }
 
-  private CreateDatabase create(String entityName) {
-    return new CreateDatabase().withName(entityName).withService(SNOWFLAKE_REFERENCE);
+  private CreateDatabase create(String name) {
+    return new CreateDatabase().withName(name).withService(SNOWFLAKE_REFERENCE);
   }
 
   @Override

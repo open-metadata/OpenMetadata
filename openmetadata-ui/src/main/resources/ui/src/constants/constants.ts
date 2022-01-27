@@ -21,6 +21,7 @@ export const SIDEBAR_WIDTH_EXPANDED = 290;
 export const LOCALSTORAGE_RECENTLY_VIEWED = 'recentlyViewedData';
 export const LOCALSTORAGE_RECENTLY_SEARCHED = 'recentlySearchedData';
 export const oidcTokenKey = 'oidcIdToken';
+export const isAdminUpdated = 'isAdminUpdated';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
@@ -33,7 +34,7 @@ export const imageTypes = {
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = 'No data found';
 export const ERROR500 = 'Something went wrong';
-const PLACEHOLDER_ROUTE_DATASET_FQN = ':datasetFQN';
+const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
@@ -49,6 +50,8 @@ const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 
 export const pagingObject = { after: '', before: '' };
+
+export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
 /* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
@@ -136,8 +139,8 @@ export const ROUTES = {
   TAGS: '/tags',
   SIGNUP: '/signup',
   SIGNIN: '/signin',
-  DATASET_DETAILS: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}`,
-  DATASET_DETAILS_WITH_TAB: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
+  TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -149,18 +152,16 @@ export const ROUTES = {
   ONBOARDING: '/onboarding',
   INGESTION: '/ingestion',
   USER_LIST: '/user-list',
+  ROLES: '/roles',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
   '/database/': ['In this Database'],
 };
 
-export const getDatasetDetailsPath = (
-  datasetFQN: string,
-  columnName?: string
-) => {
-  let path = ROUTES.DATASET_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN);
+export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
+  let path = ROUTES.TABLE_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -179,10 +180,10 @@ export const getVersionPath = (
   return path;
 };
 
-export const getDatasetTabPath = (datasetFQN: string, tab = 'schema') => {
-  let path = ROUTES.DATASET_DETAILS_WITH_TAB;
+export const getTableTabPath = (tableFQN: string, tab = 'schema') => {
+  let path = ROUTES.TABLE_DETAILS_WITH_TAB;
   path = path
-    .replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN)
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -273,11 +274,12 @@ export const navLinkDevelop = [
 
 export const navLinkSettings = [
   { name: 'Teams', to: '/teams', disabled: false },
+  { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },
-  { name: 'Ingestions', to: '/ingestion', disabled: false },
+  // { name: 'Ingestions', to: '/ingestion', disabled: false },
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },
 ];

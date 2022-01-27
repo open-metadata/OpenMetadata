@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
@@ -98,8 +97,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public void storeRelationships(DashboardService entity) {}
 
   @Override
-  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
-    return new DashboardServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, Operation operation) {
+    return new DashboardServiceUpdater(original, updated, operation);
   }
 
   public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
@@ -125,6 +124,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public String getFullyQualifiedName() {
       return entity.getName();
     }
@@ -140,7 +144,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -185,7 +189,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -208,8 +212,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   public class DashboardServiceUpdater extends EntityUpdater {
-    public DashboardServiceUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public DashboardServiceUpdater(DashboardService original, DashboardService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

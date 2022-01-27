@@ -24,6 +24,10 @@ export interface Metrics {
    */
   changeDescription?: ChangeDescription;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of metrics instance, what it is, and how to use it.
    */
   description?: string;
@@ -60,9 +64,10 @@ export interface Metrics {
    */
   tags?: TagLabel[];
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */

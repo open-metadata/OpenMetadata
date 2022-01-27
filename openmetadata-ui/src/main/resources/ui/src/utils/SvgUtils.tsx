@@ -17,10 +17,17 @@ import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
+import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
+import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
+import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
+import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
+import IconControlMinus from '../assets/svg/control-minus.svg';
+import IconControlPlus from '../assets/svg/control-plus.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -30,11 +37,16 @@ import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDoc from '../assets/svg/doc.svg';
+import IconEditBlack from '../assets/svg/edit-black.svg';
+import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
+import IconFitView from '../assets/svg/fitview.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
+import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
+import IconEditLineage from '../assets/svg/ic-edit-lineage.svg';
 import IconEdit from '../assets/svg/ic-edit.svg';
 import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
@@ -63,7 +75,6 @@ import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
-import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
@@ -94,6 +105,7 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
+import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
@@ -103,6 +115,7 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
+import IconWhatsNew from '../assets/svg/whatsNew.svg';
 
 type Props = {
   alt: string;
@@ -119,12 +132,15 @@ export const Icons = {
   GITHUB_ICON: 'github-icon',
   AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
+  EDIT_BLACK: 'icon-edit-black',
+  EDIT_PRIMARY: 'icon-edit-primary',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
   SETTINGS: 'icon-settings',
   SQL_BUILDER: 'icon-sql-builder',
   TEAMS: 'icon-teams',
+  TEAMS_GREY: 'icon-teams-grey',
   WORKFLOWS: 'icon-workflows',
   MENU: 'icon-menu',
   FEED: 'icon-feed',
@@ -203,6 +219,16 @@ export const Icons = {
   SEARCHV1COLOR: 'icon-searchv1color',
   SAMPLE_DATA: 'sample-data',
   SAMPLE_DATA_COLOR: 'sample-data-color',
+  FITVEW: 'icon-fitview',
+  CONTROLPLUS: 'icon-control-plus',
+  CONTROLMINUS: 'icon-control-minus',
+  EDITLINEAGECOLOR: 'icon-edit-lineage-color',
+  EDITLINEAGE: 'icon-edit-lineage',
+  CHECKBOX_PRIMARY: 'icon-checkbox-primary',
+  ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
+  ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
+  ANNOUNCEMENT: 'icon-announcement',
+  ANNOUNCEMENT_WHITE: 'icon-announcement-white',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -243,6 +269,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TEAMS:
       IconComponent = IconTeams;
+
+      break;
+    case Icons.TEAMS_GREY:
+      IconComponent = IconTeamsGrey;
 
       break;
     case Icons.SETTINGS:
@@ -573,6 +603,16 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconSearchV1Color;
 
       break;
+
+    case Icons.EDIT_BLACK:
+      IconComponent = IconEditBlack;
+
+      break;
+    case Icons.EDIT_PRIMARY:
+      IconComponent = IconEditPrimary;
+
+      break;
+
     case Icons.SAMPLE_DATA:
       IconComponent = IconSampleData;
 
@@ -581,9 +621,51 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconSampleDataColor;
 
       break;
+    case Icons.FITVEW:
+      IconComponent = IconFitView;
+
+      break;
+    case Icons.CONTROLPLUS:
+      IconComponent = IconControlPlus;
+
+      break;
+    case Icons.CONTROLMINUS:
+      IconComponent = IconControlMinus;
+
+      break;
+    case Icons.EDITLINEAGE:
+      IconComponent = IconEditLineage;
+
+      break;
+    case Icons.EDITLINEAGECOLOR:
+      IconComponent = IconEditLineageColor;
+
+      break;
+    case Icons.CHECKBOX_PRIMARY:
+      IconComponent = IconCheckboxPrimary;
+
+      break;
+    case Icons.ARROW_DOWN_PRIMARY:
+      IconComponent = IconArrowDownPrimary;
+
+      break;
+    case Icons.ARROW_RIGHT_PRIMARY:
+      IconComponent = IconArrowRightPrimary;
+
+      break;
+    case Icons.ANNOUNCEMENT:
+      IconComponent = IconAnnouncement;
+
+      break;
+    case Icons.ANNOUNCEMENT_WHITE:
+      IconComponent = IconAnnouncementWhite;
+
+      break;
 
     default:
       IconComponent = null;
+
+      break;
   }
 
   return IconComponent ? (

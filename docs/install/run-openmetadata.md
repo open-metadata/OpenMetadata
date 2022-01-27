@@ -18,14 +18,6 @@ To check what version of Python you have, please use the following command.
 python3 --version
 ```
 
-### pip (version 19.2.3 or greater)
-
-The version of pip (pip3) that ships with Python 3.8.x is 19.2.3. You will need this version or later to install OpenMetadata. You can check what version of pip you have by running the following command.
-
-```
-pip3 --version
-```
-
 ### Docker (version 20.10.0 or greater)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
@@ -36,13 +28,19 @@ To check what version of Docker you have, please use the following command.
 docker --version
 ```
 
-If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
+If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).  You also need the latest `docker-compose` installed, please visit [Install Docker Compose](https://docs.docker.com/compose/install/).
 
 {% hint style="warning" %}
 Note: You must **allocate at least 4GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
 
 Preferences -> Resources -> Advanced
 {% endhint %}
+
+### docker-compose (version v1.29.2 or greater)
+
+The docker-compose tool enables you to define and run multi-container Docker applications. The packages you will install in this guide use docker-compose to deploy OpenMetadata.
+
+To install `docker-compose`, please follow the instructions at [Install Docker Compose](https://docs.docker.com/compose/install/).
 
 ## Procedure
 
@@ -70,19 +68,19 @@ python3 -m venv env
 source env/bin/activate
 ```
 
-### 3.1 Upgrade pip and setuptools
+### 4. Upgrade pip and setuptools
 
 ```
 pip3 install --upgrade pip setuptools
 ```
 
-### 4. Install the OpenMetadata Python module using pip
+### 5. Install the OpenMetadata Python module using pip
 
 ```
 pip3 install --upgrade 'openmetadata-ingestion[docker]'
 ```
 
-### 5. Ensure the module is installed and ready for use
+### 6. Ensure the module is installed and ready for use
 
 ```
 metadata docker --help
@@ -108,7 +106,7 @@ Options:
   --help           Show this message and exit.
 ```
 
-### 6. Start the OpenMetadata Docker containers
+### 7. Start the OpenMetadata Docker containers
 
 ```
 metadata docker --start
@@ -144,7 +142,7 @@ After starting the containers, `metadata` will launch Airflow tasks to ingest sa
 * `metadata docker --clean` will clean/prune the containers, volumes, and networks.
 {% endhint %}
 
-### 7. Wait for metadata ingestion to finish
+### 8. Wait for metadata ingestion to finish
 
 Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.
 
@@ -161,7 +159,7 @@ To checkout Ingestion via Airflow, go to http://localhost:8080
 Need support? Get in touch on Slack: https://slack.open-metadata.org/
 ```
 
-### 8. Log in to Airflow
+### 9. Log in to Airflow
 
 Once metadata ingestion has finished and you see the message that OpenMetadata is up and running, visit the following url in your web browser.
 
@@ -177,7 +175,7 @@ Password: `admin`
 
 ![](../.gitbook/assets/airflow-login.png)
 
-### 9. Begin using OpenMetadata
+### 10. Begin using OpenMetadata
 
 Finally, visit the following url to begin exploring OpenMetadata.
 
@@ -227,3 +225,99 @@ sudo apt install python3-pip  python3-venv
 ```
 
 Follow the [OSX instructions](run-openmetadata.md#1.-create-a-directory-for-openmetadata)
+
+
+
+## Upgrade OpenMetadata
+
+If you would like to upgrade your OpenMetadata deployment installed following the procedure above, this procedure will guide you through the upgrade process.
+
+### 1. Ensure your Python virtual environment is activated
+
+The procedure for [installing OpenMetadata](run-openmetadata.md) asks you to create a new directory and Python virtual environment. The procedure then asks you to install the `openmetadata-ingestion[docker]` Python module in this virtual environment.
+
+In your command-line environment, please navigate to the directory where you installed `openmetadata-ingestion[docker]` and activate the virtual environment by running the following command.
+
+```
+source env/bin/activate
+```
+
+### 2. Check the current version you have installed
+
+To check the version of `openmetadata-ingestion[docker]` that you have installed, run the following command.
+
+```bash
+metadata --version
+```
+
+Upon running this command you should see output similar to the following.
+
+```bash
+metadata, version metadata 0.5.0 from /Users/om/openmetadata-docker/env/lib/python3.8 (python 3.8)
+```
+
+### 3. Check available versions
+
+To confirm that there is a later version of `openmetadata-ingestion[docker]` available and identify the version you want to install, please run the following command.
+
+```
+pip3 install 'openmetadata-ingestion[docker]'==
+```
+
+Upon running this command, you should see output similar to the following.
+
+```
+ERROR: Could not find a version that satisfies the requirement 
+openmetadata-ingestion[docker]== (from versions: 0.2.0, 0.2.1, 0.2.2, 0.2.3, 0.2.4,
+0.3.0, 0.3.2, 0.4.0.dev0, 0.4.0.dev6, 0.4.0, 0.4.1.dev6, 0.4.1, 0.4.2.dev1, 0.4.2, 
+0.4.2.1, 0.4.3.dev1, 0.4.3.dev2, 0.4.3.dev3, 0.4.3.dev4, 0.4.3, 0.4.4, 0.4.5, 0.4.7,
+0.4.8.dev0, 0.4.8.dev2, 0.4.8, 0.4.9, 0.4.10, 0.4.11, 0.5.0rc0, 0.5.0rc1, 0.5.0, 
+0.5.1.dev0, 0.6.0.dev0, 0.7.0.dev1, 0.7.0.dev2, 0.7.0.dev3, 0.7.0.dev4)
+ERROR: No matching distribution found for openmetadata-ingestion[docker]==
+```
+
+The error messages are expected. This is the accepted means of checking available versions for a Python module using `pip`.
+
+The output provides a complete list of available versions and enables you to determine whether there are release versions later than the version you currently have installed. Release versions have the form `x.x.x`. Examples of release versions in the above output include, `0.2.0`, `0.4.2`, and `0.5.0`.&#x20;
+
+From this output you can also find patch releases (e.g., `0.4.2.1`), release candidates (`0.5.0rc1`), and development releases (e.g., `0.7.0.dev4`).&#x20;
+
+### 4. Stop your currently running deployment
+
+Before upgrading, if you are currently running an OpenMetadata deployment, please stop the deployment by running the following command.
+
+```bash
+metadata docker --stop
+```
+
+### 5. Install the version of your choice
+
+#### Option 1. Install the latest release version
+
+You may install the latest release version by running the following command.
+
+```bash
+pip3 install --upgrade 'openmetadata-ingestion[docker]'
+```
+
+#### Option 2. Install a specific release, patch, or development version
+
+You may install a specific version of `openmetadata-ingestion[docker]`by running the following command, specifying the version you want to install in place of `<version>`.
+
+```bash
+pip3 install --upgrade 'openmetadata-ingestion[docker]'==<version>
+```
+
+For example, if you want to install the `0.7.0.dev4` release, you would run the following command.
+
+```bash
+pip3 install --upgrade 'openmetadata-ingestion[docker]'==0.7.0.dev4
+```
+
+### 6. Restart your deployment
+
+Once you have successfully installed your preferred version of `openmetadata-ingestion[docker]`, restart your deployment using the new version, by running the following command.
+
+```bash
+metadata docker --start
+```

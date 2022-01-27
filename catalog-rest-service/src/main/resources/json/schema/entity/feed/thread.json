@@ -16,9 +16,8 @@
           "type": "string"
         },
         "postTs": {
-          "description": "Timestamp of the post.",
-          "type": "string",
-          "format": "date-time"
+          "description": "Timestamp of the post in Unix epoch time milliseconds.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "from": {
           "description": "ID of User (regular user or a bot) posting the message.",
@@ -38,15 +37,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "threadTs": {
-      "description": "Timestamp of the when the first post created the thread.",
-      "$ref": "../../type/basic.json#/definitions/dateTime"
+      "description": "Timestamp of the when the first post created the thread in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "about": {
-      "description": "Data asset about which this thread is created for with format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
+      "description": "Data asset about which this thread is created for with format <#E/{entities}/{entityType}/{field}/{fieldValue}.",
       "$ref" : "../../type/basic.json#/definitions/entityLink"
     },
     "addressedTo": {
-      "description": "User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
+      "description": "User or team this thread is addressed to in format <#E/{entities}/{entityType}/{field}/{fieldValue}.",
       "$ref" : "../../type/basic.json#/definitions/entityLink"
     },
     "posts": {

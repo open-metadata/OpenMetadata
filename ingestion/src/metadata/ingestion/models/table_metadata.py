@@ -14,10 +14,23 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityReference import EntityReference
 
 
-class Table(BaseModel):
+class DatabaseAndTableState(BaseModel):
+    database: str
+    table: str
+    exists: bool
+
+
+class DeleteTable(BaseModel):
+    """Entity Reference of a table to be deleted"""
+
+    table: Table
+
+
+class TableFQDN(BaseModel):
     """Table Fully Qualified Name"""
 
     fullyQualifiedName: str
@@ -41,6 +54,7 @@ class TableESDocument(BaseModel):
     """Elastic Search Mapping doc"""
 
     table_id: str
+    deleted: bool
     database: str
     service: str
     service_type: str
@@ -72,6 +86,7 @@ class TopicESDocument(BaseModel):
     """Topic Elastic Search Mapping doc"""
 
     topic_id: str
+    deleted: bool
     service: str
     service_type: str
     service_category: str
@@ -93,6 +108,7 @@ class DashboardESDocument(BaseModel):
     """Elastic Search Mapping doc for Dashboards"""
 
     dashboard_id: str
+    deleted: bool
     service: str
     service_type: str
     service_category: str
@@ -122,6 +138,7 @@ class PipelineESDocument(BaseModel):
     """Elastic Search Mapping doc for Pipelines"""
 
     pipeline_id: str
+    deleted: bool
     service: str
     service_type: str
     service_category: str
@@ -132,31 +149,6 @@ class PipelineESDocument(BaseModel):
     last_updated_timestamp: Optional[int]
     task_names: List[str]
     task_descriptions: List[str]
-    tags: List[str]
-    fqdn: str
-    tier: Optional[str] = None
-    owner: str
-    followers: List[str]
-    change_descriptions: Optional[List[ChangeDescription]] = None
-    doc_as_upsert: bool = True
-
-
-class DbtModelESDocument(BaseModel):
-    """Elastic Search Mapping doc"""
-
-    dbt_model_id: str
-    database: str
-    service: str
-    service_type: str
-    service_category: str
-    entity_type: str = "dbtmodel"
-    name: str
-    suggest: List[dict]
-    description: Optional[str] = None
-    dbt_type: Optional[str] = None
-    last_updated_timestamp: Optional[int]
-    column_names: List[str]
-    column_descriptions: List[str]
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None

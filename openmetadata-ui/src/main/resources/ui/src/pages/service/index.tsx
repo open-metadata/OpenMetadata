@@ -13,30 +13,38 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
-import { Paging } from 'Models';
+import { Paging, ServicesData } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import {
+  addAirflowPipeline,
+  deleteAirflowPipelineById,
+  getAirflowPipelines,
+  triggerAirflowPipelineById,
+  updateAirflowPipeline,
+} from '../../axiosAPIs/airflowPipelineAPI';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import Description from '../../components/common/description/Description';
+import IngestionError from '../../components/common/error/IngestionError';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
+import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
+import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  DashboardServiceType,
-  ServiceCategory,
-} from '../../enums/service.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -45,14 +53,21 @@ import { DashboardService } from '../../generated/entity/services/dashboardServi
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import {
+  AirflowPipeline,
+  PipelineType,
+  Schema,
+} from '../../generated/operations/pipelines/airflowPipeline';
+import { EntityReference } from '../../generated/type/entityReference';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
-  getFrequencyTime,
+  getIsIngestionEnable,
   getServiceCategoryFromType,
+  isRequiredDetailsAvailableForIngestion,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 
 type Data = Database & Topic & Dashboard;
@@ -66,8 +81,12 @@ const ServicePage: FunctionComponent = () => {
     string,
     string
   >;
+  const { isAdminUser, isAuthDisabled } = useAuth();
   const [serviceName, setServiceName] = useState(
     serviceCategory || getServiceCategoryFromType(serviceType)
+  );
+  const [isIngestionEnable] = useState(
+    getIsIngestionEnable(serviceName as ServiceCategory)
   );
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -79,7 +98,236 @@ const ServicePage: FunctionComponent = () => {
   const [isLoading, setIsloading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState(1);
+  const [isConnectionAvailable, setConnectionAvailable] =
+    useState<boolean>(true);
+  const [ingestions, setIngestions] = useState<AirflowPipeline[]>([]);
+  const [serviceList] = useState<Array<DatabaseService>>([]);
+  const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const showToast = useToastContext();
+
+  const getCountLabel = () => {
+    switch (serviceName) {
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return 'Dashboards';
+      case ServiceCategory.MESSAGING_SERVICES:
+        return 'Topics';
+      case ServiceCategory.PIPELINE_SERVICES:
+        return 'Pipelines';
+      case ServiceCategory.DATABASE_SERVICES:
+      default:
+        return 'Databases';
+    }
+  };
+
+  const tabs = [
+    {
+      name: getCountLabel(),
+      icon: {
+        alt: 'schema',
+        name: 'icon-database',
+        title: 'Database',
+        selectedName: 'icon-schemacolor',
+      },
+      isProtected: false,
+      position: 1,
+      count: instanceCount,
+    },
+    {
+      name: 'Ingestions',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+      isHidden: !isIngestionEnable,
+      isProtected: false,
+      position: 2,
+      count: ingestions.length,
+    },
+    {
+      name: 'Connection Config',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+
+      isProtected: !isAdminUser && !isAuthDisabled,
+      isHidden: !isAdminUser && !isAuthDisabled,
+      position: 3,
+    },
+  ];
+
+  const activeTabHandler = (tabValue: number) => {
+    setActiveTab(tabValue);
+  };
+
+  const getSchemaFromType = (type: AirflowPipeline['pipelineType']) => {
+    switch (type) {
+      case PipelineType.Metadata:
+        return Schema.DatabaseServiceMetadataPipeline;
+
+      case PipelineType.QueryUsage:
+        return Schema.DatabaseServiceQueryUsagePipeline;
+
+      default:
+        return;
+    }
+  };
+
+  const getAllIngestionWorkflows = (paging?: string) => {
+    getAirflowPipelines(['owner, tags, status'], serviceFQN, '', paging)
+      .then((res) => {
+        if (res.data.data) {
+          setIngestions(res.data.data);
+          setIngestionPaging(res.data.paging);
+          setIsloading(false);
+        } else {
+          setIngestionPaging({} as Paging);
+        }
+      })
+      .catch((err: AxiosError) => {
+        const msg = err.response?.data.message;
+        showToast({
+          variant: 'error',
+          body: msg ?? `Error while getting ingestion workflow`,
+        });
+      });
+  };
+
+  const triggerIngestionById = (
+    id: string,
+    displayName: string
+  ): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      triggerAirflowPipelineById(id)
+        .then((res) => {
+          if (res.data) {
+            resolve();
+            getAllIngestionWorkflows();
+          } else {
+            reject();
+          }
+        })
+        .catch((err: AxiosError) => {
+          const msg = err.response?.data.message;
+          showToast({
+            variant: 'error',
+            body:
+              msg ?? `Error while triggering ingestion workflow ${displayName}`,
+          });
+          reject();
+        });
+    });
+  };
+
+  const deleteIngestionById = (
+    id: string,
+    displayName: string
+  ): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      deleteAirflowPipelineById(id)
+        .then(() => {
+          resolve();
+          getAllIngestionWorkflows();
+        })
+        .catch((err: AxiosError) => {
+          const msg = err.response?.data.message;
+          showToast({
+            variant: 'error',
+            body:
+              msg ?? `Error while deleting ingestion workflow ${displayName}`,
+          });
+          reject();
+        });
+    });
+  };
+
+  const updateIngestion = (
+    data: AirflowPipeline,
+    oldData: AirflowPipeline,
+    id: string,
+    displayName: string,
+    triggerIngestion?: boolean
+  ): Promise<void> => {
+    const jsonPatch = compare(oldData, data);
+
+    return new Promise<void>((resolve, reject) => {
+      updateAirflowPipeline(id, jsonPatch)
+        .then(() => {
+          resolve();
+          getAllIngestionWorkflows();
+          if (triggerIngestion) {
+            triggerIngestionById(id, displayName).then();
+          }
+        })
+        .catch((err: AxiosError) => {
+          const msg = err.response?.data.message;
+          showToast({
+            variant: 'error',
+            body:
+              msg ?? `Error while updating ingestion workflow ${displayName}`,
+          });
+          reject();
+        });
+    });
+  };
+
+  const addIngestionWorkflowHandler = (
+    data: AirflowPipeline,
+    triggerIngestion?: boolean
+  ) => {
+    setIsloading(true);
+
+    const ingestionData: AirflowPipeline = {
+      ...data,
+      pipelineConfig: {
+        ...data.pipelineConfig,
+        schema: getSchemaFromType(data.pipelineType),
+      },
+      service: {
+        id: serviceDetails?.id,
+        type: 'databaseService',
+        name: data.service.name,
+      } as EntityReference,
+    };
+
+    addAirflowPipeline(ingestionData)
+      .then((res: AxiosResponse) => {
+        const { id, displayName } = res.data;
+        setIsloading(false);
+        getAllIngestionWorkflows();
+        if (triggerIngestion) {
+          triggerIngestionById(id, displayName).then();
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = err.response?.data?.message ?? '';
+        if (errMsg.includes('Connection refused')) {
+          setConnectionAvailable(false);
+        } else {
+          showToast({
+            variant: 'error',
+            body: errMsg ?? `Error while adding ingestion workflow`,
+          });
+        }
+        setIsloading(false);
+      });
+  };
+
+  const handleConfigUpdate = (updatedData: ServicesData) => {
+    return new Promise<void>((resolve, reject) => {
+      updateService(serviceName, serviceDetails?.id, updatedData)
+        .then((res: AxiosResponse) => {
+          setServiceDetails(res.data);
+          resolve();
+        })
+        .catch(() => reject());
+    });
+  };
 
   const fetchDatabases = (paging?: string) => {
     setIsloading(true);
@@ -202,215 +450,6 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return `/database/${fqn}`;
-    }
-  };
-
-  const getOptionalFields = (): JSX.Element => {
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        return (
-          <span>
-            <span className="tw-text-grey-muted tw-font-normal">
-              Driver Class :
-            </span>{' '}
-            <span className="tw-pl-1tw-font-normal ">
-              {serviceDetails?.jdbc?.driverClass || '--'}
-            </span>
-            <span className="tw-mx-3 tw-text-grey-muted">•</span>
-          </span>
-        );
-      }
-      case ServiceCategory.MESSAGING_SERVICES: {
-        return (
-          <>
-            <span>
-              <span className="tw-text-grey-muted tw-font-normal">
-                Brokers :
-              </span>{' '}
-              <span className="tw-pl-1tw-font-normal ">
-                {serviceDetails?.brokers?.length ? (
-                  <>
-                    {serviceDetails.brokers.slice(0, 3).join(', ')}
-                    {serviceDetails.brokers.length > 3 ? (
-                      <PopOver
-                        html={
-                          <div className="tw-text-left">
-                            {serviceDetails.brokers
-                              .slice(3)
-                              .map((broker, index) => (
-                                <Fragment key={index}>
-                                  <span className="tw-block tw-py-1">
-                                    {broker}
-                                  </span>
-                                </Fragment>
-                              ))}
-                          </div>
-                        }
-                        position="bottom"
-                        theme="light"
-                        trigger="click">
-                        <span className="show-more tw-ml-1">...</span>
-                      </PopOver>
-                    ) : null}
-                  </>
-                ) : (
-                  '--'
-                )}
-              </span>
-              <span className="tw-mx-3 tw-text-grey-muted">•</span>
-            </span>
-            <span>
-              <span className="tw-text-grey-muted tw-font-normal">
-                Schema registry :
-              </span>{' '}
-              <span className="tw-pl-1tw-font-normal ">
-                {serviceDetails?.schemaRegistry ? (
-                  <a
-                    className="link-text"
-                    href={serviceDetails.schemaRegistry}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    <>
-                      <span className="tw-mr-1">
-                        {serviceDetails.schemaRegistry}
-                      </span>
-                      <SVGIcons
-                        alt="external-link"
-                        className="tw-align-middle"
-                        icon="external-link"
-                        width="12px"
-                      />
-                    </>
-                  </a>
-                ) : (
-                  '--'
-                )}
-              </span>
-              <span className="tw-mx-3 tw-text-grey-muted">•</span>
-            </span>
-          </>
-        );
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        let elemFields: JSX.Element;
-        switch (serviceType) {
-          // case DashboardServiceType.REDASH:
-          //   {
-          //     // TODO: add Redash fields if required
-          //   }
-
-          //   break;
-          case DashboardServiceType.TABLEAU:
-            {
-              elemFields = (
-                <>
-                  <span>
-                    <span className="tw-text-grey-muted tw-font-normal">
-                      Site Url :
-                    </span>{' '}
-                    <span className="tw-pl-1tw-font-normal ">
-                      {serviceDetails?.dashboardUrl ? (
-                        <a
-                          className="link-text"
-                          href={serviceDetails.dashboardUrl}
-                          rel="noopener noreferrer"
-                          target="_blank">
-                          <>
-                            <span className="tw-mr-1">
-                              {serviceDetails.dashboardUrl}
-                            </span>
-                            <SVGIcons
-                              alt="external-link"
-                              className="tw-align-middle"
-                              icon="external-link"
-                              width="12px"
-                            />
-                          </>
-                        </a>
-                      ) : (
-                        '--'
-                      )}
-                    </span>
-                    <span className="tw-mx-3 tw-text-grey-muted">•</span>
-                  </span>
-                </>
-              );
-            }
-
-            break;
-          default: {
-            elemFields = (
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Dashboard Url :
-                </span>{' '}
-                <span className="tw-pl-1tw-font-normal ">
-                  {serviceDetails?.dashboardUrl ? (
-                    <a
-                      className="link-text"
-                      href={serviceDetails.dashboardUrl}
-                      rel="noopener noreferrer"
-                      target="_blank">
-                      <>
-                        <span className="tw-mr-1">
-                          {serviceDetails.dashboardUrl}
-                        </span>
-                        <SVGIcons
-                          alt="external-link"
-                          className="tw-align-middle"
-                          icon="external-link"
-                          width="12px"
-                        />
-                      </>
-                    </a>
-                  ) : (
-                    '--'
-                  )}
-                </span>
-                <span className="tw-mx-3 tw-text-grey-muted">•</span>
-              </span>
-            );
-          }
-        }
-
-        return elemFields;
-      }
-      case ServiceCategory.PIPELINE_SERVICES:
-        return (
-          <span>
-            <span className="tw-text-grey-muted tw-font-normal">
-              Pipeline Url :
-            </span>{' '}
-            <span className="tw-pl-1tw-font-normal ">
-              {serviceDetails?.pipelineUrl ? (
-                <a
-                  className="link-text"
-                  href={serviceDetails.pipelineUrl}
-                  rel="noopener noreferrer"
-                  target="_blank">
-                  <>
-                    <span className="tw-mr-1">
-                      {serviceDetails.pipelineUrl}
-                    </span>
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </>
-                </a>
-              ) : (
-                '--'
-              )}
-            </span>
-            <span className="tw-mx-3 tw-text-grey-muted">•</span>
-          </span>
-        );
-
-      default: {
-        return <></>;
-      }
     }
   };
 
@@ -579,6 +618,13 @@ const ServicePage: FunctionComponent = () => {
     );
   }, [serviceFQN, serviceName]);
 
+  useEffect(() => {
+    if (isIngestionEnable) {
+      // getDatabaseServices();
+      getAllIngestionWorkflows();
+    }
+  }, []);
+
   const onCancel = () => {
     setIsEdit(false);
   };
@@ -621,18 +667,12 @@ const ServicePage: FunctionComponent = () => {
     getOtherDetails(pagingString);
   };
 
-  const getCountLabel = () => {
-    switch (serviceName) {
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return 'Dashboards';
-      case ServiceCategory.MESSAGING_SERVICES:
-        return 'Topics';
-      case ServiceCategory.PIPELINE_SERVICES:
-        return 'Pipelines';
-      case ServiceCategory.DATABASE_SERVICES:
-      default:
-        return 'Databases';
-    }
+  const ingestionPagingHandler = (cursorType: string) => {
+    const pagingString = `&${cursorType}=${
+      ingestionPaging[cursorType as keyof typeof paging]
+    }`;
+
+    getAllIngestionWorkflows(pagingString);
   };
 
   return (
@@ -644,34 +684,11 @@ const ServicePage: FunctionComponent = () => {
           <div className="tw-px-4" data-testid="service-page">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
-            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7">
-              {getOptionalFields()}
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Ingestion :
-                </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">
-                  {' '}
-                  {serviceDetails?.ingestionSchedule?.repeatFrequency
-                    ? getFrequencyTime(
-                        serviceDetails.ingestionSchedule.repeatFrequency
-                      )
-                    : '--'}
-                </span>
-              </span>
-              <span className="tw-mx-3 tw-text-grey-muted">•</span>
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  {getCountLabel()} :
-                </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">{instanceCount}</span>
-              </span>
-            </div>
-
             <div
-              className="tw-my-3 tw-ml-2"
+              className="tw-my-2 tw-ml-2"
               data-testid="description-container">
               <Description
+                blurWithBodyBG
                 description={description || ''}
                 entityName={serviceFQN}
                 isEdit={isEdit}
@@ -681,65 +698,119 @@ const ServicePage: FunctionComponent = () => {
               />
             </div>
 
-            <div className="tw-mt-4 tw-px-1" data-testid="table-container">
-              <table
-                className="tw-bg-white tw-w-full tw-mb-4"
-                data-testid="database-tables">
-                <thead>
-                  <tr className="tableHead-row">{getTableHeaders()}</tr>
-                </thead>
-                <tbody className="tableBody">
-                  {data.length > 0 ? (
-                    data.map((dataObj, index) => (
-                      <tr
-                        className={classNames(
-                          'tableBody-row',
-                          !isEven(index + 1) ? 'odd-row' : null
+            <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+              <TabsPane
+                activeTab={activeTab}
+                className="tw-flex-initial"
+                setActiveTab={activeTabHandler}
+                tabs={tabs}
+              />
+              {activeTab === 1 && (
+                <Fragment>
+                  <div
+                    className="tw-mt-4 tw-px-1"
+                    data-testid="table-container">
+                    <table
+                      className="tw-bg-white tw-w-full tw-mb-4"
+                      data-testid="database-tables">
+                      <thead>
+                        <tr className="tableHead-row">{getTableHeaders()}</tr>
+                      </thead>
+                      <tbody className="tableBody">
+                        {data.length > 0 ? (
+                          data.map((dataObj, index) => (
+                            <tr
+                              className={classNames(
+                                'tableBody-row',
+                                !isEven(index + 1) ? 'odd-row' : null
+                              )}
+                              data-testid="column"
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <Link
+                                  to={getLinkForFqn(
+                                    dataObj.fullyQualifiedName || ''
+                                  )}>
+                                  {serviceName ===
+                                    ServiceCategory.DASHBOARD_SERVICES &&
+                                  (dataObj as Dashboard).displayName
+                                    ? (dataObj as Dashboard).displayName
+                                    : dataObj.name}
+                                </Link>
+                              </td>
+                              <td className="tableBody-cell">
+                                {dataObj.description ? (
+                                  <RichTextEditorPreviewer
+                                    markdown={dataObj.description}
+                                  />
+                                ) : (
+                                  <span className="tw-no-description">
+                                    No description added
+                                  </span>
+                                )}
+                              </td>
+                              <td className="tableBody-cell">
+                                <p>{dataObj?.owner?.name || '--'}</p>
+                              </td>
+                              {getOptionalTableCells(dataObj)}
+                            </tr>
+                          ))
+                        ) : (
+                          <tr className="tableBody-row">
+                            <td
+                              className="tableBody-cell tw-text-center"
+                              colSpan={4}>
+                              No records found.
+                            </td>
+                          </tr>
                         )}
-                        data-testid="column"
-                        key={index}>
-                        <td className="tableBody-cell">
-                          <Link
-                            to={getLinkForFqn(
-                              dataObj.fullyQualifiedName || ''
-                            )}>
-                            {serviceName ===
-                              ServiceCategory.DASHBOARD_SERVICES &&
-                            (dataObj as Dashboard).displayName
-                              ? (dataObj as Dashboard).displayName
-                              : dataObj.name}
-                          </Link>
-                        </td>
-                        <td className="tableBody-cell">
-                          {dataObj.description ? (
-                            <RichTextEditorPreviewer
-                              markdown={dataObj.description}
-                            />
-                          ) : (
-                            <span className="tw-no-description">
-                              No description added
-                            </span>
-                          )}
-                        </td>
-                        <td className="tableBody-cell">
-                          <p>{dataObj?.owner?.name || '--'}</p>
-                        </td>
-                        {getOptionalTableCells(dataObj)}
-                      </tr>
-                    ))
-                  ) : (
-                    <tr className="tableBody-row">
-                      <td className="tableBody-cell tw-text-center" colSpan={4}>
-                        No records found.
-                      </td>
-                    </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+                    <NextPrevious
+                      paging={paging}
+                      pagingHandler={pagingHandler}
+                    />
                   )}
-                </tbody>
-              </table>
+                </Fragment>
+              )}
+
+              {activeTab === 2 && (
+                <div
+                  className="tw-mt-4 tw-px-1"
+                  data-testid="ingestion-container">
+                  {isConnectionAvailable ? (
+                    <Ingestion
+                      addIngestion={addIngestionWorkflowHandler}
+                      deleteIngestion={deleteIngestionById}
+                      ingestionList={ingestions}
+                      isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(
+                        serviceName as ServiceCategory,
+                        serviceDetails as ServicesData
+                      )}
+                      paging={ingestionPaging}
+                      pagingHandler={ingestionPagingHandler}
+                      serviceList={serviceList}
+                      serviceName={serviceFQN}
+                      serviceType={serviceDetails?.serviceType}
+                      triggerIngestion={triggerIngestionById}
+                      updateIngestion={updateIngestion}
+                    />
+                  ) : (
+                    <IngestionError />
+                  )}
+                </div>
+              )}
+
+              {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
+                <ServiceConfig
+                  data={serviceDetails as ServicesData}
+                  handleUpdate={handleConfigUpdate}
+                  serviceCategory={serviceName as ServiceCategory}
+                />
+              )}
             </div>
-            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
-            )}
           </div>
         </PageContainer>
       )}

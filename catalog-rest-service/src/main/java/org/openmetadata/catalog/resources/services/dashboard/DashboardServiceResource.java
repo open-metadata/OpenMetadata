@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.dashboard;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -54,7 +52,9 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -68,7 +68,6 @@ public class DashboardServiceResource {
   private final DashboardServiceRepository dao;
   private final Authorizer authorizer;
 
-  @Inject
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardServiceRepository must not be null");
     this.dao = new DashboardServiceRepository(dao);
@@ -110,15 +109,21 @@ public class DashboardServiceResource {
               description = "Returns list of dashboard services after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
 
     if (before != null) { // Reverse paging
-      return dao.listBefore(uriInfo, null, null, limitParam, before);
+      return dao.listBefore(uriInfo, null, null, limitParam, before, include);
     }
     // Forward paging
-    return dao.listAfter(uriInfo, null, null, limitParam, after);
+    return dao.listAfter(uriInfo, null, null, limitParam, after, include);
   }
 
   @GET
@@ -136,9 +141,17 @@ public class DashboardServiceResource {
         @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
       })
   public DashboardService get(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, null);
+    return dao.get(uriInfo, id, null, include);
   }
 
   @GET
@@ -156,9 +169,17 @@ public class DashboardServiceResource {
         @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
       })
   public DashboardService getByName(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("name") String name)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, name, null);
+    return dao.getByName(uriInfo, name, null, include);
   }
 
   @GET
@@ -227,7 +248,7 @@ public class DashboardServiceResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(create, securityContext);
     dao.create(uriInfo, service);
@@ -254,7 +275,7 @@ public class DashboardServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(update, securityContext);
-    PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service);
+    PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service, true);
     return response.toResponse();
   }
 
@@ -278,10 +299,10 @@ public class DashboardServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id), recursive);
-    return Response.ok().build();
+    DeleteResponse<DashboardService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
+    return response.toResponse();
   }
 
   private DashboardService getService(CreateDashboardService create, SecurityContext securityContext) {
@@ -295,6 +316,6 @@ public class DashboardServiceResource {
         .withPassword(create.getPassword())
         .withIngestionSchedule(create.getIngestionSchedule())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

@@ -13,9 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
+
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
+import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -46,7 +48,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public Report setFields(Report report, Fields fields) throws IOException {
+  public Report setFields(Report report, Fields fields) throws IOException, ParseException {
     report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setUsageSummary(
@@ -63,10 +65,9 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void prepare(Report report) throws IOException {
-    setService(report, report.getService());
-    setOwner(report, report.getOwner());
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), report.getOwner()); // Validate owner
+  public void prepare(Report report) throws IOException, ParseException {
+    report.setService(helper(helper(report).findEntity("service")).toEntityReference());
+    report.setOwner(helper(report).validateOwnerOrNull());
   }
 
   @Override
@@ -76,34 +77,23 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void storeRelationships(Report entity) {
-    // TODO
+  public void storeRelationships(Report report) {
+    EntityReference service = report.getService();
+    daoCollection
+        .relationshipDAO()
+        .insert(
+            service.getId().toString(),
+            report.getId().toString(),
+            service.getType(),
+            Entity.CHART,
+            Relationship.CONTAINS.ordinal());
+    setOwner(report, report.getOwner());
+    applyTags(report);
   }
 
-  private EntityReference getService(Report report) {
-    return report == null
-        ? null
-        : getService(EntityUtil.getService(daoCollection.relationshipDAO(), Entity.REPORT, report.getId()));
-  }
-
-  private EntityReference getService(EntityReference service) {
+  private EntityReference getService(Report report) throws IOException, ParseException {
     // TODO What are the report services?
-    return service;
-  }
-
-  public void setService(Report report, EntityReference service) {
-    if (service != null && report != null) {
-      getService(service); // Populate service details
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              service.getId().toString(),
-              report.getId().toString(),
-              service.getType(),
-              Entity.REPORT,
-              Relationship.CONTAINS.ordinal());
-      report.setService(service);
-    }
+    return helper(report).getContainer();
   }
 
   public static class ReportEntityInterface implements EntityInterface<Report> {
@@ -126,6 +116,11 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
     }
 
     @Override
@@ -154,7 +149,7 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -204,7 +199,7 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }

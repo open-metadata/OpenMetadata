@@ -40,6 +40,7 @@ import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -51,6 +52,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
@@ -60,11 +62,12 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false);
   }
 
   @Test
@@ -125,8 +128,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
 
     // Empty query field .../teams?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getTeam(team.getId(), "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField(""));
+        assertThrows(HttpResponseException.class, () -> getTeam(team.getId(), "test", adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("test"));
 
     // .../teams?fields=invalidField
     exception =
@@ -146,35 +149,11 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     Team team = createAndCheckEntity(create, adminAuthHeaders());
 
     // Team with users can be deleted - Team -- has --> User relationships are deleted
-    deleteEntity(team.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(team, adminAuthHeaders());
 
     // Make sure user does not have relationship to this team
     User user = userResourceTest.getEntity(user1.getId(), "teams", adminAuthHeaders());
     assertTrue(user.getTeams().isEmpty());
-  }
-
-  @Test
-  void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
-    List<UUID> users = Collections.singletonList(user1.getId());
-    CreateTeam create = create(test).withUsers(users);
-    Team team = createAndCheckEntity(create, adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteEntity(team.getId(), authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void patch_teamDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure team deleted attribute can't be changed using patch
-    Team team = createTeam(create(test), adminAuthHeaders());
-    String teamJson = JsonUtils.pojoToJson(team);
-    team.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchTeam(teamJson, team, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
   }
 
   //  @Test
@@ -331,13 +310,26 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     return create(getEntityName(test));
   }
 
-  public CreateTeam create(String entityName) {
-    return new CreateTeam().withName(entityName);
+  public CreateTeam create(String name) {
+    return new CreateTeam().withName(name);
   }
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+    return create(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withProfile(PROFILE)
+        .withUsers(List.of(USER1.getId()));
+  }
+
+  @Override
+  public Team beforeDeletion(TestInfo test, Team team) throws HttpResponseException {
+    LocationResourceTest locationResourceTest = new LocationResourceTest();
+    EntityReference teamRef = new EntityReference().withId(team.getId()).withType("team");
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test), null, null, teamRef), adminAuthHeaders());
+    return team;
   }
 
   @Override
@@ -371,6 +363,24 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Override
   public void validateUpdatedEntity(Team updatedEntity, Object request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
+  }
+
+  @Override
+  protected void validateDeletedEntity(
+      Object create, Team teamBeforeDeletion, Team teamAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    super.validateDeletedEntity(create, teamBeforeDeletion, teamAfterDeletion, authHeaders);
+
+    List<EntityReference> expectedOwnedEntities = new ArrayList<>();
+    for (EntityReference ref : Optional.ofNullable(teamBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
+      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+    }
+    if (!expectedOwnedEntities.isEmpty()) {
+      assertEquals(expectedOwnedEntities.size(), teamAfterDeletion.getOwns().size());
+      for (EntityReference ref : expectedOwnedEntities) {
+        TestUtils.existsInEntityReferenceList(teamAfterDeletion.getOwns(), ref.getId(), true);
+      }
+    }
   }
 
   @Override

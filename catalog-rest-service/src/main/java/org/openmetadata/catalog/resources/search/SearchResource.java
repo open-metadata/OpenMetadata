@@ -33,6 +33,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -47,17 +48,15 @@ import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
-import org.openmetadata.catalog.ElasticSearchConfiguration;
+import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Path("/v1/search")
 @Api(value = "Search collection", tags = "Search collection")
 @Produces(MediaType.APPLICATION_JSON)
 public class SearchResource {
   private final RestHighLevelClient client;
-  private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
@@ -101,6 +100,10 @@ public class SearchResource {
           @DefaultValue("table_search_index")
           @QueryParam("index")
           String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @DefaultValue("false")
+          @QueryParam("deleted")
+          boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
           @QueryParam("from")
@@ -128,7 +131,8 @@ public class SearchResource {
     if (sortOrderParam.equals("asc")) {
       sortOrder = SortOrder.ASC;
     }
-
+    // add deleted flag
+    query += " AND deleted:" + deleted;
     switch (index) {
       case "topic_search_index":
         searchSourceBuilder = buildTopicSearchBuilder(query, from, size);

@@ -8,10 +8,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Python API REST wrapper and helpers
+"""
 import logging
 import time
-from enum import Enum
 from typing import List, Optional
 
 import requests
@@ -48,22 +49,21 @@ class APIError(Exception):
         if http_error is not None and hasattr(http_error, "response"):
             return http_error.response.status_code
 
+        return None
+
     @property
     def request(self):
         if self._http_error is not None:
             return self._http_error.request
+
+        return None
 
     @property
     def response(self):
         if self._http_error is not None:
             return self._http_error.response
 
-
-class TimeFrame(Enum):
-    Day = "1Day"
-    Hour = "1Hour"
-    Minute = "1Min"
-    Sec = "1Sec"
+        return None
 
 
 class ClientConfig(ConfigModel):
@@ -83,7 +83,12 @@ class ClientConfig(ConfigModel):
     allow_redirects: Optional[bool] = False
 
 
-class REST(object):
+class REST:
+    """
+    REST client wrapper to manage requests with
+    retries, auth and error handling.
+    """
+
     def __init__(self, config: ClientConfig):
         self.config = config
         self._base_url: URL = URL(self.config.base_url)

@@ -27,6 +27,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -48,12 +49,13 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
 
   public ChartResourceTest() {
-    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true);
+    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true, true);
   }
 
   @BeforeAll
@@ -142,12 +144,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
-    Chart chart = createEntity(create(test), adminAuthHeaders());
-    deleteEntity(chart.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyChart_4xx() {
     // TODO
   }
@@ -159,7 +155,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     String fields = "owner";
     chart =
         byName
-            ? getEntityByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders())
+            ? getEntityByName(chart.getFullyQualifiedName(), null, fields, adminAuthHeaders())
             : getEntity(chart.getId(), fields, adminAuthHeaders());
     assertListNotNull(chart.getOwner(), chart.getService(), chart.getServiceType());
   }
@@ -172,8 +168,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     return create(getEntityName(test, index));
   }
 
-  public CreateChart create(String entityName) {
-    return new CreateChart().withName(entityName).withService(SUPERSET_REFERENCE).withChartType(ChartType.Area);
+  public CreateChart create(String name) {
+    return new CreateChart().withName(name).withService(SUPERSET_REFERENCE).withChartType(ChartType.Area);
   }
 
   @Override

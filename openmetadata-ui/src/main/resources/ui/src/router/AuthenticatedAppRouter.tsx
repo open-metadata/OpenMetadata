@@ -22,9 +22,9 @@ import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
-import IngestionPage from '../pages/IngestionPage/IngestionPage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
+import RolesPage from '../pages/RolesPage/RolesPage.component';
 import ServicePage from '../pages/service';
 import ServicesPage from '../pages/services';
 import SignupPage from '../pages/signup';
@@ -54,15 +54,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
+      <Route exact component={DatasetDetailsPage} path={ROUTES.TABLE_DETAILS} />
       <Route
         exact
         component={DatasetDetailsPage}
-        path={ROUTES.DATASET_DETAILS}
-      />
-      <Route
-        exact
-        component={DatasetDetailsPage}
-        path={ROUTES.DATASET_DETAILS_WITH_TAB}
+        path={ROUTES.TABLE_DETAILS_WITH_TAB}
       />
       <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route
@@ -91,9 +87,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
-      <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
       {isAuthDisabled || isAdminUser ? (
-        <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
+        <>
+          <Route exact component={RolesPage} path={ROUTES.ROLES} />
+          <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
+        </>
       ) : null}
 
       <Redirect to={ROUTES.NOT_FOUND} />

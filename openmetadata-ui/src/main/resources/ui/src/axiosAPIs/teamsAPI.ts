@@ -16,12 +16,12 @@ import { Team } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getTeams: Function = (
-  arrQueryFields?: string
+export const getTeams = (
+  arrQueryFields?: string | string[]
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields('/teams', arrQueryFields);
 
-  return APIClient.get(`${url}&limit=1000000`);
+  return APIClient.get(`${url}${arrQueryFields ? '&' : '?'}limit=1000000`);
 };
 
 export const getTeamByName: Function = (

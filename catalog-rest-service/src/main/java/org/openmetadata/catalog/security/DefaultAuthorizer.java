@@ -17,84 +17,100 @@ import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.DuplicateEntityException;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.catalog.util.RestUtil;
 
+@Slf4j
 public class DefaultAuthorizer implements Authorizer {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultAuthorizer.class);
 
   private Set<String> adminUsers;
   private Set<String> botUsers;
 
   private String principalDomain;
   private UserRepository userRepository;
-  private static final String fieldsParam = "teams";
+
+  private PolicyEvaluator policyEvaluator;
+  private static final String fieldsParam = "roles,teams";
 
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi dbi) {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    CollectionDAO repo = dbi.onDemand(CollectionDAO.class);
-    this.userRepository = new UserRepository(repo);
+    CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
+    this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
+    this.policyEvaluator = PolicyEvaluator.getInstance();
   }
 
   private void mayBeAddAdminUsers() {
     LOG.debug("Checking user entries for admin users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    adminUsers.stream()
-        .filter(
-            name -> {
-              try {
-                User user = userRepository.getByName(null, name, fields);
-                if (user != null) {
-                  LOG.debug("Entry for user '{}' already exists", name);
-                  return false;
-                }
-                return true;
-              } catch (IOException | EntityNotFoundException | ParseException ex) {
-                return true;
-              }
-            })
-        .forEach(this::addAdmin);
+    for (String adminUser : adminUsers) {
+      try {
+        User user = userRepository.getByName(null, adminUser, fields);
+        if (user != null && (user.getIsAdmin() == null || !user.getIsAdmin())) {
+          user.setIsAdmin(true);
+        }
+        addOrUpdateAdmin(user);
+      } catch (EntityNotFoundException ex) {
+        User user =
+            new User()
+                .withId(UUID.randomUUID())
+                .withName(adminUser)
+                .withEmail(adminUser + "@" + principalDomain)
+                .withIsAdmin(true)
+                .withUpdatedBy(adminUser)
+                .withUpdatedAt(System.currentTimeMillis());
+        addOrUpdateAdmin(user);
+      } catch (IOException | ParseException e) {
+        LOG.error("Failed to create admin user {}", adminUser, e);
+      }
+    }
   }
 
   private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    botUsers.stream()
-        .filter(
-            name -> {
-              try {
-                User user = userRepository.getByName(null, name, fields);
-                if (user != null) {
-                  LOG.debug("Entry for user '{}' already exists", name);
-                  return false;
-                }
-                return true;
-              } catch (IOException | EntityNotFoundException | ParseException ex) {
-                return true;
-              }
-            })
-        .forEach(this::addBot);
+    for (String botUser : botUsers) {
+      try {
+        User user = userRepository.getByName(null, botUser, fields);
+        if (user != null && (user.getIsBot() == null || !user.getIsBot())) {
+          user.setIsBot(true);
+        }
+        addOrUpdateAdmin(user);
+      } catch (EntityNotFoundException ex) {
+        User user =
+            new User()
+                .withId(UUID.randomUUID())
+                .withName(botUser)
+                .withEmail(botUser + "@" + principalDomain)
+                .withIsBot(true)
+                .withUpdatedBy(botUser)
+                .withUpdatedAt(System.currentTimeMillis());
+        addOrUpdateAdmin(user);
+      } catch (IOException | ParseException e) {
+        LOG.error("Failed to create admin user {}", botUser, e);
+      }
+    }
   }
 
   @Override
@@ -104,23 +120,56 @@ public class DefaultAuthorizer implements Authorizer {
     if (owner == null) {
       return true;
     }
-    String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(null, userName, fields);
-      if (owner.getType().equals(Entity.TEAM)) {
-        for (EntityReference team : user.getTeams()) {
-          if (team.getName().equals(owner.getName())) {
-            return true;
-          }
-        }
-      } else if (owner.getType().equals(Entity.USER)) {
-        return user.getName().equals(owner.getName());
-      }
-      return false;
+      User user = getUserFromAuthenticationContext(ctx);
+      return isOwnedByUser(user, owner);
     } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
+  }
+
+  @Override
+  public boolean hasPermissions(
+      AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
+    validateAuthenticationContext(ctx);
+    try {
+      User user = getUserFromAuthenticationContext(ctx);
+      if (entityReference == null) {
+        // In some cases there is no specific entity being acted upon. Eg: Lineage.
+        return policyEvaluator.hasPermission(user, null, operation);
+      }
+
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      if (owner == null) {
+        // Entity does not have an owner.
+        return true;
+      }
+      if (isOwnedByUser(user, owner)) {
+        // Entity is owned by the user.
+        return true;
+      }
+      return policyEvaluator.hasPermission(user, entity, operation);
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
+      return false;
+    }
+  }
+
+  /** Checks if the user is same as owner or part of the team that is the owner. */
+  private boolean isOwnedByUser(User user, EntityReference owner) {
+    if (owner.getType().equals(Entity.USER) && owner.getName().equals(user.getName())) {
+      // Owner is same as user.
+      return true;
+    }
+    if (owner.getType().equals(Entity.TEAM)) {
+      for (EntityReference userTeam : user.getTeams()) {
+        if (userTeam.getName().equals(owner.getName())) {
+          // Owner is a team, and the user is part of this team.
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   @Override
@@ -161,40 +210,28 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
-  private void addAdmin(String name) {
-    User user =
-        new User()
-            .withId(UUID.randomUUID())
-            .withName(name)
-            .withEmail(name + "@" + principalDomain)
-            .withIsAdmin(true)
-            .withUpdatedBy(name)
-            .withUpdatedAt(new Date());
+  private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
+    String userName = SecurityUtil.getUserName(ctx);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return userRepository.getByName(null, userName, fields);
+  }
 
+  private void addOrUpdateAdmin(User user) {
     try {
-      User addedUser = userRepository.create(null, user);
+      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added admin user entry: {}", addedUser);
-    } catch (DuplicateEntityException | IOException exception) {
+    } catch (IOException | ParseException exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Admin user entry: {} already exists.", user);
     }
   }
 
-  private void addBot(String name) {
-    User user =
-        new User()
-            .withId(UUID.randomUUID())
-            .withName(name)
-            .withEmail(name + "@" + principalDomain)
-            .withIsBot(true)
-            .withUpdatedBy(name)
-            .withUpdatedAt(new Date());
-
+  private void addOrUpdateBot(User user) {
     try {
-      User addedUser = userRepository.create(null, user);
+      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added bot user entry: {}", addedUser);
-    } catch (DuplicateEntityException | IOException exception) {
+    } catch (IOException | ParseException exception) {
       // In HA se tup the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Bot user entry: {} already exists.", user);

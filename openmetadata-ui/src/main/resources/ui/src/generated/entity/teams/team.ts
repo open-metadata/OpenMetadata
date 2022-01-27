@@ -22,7 +22,7 @@ export interface Team {
    */
   changeDescription?: ChangeDescription;
   /**
-   * When true the team has been deleted.
+   * When `true` indicates the entity has been soft deleted.
    */
   deleted?: boolean;
   /**
@@ -48,9 +48,10 @@ export interface Team {
    */
   profile?: Profile;
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */

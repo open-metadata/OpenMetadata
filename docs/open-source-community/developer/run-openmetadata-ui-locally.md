@@ -6,15 +6,15 @@ description: This guide will help you to run OpenMetadata UI locally.
 
 ### **Pre-requisites**
 
-Before proceeding, ensure that you have installed the node and npm with the versions given below.
+Before proceeding, ensure that you have installed the node and yarn with the versions given below.
 
 ```
 "node": ">=10.0.0",
-"npm": "^6.0.0"
+"yarn": "^1.22.0"
 ```
 
-****[**Install Node**](https://nodejs.org/en/download/)****\
-****[**Install Npm**](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)****
+[**Install Node**](https://nodejs.org/en/download/)\
+[**Install Yarn**](https://classic.yarnpkg.com/lang/en/docs/install/)****
 
 Using the command below, spin up the server locally from the directory.`openmetadata-dist/target/openmetadata-*-SNAPSHOT`.
 
@@ -29,26 +29,22 @@ Using the command below, spin up the server locally from the directory.`openmeta
 
 ### **Steps to Run OpenMetadata UI**
 
-Once the node and npm is installed in the system, you can go ahead and perform the following steps to run OpenMetadata UI.
+Once the node and yarn is installed in the system, you can go ahead and perform the following steps to run OpenMetadata UI.
 
-**Step 1**: Go to `openmetadata-ui/src/main/resources/ui/` and run the given command to install the required dependencies.\
-****
+**Step 1**: Run the given command to install the required dependencies.
 
 **Note:** It’s a one-time task to install dependencies. If there are any changes in the `package.json` file, then again the following steps will have to be performed.
 
 ```shell
-# changing directory
-> cd  openmetadata-ui/src/main/resources/ui/
-
 # installing dependencies
-> npm install
+> make yarn_install_cache
 ```
 
-**Step 2**: Start the local server
+**Step 2**: Start the UI locally
 
 ```shell
-# starting a local server
-> npm run start
+# starting the UI locally
+> make yarn_start_dev_ui
 ```
 
 **Step 3:** Visit [localhost:3000](http://localhost:3000) to access the OpenMetadata UI.

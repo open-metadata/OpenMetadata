@@ -12,24 +12,30 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isNull, isUndefined } from 'lodash';
 import {
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
+import { utc } from 'moment';
 import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
+  imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import { Ownership } from '../enums/mydata.enum';
-import { User } from '../generated/entity/teams/user';
-import { UserTeam } from '../interface/team.interface';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../generated/entity/teams/user';
+import { serviceTypeLogo } from './ServiceUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const arraySorterByKey = (
   key: string,
@@ -109,8 +115,8 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const getUserTeams = (): Array<UserTeam> => {
-  let retVal: Array<UserTeam>;
+export const getUserTeams = (): Array<UserTeams> => {
+  let retVal: Array<UserTeams>;
   if (AppState.userDetails.teams) {
     retVal = AppState.userDetails.teams.map((item) => {
       const team = AppState.userTeams.find((obj) => obj.id === item.id);
@@ -122,6 +128,14 @@ export const getUserTeams = (): Array<UserTeam> => {
   }
 
   return retVal || [];
+};
+
+export const hasEditAccess = (type: string, id: string) => {
+  if (type === 'user') {
+    return id === getCurrentUserId();
+  } else {
+    return getUserTeams().some((team) => team.id === id);
+  }
 };
 
 export const getTabClasses = (
@@ -194,32 +208,33 @@ export const setRecentlySearchedData = (
 };
 
 export const addToRecentSearched = (searchTerm: string): void => {
-  const searchData = { term: searchTerm, timestamp: Date.now() };
-  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_SEARCHED
-  ) as RecentlySearched;
-  let arrSearchedData: RecentlySearched['data'] = [];
-  if (recentlySearch?.data) {
-    const arrData = recentlySearch.data
-      // search term is case-insensetive so we should also take care of it.
-      // TODO : after discussion make this check for case-insensetive
-      .filter((item) => item.term !== searchData.term)
-      .sort(
-        arraySorterByKey('timestamp', true) as (
-          a: RecentlySearchedData,
-          b: RecentlySearchedData
-        ) => number
-      );
-    arrData.unshift(searchData);
+  if (searchTerm.trim()) {
+    const searchData = { term: searchTerm, timestamp: Date.now() };
+    const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
+      LOCALSTORAGE_RECENTLY_SEARCHED
+    ) as RecentlySearched;
+    let arrSearchedData: RecentlySearched['data'] = [];
+    if (recentlySearch?.data) {
+      const arrData = recentlySearch.data
+        // search term is not case-insensetive.
+        .filter((item) => item.term !== searchData.term)
+        .sort(
+          arraySorterByKey('timestamp', true) as (
+            a: RecentlySearchedData,
+            b: RecentlySearchedData
+          ) => number
+        );
+      arrData.unshift(searchData);
 
-    if (arrData.length > 5) {
-      arrData.pop();
+      if (arrData.length > 5) {
+        arrData.pop();
+      }
+      arrSearchedData = arrData;
+    } else {
+      arrSearchedData = [searchData];
     }
-    arrSearchedData = arrData;
-  } else {
-    arrSearchedData = [searchData];
+    setRecentlySearchedData(arrSearchedData);
   }
-  setRecentlySearchedData(arrSearchedData);
 };
 
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
@@ -272,4 +287,83 @@ export const getOwnerIds = (
   } else {
     return [getCurrentUserId()];
   }
+};
+
+export const getActiveCatClass = (name: string, activeName = '') => {
+  return activeName === name ? 'activeCategory' : '';
+};
+
+export const errorMsg = (value: string) => {
+  return (
+    <div className="tw-mt-1">
+      <strong
+        className="tw-text-red-500 tw-text-xs tw-italic"
+        data-testid="error-message">
+        {value}
+      </strong>
+    </div>
+  );
+};
+
+export const requiredField = (label: string, excludeSpace = false) => (
+  <>
+    {label}{' '}
+    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+  </>
+);
+
+export const getSeparator = (title: string | JSX.Element) => {
+  return (
+    <span className="tw-flex tw-py-2 tw-text-grey-muted">
+      <hr className="tw-mt-2.5 tw-w-full" />
+      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
+      <hr className="tw-mt-2.5 tw-w-full" />
+    </span>
+  );
+};
+
+export const getImages = (imageUri: string) => {
+  const imagesObj: typeof imageTypes = imageTypes;
+  for (const type in imageTypes) {
+    imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
+      's96-c',
+      imageTypes[type as keyof typeof imageTypes]
+    );
+  }
+
+  return imagesObj;
+};
+
+export const getServiceLogo = (
+  serviceType: string,
+  className = ''
+): JSX.Element | null => {
+  const logo = serviceTypeLogo(serviceType);
+
+  if (!isNull(logo)) {
+    return <img alt="" className={className} src={logo} />;
+  }
+
+  return null;
+};
+
+export const getCurrentDate = () => {
+  return `${utc(new Date()).format('YYYY-MM-DD')}`;
+};
+
+export const getSvgArrow = (isActive: boolean) => {
+  return isActive ? (
+    <SVGIcons alt="arrow-down" icon={Icons.ARROW_DOWN_PRIMARY} />
+  ) : (
+    <SVGIcons alt="arrow-right" icon={Icons.ARROW_RIGHT_PRIMARY} />
+  );
+};
+
+export const isValidUrl = (href: string) => {
+  const regex = new RegExp(
+    // eslint-disable-next-line no-useless-escape
+    /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
+  );
+
+  return href.match(regex);
 };

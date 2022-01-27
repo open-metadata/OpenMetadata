@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.bots;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,7 +22,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.constraints.Max;
@@ -47,6 +45,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -61,7 +60,6 @@ public class BotsResource {
   private final BotsRepository dao;
   private final Authorizer authorizer;
 
-  @Inject
   public BotsResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new BotsRepository(dao);
     this.authorizer = authorizer;
@@ -100,9 +98,9 @@ public class BotsResource {
 
     ResultList<Bots> list;
     if (before != null) { // Reverse paging
-      list = dao.listBefore(uriInfo, null, name, limitParam, before);
+      list = dao.listBefore(uriInfo, null, name, limitParam, before, Include.NON_DELETED);
     } else { // Forward paging or first page
-      list = dao.listAfter(uriInfo, null, name, limitParam, after);
+      list = dao.listAfter(uriInfo, null, name, limitParam, after, Include.NON_DELETED);
     }
     return list;
   }
@@ -138,9 +136,11 @@ public class BotsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
-    bot.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName()).withUpdatedAt(new Date());
+    bot.withId(UUID.randomUUID())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
     dao.create(uriInfo, bot);
     return Response.created(bot.getHref()).entity(bot).build();
   }

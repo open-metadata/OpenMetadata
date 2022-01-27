@@ -52,7 +52,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <span key={i}>
               {getInfoElements(info)}
               {i !== extraInfo.length - 1 && (
-                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
+                <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                   |
                 </span>
               )}
@@ -60,7 +60,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           ) : null
         )}
       </div>
-      <div className="description-text">
+      <div className="description-text" data-testid="description-text">
         {description.trim() ? (
           <RichTextEditorPreviewer markdown={description} />
         ) : (

@@ -9,27 +9,27 @@ Type: `object`
 This schema <u>does not</u> accept additional properties.
 
 ## Properties
-- **daysAfterCreation**
-  - Number of days after creation of the entity that the move should be triggered.
-  - Type: `integer`
-  - Range:  &ge; 1
-- **daysAfterModification**
-  - Number of days after last modification of the entity that the move should be triggered.
-  - Type: `integer`
-  - Range:  &ge; 1
-- **destination**
-  - Location where this entity needs to be moved to.
-  - Type: `object`
-  - **Properties**
-    - **storageServiceType**
-      - The storage service to move this entity to.
-      - $ref: [../../services/storageService.json](../services/storageservice.md)
-    - **storageClassType**
-      - The storage class to move this entity to.
-      - $ref: [../../../type/storage.json#/definitions/storageClassType](../../types/storage.md#storageclasstype)
-    - **location**
-      - The location where to move this entity to.
-      - $ref: [../../data/location.json](../data/location.md)
+ - **daysAfterCreation**
+	 - Number of days after creation of the entity that the move should be triggered.
+	 - Type: `integer`
+	 - Range:  &ge; 1
+ - **daysAfterModification**
+	 - Number of days after last modification of the entity that the move should be triggered.
+	 - Type: `integer`
+	 - Range:  &ge; 1
+ - **destination**
+	 - Location where this entity needs to be moved to.
+	 - Type: `object`
+	 - **Properties**
+		 - **storageServiceType**
+			 - The storage service to move this entity to.
+			 - $ref: [storageService.json](storageservice.md)
+		 - **storageClassType**
+			 - The storage class to move this entity to.
+			 - $ref: [../type/storage.json#/definitions/storageClassType](../types/storage.md#storageclasstype)
+		 - **location**
+			 - The location where to move this entity to.
+			 - $ref: [location.json](location.md)
 
 
-_This document was updated on: Tuesday, December 14, 2021_
+_This document was updated on: Tuesday, January 25, 2022_

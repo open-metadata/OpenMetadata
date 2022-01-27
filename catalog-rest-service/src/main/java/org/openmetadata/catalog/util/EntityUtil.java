@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.catalog.type.Include.DELETED;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,8 +28,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.ws.rs.WebApplicationException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
@@ -44,8 +48,11 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventFilter;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
@@ -56,11 +63,9 @@ import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public final class EntityUtil {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityUtil.class);
 
   //
   // Comparators used for sorting list based on the given type
@@ -152,41 +157,10 @@ public final class EntityUtil {
     return entity;
   }
 
-  public static EntityReference getService(EntityRelationshipDAO dao, String entityType, UUID entityId) {
-    List<EntityReference> refs = dao.findFrom(entityId.toString(), entityType, Relationship.CONTAINS.ordinal());
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
-  public static EntityReference getService(
-      EntityRelationshipDAO dao, String entityType, UUID entityId, String serviceType) {
-    List<EntityReference> refs =
-        dao.findFromEntity(entityId.toString(), entityType, Relationship.CONTAINS.ordinal(), serviceType);
-    if (refs.size() > 1) {
-      LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
-      return refs.get(0);
-    }
-    return refs.isEmpty() ? null : refs.get(0);
-  }
-
   public static void validateUser(UserDAO userDAO, UUID userId) {
     if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
-  }
-
-  // Get owner for a given entity
-  public static EntityReference populateOwner(
-      UUID id, String entityType, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO, TeamDAO teamDAO)
-      throws IOException {
-    List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), entityType, Relationship.OWNS.ordinal());
-    if (ids.size() > 1) {
-      LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
-    }
-    return ids.isEmpty() ? null : populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
   public static EntityReference populateOwner(UserDAO userDAO, TeamDAO teamDAO, EntityReference owner)
@@ -319,8 +293,12 @@ public final class EntityUtil {
 
   /** Validate given list of tags and add derived tags to it */
   public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
-    List<TagLabel> updatedTagLabels = new ArrayList<>();
-    for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return tagLabels;
+    }
+
+    List<TagLabel> updatedTagLabels = new ArrayList<>(tagLabels);
+    for (TagLabel tagLabel : tagLabels) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {
         // Invalid TagLabel
@@ -328,11 +306,10 @@ public final class EntityUtil {
             CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
       }
       Tag tag = JsonUtils.readValue(json, Tag.class);
-      updatedTagLabels.add(tagLabel);
 
       // Apply derived tags
       List<TagLabel> derivedTags = getDerivedTags(tagDAO, tagLabel, tag);
-      updatedTagLabels = mergeTags(updatedTagLabels, derivedTags);
+      mergeTags(updatedTagLabels, derivedTags);
     }
     updatedTagLabels.sort(compareTagLabel);
     return updatedTagLabels;
@@ -346,14 +323,17 @@ public final class EntityUtil {
     tagDAO.deleteTagsByPrefix(fullyQualifiedName);
   }
 
-  public static List<TagLabel> mergeTags(List<TagLabel> list1, List<TagLabel> list2) {
-    List<TagLabel> mergedTags =
-        Stream.concat(
-                Optional.ofNullable(list1).orElse(Collections.emptyList()).stream(),
-                Optional.ofNullable(list2).orElse(Collections.emptyList()).stream())
-            .distinct()
-            .collect(Collectors.toList());
-    return mergedTags.isEmpty() ? null : mergedTags;
+  /** Merge derivedTags into tags, if it already does not exist in tags */
+  public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
+    if (derivedTags == null || derivedTags.isEmpty()) {
+      return;
+    }
+    for (TagLabel derivedTag : derivedTags) {
+      TagLabel tag = tags.stream().filter(t -> tagLabelMatch.test(t, derivedTag)).findAny().orElse(null);
+      if (tag == null) { // Derived tag does not exist in the list. Add it.
+        tags.add(derivedTag);
+      }
+    }
   }
 
   public static boolean addFollower(
@@ -378,25 +358,35 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(
-      UUID followedEntityId, String entityName, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO)
+      EntityInterface<?> followedEntityInterface,
+      String name,
+      EntityRelationshipDAO entityRelationshipDAO,
+      UserDAO userDAO)
       throws IOException {
     List<String> followerIds =
         entityRelationshipDAO.findFrom(
-            followedEntityId.toString(), entityName, Relationship.FOLLOWS.ordinal(), Entity.USER);
+            followedEntityInterface.getId().toString(),
+            name,
+            Relationship.FOLLOWS.ordinal(),
+            Entity.USER,
+            toBoolean(ALL));
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
-      User user = userDAO.findEntityById(UUID.fromString(followerId));
-      followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
+      User user = userDAO.findEntityById(UUID.fromString(followerId), ALL);
+      if (followedEntityInterface.isDeleted() || !user.getDeleted()) {
+        followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
+      }
     }
     return followers;
   }
 
+  @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
     private final List<String> fieldList;
 
     public Fields(List<String> validFields, String fieldsParam) {
-      if (fieldsParam == null) {
+      if (fieldsParam == null || fieldsParam.isEmpty()) {
         fieldList = Collections.emptyList();
         return;
       }
@@ -420,12 +410,14 @@ public final class EntityUtil {
     return refList.stream().sorted(compareEntityReference).map(EntityReference::getId).collect(Collectors.toList());
   }
 
-  public static String getVersionExtension(String entityName, Double version) {
-    return String.format("%s.%s.%s", entityName, "version", version.toString());
+  /** Entity version extension name formed by entityType.version.versionNumber. Example - `table.version.0.1` */
+  public static String getVersionExtension(String entityType, Double version) {
+    return String.format("%s.%s", getVersionExtensionPrefix(entityType), version.toString());
   }
 
-  public static String getVersionExtensionPrefix(String entityName) {
-    return String.format("%s.%s", entityName, "version");
+  /** Entity version extension name prefix formed by entityType.version Example - `table.version` */
+  public static String getVersionExtensionPrefix(String entityType) {
+    return String.format("%s.%s", entityType, "version");
   }
 
   public static Double getVersion(String extension) {
@@ -444,5 +436,35 @@ public final class EntityUtil {
     }
     localColumnName.append(s[s.length - 1]);
     return localColumnName.toString();
+  }
+
+  public static Boolean toBoolean(Include include) {
+    if (include.equals(DELETED)) {
+      return Boolean.TRUE;
+    } else if (include.equals(ALL)) {
+      return null;
+    } else { // "non-deleted"
+      return Boolean.FALSE;
+    }
+  }
+
+  public static Double nextVersion(Double version) {
+    return Math.round((version + 0.1) * 10.0) / 10.0;
+  }
+
+  public static Double nextMajorVersion(Double version) {
+    return Math.round((version + 1.0) * 10.0) / 10.0;
+  }
+
+  public static void addSoftDeleteFilter(List<EventFilter> filters) {
+    // Add filter for soft delete events if delete event type is requested
+    Optional<EventFilter> deleteFilter =
+        filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
+    deleteFilter.ifPresent(
+        eventFilter ->
+            filters.add(
+                new EventFilter()
+                    .withEventType(EventType.ENTITY_SOFT_DELETED)
+                    .withEntities(eventFilter.getEntities())));
   }
 }

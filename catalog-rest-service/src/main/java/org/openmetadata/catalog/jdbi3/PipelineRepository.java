@@ -13,12 +13,16 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,7 +71,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
+  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException, ParseException {
     pipeline.setDisplayName(pipeline.getDisplayName());
     pipeline.setService(getService(pipeline));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
@@ -141,18 +145,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
-    return new PipelineUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
+    return new PipelineUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(Pipeline pipeline) throws IOException {
-    EntityReference ref =
-        EntityUtil.getService(
-            daoCollection.relationshipDAO(), Entity.PIPELINE, pipeline.getId(), Entity.PIPELINE_SERVICE);
-    PipelineService service = getService(ref.getId(), ref.getType());
-    ref.setName(service.getName());
-    ref.setDescription(service.getDescription());
-    return ref;
+  private EntityReference getService(Pipeline pipeline) throws IOException, ParseException {
+    return helper(pipeline).getContainer(PIPELINE_SERVICE);
   }
 
   private void populateService(Pipeline pipeline) throws IOException {
@@ -191,6 +189,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
@@ -216,7 +219,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -266,7 +269,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -305,8 +308,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
-    public PipelineUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
@@ -327,12 +330,41 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
       List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
 
-      // TODO this might not provide distinct
-      updatedTasks = Stream.concat(origTasks.stream(), updatedTasks.stream()).distinct().collect(Collectors.toList());
+      // Merge the tasks
+      updatedTasks =
+          new ArrayList<>(
+              Stream.concat(origTasks.stream(), updatedTasks.stream())
+                  .collect(Collectors.groupingBy(Task::getName, Collectors.reducing(null, (t1, t2) -> t2)))
+                  .values());
 
       List<Task> added = new ArrayList<>();
       List<Task> deleted = new ArrayList<>();
-      recordListChange("tasks", origTasks, updatedTasks, added, deleted, EntityUtil.taskMatch);
+      recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
+
+      // Update the task descriptions
+      for (Task updated : updatedTasks) {
+        Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null || updated == null) { // New task added
+          continue;
+        }
+
+        updateTaskDescription(stored, updated);
+      }
+    }
+
+    private void updateTaskDescription(Task origTask, Task updatedTask) throws JsonProcessingException {
+      if (operation.isPut() && origTask.getDescription() != null && !origTask.getDescription().isEmpty()) {
+        // Update description only when stored is empty to retain user authored descriptions
+        updatedTask.setDescription(origTask.getDescription());
+        return;
+      }
+      // Don't record a change if descriptions are the same
+      if (origTask != null
+          && ((origTask.getDescription() != null && !origTask.getDescription().equals(updatedTask.getDescription()))
+              || updatedTask.getDescription() != null)) {
+        recordChange(
+            "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
+      }
     }
   }
 }

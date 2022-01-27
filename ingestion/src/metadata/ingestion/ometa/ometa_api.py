@@ -8,9 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+OpenMetadata is the high level Python API that serves as a wrapper
+for the metadata-server API. It is based on the generated pydantic
+models from the JSON schemas and provides a typed approach to
+working with OpenMetadata entities.
+"""
 
 import logging
-from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
+import urllib
+from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
@@ -32,15 +39,17 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
-from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
-from metadata.ingestion.ometa.mixins.mlModelMixin import OMetaMlModelMixin
-from metadata.ingestion.ometa.mixins.tableMixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
+from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     GoogleAuthenticationProvider,
@@ -48,6 +57,7 @@ from metadata.ingestion.ometa.openmetadata_rest import (
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
 )
+from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +86,9 @@ class EntityList(Generic[T], BaseModel):
     after: str = None
 
 
-class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
+class OpenMetadata(
+    OMetaMlModelMixin, OMetaTableMixin, OMetaVersionMixin, Generic[T, C]
+):
     """
     Generic interface to the OpenMetadata API
 
@@ -123,13 +135,16 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
-    def get_suffix(self, entity: Type[T]) -> str:
+    def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """
         Given an entity Type from the generated sources,
         return the endpoint to run requests.
 
         Might be interesting to follow a more strict
         and type-checked approach
+
+        Disabled pylint R0911: too-many-return-statements
+        Disabled pylint R0912: too-many-branches
         """
 
         # Entity Schemas
@@ -190,6 +205,9 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         if issubclass(entity, Tag):
             return "/tags"
 
+        if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
+            return "/roles"
+
         if issubclass(entity, get_args(Union[Team, self.get_create_entity_type(Team)])):
             return "/teams"
 
@@ -241,18 +259,6 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
             f"Missing {entity} type when generating suffixes"
         )
 
-    @staticmethod
-    def get_entity_type(
-        entity: Union[Type[T], str],
-    ) -> str:
-        """
-        Given an Entity T, return its type.
-        E.g., Table returns table, Dashboard returns dashboard...
-
-        Also allow to be the identity if we just receive a string
-        """
-        return entity if isinstance(entity, str) else entity.__name__.lower()
-
     def get_module_path(self, entity: Type[T]) -> str:
         """
         Based on the entity, return the module path
@@ -265,7 +271,11 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         if "service" in entity.__name__.lower():
             return self.services_path
 
-        if "user" in entity.__name__.lower() or "team" in entity.__name__.lower():
+        if (
+            "user" in entity.__name__.lower()
+            or "role" in entity.__name__.lower()
+            or "team" in entity.__name__.lower()
+        ):
             return self.teams_path
 
         return self.data_path
@@ -334,20 +344,6 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         resp = self.client.put(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
-    @staticmethod
-    def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
-        """
-        Given an entity_id, that can be a str or our pydantic
-        definition of Uuid, return a proper str to build
-        the endpoint path
-        :param entity_id: Entity ID to onvert to string
-        :return: str for the ID
-        """
-        if isinstance(entity_id, basic.Uuid):
-            return str(entity_id.__root__)
-
-        return entity_id
-
     def get_by_name(
         self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
@@ -367,7 +363,7 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=self.uuid_to_str(entity_id), fields=fields)
+        return self._get(entity=entity, path=uuid_to_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -384,9 +380,33 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"Creating new {entity.__class__.__name__} for {path}. Error {err.status_code}"
+                f"GET {entity.__name__} for {path}. "
+                + f"Error {err.status_code} - {err}"
             )
             return None
+
+    def get_entity_reference(
+        self, entity: Type[T], fqdn: str
+    ) -> Optional[EntityReference]:
+        """
+        Helper method to obtain an EntityReference from
+        a FQDN and the Entity class.
+        :param entity: Entity Class
+        :param fqdn: Entity instance FQDN
+        :return: EntityReference or None
+        """
+        instance = self.get_by_name(entity, fqdn)
+        if instance:
+            return EntityReference(
+                id=instance.id,
+                type=get_entity_type(entity),
+                name=instance.fullyQualifiedName,
+                description=instance.description,
+                href=instance.href,
+            )
+
+        logger.error(f"Cannot find the Entity {fqdn}")
+        return None
 
     def list_entities(
         self,
@@ -394,6 +414,7 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         fields: Optional[List[str]] = None,
         after: str = None,
         limit: int = 1000,
+        params: Dict = {},
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -403,26 +424,28 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
-
-        resp = self.client.get(f"{suffix}{url_limit}{url_after}{url_fields}")
+        url_params = f"&{urllib.parse.urlencode(params)}"
+        resp = self.client.get(
+            f"{suffix}{url_limit}{url_after}{url_fields}{url_params}"
+        )
 
         if self._use_raw_data:
             return resp
-        else:
-            entities = [entity(**t) for t in resp["data"]]
-            total = resp["paging"]["total"]
-            after = resp["paging"]["after"] if "after" in resp["paging"] else None
-            return EntityList(entities=entities, total=total, after=after)
+
+        entities = [entity(**t) for t in resp["data"]]
+        total = resp["paging"]["total"]
+        after = resp["paging"]["after"] if "after" in resp["paging"] else None
+        return EntityList(entities=entities, total=total, after=after)
 
     def list_versions(
         self, entity_id: Union[str, basic.Uuid], entity: Type[T]
     ) -> EntityVersionHistory:
         """
-        Helps us paginate over the collection
+        Version history of an entity
         """
 
         suffix = self.get_suffix(entity)
-        path = f"/{self.uuid_to_str(entity_id)}/versions"
+        path = f"/{uuid_to_str(entity_id)}/versions"
         resp = self.client.get(f"{suffix}{path}")
 
         if self._use_raw_data:
@@ -438,17 +461,17 @@ class OpenMetadata(OMetaMlModelMixin, OMetaTableMixin, Generic[T, C]):
         resp = self.client.get(self.get_suffix(entity))
         if self._use_raw_data:
             return resp
-        else:
-            return [entity(**p) for p in resp["data"]]
+
+        return [entity(**p) for p in resp["data"]]
 
     def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
-        self.client.delete(f"{self.get_suffix(entity)}/{self.uuid_to_str(entity_id)}")
+        self.client.delete(f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}")
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """
         Compute an entity usage percentile
         """
-        entity_name = self.get_entity_type(entity)
+        entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile {}".format(resp))
 

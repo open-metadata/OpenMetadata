@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
@@ -19,6 +19,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -27,12 +28,16 @@ import {
 } from '../../axiosAPIs/tableAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
-  getDatasetTabPath,
-  getVersionPath,
   getServiceDetailsPath,
+  getTableTabPath,
+  getVersionPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -46,6 +51,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
+import useToastContext from '../../hooks/useToastContext';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -62,6 +68,7 @@ import { getTableTags } from '../../utils/TagsUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
+  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
   const USERId = getCurrentUserId();
@@ -107,6 +114,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
   );
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -115,7 +123,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         getCurrentDatasetTab(datasetTableTabs[currentTabIndex].path)
       );
       history.push({
-        pathname: getDatasetTabPath(
+        pathname: getTableTabPath(
           tableFQN,
           datasetTableTabs[currentTabIndex].path
         ),
@@ -210,6 +218,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
@@ -219,6 +231,52 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setNodeLoading((prev) => ({ ...prev, state: false }));
       }, 500);
     });
+  };
+
+  const addLineageHandler = (edge: Edge): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      addLineage(edge)
+        .then(() => {
+          resolve();
+        })
+        .catch(() => {
+          showToast({
+            variant: 'error',
+            body: `Error while adding adding new edge`,
+          });
+          reject();
+        });
+    });
+  };
+
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch(() => {
+      showToast({
+        variant: 'error',
+        body: `Error while removing edge`,
+      });
+    });
+  };
+
+  const getLineageData = () => {
+    getLineageByFQN(tableFQN, EntityType.TABLE)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message ?? 'Error while fetching lineage data',
+        });
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -234,6 +292,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           name,
           columns,
           database,
+          deleted,
           owner,
           usageSummary,
           followers,
@@ -252,6 +311,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
+        setDeleted(deleted);
         setSlashedTableName([
           {
             name: service.name,
@@ -276,7 +336,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         ]);
 
         addToRecentViewed({
-          entityType: EntityType.DATASET,
+          entityType: EntityType.TABLE,
           fqn: fullyQualifiedName,
           serviceType: serviceType,
           timestamp: 0,
@@ -290,18 +350,17 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableTags(getTableTags(columns || []));
         setUsageSummary(usageSummary);
         setJoins(joins);
+
+        if (!deleted) {
+          getLineageData();
+        } else {
+          setIsLineageLoading(false);
+        }
       })
       .finally(() => {
         setIsLoading(false);
       });
 
-    getLineageByFQN(tableFQN, EntityType.TABLE)
-      .then((res: AxiosResponse) => {
-        setEntityLineage(res.data);
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
     setActiveTab(getCurrentDatasetTab(tab));
   }, [tableFQN]);
 
@@ -318,13 +377,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
       ) : (
         <DatasetDetails
           activeTab={activeTab}
+          addLineageHandler={addLineageHandler}
           columns={columns}
           columnsUpdateHandler={columnsUpdateHandler}
           dataModel={tableDetails.dataModel}
           datasetFQN={tableFQN}
+          deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
+          entityLineageHandler={entityLineageHandler}
           entityName={name}
           followTableHandler={followTable}
           followers={followers}
@@ -333,6 +395,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
+          removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}

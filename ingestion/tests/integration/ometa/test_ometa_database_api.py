@@ -24,11 +24,11 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -54,7 +54,7 @@ class OMetaDatabaseTest(TestCase):
     service = CreateDatabaseServiceEntityRequest(
         name="test-service-db",
         serviceType=DatabaseServiceType.MySQL,
-        jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+        databaseConnection=DatabaseConnection(hostPort="localhost:1000"),
     )
 
     @classmethod
@@ -197,3 +197,48 @@ class OMetaDatabaseTest(TestCase):
             ),
             None,
         )
+
+    def test_list_versions(self):
+        """
+        test list database entity versions
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=Database, fqdn=self.entity.fullyQualifiedName
+        )
+
+        res = self.metadata.get_list_entity_versions(
+            entity=Database, entity_id=res_name.id.__root__
+        )
+        assert res
+
+    def test_get_entity_version(self):
+        """
+        test get database entity version
+        """
+        self.metadata.create_or_update(data=self.create)
+
+        # Find by name
+        res_name = self.metadata.get_by_name(
+            entity=Database, fqdn=self.entity.fullyQualifiedName
+        )
+        res = self.metadata.get_entity_version(
+            entity=Database, entity_id=res_name.id.__root__, version=0.1
+        )
+
+        # check we get the correct version requested and the correct entity ID
+        assert res.version.__root__ == 0.1
+        assert res.id == res_name.id
+
+    def test_get_entity_ref(self):
+        """
+        test get EntityReference
+        """
+        res = self.metadata.create_or_update(data=self.create)
+        entity_ref = self.metadata.get_entity_reference(
+            entity=Database, fqdn=res.fullyQualifiedName
+        )
+
+        assert res.id == entity_ref.id

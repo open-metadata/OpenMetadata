@@ -10,52 +10,46 @@
 #  limitations under the License.
 
 import logging
-import time
-from datetime import datetime
-from typing import Any, Iterable, Optional
+import traceback
+from typing import Any
 
-from data_profiler.core.expectation_validation_result import (
-    ExpectationSuiteValidationResult,
-    ExpectationValidationResult,
-)
-from data_profiler.data_context import BaseDataContext
-from data_profiler.data_context.types.base import (
-    DataContextConfig,
-    DatasourceConfig,
-    InMemoryStoreBackendDefaults,
-)
+from jsonschema import ValidationError
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
+    Histogram,
+    TableProfile,
+)
 from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.profiler.profiler_runner import ProfilerRunner
 from metadata.profiler.util import group_by
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
 class DataProfiler:
-    data_context: BaseDataContext
     status: SourceStatus
-    datasource_name: str = "om_data_source"
+    config: SQLConnectionConfig
 
-    def __init__(self, connection_str, status):
+    def __init__(self, config, status):
         self.status = status
-        self.connection_str = connection_str
-        data_context_config = DataContextConfig(
-            datasources={
-                self.datasource_name: DatasourceConfig(
-                    class_name="SqlAlchemyDatasource",
-                    credentials={
-                        "url": self.connection_str,
-                    },
-                )
-            },
-            store_backend_defaults=InMemoryStoreBackendDefaults(),
-            anonymous_usage_statistics={
-                "enabled": False,
-            },
-        )
+        self.config = config
+        self.__create_profiler()
 
-        self.data_context = BaseDataContext(project_config=data_context_config)
+    def __create_profiler(self):
+        profiler_config = {
+            "profiler": {
+                "type": self.config.service_type.lower(),
+                "config": self.config,
+            }
+        }
+        try:
+            logger.debug(f"Using config: {profiler_config}")
+            self.profiler_runner = ProfilerRunner.create(profiler_config)
+        except ValidationError as e:
+            logger.error(e)
+            raise e
 
     def run_profiler(
         self,
@@ -63,158 +57,77 @@ class DataProfiler:
         profile_date: str,
         schema: str = None,
         table: str = None,
-        limit: int = None,
-        offset: int = None,
         **kwargs: Any,
     ) -> TableProfile:
         try:
-            profile_test_results = self._profile_data_asset(
-                {
-                    "schema": schema,
-                    "table": table,
-                    "limit": limit,
-                    "offset": offset,
-                    **kwargs,
-                }
+            profile_results = self.profiler_runner.execute(
+                schema=schema, table_name=table, profile_date=profile_date
             )
             profile = self._parse_test_results_to_table_profile(
-                profile_test_results,
-                dataset_name=dataset_name,
-                profile_date=profile_date,
+                profile_test_results=profile_results, dataset_name=dataset_name
             )
             return profile
         except Exception as err:
-            logger.error(err)
+            logger.error(f"Failed to run data profiler on {dataset_name} due to {err}")
+            traceback.print_exc()
             pass
 
-    def _profile_data_asset(
-        self, batch_kwargs: dict
-    ) -> ExpectationSuiteValidationResult:
-
-        profile_results = self.data_context.profile_data_asset(
-            self.datasource_name,
-            batch_kwargs={
-                "datasource": self.datasource_name,
-                **batch_kwargs,
-            },
-        )
-        assert profile_results["success"]
-
-        assert len(profile_results["results"]) == 1
-        test_suite, test_results = profile_results["results"][0]
-        return test_results
-
-    @staticmethod
-    def _get_column_from_result(result: ExpectationValidationResult) -> Optional[str]:
-        return result.expectation_config.kwargs.get("column")
-
     def _parse_test_results_to_table_profile(
-        self,
-        profile_test_results: ExpectationSuiteValidationResult,
-        dataset_name: str,
-        profile_date: str,
+        self, profile_test_results, dataset_name: str
     ) -> TableProfile:
-        profile = None
+        profile = TableProfile(profileDate=profile_test_results.profile_date)
+        table_result = profile_test_results.table_result
+        profile.rowCount = table_result.row_count
+        profile.columnCount = table_result.col_count
         column_profiles = []
-        for col, col_test_result in group_by(
-            profile_test_results.results, key=self._get_column_from_result
-        ):
-            if col is None:
-                profile = self._parse_table_test_results(
-                    col_test_result,
-                    dataset_name=dataset_name,
-                    profile_date=profile_date,
-                )
-            else:
-                column_profile = self._parse_column_test_results(
-                    col, col_test_result, dataset_name=dataset_name
-                )
-                column_profiles.append(column_profile)
-
-        if profile is not None:
-            profile.columnProfile = column_profiles
-        return profile
-
-    def _parse_table_test_results(
-        self,
-        table_test_results: Iterable[ExpectationValidationResult],
-        dataset_name: str,
-        profile_date: str,
-    ) -> TableProfile:
-        profile = TableProfile(profileDate=profile_date)
-        for table_result in table_test_results:
-            expectation: str = table_result.expectation_config.expectation_type
-            result: dict = table_result.result
-            if expectation == "expect_table_row_count_to_be_between":
-                profile.rowCount = result["observed_value"]
-            elif expectation == "expect_table_columns_to_match_ordered_list":
-                profile.columnCount = len(result["observed_value"])
-            else:
-                self.status.warning(
-                    f"profile of {dataset_name}", f"unknown table mapper {expectation}"
-                )
-        return profile
-
-    def _parse_column_test_results(
-        self,
-        column: str,
-        col_test_results: Iterable[ExpectationValidationResult],
-        dataset_name: str,
-    ) -> ColumnProfile:
-        column_profile = ColumnProfile(name=column)
-        for col_result in col_test_results:
-            expectation: str = col_result.expectation_config.expectation_type
-            result: dict = col_result.result
-            if not result:
-                self.status.warning(
-                    f"profile of {dataset_name}",
-                    f"{expectation} did not yield any results",
-                )
+        for col_name, col_result in profile_test_results.columns_result.items():
+            if col_name == "table":
                 continue
+            column_profile = ColumnProfile(name=col_name)
+            for name, measurement in col_result.measurements.items():
+                if name == "values_count":
+                    column_profile.valuesCount = measurement.value
+                elif name == "valid_count":
+                    column_profile.validCount = measurement.value
+                elif name == "min":
+                    column_profile.min = measurement.value
+                elif name == "max":
+                    column_profile.max = measurement.value
+                elif name == "sum":
+                    column_profile.sum = measurement.value
+                elif name == "avg":
+                    column_profile.mean = measurement.value
+                elif name == "variance":
+                    column_profile.variance = measurement.value
+                elif name == "stddev":
+                    column_profile.stddev = measurement.value
+                elif name == "missing_percentage":
+                    column_profile.missingPercentage = measurement.value
+                elif name == "missing_count":
+                    column_profile.missingCount = measurement.value
+                elif name == "values_percentage":
+                    column_profile.valuesPercentage = measurement.value
+                elif name == "distinct":
+                    column_profile.distinctCount = measurement.value
+                elif name == "unique_count":
+                    column_profile.uniqueCount = measurement.value
+                elif name == "uniqueness":
+                    column_profile.uniqueProportion = measurement.value
+                elif name == "duplicate_count":
+                    column_profile.duplicateCount = measurement.value
+                elif name == "histogram":
+                    column_profile.histogram = Histogram()
+                    column_profile.histogram.boundaries = measurement.value.get(
+                        "boundaries", []
+                    )
+                    column_profile.histogram.frequencies = measurement.value.get(
+                        "frequencies", []
+                    )
+                else:
+                    logger.warning(
+                        f"Ignoring metric {name} for {dataset_name}.{col_name}"
+                    )
+            column_profiles.append(column_profile)
 
-            if expectation == "expect_column_unique_value_count_to_be_between":
-                column_profile.uniqueCount = result["observed_value"]
-            elif (
-                expectation == "expect_column_proportion_of_unique_values_to_be_between"
-            ):
-                column_profile.uniqueProportion = result["observed_value"]
-            elif expectation == "expect_column_values_to_not_be_null":
-                column_profile.nullCount = result["unexpected_count"]
-                if (
-                    "unexpected_percent" in result
-                    and result["unexpected_percent"] is not None
-                ):
-                    column_profile.nullProportion = result["unexpected_percent"] / 100
-            elif expectation == "expect_column_values_to_not_match_regex":
-                pass
-            elif expectation == "expect_column_mean_to_be_between":
-                column_profile.mean = str(result["observed_value"])
-            elif expectation == "expect_column_min_to_be_between":
-                column_profile.min = str(result["observed_value"])
-            elif expectation == "expect_column_max_to_be_between":
-                column_profile.max = str(result["observed_value"])
-            elif expectation == "expect_column_median_to_be_between":
-                column_profile.median = str(result["observed_value"])
-            elif expectation == "expect_column_stdev_to_be_between":
-                column_profile.stddev = str(result["observed_value"])
-            elif expectation == "expect_column_quantile_values_to_be_between":
-                pass
-            elif expectation == "expect_column_values_to_be_in_set":
-                # column_profile.sample_values = [
-                #   str(v) for v in result["partial_unexpected_list"]
-                # ]
-                pass
-            elif expectation == "expect_column_kl_divergence_to_be_less_than":
-                pass
-            elif expectation == "expect_column_distinct_values_to_be_in_set":
-                pass
-            elif expectation == "expect_column_values_to_be_in_type_list":
-                pass
-            elif expectation == "expect_column_values_to_be_unique":
-                pass
-            else:
-                self.status.warning(
-                    f"profile of {dataset_name}",
-                    f"warning: unknown column mapper {expectation} in col {column}",
-                )
-        return column_profile
+        profile.columnProfile = column_profiles
+        return profile

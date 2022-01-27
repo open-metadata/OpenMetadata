@@ -70,7 +70,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   private static Location location;
 
   public PolicyResourceTest() {
-    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS, false, true, false);
+    super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS, false, true, false, false);
   }
 
   @BeforeAll
@@ -158,20 +158,52 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
 
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
-    CreatePolicy create = createAccessControlPolicyWithValidRules(test);
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) throws IOException {
-    CreatePolicy create = createAccessControlPolicyWithInvalidRules(test);
+  void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule("rule21", null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
     assertResponseContains(
         exception,
         BAD_REQUEST,
-        "Check if operation is non-null and at least one among the user (subject) "
-            + "and entity (object) attributes is specified");
+        String.format(
+            "Found invalid rule rule21 within policy %s. Please ensure that at least one among the user "
+                + "(subject) and entity (object) attributes is specified",
+            getEntityName(test)));
+  }
+
+  @Test
+  void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
+    List<Rule> rules = new ArrayList<>();
+    rules.add(
+        PolicyUtils.accessControlRule(
+            "rule1", null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(
+        PolicyUtils.accessControlRule(
+            "rule2", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(
+        PolicyUtils.accessControlRule(
+            "rule3", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
+    assertResponseContains(
+        exception,
+        BAD_REQUEST,
+        String.format(
+            "Found multiple rules with operation UpdateTags within policy %s. Please ensure that operation across all rules within the policy are distinct",
+            getEntityName(test)));
   }
 
   @Test
@@ -227,7 +259,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
       PolicyList forwardPage;
       PolicyList backwardPage;
       do { // For each limit (or page size) - forward scroll till the end
-        log.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
         forwardPage = listPolicies(null, limit, null, after, adminAuthHeaders());
         printPolicies(forwardPage);
         after = forwardPage.getPaging().getAfter();
@@ -250,7 +282,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
       pageCount = 0;
       indexInAllPolicies = totalRecords - limit - forwardPage.getData().size();
       do {
-        log.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
         forwardPage = listPolicies(null, limit, before, null, adminAuthHeaders());
         printPolicies(forwardPage);
         before = forwardPage.getPaging().getBefore();
@@ -262,8 +294,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   private void printPolicies(PolicyList list) {
-    list.getData().forEach(Policy -> log.info("DB {}", Policy.getFullyQualifiedName()));
-    log.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    list.getData().forEach(Policy -> LOG.info("DB {}", Policy.getFullyQualifiedName()));
+    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   @Test
@@ -305,12 +337,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
     change = getChangeDescription(policy.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("location").withNewValue(locationObj));
     patchEntityAndCheck(policy, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_emptyPolicy_200_ok(TestInfo test) throws HttpResponseException {
-    Policy policy = createPolicy(create(test), adminAuthHeaders());
-    deleteEntity(policy.getId(), adminAuthHeaders());
   }
 
   @Test
@@ -383,11 +409,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
   }
 
   private CreatePolicy create(String name) {
-    return new CreatePolicy()
-        .withName(name)
-        .withDescription("description")
-        .withPolicyType(PolicyType.Lifecycle)
-        .withOwner(USER_OWNER1);
+    return new CreatePolicy().withName(name).withDescription("description").withPolicyType(PolicyType.Lifecycle);
   }
 
   private CreatePolicy createAccessControlPolicyWithRules(String name, List<Rule> rules) {
@@ -397,20 +419,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy> {
         .withPolicyType(PolicyType.AccessControl)
         .withRules(rules.stream().map(rule -> (Object) rule).collect(Collectors.toList()))
         .withOwner(USER_OWNER1);
-  }
-
-  private CreatePolicy createAccessControlPolicyWithInvalidRules(TestInfo test) {
-    List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule(null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
-    return createAccessControlPolicyWithRules(getEntityName(test), rules);
-  }
-
-  private CreatePolicy createAccessControlPolicyWithValidRules(TestInfo test) {
-    List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
-    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
-    return createAccessControlPolicyWithRules(getEntityName(test), rules);
   }
 
   private static Location createLocation() throws HttpResponseException {

@@ -12,7 +12,7 @@
     "directory": "openmetadata-ui/src/main/resources/ui"
   },
   "dependencies": {
-    "@deuex-solutions/react-tour": "^1.0.0",
+    "@deuex-solutions/react-tour": "^1.1.1",
     "@deuex-solutions/redoc": "2.0.0-rc.31",
     "autoprefixer": "^9.8.6",
     "axios": "^0.21.1",
@@ -140,7 +140,6 @@
     "file-loader": "4.3.0",
     "fork-ts-checker-webpack-plugin": "^6.0.8",
     "html-webpack-plugin": "^4.5.1",
-    "husky": "^4.3.0",
     "jest": "^26.6.3",
     "jest-environment-jsdom-fourteen": "^1.0.1",
     "lint-staged": "^10.3.0",

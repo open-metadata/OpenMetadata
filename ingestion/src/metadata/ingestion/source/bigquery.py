@@ -9,15 +9,55 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
 import os
+import tempfile
 from typing import Optional, Tuple
 
+from sqlalchemy_bigquery import _types
+from sqlalchemy_bigquery._struct import STRUCT
+from sqlalchemy_bigquery._types import (
+    _get_sqla_column_type,
+    _get_transitive_schema_fields,
+)
+
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.utils.column_type_parser import create_sqlalchemy_type
+
+GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
+_types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
 
-class BigQueryConfig(SQLConnectionConfig, SQLSource):
+def get_columns(bq_schema):
+    fields = _get_transitive_schema_fields(bq_schema)
+    col_list = []
+    for field in fields:
+        col_obj = {
+            "name": field.name,
+            "type": _get_sqla_column_type(field)
+            if "STRUCT" or "RECORD" not in field
+            else STRUCT,
+            "nullable": field.mode == "NULLABLE" or field.mode == "REPEATED",
+            "comment": field.description,
+            "default": None,
+            "precision": field.precision,
+            "scale": field.scale,
+            "max_length": field.max_length,
+            "raw_data_type": str(_get_sqla_column_type(field)),
+        }
+        col_list.append(col_obj)
+    return col_list
+
+
+_types.get_columns = get_columns
+
+
+class BigQueryConfig(SQLConnectionConfig):
     scheme = "bigquery"
+    host_port: Optional[str] = "bigquery.googleapis.com"
+    username: Optional[str] = None
     project_id: Optional[str] = None
     duration: int = 1
     service_type = "BigQuery"
@@ -36,10 +76,29 @@ class BigquerySource(SQLSource):
     def create(cls, config_dict, metadata_config_dict, ctx):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
-            "credentials_path"
-        ]
+        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            if config.options.get("credentials_path"):
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
+                    "credentials_path"
+                ]
+            elif config.options.get("credentials", None):
+                cred_path = create_credential_temp_file(
+                    config.options.get("credentials")
+                )
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+                config.options["credentials_path"] = cred_path
+                del config.options["credentials"]
+            else:
+                raise Exception(
+                    "Please refer to the BigQuery connector documentation, especially the credentials part "
+                    "https://docs.open-metadata.org/connectors/bigquery"
+                )
         return cls(config, metadata_config, ctx)
+
+    def close(self):
+        super().close()
+        if self.config.options.get("credentials_path"):
+            os.unlink(self.config.options["credentials_path"])
 
     def standardize_schema_table_names(
         self, schema: str, table: str
@@ -53,3 +112,10 @@ class BigquerySource(SQLSource):
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
+
+
+def create_credential_temp_file(credentials: dict) -> str:
+    with tempfile.NamedTemporaryFile(delete=False) as fp:
+        cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
+        fp.write(cred_json.encode())
+        return fp.name

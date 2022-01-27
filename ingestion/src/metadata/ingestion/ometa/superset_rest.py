@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+REST Auth & Client for Apache Superset
+"""
 import json
 import logging
 from typing import Optional
@@ -33,6 +35,10 @@ class SupersetConfig(ConfigModel):
 
 
 class SupersetAuthenticationProvider(AuthenticationProvider):
+    """
+    Handle SuperSet Auth
+    """
+
     def __init__(self, config: SupersetConfig):
         self.config = config
         client_config = ClientConfig(base_url=config.url, api_version="api/v1")
@@ -57,7 +63,11 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
         return json.dumps(auth_request)
 
 
-class SupersetAPIClient(object):
+class SupersetAPIClient:
+    """
+    Superset client wrapper using the REST helper class
+    """
+
     client: REST
     _auth_provider: AuthenticationProvider
 
@@ -74,7 +84,7 @@ class SupersetAPIClient(object):
         self.client = REST(client_config)
 
     def fetch_total_dashboards(self) -> int:
-        response = self.client.get(f"/dashboard?q=(page:0,page_size:1)")
+        response = self.client.get("/dashboard?q=(page:0,page_size:1)")
         return response.get("count") or 0
 
     def fetch_dashboards(self, current_page: int, page_size: int):
@@ -84,7 +94,7 @@ class SupersetAPIClient(object):
         return response
 
     def fetch_total_charts(self) -> int:
-        response = self.client.get(f"/chart?q=(page:0,page_size:1)")
+        response = self.client.get("/chart?q=(page:0,page_size:1)")
         return response.get("count") or 0
 
     def fetch_charts(self, current_page: int, page_size: int):

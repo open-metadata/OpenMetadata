@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -49,6 +48,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import javax.json.JsonPatch;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -65,6 +65,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -78,11 +79,12 @@ import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
+    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false, false);
   }
 
   @Test
@@ -261,7 +263,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // Empty query field .../users?fields=
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "", adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "test", adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField
@@ -315,17 +317,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     user.setDisplayName(newDisplayName); // Update the name
     user = patchUser(userJson, user, adminAuthHeaders()); // Patch the user
     assertEquals(newDisplayName, user.getDisplayName());
-  }
-
-  @Test
-  void patch_userDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure user deleted attributed can't be changed using patch
-    User user = createUser(create(test), adminAuthHeaders());
-    String userJson = JsonUtils.pojoToJson(user);
-    user.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "deactivated"));
   }
 
   @Test
@@ -442,16 +433,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  void delete_validUser_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    CreateUser create = create(test).withName("test3").withEmail("test3@email.com");
-    User user = createUser(create, authHeaders("test3"));
-
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteEntity(user.getId(), authHeaders("test3@email.com")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
-  }
-
-  @Test
   void delete_validUser_as_admin_200(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
@@ -466,7 +447,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
     // Delete user
-    deleteEntity(user.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(user, adminAuthHeaders());
 
     // Make sure the user is no longer following the table
     team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
@@ -503,11 +484,11 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return create(getEntityName(test, index));
   }
 
-  public CreateUser create(String entityName) {
+  public static CreateUser create(String name) {
     // user part of the email should be less than 64 in length
-    String emailUser = entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
+    String emailUser = name == null || name.isEmpty() ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
-    return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org");
+    return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org");
   }
 
   public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {
@@ -521,7 +502,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     String fields = "profile";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
@@ -530,14 +511,48 @@ public class UserResourceTest extends EntityResourceTest<User> {
     fields = "profile, teams";
     user =
         byName
-            ? getEntityByName(user.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(user.getName(), null, fields, adminAuthHeaders())
             : getEntity(user.getId(), fields, adminAuthHeaders());
     assertListNotNull(user.getProfile(), user.getTeams());
   }
 
   @Override
   public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withDisplayName(displayName).withProfile(PROFILE);
+    return create(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withProfile(PROFILE)
+        .withTeams(List.of(TEAM1.getId()))
+        .withRoles(List.of(ROLE1.getId()));
+  }
+
+  @Override
+  public User beforeDeletion(TestInfo test, User user) throws HttpResponseException {
+    LocationResourceTest locationResourceTest = new LocationResourceTest();
+    EntityReference userRef = new EntityReference().withId(user.getId()).withType("user");
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), adminAuthHeaders());
+    locationResourceTest.createEntity(
+        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM_OWNER1), adminAuthHeaders());
+    return user;
+  }
+
+  @Override
+  protected void validateDeletedEntity(
+      Object create, User userBeforeDeletion, User userAfterDeletion, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    super.validateDeletedEntity(create, userBeforeDeletion, userAfterDeletion, authHeaders);
+
+    List<EntityReference> expectedOwnedEntities = new ArrayList<>();
+    for (EntityReference ref : Optional.ofNullable(userBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
+      expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
+    }
+    if (!expectedOwnedEntities.isEmpty()) {
+      assertEquals(expectedOwnedEntities.size(), userAfterDeletion.getOwns().size());
+      for (EntityReference ref : expectedOwnedEntities) {
+        TestUtils.existsInEntityReferenceList(userAfterDeletion.getOwns(), ref.getId(), true);
+      }
+    }
   }
 
   @Override

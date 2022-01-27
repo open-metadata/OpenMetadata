@@ -138,8 +138,21 @@ const UserCard = ({
             <>{getDatasetTitle(item.name, item.description)}</>
           ) : (
             <>
-              <p className="tw-font-normal">{item.description}</p>
-              <p>{isIconVisible ? item.name : capitalize(item.name)}</p>
+              <p
+                className={classNames(
+                  'tw-font-normal',
+                  isActionVisible ? 'tw-truncate tw-w-32' : null
+                )}
+                title={item.description}>
+                {item.description}
+              </p>
+              <p
+                className={classNames(
+                  isActionVisible ? 'tw-truncate tw-w-32' : null
+                )}
+                title={isIconVisible ? item.name : capitalize(item.name)}>
+                {isIconVisible ? item.name : capitalize(item.name)}
+              </p>
             </>
           )}
         </div>

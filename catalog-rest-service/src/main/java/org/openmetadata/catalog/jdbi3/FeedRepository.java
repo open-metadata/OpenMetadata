@@ -13,7 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +31,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink.LinkType;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -39,7 +44,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException {
+  public Thread create(Thread thread) throws IOException, ParseException {
     // Validate user creating thread
     UUID fromUser = thread.getPosts().get(0).getFrom();
     dao.userDAO().findEntityById(fromUser);
@@ -49,9 +54,7 @@ public class FeedRepository {
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
 
     // Get owner for the addressed to Entity
-    EntityReference owner =
-        EntityUtil.populateOwner(
-            aboutRef.getId(), aboutRef.getType(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+    EntityReference owner = helper(aboutRef).getOwnerOrNull();
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
@@ -147,7 +150,7 @@ public class FeedRepository {
     }
     EntityLink entityLink = EntityLink.parse(link);
     if (entityLink.getLinkType() != LinkType.ENTITY) {
-      throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityName}> is allowed");
+      throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityType}> is allowed");
     }
     EntityReference reference = EntityUtil.validateEntityLink(entityLink);
     List<String> threadIds = new ArrayList<>();
@@ -165,10 +168,20 @@ public class FeedRepository {
     if (reference.getType().equals(Entity.USER)) {
       threadIds.addAll(
           dao.relationshipDAO()
-              .findTo(reference.getId().toString(), reference.getType(), Relationship.CREATED.ordinal(), "thread"));
+              .findTo(
+                  reference.getId().toString(),
+                  reference.getType(),
+                  Relationship.CREATED.ordinal(),
+                  "thread",
+                  toBoolean(Include.NON_DELETED)));
       threadIds.addAll(
           dao.relationshipDAO()
-              .findTo(reference.getId().toString(), reference.getType(), Relationship.REPLIED_TO.ordinal(), "thread"));
+              .findTo(
+                  reference.getId().toString(),
+                  reference.getType(),
+                  Relationship.REPLIED_TO.ordinal(),
+                  "thread",
+                  toBoolean(Include.NON_DELETED)));
     } else {
       // Only data assets are added as about
       result =

@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,14 +56,15 @@ import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -103,7 +102,6 @@ public class DatabaseResource {
     databaseEntityReference.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, databaseEntityReference.getId()));
   }
 
-  @Inject
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = new DatabaseRepository(dao);
     this.authorizer = authorizer;
@@ -160,7 +158,13 @@ public class DatabaseResource {
           String before,
       @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
@@ -171,9 +175,9 @@ public class DatabaseResource {
     // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
     // beforeCursor is not null. Remove the extra entry before returning results.
     if (before != null) { // Reverse paging
-      databases = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
+      databases = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
+      databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
     return addHref(uriInfo, databases);
   }
@@ -219,10 +223,16 @@ public class DatabaseResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Database database = dao.get(uriInfo, id, fields);
+    Database database = dao.get(uriInfo, id, fields, include);
     addHref(uriInfo, database);
     return Response.ok(database).build();
   }
@@ -248,10 +258,16 @@ public class DatabaseResource {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Database database = dao.getByName(uriInfo, fqn, fields);
+    Database database = dao.getByName(uriInfo, fqn, fields, include);
     addHref(uriInfo, database);
     return Response.ok(database).build();
   }
@@ -299,7 +315,7 @@ public class DatabaseResource {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = getDatabase(securityContext, create);
     database = addHref(uriInfo, dao.create(uriInfo, database));
@@ -328,10 +344,13 @@ public class DatabaseResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Database database = dao.get(uriInfo, id, fields);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(database).getEntityReference(), patch);
+
     PatchResponse<Database> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, new DatabaseEntityInterface(response.getEntity()).getEntityReference());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -382,14 +401,16 @@ public class DatabaseResource {
       })
   public Response delete(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
       @PathParam("id") String id)
-      throws IOException {
-    dao.delete(UUID.fromString(id), recursive);
-    return Response.ok().build();
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    DeleteResponse<Database> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
+    return response.toResponse();
   }
 
   private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {
@@ -400,6 +421,6 @@ public class DatabaseResource {
         .withService(create.getService())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(new Date());
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

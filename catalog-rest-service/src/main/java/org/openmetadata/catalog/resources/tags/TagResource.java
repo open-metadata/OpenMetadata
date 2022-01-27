@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.tags;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +24,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,6 +41,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -59,15 +58,13 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CommonUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @Path("/v1/tags")
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "tags")
 public class TagResource {
-  public static final Logger LOG = LoggerFactory.getLogger(TagResource.class);
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   private final TagRepository dao;
   private final Authorizer authorizer;
@@ -81,7 +78,6 @@ public class TagResource {
     }
   }
 
-  @Inject
   public TagResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "TagRepository must not be null");
     this.dao = new TagRepository(dao);
@@ -96,10 +92,11 @@ public class TagResource {
         tagFile -> {
           try {
             LOG.info("Loading tag definitions from file {}", tagFile);
-            String tagJson = IOUtil.toString(getClass().getClassLoader().getResourceAsStream(tagFile));
+            String tagJson =
+                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             // TODO hack for now
-            Date now = new Date();
+            long now = System.currentTimeMillis();
             tagCategory.withUpdatedBy("admin").withUpdatedAt(now);
             tagCategory
                 .getChildren()
@@ -116,8 +113,7 @@ public class TagResource {
   }
 
   public static List<String> getTagDefinitions() throws IOException {
-    // Find tags and initialize
-    Pattern pattern = Pattern.compile(".*Tags\\.json$");
+    Pattern pattern = Pattern.compile(".*json/data/tags/.*\\.json$");
     return CommonUtil.getResources(pattern);
   }
 
@@ -293,7 +289,7 @@ public class TagResource {
             .withCategoryType(create.getCategoryType())
             .withDescription(create.getDescription())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(System.currentTimeMillis());
     category = addHref(uriInfo, dao.createCategory(category));
     return Response.created(category.getHref()).entity(category).build();
   }
@@ -325,7 +321,7 @@ public class TagResource {
             .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(System.currentTimeMillis());
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     tag = addHref(categoryHref, dao.createPrimaryTag(category, tag));
     return Response.created(tag.getHref()).entity(tag).build();
@@ -366,7 +362,7 @@ public class TagResource {
             .withDescription(create.getDescription())
             .withAssociatedTags(create.getAssociatedTags())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(System.currentTimeMillis());
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
     tag = addHref(parentHRef, dao.createSecondaryTag(category, primaryTag, tag));

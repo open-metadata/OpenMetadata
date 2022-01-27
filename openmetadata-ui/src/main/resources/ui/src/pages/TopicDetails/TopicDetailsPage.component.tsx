@@ -74,6 +74,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [replicationFactor, setReplicationFactor] = useState<number>(0);
   const [retentionSize, setRetentionSize] = useState<number>(0);
   const [name, setName] = useState<string>('');
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const [schemaText, setSchemaText] = useState<string>('{}');
   const [slashedTopicName, setSlashedTopicName] = useState<
@@ -121,6 +122,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       .then((res: AxiosResponse) => {
         const {
           id,
+          deleted,
           description,
           followers,
           fullyQualifiedName,
@@ -154,6 +156,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         setMaximumMessageSize(maximumMessageSize);
         setReplicationFactor(replicationFactor);
         setRetentionSize(retentionSize);
+        setDeleted(deleted);
         setSlashedTopicName([
           {
             name: service.name,
@@ -261,6 +264,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         <TopicDetails
           activeTab={activeTab}
           cleanupPolicies={cleanupPolicies}
+          deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityName={name}

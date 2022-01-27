@@ -5,7 +5,7 @@
       "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
       "username": "username",
       "password": "strong_password",
-      "database": "warehouse",
+      "database": "dev",
       "service_name": "aws_redshift",
       "table_filter_pattern": {
         "excludes": ["information_schema.*", "[\\w]*event_vw.*"]

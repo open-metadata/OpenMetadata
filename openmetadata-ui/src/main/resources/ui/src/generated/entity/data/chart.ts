@@ -27,6 +27,10 @@ export interface Chart {
    */
   chartUrl?: string;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the dashboard, what it is, and how to use it.
    */
   description?: string;
@@ -76,9 +80,10 @@ export interface Chart {
    */
   tags?: TagLabel[];
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
    */
-  updatedAt?: Date;
+  updatedAt?: number;
   /**
    * User who made the update.
    */
@@ -198,6 +203,7 @@ export interface EntityReference {
  */
 export enum DashboardServiceType {
   Looker = 'Looker',
+  Metabase = 'Metabase',
   Redash = 'Redash',
   Superset = 'Superset',
   Tableau = 'Tableau',

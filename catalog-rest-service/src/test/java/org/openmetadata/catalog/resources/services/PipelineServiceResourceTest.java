@@ -15,7 +15,6 @@ package org.openmetadata.catalog.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,6 +27,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
@@ -48,6 +47,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Slf4j
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService> {
 
   public static URI PIPELINE_SERVICE_URL;
@@ -59,6 +59,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         PipelineServiceList.class,
         "services/pipelineServices",
         "",
+        false,
         false,
         false,
         false);
@@ -80,7 +81,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             HttpResponseException.class, () -> createEntity(create(test).withServiceType(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
-    // Create pipeline with mandatory brokers field empty
+    // Create pipeline with mandatory `brokers` field empty
     exception =
         assertThrows(
             HttpResponseException.class, () -> createEntity(create(test).withPipelineUrl(null), adminAuthHeaders()));
@@ -222,34 +223,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
-  @Test
-  void delete_ExistentPipelineService_as_admin_200(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    PipelineService pipelineService = createEntity(create(test), authHeaders);
-    deleteEntity(pipelineService.getId(), authHeaders);
-  }
-
-  @Test
-  void delete_as_user_401(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    PipelineService pipelineService = createEntity(create(test), authHeaders);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteEntity(pipelineService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void delete_notExistentPipelineService() {
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception,
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.PIPELINE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
   private CreatePipelineService create(TestInfo test) {
     return create(getEntityName(test));
   }
@@ -258,9 +231,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     return create(getEntityName(test, index));
   }
 
-  private CreatePipelineService create(String entityName) {
+  private CreatePipelineService create(String name) {
     return new CreatePipelineService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
         .withPipelineUrl(PIPELINE_SERVICE_URL)
         .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
@@ -312,7 +285,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, adminAuthHeaders())
+            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
             : getEntity(service.getId(), fields, adminAuthHeaders());
     TestUtils.assertListNotNull(
         service.getHref(),

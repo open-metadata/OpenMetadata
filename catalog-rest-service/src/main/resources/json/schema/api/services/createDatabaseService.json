@@ -19,13 +19,9 @@
     "serviceType": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
     },
-    "jdbc": {
-      "$ref" : "../../type/jdbcConnection.json#/definitions/jdbcInfo"
-    },
-    "ingestionSchedule" :  {
-      "description": "Schedule for running metadata ingestion jobs",
-      "$ref" : "../../type/schedule.json"
+    "databaseConnection": {
+      "$ref" : "../../entity/services/databaseService.json#/definitions/databaseConnection"
     }
   },
-  "required": ["name", "serviceType", "jdbc"]
+  "required": ["name", "serviceType", "databaseConnection"]
 }

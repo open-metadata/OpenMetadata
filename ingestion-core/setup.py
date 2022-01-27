@@ -20,6 +20,15 @@ def get_long_description():
     return description
 
 
+dev = {
+    "datamodel-code-generator==0.11.14",
+    "incremental",
+    "twine",
+    "twisted",
+    "wheel",
+    "click",
+}
+
 setup(
     name="openmetadata-ingestion-core",
     url="https://open-metadata.org/",
@@ -32,11 +41,14 @@ setup(
     package_dir={"": "src"},
     zip_safe=False,
     use_incremental=True,
-    setup_requires=['incremental'],
-    install_requires=['incremental'],
+    setup_requires=["incremental"],
+    install_requires=["incremental"],
     project_urls={
         "Documentation": "https://docs.open-metadata.org/",
         "Source": "https://github.com/open-metadata/OpenMetadata",
     },
     packages=find_namespace_packages(where="./src", exclude=["tests*"]),
+    extras_require={
+        "dev": list(dev),
+    },
 )

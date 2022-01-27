@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
 import PropTypes from 'prop-types';
@@ -23,8 +24,10 @@ import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
 const FacetFilter: FunctionComponent<FacetProp> = ({
   aggregations,
-  onSelectHandler,
   filters,
+  showDeletedOnly = false,
+  onSelectHandler,
+  onSelectDeleted,
   onClearFilter,
   onSelectAllFilter,
 }: FacetProp) => {
@@ -45,8 +48,9 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
       )
     );
   };
-  const getSeparator = (length: number, index: number, flag: boolean) => {
-    return length !== 1 && index < length - 1 && flag ? (
+
+  const getSeparator = (length: number, index: number) => {
+    return length !== 1 && index < length - 1 ? (
       <div className="tw-filter-seperator" />
     ) : null;
   };
@@ -132,6 +136,31 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
 
   return (
     <>
+      <div
+        className="sidebar-my-data-holder mt-2 mb-3"
+        data-testid="show-deleted-cntnr">
+        <div
+          className="filter-group tw-justify-between tw-mb-2"
+          data-testid="filter-container-deleted">
+          <div className="tw-flex">
+            <div className="filters-title tw-w-40 tw-truncate custom-checkbox-label">
+              Show Deleted
+            </div>
+          </div>
+          <div
+            className={classNames(
+              'toggle-switch tw-mr-0',
+              showDeletedOnly ? 'open' : null
+            )}
+            data-testid="show-deleted"
+            onClick={() => {
+              onSelectDeleted?.(!showDeletedOnly);
+            }}>
+            <div className="switch" />
+          </div>
+        </div>
+      </div>
+      {getSeparator(aggregations.length, 0)}
       {aggregations.map((aggregation: AggregationType, index: number) => {
         return (
           <Fragment key={index}>
@@ -184,14 +213,12 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                     )}
                   </div>
                 </div>
-                <div className="sidebar-my-data-holder mt-2 mb-3">
+                <div
+                  className="sidebar-my-data-holder mt-2 mb-3"
+                  data-testid={`filter-containers-${index}`}>
                   {getFilterItems(aggregation)}
                 </div>
-                {getSeparator(
-                  aggregations.length,
-                  index,
-                  aggregations[index + 1]?.buckets?.length > 0
-                )}
+                {getSeparator(aggregations.length, index)}
               </>
             ) : null}
           </Fragment>

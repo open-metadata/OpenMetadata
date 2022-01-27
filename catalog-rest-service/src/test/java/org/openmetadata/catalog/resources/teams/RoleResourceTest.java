@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,10 +24,11 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -36,36 +36,50 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role> {
 
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false);
+    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false);
   }
 
   @Test
   void post_validRoles_as_admin_200_OK(TestInfo test) throws IOException {
     // Create role with different optional fields
     CreateRole create = create(test, 1);
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
 
     create = create(test, 2).withDisplayName("displayName");
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
 
     create = create(test, 3).withDescription("description");
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
 
     create = create(test, 4).withDisplayName("displayName").withDescription("description");
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckRole(create, adminAuthHeaders());
+  }
+
+  private Role createAndCheckRole(CreateRole create, Map<String, String> authHeaders) throws IOException {
+    Role role = createAndCheckEntity(create, authHeaders);
+    Policy policy = PolicyResourceTest.getPolicy(role.getPolicy().getId(), PolicyResource.FIELDS, adminAuthHeaders());
+    assertEquals(String.format("%sRoleAccessControlPolicy", role.getName()), policy.getName());
+    assertEquals(String.format("%s Role Access Control Policy", role.getDisplayName()), policy.getDisplayName());
+    assertEquals(
+        String.format("Policy for %s Role to perform operations on metadata entities", role.getDisplayName()),
+        policy.getDescription());
+    return role;
   }
 
   @Test
@@ -74,39 +88,8 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
     CreateRole create = create(test, 1);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, authHeaders));
+        assertThrows(HttpResponseException.class, () -> createAndCheckRole(create, authHeaders));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  /**
-   * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting role with entities owned by the role
-   */
-  @Test
-  void delete_validRole_200_OK(TestInfo test) throws IOException {
-    CreateRole create = create(test);
-    Role role = createAndCheckEntity(create, adminAuthHeaders());
-    deleteEntity(role.getId(), adminAuthHeaders());
-  }
-
-  @Test
-  void delete_validRole_as_non_admin_401(TestInfo test) throws IOException {
-    CreateRole create = create(test);
-    Role role = createAndCheckEntity(create, adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteEntity(role.getId(), authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void patch_roleDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure role deleted attribute can't be changed using patch
-    Role role = createRole(create(test), adminAuthHeaders());
-    String roleJson = JsonUtils.pojoToJson(role);
-    role.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchRole(roleJson, role, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Role", "deleted"));
   }
 
   @Test
@@ -119,7 +102,7 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> patchRole(role.getId(), originalJson, role, authHeaders("test@open-metadata.org")));
+            () -> patchEntity(role.getId(), originalJson, role, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -148,29 +131,36 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     assertEquals(expectedDisplayName, role.getDisplayName());
   }
 
+  @Override
+  protected void prepareGetWithDifferentFields(Role role) throws HttpResponseException {
+    // Assign two arbitrary users this role for testing.
+    UserResourceTest.createUser(
+        UserResourceTest.create(role.getName() + "user1").withRoles(List.of(role.getId())), adminAuthHeaders());
+    UserResourceTest.createUser(
+        UserResourceTest.create(role.getName() + "user2").withRoles(List.of(role.getId())), adminAuthHeaders());
+  }
+
   /** Validate returned fields GET .../roles/{id}?fields="..." or GET .../roles/name/{name}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Role expectedRole, boolean byName) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(adminAuthHeaders());
-    // Role does not have any supported additional fields yet.
+
     // .../roles
-    Role getRole =
+    Role role =
         byName
             ? getRoleByName(expectedRole.getName(), null, adminAuthHeaders())
             : getRole(expectedRole.getId(), null, adminAuthHeaders());
-    validateRole(getRole, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
-  }
+    validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
 
-  private Role patchRole(UUID roleId, String originalJson, Role updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
-    String updatedJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("roles/" + roleId), patch, Role.class, authHeaders);
-  }
-
-  private Role patchRole(String originalJson, Role updated, Map<String, String> authHeaders)
-      throws JsonProcessingException, HttpResponseException {
-    return patchRole(updated.getId(), originalJson, updated, authHeaders);
+    // .../roles?fields=policy,users
+    String fields = "policy,users";
+    role =
+        byName
+            ? getRoleByName(expectedRole.getName(), fields, adminAuthHeaders())
+            : getRole(expectedRole.getId(), fields, adminAuthHeaders());
+    validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
+    TestUtils.validateEntityReference(role.getPolicy());
+    TestUtils.validateEntityReference(role.getUsers());
   }
 
   public static Role createRole(CreateTeam create, Map<String, String> authHeaders) throws HttpResponseException {
@@ -185,8 +175,8 @@ public class RoleResourceTest extends EntityResourceTest<Role> {
     return create(getEntityName(test));
   }
 
-  public CreateRole create(String entityName) {
-    return new CreateRole().withName(entityName);
+  public CreateRole create(String name) {
+    return new CreateRole().withName(name);
   }
 
   @Override

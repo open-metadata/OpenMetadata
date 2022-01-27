@@ -11,15 +11,17 @@
 
 from typing import Optional
 
-from snowflake.sqlalchemy import custom_types
+from snowflake.sqlalchemy.custom_types import VARIANT
+from snowflake.sqlalchemy.snowdialect import ischema_names
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
-from metadata.utils.column_helpers import register_custom_type
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.utils.column_type_parser import create_sqlalchemy_type
 
-register_custom_type(custom_types.TIMESTAMP_TZ, "TIME")
-register_custom_type(custom_types.TIMESTAMP_LTZ, "TIME")
-register_custom_type(custom_types.TIMESTAMP_NTZ, "TIME")
+GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
+ischema_names["VARIANT"] = VARIANT
+ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 
 class SnowflakeConfig(SQLConnectionConfig):

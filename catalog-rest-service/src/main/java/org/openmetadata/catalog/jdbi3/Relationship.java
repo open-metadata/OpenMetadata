@@ -34,6 +34,7 @@ public enum Relationship {
    *   <li>PipelineService --- contains --> Pipeline
    *   <li>DashboardService --- contains --> Charts
    *   <li>DashboardService --- contains --> Dashboard
+   *   <li>Role --- contains --> Policy
    * </ul>
    */
   CONTAINS("contains"), // 0
@@ -94,7 +95,7 @@ public enum Relationship {
   UPSTREAM("upstream"), // 13
 
   // Policy relationship
-  // {Policy1} -- appliedTo --> {Location1} (Policy1 is applied to Location1)
+  // {Policy1} --- appliedTo ---> {Location1} (Policy1 is applied to Location1)
   APPLIED_TO("appliedTo"); // 14
 
   /** * Add new enums to the end of the list * */

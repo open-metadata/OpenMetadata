@@ -16,14 +16,16 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
@@ -37,16 +39,17 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final Logger LOG = LoggerFactory.getLogger(MlModelRepository.class);
   private static final Fields MODEL_UPDATE_FIELDS =
       new Fields(
-          MlModelResource.FIELD_LIST, "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,tags");
+          MlModelResource.FIELD_LIST,
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,target,tags");
   private static final Fields MODEL_PATCH_FIELDS =
-      new Fields(MlModelResource.FIELD_LIST, "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,tags");
+      new Fields(
+          MlModelResource.FIELD_LIST,
+          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,target,tags");
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -72,11 +75,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
+  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException, ParseException {
     mlModel.setDisplayName(mlModel.getDisplayName());
     mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setMlFeatures(fields.contains("mlFeatures") ? mlModel.getMlFeatures() : null);
+    mlModel.setTarget(fields.contains("target") ? mlModel.getTarget() : null);
     mlModel.setMlHyperParameters(fields.contains("mlHyperParameters") ? mlModel.getMlHyperParameters() : null);
     mlModel.setMlStore(fields.contains("mlStore") ? mlModel.getMlStore() : null);
     mlModel.setServer(fields.contains("server") ? mlModel.getServer() : null);
@@ -196,8 +200,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityUpdater getUpdater(MlModel original, MlModel updated, boolean patchOperation) {
-    return new MlModelUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
+    return new MlModelUpdater(original, updated, operation);
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
@@ -205,7 +209,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       List<EntityReference> ids =
           daoCollection
               .relationshipDAO()
-              .findTo(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal());
+              .findTo(
+                  mlModel.getId().toString(),
+                  Entity.MLMODEL,
+                  Relationship.USES.ordinal(),
+                  toBoolean(toInclude(mlModel)));
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
       }
@@ -259,6 +267,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
+    public Boolean isDeleted() {
+      return entity.getDeleted();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
@@ -284,7 +297,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public Date getUpdatedAt() {
+    public long getUpdatedAt() {
       return entity.getUpdatedAt();
     }
 
@@ -339,7 +352,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
-    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+    public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
     }
@@ -373,8 +386,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
-    public MlModelUpdater(MlModel original, MlModel updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
@@ -387,6 +400,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateMlHyperParameters(origMlModel, updatedMlModel);
       updateMlStore(origMlModel, updatedMlModel);
       updateServer(origMlModel, updatedMlModel);
+      updateTarget(origMlModel, updatedMlModel);
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
@@ -429,6 +443,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       // Updating the server can break current integrations to the ML services or enable new integrations
       if (recordChange("server", origModel.getServer(), updatedModel.getServer())) {
         // Mark the EntityUpdater version change to major
+        majorVersionChange = true;
+      }
+    }
+
+    private void updateTarget(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {
+      // Updating the target changes the model response
+      if (recordChange("target", origModel.getTarget(), updatedModel.getTarget())) {
         majorVersionChange = true;
       }
     }
