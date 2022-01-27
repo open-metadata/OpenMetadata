@@ -31,6 +31,7 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 	@echo "Make sure to first run install_test first"
 	pre-commit install
 
+.PHONY: lint
 lint: ## Python Checkstyle
 	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/
 
