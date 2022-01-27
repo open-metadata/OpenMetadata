@@ -58,7 +58,11 @@ export const getDashboardByFqn: Function = (
   fqn: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/dashboards/name/${fqn}`, arrQueryFields);
+  const url = getURLWithQueryFields(
+    `/dashboards/name/${fqn}`,
+    arrQueryFields,
+    'include=all'
+  );
 
   return APIClient.get(url);
 };

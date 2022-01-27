@@ -148,7 +148,7 @@ const Signup = () => {
     <>
       {!loading && (
         <PageContainer>
-          <div className="tw-w-screen tw-h-screen tw-flex tw-justify-center">
+          <div className="tw-h-screen tw-flex tw-justify-center">
             <div className="tw-flex tw-flex-col tw-items-center signup-box">
               <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
                 <SVGIcons

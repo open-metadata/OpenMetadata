@@ -55,6 +55,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -282,7 +283,7 @@ public class PipelineServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = getService(update, securityContext);
-    PutResponse<PipelineService> response = dao.createOrUpdate(uriInfo, service);
+    PutResponse<PipelineService> response = dao.createOrUpdate(uriInfo, service, true);
     return response.toResponse();
   }
 
@@ -306,10 +307,10 @@ public class PipelineServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id), recursive);
-    return Response.ok().build();
+    DeleteResponse<PipelineService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
+    return response.toResponse();
   }
 
   private PipelineService getService(CreatePipelineService create, SecurityContext securityContext) {

@@ -505,12 +505,6 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
   }
 
   @Test
-  void delete_AirflowPipeline_200_ok(TestInfo test) throws HttpResponseException {
-    AirflowPipeline airflowPipeline = createEntity(create(test), adminAuthHeaders());
-    deleteEntity(airflowPipeline.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyPipeline_4xx() {
     // TODO
   }
@@ -539,9 +533,9 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     return create(getEntityName(test));
   }
 
-  private CreateAirflowPipeline create(String entityName) {
+  private CreateAirflowPipeline create(String name) {
     return new CreateAirflowPipeline()
-        .withName(entityName)
+        .withName(name)
         .withPipelineType(PipelineType.METADATA)
         .withService(BIGQUERY_REFERENCE)
         .withPipelineConfig(INGESTION_CONFIG)

@@ -12,11 +12,20 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Bucket, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import {
+  Bucket,
+  DynamicFormFieldType,
+  DynamicObj,
+  ServiceCollection,
+  ServiceData,
+  ServicesData,
+  ServiceTypes,
+} from 'Models';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
   AIRFLOW,
+  arrServiceTypes,
   ATHENA,
   BIGQUERY,
   GLUE,
@@ -48,7 +57,9 @@ import {
   IngestionType,
   MessagingServiceType,
   PipelineServiceType,
+  ServiceCategory,
 } from '../enums/service.enum';
+import { PipelineType } from '../generated/operations/pipelines/airflowPipeline';
 import { ApiData } from '../pages/services';
 
 export const serviceTypeLogo = (type: string) => {
@@ -189,17 +200,28 @@ const getAllServiceList = (
   });
 };
 
-export const getAllServices = (): Promise<Array<ServiceDataObj>> => {
+export const getAllServices = (
+  onlyVisibleServices = true
+): Promise<Array<ServiceDataObj>> => {
   return new Promise<Array<ServiceDataObj>>((resolve, reject) => {
     getServiceDetails().then((res: AxiosResponse) => {
       let allServiceCollectionArr: Array<ServiceCollection> = [];
       if (res.data.data?.length) {
-        allServiceCollectionArr = res.data.data.map((service: ServiceData) => {
-          return {
-            name: service.collection.name,
-            value: service.collection.name,
-          };
-        });
+        const arrServiceCat: Array<{ name: string; value: string }> =
+          res.data.data.map((service: ServiceData) => {
+            return {
+              name: service.collection.name,
+              value: service.collection.name,
+            };
+          });
+
+        if (onlyVisibleServices) {
+          allServiceCollectionArr = arrServiceCat.filter((service) =>
+            arrServiceTypes.includes(service.name as ServiceTypes)
+          );
+        } else {
+          allServiceCollectionArr = arrServiceCat;
+        }
       }
       getAllServiceList(allServiceCollectionArr)
         .then((res) => resolve(res))
@@ -346,4 +368,107 @@ export const getIngestionTypeList = (
   }
 
   return ingestionType;
+};
+
+export const getAirflowPipelineTypes = (
+  serviceType: string,
+  onlyMetaData = false
+): Array<PipelineType> | undefined => {
+  if (onlyMetaData) {
+    return [PipelineType.Metadata];
+  }
+  switch (serviceType) {
+    case DatabaseServiceType.REDSHIFT:
+    case DatabaseServiceType.BIGQUERY:
+    case DatabaseServiceType.SNOWFLAKE:
+      return [PipelineType.Metadata, PipelineType.QueryUsage];
+
+    case DatabaseServiceType.HIVE:
+    case DatabaseServiceType.MSSQL:
+    case DatabaseServiceType.MYSQL:
+    case DatabaseServiceType.POSTGRES:
+    case DatabaseServiceType.TRINO:
+    case DatabaseServiceType.VERTICA:
+      return [PipelineType.Metadata];
+
+    default:
+      return;
+  }
+};
+
+export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return true;
+
+    case ServiceCategory.MESSAGING_SERVICES:
+    case ServiceCategory.PIPELINE_SERVICES:
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return false;
+
+    default:
+      break;
+  }
+
+  return false;
+};
+
+export const getKeyValuePair = (obj: DynamicObj) => {
+  const newObj = Object.entries(obj).map((v) => {
+    return {
+      key: v[0],
+      value: v[1],
+    };
+  });
+
+  return newObj;
+};
+
+export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
+  const keyValuePair: DynamicObj = {};
+
+  arr.forEach((obj) => {
+    if (obj.key && obj.value) {
+      keyValuePair[obj.key] = obj.value;
+    }
+  });
+
+  return keyValuePair;
+};
+
+export const getHostPortDetails = (hostport: string) => {
+  let host = '',
+    port = '';
+  const newHostPort = hostport.split(':');
+
+  port = newHostPort.splice(newHostPort.length - 1, 1).join();
+  host = newHostPort.join(':');
+
+  return {
+    host,
+    port,
+  };
+};
+
+export const isRequiredDetailsAvailableForIngestion = (
+  serviceCategory: ServiceCategory,
+  data: ServicesData
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES: {
+      const hostPort = getHostPortDetails(
+        data.databaseConnection?.hostPort || ''
+      );
+
+      return Boolean(hostPort.host && hostPort.port);
+    }
+
+    case ServiceCategory.MESSAGING_SERVICES:
+    case ServiceCategory.PIPELINE_SERVICES:
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return false;
+
+    default:
+      return true;
+  }
 };

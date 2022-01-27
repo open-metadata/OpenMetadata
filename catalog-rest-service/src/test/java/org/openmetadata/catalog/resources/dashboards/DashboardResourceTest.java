@@ -32,13 +32,11 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -230,33 +228,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  void delete_emptyDashboard_200_ok(TestInfo test) throws HttpResponseException {
-    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
-    deleteEntity(dashboard.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyDashboard_4xx() {
     // TODO
-  }
-
-  @Test
-  void delete_put_Dashboard_200(TestInfo test) throws IOException {
-    CreateDashboard request = create(test).withDescription("");
-    Dashboard dashboard = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteEntity(dashboard.getId(), adminAuthHeaders());
-
-    ChangeDescription change = getChangeDescription(dashboard.getVersion());
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public Dashboard createDashboard(CreateDashboard create, Map<String, String> authHeaders)
@@ -314,8 +287,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     return create(getEntityName(test));
   }
 
-  public CreateDashboard create(String entityName) {
-    return new CreateDashboard().withName(entityName).withService(SUPERSET_REFERENCE);
+  public CreateDashboard create(String name) {
+    return new CreateDashboard().withName(name).withService(SUPERSET_REFERENCE);
   }
 
   @Override

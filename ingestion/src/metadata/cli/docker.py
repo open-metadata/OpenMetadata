@@ -99,7 +99,6 @@ def run_docker(start, stop, pause, resume, clean, file_path):
                     ometa_client.get(f"/tables/name/bigquery_gcp.shopify.dim_customer")
                     break
                 except Exception as err:
-                    sys.stdout.write("../utils")
                     sys.stdout.flush()
                     time.sleep(5)
             elapsed = time.time() - start_time

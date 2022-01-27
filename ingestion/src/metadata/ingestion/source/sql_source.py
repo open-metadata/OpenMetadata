@@ -18,6 +18,10 @@ import traceback
 import uuid
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -41,9 +45,6 @@ from metadata.ingestion.source.sql_source_common import (
 )
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_database_service_or_create
-from sqlalchemy import create_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -117,11 +118,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 return True
         # Catch any errors during profiling init and continue ingestion
         except Exception as exc:  # pylint: disable=broad-except
-            logger.error(
-                f"Error loading profiler {exc}"
-                "DataProfiler configuration is enabled. Please make sure you ran "
-                "pip install 'openmetadata-ingestion[data-profiler]'"
-            )
+            logger.debug(traceback.print_exc())
+            logger.debug(f"Error loading profiler {repr(exc)}")
         return False
 
     def prepare(self):
@@ -477,7 +475,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     col_data_length = None
                     arr_data_type = None
                     parsed_string = None
-                    print(column["raw_data_type"])
                     if (
                         "raw_data_type" in column
                         and column["raw_data_type"] is not None
@@ -506,7 +503,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = self._check_col_length(
                             col_type, column["type"]
                         )
-                        if col_type == "NULL":
+                        if col_type == "NULL" or col_type is None:
                             col_type = "VARCHAR"
                             data_type_display = "varchar"
                             logger.warning(
@@ -567,7 +564,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return None
 
     def _check_col_length(self, datatype, col_raw_type):
-        if datatype.upper() in {
+        if datatype is not None and datatype.upper() in {
             "CHAR",
             "VARCHAR",
             "BINARY",

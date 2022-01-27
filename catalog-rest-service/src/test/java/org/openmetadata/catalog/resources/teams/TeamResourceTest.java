@@ -149,35 +149,11 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     Team team = createAndCheckEntity(create, adminAuthHeaders());
 
     // Team with users can be deleted - Team -- has --> User relationships are deleted
-    deleteEntity(team.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(team, adminAuthHeaders());
 
     // Make sure user does not have relationship to this team
     User user = userResourceTest.getEntity(user1.getId(), "teams", adminAuthHeaders());
     assertTrue(user.getTeams().isEmpty());
-  }
-
-  @Test
-  void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = createUser(userResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
-    List<UUID> users = Collections.singletonList(user1.getId());
-    CreateTeam create = create(test).withUsers(users);
-    Team team = createAndCheckEntity(create, adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteEntity(team.getId(), authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void patch_teamDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure team deleted attribute can't be changed using patch
-    Team team = createTeam(create(test), adminAuthHeaders());
-    String teamJson = JsonUtils.pojoToJson(team);
-    team.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchTeam(teamJson, team, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
   }
 
   //  @Test
@@ -334,8 +310,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     return create(getEntityName(test));
   }
 
-  public CreateTeam create(String entityName) {
-    return new CreateTeam().withName(entityName);
+  public CreateTeam create(String name) {
+    return new CreateTeam().withName(name);
   }
 
   @Override

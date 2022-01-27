@@ -15,23 +15,19 @@ package org.openmetadata.catalog.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -41,7 +37,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
@@ -248,53 +243,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
-  @Test
-  void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    MessagingService messagingService = createEntity(create(test), authHeaders);
-    deleteEntity(messagingService.getId(), authHeaders);
-  }
-
-  @Test
-  void delete_put_MessagingService_200(TestInfo test) throws IOException {
-    CreateMessagingService request = create(test).withDescription("");
-    MessagingService messagingService = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteEntity(messagingService.getId(), adminAuthHeaders());
-
-    ChangeDescription change = getChangeDescription(messagingService.getVersion());
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_as_user_401(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    MessagingService messagingService = createEntity(create(test), authHeaders);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteEntity(messagingService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
-  void delete_notExistentMessagingService() {
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception,
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
   private CreateMessagingService create(TestInfo test) {
     return create(getEntityName(test));
   }
@@ -303,9 +251,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     return create(getEntityName(test, index));
   }
 
-  private CreateMessagingService create(String entityName) {
+  private CreateMessagingService create(String name) {
     return new CreateMessagingService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(MessagingServiceType.Kafka)
         .withBrokers(KAFKA_BROKERS)
         .withSchemaRegistry(SCHEMA_REGISTRY_URL)
@@ -376,6 +324,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         assertEquals(expectedSchedule, actualSchedule);
         break;
       case "brokers":
+        @SuppressWarnings("unchecked")
         List<String> expectedBrokers = (List<String>) expected;
         List<String> actualBrokers = JsonUtils.readObjects((String) actual, String.class);
         assertEquals(expectedBrokers, actualBrokers);

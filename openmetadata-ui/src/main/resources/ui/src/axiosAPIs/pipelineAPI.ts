@@ -58,7 +58,11 @@ export const getPipelineByFqn: Function = (
   fqn: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/pipelines/name/${fqn}`, arrQueryFields);
+  const url = getURLWithQueryFields(
+    `/pipelines/name/${fqn}`,
+    arrQueryFields,
+    'include=all'
+  );
 
   return APIClient.get(url);
 };

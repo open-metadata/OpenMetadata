@@ -54,7 +54,7 @@ public final class AirflowUtils {
   public static final String INGESTION_MARK_DELETED_TABLES = "mark_deleted_tables_as_deleted";
   public static final String INGESTION_USAGE_DURATION = "duration";
   public static final String INGESTION_OPTIONS = "options";
-  public static final String INGESTION_CONNECTION_ARGS = "connection_args";
+  public static final String INGESTION_CONNECTION_ARGS = "connect_args";
   public static final String INGESTION_USAGE_STAGE_FILE_PATH = "filename";
   public static final String INGESTION_STATUS = "status";
 
@@ -71,10 +71,12 @@ public final class AirflowUtils {
     dbConfig.put(INGESTION_PASSWORD, databaseConnection.getPassword());
     dbConfig.put(INGESTION_DATABASE, databaseConnection.getDatabase());
     dbConfig.put(INGESTION_SERVICE_NAME, databaseService.getName());
-    if (databaseConnection.getConnectionOptions() != null) {
+    if (databaseConnection.getConnectionOptions() != null
+        && !databaseConnection.getConnectionOptions().getAdditionalProperties().isEmpty()) {
       dbConfig.put(INGESTION_OPTIONS, databaseConnection.getConnectionOptions().getAdditionalProperties());
     }
-    if (databaseConnection.getConnectionArguments() != null) {
+    if (databaseConnection.getConnectionArguments() != null
+        && !databaseConnection.getConnectionArguments().getAdditionalProperties().isEmpty()) {
       dbConfig.put(INGESTION_CONNECTION_ARGS, databaseConnection.getConnectionArguments().getAdditionalProperties());
     }
     String ingestionType = databaseService.getServiceType().value().toLowerCase(Locale.ROOT);
@@ -85,8 +87,12 @@ public final class AirflowUtils {
       dbConfig.put(INGESTION_ENABLE_DATA_PROFILER, databaseServiceMetadataPipeline.getEnableDataProfiler());
       dbConfig.put(INGESTION_GENERATE_SAMPLE_DATA, databaseServiceMetadataPipeline.getGenerateSampleData());
       dbConfig.put(INGESTION_INCLUDE_VIEWS, databaseServiceMetadataPipeline.getIncludeViews());
-      dbConfig.put(INGESTION_SCHEMA_FILTER_PATTERN, databaseServiceMetadataPipeline.getSchemaFilterPattern());
-      dbConfig.put(INGESTION_TABLE_FILTER_PATTERN, databaseServiceMetadataPipeline.getTableFilterPattern());
+      if (databaseServiceMetadataPipeline.getSchemaFilterPattern() != null) {
+        dbConfig.put(INGESTION_SCHEMA_FILTER_PATTERN, databaseServiceMetadataPipeline.getSchemaFilterPattern());
+      }
+      if (databaseServiceMetadataPipeline.getTableFilterPattern() != null) {
+        dbConfig.put(INGESTION_TABLE_FILTER_PATTERN, databaseServiceMetadataPipeline.getTableFilterPattern());
+      }
       dbConfig.put(INGESTION_MARK_DELETED_TABLES, databaseServiceMetadataPipeline.getMarkDeletedTables());
       dbConfig.put(INGESTION_DBT_CATALOG_FILE_PATH, databaseServiceMetadataPipeline.getDbtCatalogFilePath());
       dbConfig.put(INGESTION_DBT_MANIFEST_FILE_PATH, databaseServiceMetadataPipeline.getDbtManifestFilePath());

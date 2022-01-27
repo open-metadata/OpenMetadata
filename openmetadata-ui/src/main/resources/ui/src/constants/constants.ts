@@ -51,6 +51,8 @@ const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 
 export const pagingObject = { after: '', before: '' };
 
+export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
+
 /* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
   { key: 'Tier.Tier1', doc_count: 0 },
@@ -277,7 +279,7 @@ export const navLinkSettings = [
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },
-  { name: 'Ingestions', to: '/ingestion', disabled: false },
+  // { name: 'Ingestions', to: '/ingestion', disabled: false },
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },
 ];

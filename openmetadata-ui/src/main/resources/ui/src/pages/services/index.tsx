@@ -58,6 +58,7 @@ import {
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import {
@@ -65,7 +66,6 @@ import {
   getCountBadge,
   getServiceLogo,
 } from '../../utils/CommonUtils';
-import { getFrequencyTime } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 type ServiceRecord = {
@@ -185,11 +185,6 @@ const ServicesPage = () => {
     setEditData(undefined);
   };
 
-  const handleEdit = (value: ServiceDataObj) => {
-    setEditData(value);
-    setIsModalOpen(true);
-  };
-
   const handleUpdate = (
     selectedService: string,
     id: string,
@@ -266,13 +261,23 @@ const ServicesPage = () => {
                 ...ingestion.service,
                 id: serviceId,
               },
+              pipelineType: PipelineType.Metadata,
             });
           });
 
-          Promise.allSettled(promises).then(() => {
-            setIsModalOpen(false);
-            setEditData(undefined);
-          });
+          Promise.allSettled(promises).then(
+            (response: PromiseSettledResult<AxiosResponse>[]) => {
+              response.map((data) => {
+                data.status === 'rejected' &&
+                  showToast({
+                    variant: 'error',
+                    body: data.reason || 'Something went wrong!',
+                  });
+              });
+              setIsModalOpen(false);
+              setEditData(undefined);
+            }
+          );
         } else {
           setIsModalOpen(false);
           setEditData(undefined);
@@ -295,17 +300,25 @@ const ServicesPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    deleteService(serviceName, id).then((res: AxiosResponse) => {
-      if (res.statusText === 'OK') {
-        const updatedServiceList = serviceList.filter((s) => s.id !== id);
-        setServices({ ...services, [serviceName]: updatedServiceList });
-        setServicesCount((pre) => ({
-          ...servicesCount,
-          [serviceName]: pre[serviceName] - 1,
-        }));
-        setServiceList(updatedServiceList);
-      }
-    });
+    deleteService(serviceName, id)
+      .then((res: AxiosResponse) => {
+        if (res.statusText === 'OK') {
+          const updatedServiceList = serviceList.filter((s) => s.id !== id);
+          setServices({ ...services, [serviceName]: updatedServiceList });
+          setServicesCount((pre) => ({
+            ...servicesCount,
+            [serviceName]: pre[serviceName] - 1,
+          }));
+          setServiceList(updatedServiceList);
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = err.response?.data.message || 'Something went wrong!';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
 
     handleCancelConfirmationModal();
   };
@@ -381,20 +394,6 @@ const ServicesPage = () => {
 
   const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
     switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        // const databaseService = service as unknown as DatabaseService;
-
-        return (
-          <>
-            <div className="tw-mb-1" data-testid="additional-field">
-              <label className="tw-mb-0">Driver Class:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {/* {databaseService.jdbc.driverClass} */}
-              </span>
-            </div>
-          </>
-        );
-      }
       case ServiceCategory.MESSAGING_SERVICES: {
         const messagingService = service as unknown as MessagingService;
 
@@ -570,18 +569,7 @@ const ServicesPage = () => {
                             )}
                           </div>
                           {getOptionalFields(service)}
-                          <div
-                            className="tw-mb-1"
-                            data-testid="service-ingestion">
-                            <label className="tw-mb-0">Ingestion:</label>
-                            <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                              {service.ingestionSchedule?.repeatFrequency
-                                ? getFrequencyTime(
-                                    service.ingestionSchedule.repeatFrequency
-                                  )
-                                : '--'}
-                            </span>
-                          </div>
+
                           <div className="" data-testid="service-type">
                             <label className="tw-mb-0">Type:</label>
                             <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
@@ -591,21 +579,6 @@ const ServicesPage = () => {
                         </div>
                         <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                           <div className="tw-flex tw-justify-end">
-                            <NonAdminAction
-                              position="top"
-                              title={TITLE_FOR_NON_ADMIN_ACTION}>
-                              <button
-                                className="tw-pr-3 focus:tw-outline-none"
-                                data-testid={`edit-service-${service.name}`}
-                                onClick={() => handleEdit(service)}>
-                                <SVGIcons
-                                  alt="edit"
-                                  icon="icon-edit"
-                                  title="Edit"
-                                  width="12px"
-                                />
-                              </button>
-                            </NonAdminAction>
                             <NonAdminAction
                               position="top"
                               title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -653,12 +626,16 @@ const ServicesPage = () => {
                       }`}
                     </p>
                     <p className="tw-text-lg tw-text-center">
-                      <button
-                        className="link-text tw-underline"
-                        data-testid="add-service-button"
-                        onClick={handleAddService}>
-                        Click here
-                      </button>{' '}
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className="link-text tw-underline"
+                          data-testid="add-service-button"
+                          onClick={handleAddService}>
+                          Click here
+                        </button>
+                      </NonAdminAction>{' '}
                       to add new {servicesDisplayName[serviceName]}
                     </p>
                   </div>

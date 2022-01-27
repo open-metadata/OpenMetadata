@@ -18,9 +18,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import boto3
 import click
-from boto3.exceptions import S3UploadFailedError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -61,6 +59,16 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
     :param file: file to upload
     """
 
+    try:
+        import boto3
+        from boto3.exceptions import S3UploadFailedError
+    except ModuleNotFoundError as err:
+        logger.error(
+            "Trying to import boto3 to run the backup upload."
+            + " Please install openmetadata-ingestion[backup]."
+        )
+        raise err
+
     s3_key = Path(key) / file.name
     click.secho(
         f"Uploading {file} to {endpoint}/{bucket}/{str(s3_key)}...",
@@ -69,7 +77,7 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
 
     try:
         resource = boto3.resource(service_name="s3", endpoint_url=endpoint)
-        resource.Object(bucket, str(s3_key)).upload_file(file.absolute().name)
+        resource.Object(bucket, str(s3_key)).upload_file(str(file.absolute()))
 
     except ValueError as err:
         logger.error("Revisit the values of --upload")
@@ -116,7 +124,7 @@ def run_backup(
     mysqldump_root = f"mysqldump -h {host} -u {user} -p{password}"
     port_opt = f"-P {port}" if port else ""
 
-    command = " ".join([mysqldump_root, port_opt, *options, database, f"> {out.name}"])
+    command = " ".join([mysqldump_root, port_opt, *options, database, f"> {out}"])
 
     res = subprocess.run(command, shell=True)
     if res.returncode != 0:

@@ -36,17 +36,9 @@ jobs:
       - name: Install Ubuntu related dependencies
         run: |
           sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
-      - name: Generate models
-        working-directory: ingestion-core
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          make generate
-      - name: Publish Test PyPi packages
-        working-directory: ingestion-core
+      - name: Install, Generate and Publish Test PyPi packages
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
-          source env/bin/activate
-          make publish
+          make core_publish

@@ -14,6 +14,7 @@
       "enum": [
         "entityCreated",
         "entityUpdated",
+        "entitySoftDeleted",
         "entityDeleted"
       ]
     },

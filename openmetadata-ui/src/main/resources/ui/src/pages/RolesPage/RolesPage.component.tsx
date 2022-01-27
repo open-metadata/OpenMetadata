@@ -18,6 +18,7 @@ import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
+import AppState from '../../AppState';
 import {
   createRole,
   getPolicy,
@@ -156,6 +157,7 @@ const RolesPage = () => {
         const { data } = res.data;
         setRoles(data);
         setCurrentRole(data[0]);
+        AppState.updateUserRole(data);
       })
       .catch(() => {
         setError('Error while getting roles');

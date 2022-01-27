@@ -100,8 +100,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
-    return new DatabaseServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, Operation operation) {
+    return new DatabaseServiceUpdater(original, updated, operation);
   }
 
   public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
@@ -215,8 +215,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   public class DatabaseServiceUpdater extends EntityUpdater {
-    public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

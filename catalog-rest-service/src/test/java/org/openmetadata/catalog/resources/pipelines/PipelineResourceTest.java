@@ -30,14 +30,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -149,7 +147,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     if (expected == null && actual == null) {
       return;
     }
-    if (fieldName.contains("tasks")) {
+    if (fieldName.contains("tasks") && !fieldName.contains(".")) {
       List<Task> expectedTasks = (List<Task>) expected;
       List<Task> actualTasks = JsonUtils.readObjects(actual.toString(), Task.class);
       assertEquals(expectedTasks, actualTasks);
@@ -246,7 +244,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
+  void put_PipelineTasksUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null);
     Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -254,8 +252,87 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
-    updateAndCheckEntity(
-        request.withDescription("newDescription").withTasks(TASKS), OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    pipeline =
+        updateAndCheckEntity(
+            request.withDescription("newDescription").withTasks(TASKS), OK, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    // Add a task without description
+    change = getChangeDescription(pipeline.getVersion());
+    List<Task> tasks = new ArrayList<>();
+    Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl(new URI("http://localhost:0"));
+    tasks.add(taskEmptyDesc);
+    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
+    updateAndCheckEntity(request.withTasks(tasks), OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  void patch_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException, URISyntaxException {
+    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE);
+    Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
+
+    String origJson = JsonUtils.pojoToJson(pipeline);
+    // Add a task without description
+    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    List<Task> tasks = new ArrayList<>();
+    Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl(new URI("http://localhost:0"));
+    tasks.add(taskEmptyDesc);
+    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    pipeline.setDescription("newDescription");
+    pipeline.setTasks(tasks);
+    pipeline = patchEntityAndCheck(pipeline, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    // add a description to an existing task
+    origJson = JsonUtils.pojoToJson(pipeline);
+    change = getChangeDescription(pipeline.getVersion());
+    List<Task> newTasks = new ArrayList<>();
+    Task taskWithDesc = taskEmptyDesc.withDescription("taskDescription");
+    newTasks.add(taskWithDesc);
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("tasks.taskEmpty.description").withNewValue("taskDescription"));
+    pipeline.setTasks(newTasks);
+    pipeline = patchEntityAndCheck(pipeline, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    // update the descriptions of pipeline and task
+    origJson = JsonUtils.pojoToJson(pipeline);
+    change = getChangeDescription(pipeline.getVersion());
+    newTasks = new ArrayList<>();
+    taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
+    newTasks.add(taskWithDesc);
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange()
+                .withName("tasks.taskEmpty.description")
+                .withOldValue("taskDescription")
+                .withNewValue("newTaskDescription"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("description").withOldValue("newDescription").withNewValue("newDescription2"));
+    pipeline.setTasks(newTasks);
+    pipeline.setDescription("newDescription2");
+    pipeline = patchEntityAndCheck(pipeline, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    // delete task and pipeline description by setting them to null
+    origJson = JsonUtils.pojoToJson(pipeline);
+    change = getChangeDescription(pipeline.getVersion());
+    newTasks = new ArrayList<>();
+    Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
+    newTasks.add(taskWithoutDesc);
+    change
+        .getFieldsDeleted()
+        .add(
+            new FieldChange()
+                .withName("tasks.taskEmpty.description")
+                .withOldValue("newTaskDescription")
+                .withNewValue(null));
+    change
+        .getFieldsDeleted()
+        .add(new FieldChange().withName("description").withOldValue("newDescription2").withNewValue(null));
+    pipeline.setTasks(newTasks);
+    pipeline.setDescription(null);
+    patchEntityAndCheck(pipeline, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -300,33 +377,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
-    Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    deleteEntity(pipeline.getId(), adminAuthHeaders());
-  }
-
-  @Test
   void delete_nonEmptyPipeline_4xx() {
     // TODO
-  }
-
-  @Test
-  void delete_put_Pipeline_200(TestInfo test) throws IOException {
-    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    Pipeline pipeline = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteEntity(pipeline.getId(), adminAuthHeaders());
-
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   public static Pipeline updatePipeline(CreatePipeline create, Status status, Map<String, String> authHeaders)
@@ -378,7 +430,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     return create(getEntityName(test));
   }
 
-  private CreatePipeline create(String entityName) {
-    return new CreatePipeline().withName(entityName).withService(AIRFLOW_REFERENCE);
+  private CreatePipeline create(String name) {
+    return new CreatePipeline().withName(name).withService(AIRFLOW_REFERENCE);
   }
 }

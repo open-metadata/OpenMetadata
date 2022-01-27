@@ -59,7 +59,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -933,13 +932,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  void get_deletedTableWithDeleteLocation(TestInfo test) throws HttpResponseException {
+  void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
     Object create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     // Create first time using POST
     Table table = beforeDeletion(test, createEntity(create, adminAuthHeaders()));
     Table tableBeforeDeletion = getEntity(table.getId(), null, TableResource.FIELDS, adminAuthHeaders());
     // delete both
-    deleteEntity(tableBeforeDeletion.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(table, adminAuthHeaders());
     new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), adminAuthHeaders());
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", "deleted");
@@ -1049,40 +1048,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     tableList1 = listEntities(queryParams, adminAuthHeaders());
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields1);
-  }
-
-  @Test
-  void delete_table_200_ok(TestInfo test) throws HttpResponseException {
-    Table table = createEntity(create(test), adminAuthHeaders());
-    deleteEntity(table.getId(), adminAuthHeaders());
-  }
-
-  @Test
-  void delete_put_Table_200(TestInfo test) throws IOException {
-    CreateTable request = create(test).withDatabase(DATABASE.getId()).withDescription("");
-    Table table = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteEntity(table.getId(), adminAuthHeaders());
-
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_table_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    Table table = createEntity(create(test), adminAuthHeaders());
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> deleteEntity(table.getId(), authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   /**
@@ -1249,7 +1214,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
         new CreateLocation().withName(getLocationName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
     Location location = createLocation(create, adminAuthHeaders());
     addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
-    deleteEntity(table.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(table, adminAuthHeaders());
     Map<String, String> queryParams =
         new HashMap<>() {
           {
@@ -1392,11 +1357,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     return create(getEntityName(test, index));
   }
 
-  public CreateTable create(String entityName) {
+  public CreateTable create(String name) {
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
-        .withName(entityName)
+        .withName(name)
         .withDatabase(DATABASE.getId())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint));

@@ -218,6 +218,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
@@ -233,16 +237,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       addLineage(edge)
         .then(() => {
-          getLineageByFQN(tableFQN, EntityType.TABLE)
-            .then((res: AxiosResponse) => {
-              setEntityLineage(res.data);
-            })
-            .catch(() => {
-              showToast({
-                variant: 'error',
-                body: `Error while getting entity lineage`,
-              });
-            });
           resolve();
         })
         .catch(() => {
@@ -256,25 +250,17 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
-      .then(() => {
-        getLineageByFQN(tableFQN, EntityType.TABLE)
-          .then((res: AxiosResponse) => {
-            setEntityLineage(res.data);
-          })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: `Error while getting entity lineage`,
-            });
-          });
-      })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: `Error while removing edge`,
-        });
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch(() => {
+      showToast({
+        variant: 'error',
+        body: `Error while removing edge`,
       });
+    });
   };
 
   const getLineageData = () => {
@@ -400,6 +386,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
+          entityLineageHandler={entityLineageHandler}
           entityName={name}
           followTableHandler={followTable}
           followers={followers}

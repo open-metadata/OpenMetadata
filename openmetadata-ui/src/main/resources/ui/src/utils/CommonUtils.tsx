@@ -130,6 +130,14 @@ export const getUserTeams = (): Array<UserTeams> => {
   return retVal || [];
 };
 
+export const hasEditAccess = (type: string, id: string) => {
+  if (type === 'user') {
+    return id === getCurrentUserId();
+  } else {
+    return getUserTeams().some((team) => team.id === id);
+  }
+};
+
 export const getTabClasses = (
   tab: number | string,
   activeTab: number | string
@@ -294,6 +302,23 @@ export const errorMsg = (value: string) => {
         {value}
       </strong>
     </div>
+  );
+};
+
+export const requiredField = (label: string, excludeSpace = false) => (
+  <>
+    {label}{' '}
+    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+  </>
+);
+
+export const getSeparator = (title: string | JSX.Element) => {
+  return (
+    <span className="tw-flex tw-py-2 tw-text-grey-muted">
+      <hr className="tw-mt-2.5 tw-w-full" />
+      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
+      <hr className="tw-mt-2.5 tw-w-full" />
+    </span>
   );
 };
 

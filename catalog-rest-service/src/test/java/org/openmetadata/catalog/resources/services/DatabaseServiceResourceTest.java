@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
@@ -29,7 +28,6 @@ import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -204,43 +202,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
-  @Test
-  void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createEntity(create(test), authHeaders);
-    deleteEntity(databaseService.getId(), authHeaders);
-  }
-
-  @Test
-  void delete_put_DatabaseService_200(TestInfo test) throws IOException {
-    CreateDatabaseService request = create(test).withDescription("");
-    DatabaseService databaseService = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteEntity(databaseService.getId(), adminAuthHeaders());
-
-    ChangeDescription change = getChangeDescription(databaseService.getVersion());
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_as_user_401(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createEntity(create(test), authHeaders);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteEntity(databaseService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
   public CreateDatabaseService create(TestInfo test) {
     return create(getEntityName(test));
   }
@@ -249,9 +210,9 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     return create(getEntityName(test, index));
   }
 
-  private CreateDatabaseService create(String entityName) {
+  private CreateDatabaseService create(String name) {
     return new CreateDatabaseService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
         .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
   }

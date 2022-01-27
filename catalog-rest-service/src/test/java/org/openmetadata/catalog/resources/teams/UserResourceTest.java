@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.RoleResourceTest.createRole;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -321,17 +320,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  void patch_userDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure user deleted attributed can't be changed using patch
-    User user = createUser(create(test), adminAuthHeaders());
-    String userJson = JsonUtils.pojoToJson(user);
-    user.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "deactivated"));
-  }
-
-  @Test
   void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createUser(create(test), adminAuthHeaders());
@@ -445,16 +433,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  void delete_validUser_as_non_admin_401(TestInfo test) throws HttpResponseException {
-    CreateUser create = create(test).withName("test3").withEmail("test3@email.com");
-    User user = createUser(create, authHeaders("test3"));
-
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteEntity(user.getId(), authHeaders("test3@email.com")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
-  }
-
-  @Test
   void delete_validUser_as_admin_200(TestInfo test) throws IOException {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team = createTeam(teamResourceTest.create(test), adminAuthHeaders());
@@ -469,7 +447,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
     // Delete user
-    deleteEntity(user.getId(), adminAuthHeaders());
+    deleteAndCheckEntity(user, adminAuthHeaders());
 
     // Make sure the user is no longer following the table
     team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
@@ -506,11 +484,11 @@ public class UserResourceTest extends EntityResourceTest<User> {
     return create(getEntityName(test, index));
   }
 
-  public static CreateUser create(String entityName) {
+  public static CreateUser create(String name) {
     // user part of the email should be less than 64 in length
-    String emailUser = entityName == null || entityName.isEmpty() ? UUID.randomUUID().toString() : entityName;
+    String emailUser = name == null || name.isEmpty() ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
-    return new CreateUser().withName(entityName).withEmail(emailUser + "@open-metadata.org");
+    return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org");
   }
 
   public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {
