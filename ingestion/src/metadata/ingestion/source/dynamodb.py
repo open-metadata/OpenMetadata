@@ -26,11 +26,12 @@ logger: logging.Logger = logging.getLogger(__name__)
 class DynamoDBSourceConfig(AWSClientConfigModel):
     service_type = "DynamoDB"
     service_name: str
-    endpoint: str
+    endpoint_url: str
+    host_port: str = ""
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
-    
+
 
 class DynamodbSource(Source[Entity]):
     def __init__(
@@ -44,7 +45,6 @@ class DynamodbSource(Source[Entity]):
             config, metadata_config, self.config.service_name
         )
         self.dynamodb = AWSClient(self.config).get_client("dynamodb")
-        
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -55,30 +55,29 @@ class DynamodbSource(Source[Entity]):
     def prepare(self):
         pass
 
-    
     def next_record(self) -> Iterable[Entity]:
         try:
-            table_list = self.dynamodb.tables.all() 
+            table_list = self.dynamodb.tables.all()
             if not table_list:
                 return
             yield from self.ingest_tables()
         except Exception as err:
-            logger.error(traceback.format_exc())
-            logger.error(traceback.print_exc())
-            logger.error(err)
-        
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            logger.debug(err)
+
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
         try:
             tables = self.dynamodb.tables.all()
             for table in tables:
                 database_entity = Database(
-                    name="DynamoDB",
+                    name="DynamoDBTest",
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
                 fqn = f"{self.config.service_name}.{self.database_name}.{table.name}"
                 self.dataset_name = fqn
                 table_columns = table.attribute_definitions
-                
+
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table.name[:128],
@@ -92,10 +91,9 @@ class DynamodbSource(Source[Entity]):
                 )
                 yield table_and_db
         except Exception as err:
-            logger.error(traceback.format_exc())
-            logger.error(traceback.print_exc())
-            logger.error(err)
-
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            logger.debug(err)
 
     def close(self):
         pass
