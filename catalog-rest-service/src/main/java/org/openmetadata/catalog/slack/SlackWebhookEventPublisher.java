@@ -124,6 +124,10 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
           String followers = parseFollowers((List<EntityReference>) fieldChange.getNewValue());
           String entityUrl = getEntityUrl(event);
           attachment.setText(followers + " started following " + entityUrl);
+        } else if (fieldChange.getName().contains("description")) {
+          title.append("Added description to ");
+          title.append(fieldChange.getName());
+          attachment.setText((String) fieldChange.getNewValue());
         }
         attachment.setTitle(title.toString());
         attachments.add(attachment);
@@ -146,7 +150,8 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
           if (fieldChange.getName().equals("owner")) {
             attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
           } else {
-            attachment.setText((String) fieldChange.getNewValue());
+            String updatedStr = fieldChange.getOldValue() + " to " + fieldChange.getNewValue();
+            attachment.setText(updatedStr);
           }
           attachments.add(attachment);
         }
