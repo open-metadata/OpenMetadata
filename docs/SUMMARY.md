@@ -98,6 +98,7 @@
 
 * [Run OpenMetadata](install/run-openmetadata.md)
 * [Run in Production](install/run-in-production.md)
+* [Backup Metadata](install/backup-metadata.md)
 * [Upgrade OpenMetadata](install/upgrade-openmetadata.md)
 * [Run in Kubernetes](install/run-in-kubernetes.md)
 * [Server Configuration](install/configuration.md)
