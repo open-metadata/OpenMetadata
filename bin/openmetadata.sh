@@ -113,7 +113,7 @@ function validateDbMigrations {
   TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
 
   # TableInitializer exits with 1 for Flyway Exception
-  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --validate
+  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --validate 2>>"${ERR_FILE}" 1>>"${OUT_FILE}"
   validation=$?
 
   if [ $validation -eq 1 ]; then
