@@ -17,12 +17,11 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -41,7 +40,7 @@ import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
-public class StorageServiceResourceTest extends EntityResourceTest<StorageService> {
+public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
   public StorageServiceResourceTest() {
     super(
         Entity.STORAGE_SERVICE,
@@ -59,77 +58,60 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   @Test
   void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create storage service with different optional fields
-    Map<String, String> authHeaders = adminAuthHeaders();
-    createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
-    createAndCheckEntity(create(test, 2).withDescription("description"), authHeaders);
+    Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
+    createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
+    createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
   }
 
   @Test
   void post_validService_as_non_admin_401(TestInfo test) {
     // Create storage service with different optional fields
-    Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
-
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
+            () -> createAndCheckEntity(createRequest(test, 1).withDescription(null), TEST_AUTH_HEADERS));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   void put_updateStorageService_as_admin_2xx(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withDescription(null), adminAuthHeaders());
+    createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // TODO add more tests for different fields
   }
 
   @Test
   void put_update_as_non_admin_401(TestInfo test) throws IOException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    createAndCheckEntity(create(test).withDescription(null), authHeaders);
+    createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update storage description and ingestion service that are null
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () ->
-                updateAndCheckEntity(
-                    create(test), OK, authHeaders("test@open-metadata.org"), UpdateType.NO_CHANGE, null));
+            () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
     TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
   }
 
-  private CreateStorageService create(TestInfo test) {
-    return create(getEntityName(test));
-  }
-
-  private CreateStorageService create(TestInfo test, int index) {
-    return create(getEntityName(test, index));
-  }
-
-  private CreateStorageService create(String name) {
-    return new CreateStorageService().withName(name).withServiceType(StorageServiceType.S3);
+  @Override
+  public CreateStorageService createRequest(
+      String name, String description, String displayName, EntityReference owner) {
+    return new CreateStorageService()
+        .withName(name)
+        .withServiceType(StorageServiceType.S3)
+        .withDescription(description);
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description);
-  }
-
-  @Override
-  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
-    return null; // No container entity
-  }
-
-  @Override
-  public void validateCreatedEntity(StorageService service, Object request, Map<String, String> authHeaders) {
-    CreateStorageService createRequest = (CreateStorageService) request;
+  public void validateCreatedEntity(
+      StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
         getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders), null);
     assertEquals(createRequest.getName(), service.getName());
   }
 
   @Override
-  public void validateUpdatedEntity(StorageService service, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(
+      StorageService service, CreateStorageService request, Map<String, String> authHeaders) {
     validateCreatedEntity(service, request, authHeaders);
   }
 
@@ -146,11 +128,10 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   @Override
   public void validateGetWithDifferentFields(StorageService service, boolean byName) throws HttpResponseException {
     // No fields support
-    String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
-            : getEntity(service.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(service.getName(), "", ADMIN_AUTH_HEADERS)
+            : getEntity(service.getId(), "", ADMIN_AUTH_HEADERS);
     TestUtils.assertListNotNull(
         service.getHref(),
         service.getVersion(),

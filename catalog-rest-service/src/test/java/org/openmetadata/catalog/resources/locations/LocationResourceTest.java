@@ -18,8 +18,8 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
@@ -50,7 +50,7 @@ import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
-public class LocationResourceTest extends EntityResourceTest<Location> {
+public class LocationResourceTest extends EntityResourceTest<Location, CreateLocation> {
   public LocationResourceTest() {
     super(
         Entity.LOCATION,
@@ -70,20 +70,22 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withOwner(owner);
+  public CreateLocation createRequest(String name, String description, String displayName, EntityReference owner) {
+    return new CreateLocation()
+        .withName(name)
+        .withService(AWS_STORAGE_SERVICE_REFERENCE)
+        .withDescription(description)
+        .withOwner(owner);
   }
 
   @Override
-  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
-    CreateLocation createLocation = (CreateLocation) createRequest;
-    return createLocation.getService();
+  public EntityReference getContainer(CreateLocation createRequest) {
+    return createRequest.getService();
   }
 
   @Override
-  public void validateCreatedEntity(Location location, Object request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(Location location, CreateLocation createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    CreateLocation createRequest = (CreateLocation) request;
     validateCommonEntityFields(
         getEntityInterface(location),
         createRequest.getDescription(),
@@ -101,7 +103,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   }
 
   @Override
-  public void validateUpdatedEntity(Location location, Object request, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(Location location, CreateLocation request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(location, request, authHeaders);
   }
@@ -146,7 +148,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
                   try {
                     CreateLocation create =
                         new CreateLocation().withName(subtotal + element).withService(AWS_STORAGE_SERVICE_REFERENCE);
-                    createLocation(create, adminAuthHeaders());
+                    createEntity(create, ADMIN_AUTH_HEADERS);
                   } catch (HttpResponseException e) {
                     throw new RuntimeException(e);
                   }
@@ -161,35 +163,35 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
             1000000,
             null,
             null,
-            adminAuthHeaders());
+            ADMIN_AUTH_HEADERS);
     assertEquals(5, allLocations.getData().size(), "Wrong number of prefix locations");
   }
 
   @Test
   void post_validLocations_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
-    CreateLocation create = create(test);
-    createAndCheckEntity(create, adminAuthHeaders());
+    CreateLocation create = createRequest(test);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    create.withName(getLocationName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, adminAuthHeaders());
+    create.withName(getEntityName(test, 1)).withDescription("description");
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_locationWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_locationWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1), ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_location_as_non_admin_401(TestInfo test) {
-    CreateLocation create = create(test);
+    CreateLocation create = createRequest(test);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createLocation(create, authHeaders("test@open-metadata.org")));
+        assertThrows(HttpResponseException.class, () -> createEntity(create, TEST_AUTH_HEADERS));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -197,13 +199,13 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
   void post_locationWithoutRequiredFields_4xx(TestInfo test) {
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> createLocation(create(test).withName(null), adminAuthHeaders()));
+            HttpResponseException.class, () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[name must not be null]");
 
     // Service is required field
     exception =
         assertThrows(
-            HttpResponseException.class, () -> createLocation(create(test).withService(null), adminAuthHeaders()));
+            HttpResponseException.class, () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[service must not be null]");
   }
 
@@ -213,7 +215,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
     // Create location for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
+      createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List locations by filtering on service name and ensure right locations are returned
       Map<String, String> queryParams =
@@ -222,7 +224,7 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
               put("service", service.getName());
             }
           };
-      ResultList<Location> list = listEntities(queryParams, adminAuthHeaders());
+      ResultList<Location> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Location location : list.getData()) {
         assertEquals(service.getName(), location.getService().getName());
       }
@@ -231,22 +233,18 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
 
   @Test
   void put_locationNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
-    CreateLocation request = create(test).withService(AWS_STORAGE_SERVICE_REFERENCE).withDescription("description");
-    createAndCheckEntity(request, adminAuthHeaders());
+    CreateLocation request =
+        createRequest(test).withService(AWS_STORAGE_SERVICE_REFERENCE).withDescription("description");
+    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Updating description is ignored when backend already has description
-    Location location = updateLocation(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    Location location = updateLocation(request.withDescription("newDescription"), OK, ADMIN_AUTH_HEADERS);
     assertEquals("description", location.getDescription());
   }
 
   public static Location updateLocation(CreateLocation create, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getResource("locations"), create, Location.class, status, authHeaders);
-  }
-
-  public static Location createLocation(CreateLocation create, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    return TestUtils.post(getResource("locations"), create, Location.class, authHeaders);
   }
 
   /** Validate returned fields GET .../locations/{id}?fields="..." or GET .../locations/name/{fqn}?fields="..." */
@@ -256,8 +254,8 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     String fields = "owner";
     location =
         byName
-            ? getEntityByName(location.getFullyQualifiedName(), null, fields, adminAuthHeaders())
-            : getEntity(location.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(location.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(location.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(location.getOwner(), location.getService(), location.getServiceType());
     // TODO add other fields
   }
@@ -272,25 +270,5 @@ public class LocationResourceTest extends EntityResourceTest<Location> {
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
     return TestUtils.get(target, LocationList.class, authHeaders);
-  }
-
-  public static String getLocationName(TestInfo test) {
-    return String.format("location_%s", test.getDisplayName());
-  }
-
-  public static String getLocationName(TestInfo test, int index) {
-    return String.format("location%d_%s", index, test.getDisplayName());
-  }
-
-  private CreateLocation create(TestInfo test) {
-    return new CreateLocation().withName(getEntityName(test)).withService(AWS_STORAGE_SERVICE_REFERENCE);
-  }
-
-  private CreateLocation create(String name) {
-    return create(name, AWS_STORAGE_SERVICE_REFERENCE);
-  }
-
-  public static CreateLocation create(String name, EntityReference storageServiceReference) {
-    return new CreateLocation().withName(name).withService(storageServiceReference);
   }
 }

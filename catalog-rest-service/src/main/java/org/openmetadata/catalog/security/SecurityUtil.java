@@ -13,8 +13,9 @@
 
 package org.openmetadata.catalog.security;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 import java.security.Principal;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.json.JsonPatch;
@@ -96,12 +97,8 @@ public final class SecurityUtil {
     }
   }
 
-  public static String getUserName(String principalName) {
-    return principalName == null ? null : principalName.split("[/@]")[0];
-  }
-
   public static String getUserName(AuthenticationContext context) {
-    return context.getPrincipal() == null ? null : context.getPrincipal().getName();
+    return context.getPrincipal() == null ? null : context.getPrincipal().getName().split("[/@]")[0];
   }
 
   private static AuthenticationContext getAuthenticationContext(Principal principal) {
@@ -111,11 +108,11 @@ public final class SecurityUtil {
   }
 
   public static Map<String, String> authHeaders(String username) {
-    Map<String, String> headers = new HashMap<>();
+    Builder<String, String> builder = ImmutableMap.builder();
     if (username != null) {
-      headers.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
+      builder.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
     }
-    return headers;
+    return builder.build();
   }
 
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {
