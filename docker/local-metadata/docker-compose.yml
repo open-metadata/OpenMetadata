@@ -50,6 +50,9 @@ services:
       context: ../../.
       dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
+    environment:
+      ELASTICSEARCH_HOST: elasticsearch
+      AIRFLOW_HOST: ingestion
     expose:
       - 8585
       - 9200

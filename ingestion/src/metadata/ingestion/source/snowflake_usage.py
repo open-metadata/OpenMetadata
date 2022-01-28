@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Snowflake usage module
+"""
 
 from typing import Any, Dict, Iterable, Iterator, Union
 
@@ -26,7 +29,33 @@ from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
 class SnowflakeUsageSource(Source[TableQuery]):
-    # SELECT statement from mysql information_schema to extract table and column metadata
+    """
+    Snowflake Usage source
+
+    Args:
+        config:
+        metadata_config:
+        ctx:
+
+    Attributes:
+        config:
+        analysis_date:
+        sql_stmt:
+        alchemy_helper:
+        _extract_iter:
+        _database:
+        report:
+        SQL_STATEMENT (str):
+        WHERE_CLAUSE_SUFFIX_KEY (str):
+        CLUSTER_SOURCE (str):
+        USE_CATALOG_AS_CLUSTER_NAME (str):
+        DATABASE_KEY (str):
+        SERVICE_TYPE (str):
+        DEFAULT_CLUSTER_SOURCE (str):
+    """
+
+    # SELECT statement from mysql information_schema
+    # to extract table and column metadata
     SQL_STATEMENT = SNOWFLAKE_SQL_STATEMENT
 
     # CONFIG KEYS
@@ -73,17 +102,18 @@ class SnowflakeUsageSource(Source[TableQuery]):
 
     def next_record(self) -> Iterable[TableQuery]:
         """
-        Using itertools.groupby and raw level iterator, it groups to table and yields TableMetadata
+        Using itertools.groupby and raw level iterator,
+        it groups to table and yields TableMetadata
         :return:
         """
         for row in self._get_raw_extract_iter():
-            tq = TableQuery(
+            table_query = TableQuery(
                 query=row["query_type"],
                 user_name=row["user_name"],
                 starttime=str(row["start_time"]),
                 endtime=str(row["end_time"]),
                 analysis_date=self.analysis_date,
-                aborted=True if "1969" in str(row["end_time"]) else False,
+                aborted="1969" in str(row["end_time"]),
                 database=row["database_name"],
                 sql=row["query_text"],
                 service_name=self.config.service_name,
@@ -92,9 +122,14 @@ class SnowflakeUsageSource(Source[TableQuery]):
                 self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
             else:
                 self.report.scanned(f"{row['database_name']}")
-            yield tq
+            yield table_query
 
     def get_report(self):
+        """
+        get report
+
+        Returns:
+        """
         return self.report
 
     def close(self):

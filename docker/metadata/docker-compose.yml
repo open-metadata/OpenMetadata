@@ -41,6 +41,9 @@ services:
     container_name: openmetadata_server
     restart: always
     image: openmetadata/server:0.8.0
+    environment:
+      ELASTICSEARCH_HOST: elasticsearch
+      AIRFLOW_HOST: ingestion
     expose:
       - 8585
       - 9200

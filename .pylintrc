@@ -22,3 +22,6 @@ disable=no-name-in-module
 
 [TYPECHECK]
 ignored-classes=optparse.Values,thread._local,_thread._local,SQLAlchemyHelper,FieldInfo
+
+[FORMAT]
+max-line-length=88

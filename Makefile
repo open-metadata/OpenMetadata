@@ -31,10 +31,9 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 	@echo "Make sure to first run install_test first"
 	pre-commit install
 
-## Python Checkstyle
 .PHONY: lint
-lint:  ## Run pylint on the Python sources to analyze the codebase
-	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
+lint: ## Run pylint on the Python sources to analyze the codebase
+	find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase

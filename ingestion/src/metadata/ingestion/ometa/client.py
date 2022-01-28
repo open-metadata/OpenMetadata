@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 class RetryException(Exception):
-    pass
+    """
+    API Client retry exception
+    """
 
 
 class APIError(Exception):
@@ -41,10 +43,19 @@ class APIError(Exception):
 
     @property
     def code(self):
+        """
+        Return error code
+        """
         return self._error["code"]
 
     @property
     def status_code(self):
+        """
+        Return response status code
+
+        Returns:
+             int
+        """
         http_error = self._http_error
         if http_error is not None and hasattr(http_error, "response"):
             return http_error.response.status_code
@@ -53,6 +64,9 @@ class APIError(Exception):
 
     @property
     def request(self):
+        """
+        Handle requests error
+        """
         if self._http_error is not None:
             return self._http_error.request
 
@@ -60,6 +74,10 @@ class APIError(Exception):
 
     @property
     def response(self):
+        """
+        Handle response error
+        :return:
+        """
         if self._http_error is not None:
             return self._http_error.response
 
@@ -83,6 +101,7 @@ class ClientConfig(ConfigModel):
     allow_redirects: Optional[bool] = False
 
 
+# pylint: disable=too-many-instance-attributes
 class REST:
     """
     REST client wrapper to manage requests with
@@ -100,6 +119,7 @@ class REST:
         self._retry_codes = self.config.retry_codes
         self._auth_token = self.config.auth_token
 
+    # pylint: disable=too-many-arguments
     def _request(
         self, method, path, data=None, base_url: URL = None, api_version: str = None
     ):
@@ -126,14 +146,16 @@ class REST:
         retry = total_retries
         while retry >= 0:
             try:
-                logger.debug("URL {}, method {}".format(url, method))
-                logger.debug("Data {}".format(opts))
+                logger.debug("URL %s, method %s", url, method)
+                logger.debug("Data %s", opts)
                 return self._one_request(method, url, opts, retry)
             except RetryException:
                 retry_wait = self._retry_wait * (total_retries - retry + 1)
                 logger.warning(
-                    "sleep {} seconds and retrying {} "
-                    "{} more time(s)...".format(retry_wait, url, retry)
+                    "sleep %s seconds and retrying %s " "%s more time(s)...",
+                    retry_wait,
+                    url,
+                    retry,
                 )
                 time.sleep(retry_wait)
                 retry -= 1
@@ -152,11 +174,11 @@ class REST:
         except HTTPError as http_error:
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
-                raise RetryException()
+                raise RetryException() from http_error
             if "code" in resp.text:
                 error = resp.json()
                 if "code" in error:
-                    raise APIError(error, http_error)
+                    raise APIError(error, http_error) from http_error
             else:
                 raise
         if resp.text != "":
@@ -164,24 +186,77 @@ class REST:
         return None
 
     def get(self, path, data=None):
+        """
+        GET method
+
+        Parameters:
+            path (str):
+            data ():
+
+        Returns:
+            Response
+        """
         return self._request("GET", path, data)
 
     def post(self, path, data=None):
+        """
+        POST method
+
+        Parameters:
+            path (str):
+            data ():
+
+        Returns:
+            Response
+        """
         return self._request("POST", path, data)
 
     def put(self, path, data=None):
+        """
+        PUT method
+
+        Parameters:
+            path (str):
+            data ():
+
+        Returns:
+            Response
+        """
         return self._request("PUT", path, data)
 
     def patch(self, path, data=None):
+        """
+        PATCH method
+
+        Parameters:
+            path (str):
+            data ():
+
+        Returns:
+            Response
+        """
         return self._request("PATCH", path, data)
 
     def delete(self, path, data=None):
+        """
+        DELETE method
+
+        Parameters:
+            path (str):
+            data ():
+
+        Returns:
+            Response
+        """
         return self._request("DELETE", path, data)
 
     def __enter__(self):
         return self
 
     def close(self):
+        """
+        Close requests session
+        """
         self._session.close()
 
     def __exit__(self, exc_type, exc_val, exc_tb):

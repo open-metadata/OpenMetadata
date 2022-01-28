@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""ml flow source module"""
 
 import ast
 import logging
@@ -41,26 +42,26 @@ class MlFlowStatus(SourceStatus):
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
-    def scanned(self, model_name: str) -> None:
+    def scanned(self, record: str) -> None:
         """
         Log successful ML Model scans
         """
-        self.success.append(model_name)
-        logger.info(f"ML Model scanned: {model_name}")
+        self.success.append(record)
+        logger.info("ML Model scanned: %s", record)
 
     def failed(self, model_name: str, reason: str) -> None:
         """
         Log failed ML Model scans
         """
         self.failures.append(model_name)
-        logger.error(f"ML Model failed: {model_name} - {reason}")
+        logger.error("ML Model failed: %s - %s", model_name, reason)
 
     def warned(self, model_name: str, reason: str) -> None:
         """
         Log Ml Model with warnings
         """
         self.warnings.append(model_name)
-        logger.warning(f"ML Model warning: {model_name} - {reason}")
+        logger.warning("ML Model warning: %s - %s", model_name, reason)
 
 
 class MlFlowConnectionConfig(ConfigModel):
@@ -195,6 +196,7 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
                         for feature in features
                     ]
 
+            # pylint: disable=broad-except)
             except Exception as exc:
                 reason = f"Cannot extract properties from RunData {exc}"
                 logging.warning(reason)
@@ -209,4 +211,3 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
         """
         Don't need to close the client
         """
-        pass
