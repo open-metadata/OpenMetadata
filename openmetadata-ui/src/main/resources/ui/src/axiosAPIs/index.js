@@ -26,7 +26,7 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(function (config) {
   const token = cookieStorage.getItem(oidcTokenKey);
   if (token) {
-    config.headers['X-Catalog-Source'] = token;
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
 
   return config;
