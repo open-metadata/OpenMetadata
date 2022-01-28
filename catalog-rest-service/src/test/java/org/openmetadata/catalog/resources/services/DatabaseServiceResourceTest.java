@@ -13,17 +13,22 @@
 
 package org.openmetadata.catalog.resources.services;
 
+import static java.util.Arrays.asList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
+import io.dropwizard.db.DataSourceFactory;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -35,6 +40,7 @@ import org.openmetadata.catalog.api.operations.pipelines.PipelineConfig;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.operations.pipelines.DatabaseServiceMetadataPipeline;
@@ -51,6 +57,7 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.TablesInitializer;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
@@ -156,8 +163,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         new DatabaseServiceMetadataPipeline()
             .withMarkDeletedTables(true)
             .withIncludeViews(true)
-            .withSchemaFilterPattern(new FilterPattern().withExcludes(Arrays.asList("information_schema.*", "test.*")))
-            .withTableFilterPattern(new FilterPattern().withIncludes(Arrays.asList("sales.*", "users.*")));
+            .withSchemaFilterPattern(new FilterPattern().withExcludes(asList("information_schema.*", "test.*")))
+            .withTableFilterPattern(new FilterPattern().withIncludes(asList("sales.*", "users.*")));
     PipelineConfig pipelineConfig =
         new PipelineConfig()
             .withSchema(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE)
@@ -170,6 +177,52 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     EntityReference expectedPipeline = updatedService.getAirflowPipelines().get(0);
     assertEquals(airflowPipeline.getId(), expectedPipeline.getId());
     assertEquals(airflowPipeline.getFullyQualifiedName(), expectedPipeline.getName());
+  }
+
+  @Test
+  void fernet_createDatabaseService(TestInfo test) throws IOException {
+    Fernet.getInstance().setFernetKey(FERNET_KEY_1);
+
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection()
+            .withDatabase("test")
+            .withHostPort("host:9000")
+            .withPassword("password")
+            .withUsername("username");
+    createAndCheckEntity(createRequest(test, 0).withDatabaseConnection(databaseConnection), ADMIN_AUTH_HEADERS);
+    Fernet.getInstance().setFernetKey(FERNET_KEY_1 + ",old_key_not_to_be_used");
+    createAndCheckEntity(createRequest(test, 1).withDatabaseConnection(databaseConnection), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void fernet_rotateDatabaseService(TestInfo test) throws IOException, GeneralSecurityException, ParseException {
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection()
+            .withDatabase("test")
+            .withHostPort("host:9000")
+            .withPassword("password")
+            .withUsername("username");
+    int i = 0;
+    List<String> keys = asList(null, FERNET_KEY_1, FERNET_KEY_2);
+    List<DatabaseService> services = new ArrayList<>();
+    for (String key : keys) {
+      Fernet.getInstance().setFernetKey(key);
+      services.add(
+          createAndCheckEntity(createRequest(test, i).withDatabaseConnection(databaseConnection), ADMIN_AUTH_HEADERS));
+      i++;
+    }
+    Fernet.getInstance().setFernetKey(FERNET_KEY_2 + "," + FERNET_KEY_1);
+    DataSourceFactory dataSourceFactory = APP.getConfiguration().getDataSourceFactory();
+    TablesInitializer.rotate(dataSourceFactory);
+    for (DatabaseService service : services) {
+      DatabaseService rotated = getEntity(service.getId(), TEST_AUTH_HEADERS);
+      validatePassword(FERNET_KEY_2, databaseConnection.getPassword(), rotated.getDatabaseConnection().getPassword());
+    }
+  }
+
+  private void validatePassword(String fernetKey, String expected, String tokenized) {
+    Fernet fernet = new Fernet(fernetKey);
+    assertEquals(expected, fernet.decrypt(tokenized));
   }
 
   @Override

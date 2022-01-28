@@ -171,6 +171,12 @@ public final class TestUtils {
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
+  public static void post(WebTarget target, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response = SecurityUtil.addHeaders(target, headers).post(null);
+    readResponse(response, expectedStatus.getStatusCode());
+  }
+
   public static <K> void post(WebTarget target, K request, Map<String, String> headers) throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));

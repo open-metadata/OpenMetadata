@@ -60,4 +60,16 @@ public final class CatalogExceptionMessage {
   public static String invalidServiceEntity(String serviceEntity, String entityType) {
     return String.format("Invalid service entity type %s for %s", serviceEntity, entityType);
   }
+
+  public static String fernetKeyNotDefined() {
+    return "The Fernet Key is null";
+  }
+
+  public static String isNotTokenized() {
+    return "The field is not tokenized";
+  }
+
+  public static String isAlreadyTokenized() {
+    return "The field is already tokenized";
+  }
 }

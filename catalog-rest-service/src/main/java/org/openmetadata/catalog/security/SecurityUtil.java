@@ -37,6 +37,15 @@ public final class SecurityUtil {
     }
   }
 
+  public static Boolean isAdminOrBotRole(Authorizer authorizer, SecurityContext securityContext) {
+    try {
+      checkAdminOrBotRole(authorizer, securityContext);
+      return true;
+    } catch (AuthorizationException e) {
+      return false;
+    }
+  }
+
   public static void checkAdminOrBotRole(Authorizer authorizer, SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
