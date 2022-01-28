@@ -14,7 +14,7 @@ from metadata.ingestion.ometa.utils import get_entity_type
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 
 
 class OMetaLineageMixin(Generic[T]):
@@ -35,7 +35,7 @@ class OMetaLineageMixin(Generic[T]):
             self.client.put(self.get_suffix(AddLineage), data=data.json())
         except APIError as err:
             logger.error(
-                f"Error {err.status_code} trying to PUT lineage for {data.json()}"
+                "Error %s trying to PUT lineage for %s", err.status_code, data.json()
             )
             raise err
 

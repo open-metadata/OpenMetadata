@@ -52,4 +52,4 @@ def lineage_callback(context: Dict[str, str]) -> None:
         )
 
     except Exception as exc:  # pylint: disable=broad-except
-        logging.error(f"Lineage Callback exception {exc}")
+        logging.error("Lineage Callback exception %s", exc)

@@ -133,6 +133,7 @@ def get_xlets(
     return None
 
 
+# pylint: disable=too-many-arguments
 def iso_dag_start_date(props: Dict[str, Any]) -> Optional[str]:
     """
     Given a properties dict, return the start_date
@@ -229,6 +230,7 @@ def create_pipeline_entity(
     return client.create_or_update(create_pipeline)
 
 
+# pylint: disable=too-many-arguments,too-many-locals
 def parse_lineage_to_openmetadata(
     config: OpenMetadataLineageConfig,
     context: Dict,

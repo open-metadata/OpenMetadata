@@ -8,8 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import sqlalchemy_pytds  # noqa: F401
+"""MSSQL source module"""
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -17,6 +16,8 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class MssqlConfig(SQLConnectionConfig):
+    """MSSQL config -- extends SQLConnectionConfig class"""
+
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
     service_type = "MSSQL"
@@ -28,17 +29,23 @@ class MssqlConfig(SQLConnectionConfig):
         if self.use_pyodbc:
             self.scheme = "mssql+pyodbc"
             return f"{self.scheme}://{self.uri_string}"
-        elif self.use_pymssql:
+        if self.use_pymssql:
             self.scheme = "mssql+pymssql"
         return super().get_connection_url()
 
 
 class MssqlSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    """MSSQL Source class
+
+    Args:
+        config:
+        metadata_config:
+        ctx
+    """
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
+        """Create class instance"""
         config = MssqlConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)

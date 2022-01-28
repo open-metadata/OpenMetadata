@@ -18,13 +18,29 @@ from dataclasses import dataclass
 from metadata.config.common import ConfigModel
 
 
-@dataclass  # type: ignore[misc]
+@dataclass(init=False)  # type: ignore[misc]
 class AuthenticationProvider(metaclass=ABCMeta):
+    """
+    Interface definition for an Authentification provider
+    """
+
     @classmethod
     @abstractmethod
     def create(cls, config: ConfigModel) -> "AuthenticationProvider":
-        pass
+        """
+        Create authentication
+
+        Arguments:
+            config (ConfigModel): configuration
+        Returns:
+            AuthenticationProvider
+        """
 
     @abstractmethod
     def auth_token(self) -> str:
-        pass
+        """
+        Authentication token
+
+        Returns:
+            str
+        """

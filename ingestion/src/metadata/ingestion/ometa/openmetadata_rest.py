@@ -44,30 +44,50 @@ TableProfiles = List[TableProfile]
 
 
 class TableEntities(BaseModel):
+    """
+    Table entity pydantic model
+    """
+
     tables: List[Table]
     total: int
     after: str = None
 
 
 class TopicEntities(BaseModel):
+    """
+    Topic entity pydantic model
+    """
+
     topics: List[Topic]
     total: int
     after: str = None
 
 
 class DashboardEntities(BaseModel):
+    """
+    Dashboard entity pydantic model
+    """
+
     dashboards: List[Dashboard]
     total: int
     after: str = None
 
 
 class PipelineEntities(BaseModel):
+    """
+    Pipeline entity pydantic model
+    """
+
     pipelines: List[Pipeline]
     total: int
     after: str = None
 
 
 class MetadataServerConfig(ConfigModel):
+    """
+    Metadata Server pydantic config model
+    """
+
     api_endpoint: str
     api_version: str = "v1"
     retry: int = 3
@@ -84,6 +104,16 @@ class MetadataServerConfig(ConfigModel):
 
 
 class NoOpAuthenticationProvider(AuthenticationProvider):
+    """
+    Extends AuthenticationProvider class
+
+    Args:
+        config (MetadataServerConfig):
+
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -96,6 +126,16 @@ class NoOpAuthenticationProvider(AuthenticationProvider):
 
 
 class GoogleAuthenticationProvider(AuthenticationProvider):
+    """
+    Google authentication implementation
+
+    Args:
+        config (MetadataServerConfig):
+
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -142,6 +182,16 @@ class OktaAuthenticationProvider(AuthenticationProvider):
 
 
 class Auth0AuthenticationProvider(AuthenticationProvider):
+    """
+    OAuth authentication implementation
+
+    Args:
+        config (MetadataServerConfig):
+
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -153,7 +203,8 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         conn = http.client.HTTPSConnection(self.config.domain)
         payload = (
             f"grant_type=client_credentials&client_id={self.config.client_id}"
-            f"&client_secret={self.config.secret_key}&audience=https://{self.config.domain}/api/v2/"
+            f"&client_secret={self.config.secret_key}"
+            f"&audience=https://{self.config.domain}/api/v2/"
         )
         headers = {"content-type": "application/x-www-form-urlencoded"}
         conn.request("POST", f"/{self.config.domain}/oauth/token", payload, headers)
