@@ -13,55 +13,75 @@
 OpenMetadata Airflow Lineage Backend
 """
 
-import ast
-import json
-import os
 import traceback
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from airflow.configuration import conf
 from airflow.lineage.backend import LineageBackend
 
 from airflow_provider_openmetadata.lineage.config import (
-    OpenMetadataLineageConfig,
     get_lineage_config,
     get_metadata_config,
 )
 from airflow_provider_openmetadata.lineage.utils import (
-    ALLOWED_FLOW_KEYS,
-    ALLOWED_TASK_KEYS,
-    create_pipeline_entity,
-    get_or_create_pipeline_service,
-    get_properties,
     get_xlets,
-    is_airflow_version_1,
     parse_lineage_to_openmetadata,
 )
-from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
-)
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.pipelineService import (
-    PipelineService,
-    PipelineServiceType,
-)
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import convert_epoch_to_iso
 
 if TYPE_CHECKING:
-    from airflow import DAG
     from airflow.models.baseoperator import BaseOperator
 
 
+allowed_task_keys = [
+    "_downstream_task_ids",
+    "_inlets",
+    "_outlets",
+    "_task_type",
+    "_task_module",
+    "depends_on_past",
+    "email",
+    "label",
+    "execution_timeout",
+    "end_date",
+    "start_date",
+    "sla",
+    "sql",
+    "task_id",
+    "trigger_rule",
+    "wait_for_downstream",
+]
+allowed_flow_keys = [
+    "_access_control",
+    "_concurrency",
+    "_default_view",
+    "catchup",
+    "fileloc",
+    "is_paused_upon_creation",
+    "start_date",
+    "tags",
+    "timezone",
+]
+
+
+# pylint: disable=import-outside-toplevel, unused-import
+def is_airflow_version_1() -> bool:
+    """
+    Manage airflow submodule import based airflow version
+
+    Returns
+        bool
+    """
+    try:
+        from airflow.hooks.base import BaseHook
+
+        return False
+    except ModuleNotFoundError:
+        from airflow.hooks.base_hook import BaseHook
+
+        return True
+
+
+# pylint: disable=too-few-public-methods
 class OpenMetadataLineageBackend(LineageBackend):
     """
     Sends lineage data from tasks to OpenMetadata.
@@ -75,13 +95,21 @@ class OpenMetadataLineageBackend(LineageBackend):
     auth_provider_type = no-auth # use google here if you are
         configuring google as SSO
     secret_key = google-client-secret-key # it needs to be configured
-        only if you are using google as SSO
+        only if you are using google as SSO the one configured in openMetadata
+    openmetadata_api_endpoint = http://localhost:8585
+    auth_provider_type = no-auth # use google here if you are configuring google as SSO
+    secret_key = google-client-secret-key # it needs to be configured
+                 only if you are using google as SSO
     """
 
     def __init__(self) -> None:
+        """
+        Instantiate a superclass object and run lineage config function
+        """
         super().__init__()
         _ = get_lineage_config()
 
+    # pylint: disable=protected-access
     @staticmethod
     def send_lineage(
         operator: "BaseOperator",
@@ -89,6 +117,17 @@ class OpenMetadataLineageBackend(LineageBackend):
         outlets: Optional[List] = None,
         context: Dict = None,
     ) -> None:
+        """
+        Send lineage to OpenMetadata
+
+        Args
+            operator (BaseOperator):
+            inlets (Optional[List]):
+            outlets (Optional[List]):
+            context (Dict):
+        Returns
+            None
+        """
 
         try:
             config = get_lineage_config()

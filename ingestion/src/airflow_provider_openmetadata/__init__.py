@@ -12,10 +12,14 @@
 Airflow backend lineage module
 """
 
-import metadata
-
 
 def get_provider_config():
+    """
+    Get provider configuration
+
+    Returns
+        dict:
+    """
     return {
         "name": "OpenMetadata",
         "description": "OpenMetadata <https://open-metadata.org/>",

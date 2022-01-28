@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Metabase source module"""
 
 import json
 import logging
@@ -37,7 +38,6 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.helpers import get_dashboard_service_or_create
 
@@ -48,6 +48,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class MetabaseSourceConfig(ConfigModel):
+    """Metabase pydantic config model"""
+
     username: str
     password: SecretStr
     host_port: str
@@ -58,10 +60,26 @@ class MetabaseSourceConfig(ConfigModel):
     database_service_name: str = None
 
     def get_connection_url(self):
-        pass
+        """get connection url (not implemented)"""
 
 
 class MetabaseSource(Source[Entity]):
+    """Metabase entity class
+
+    Args:
+        config:
+        metadata_config:
+        ctx:
+    Attributes:
+        config:
+        metadata_config:
+        status:
+        metabase_session:
+        dashboard_service:
+        charts:
+        metric_charts:
+    """
+
     config: MetabaseSourceConfig
     metadata_config: MetadataServerConfig
     status: SQLSourceStatus
@@ -86,7 +104,7 @@ class MetabaseSource(Source[Entity]):
                 headers=HEADERS,
             )
         except Exception as err:
-            raise ConnectionError(f"{err}")
+            raise ConnectionError() from err
         session_id = resp.json()["id"]
         self.metabase_session = {"X-Metabase-Session": session_id}
         self.dashboard_service = get_dashboard_service_or_create(
@@ -102,6 +120,15 @@ class MetabaseSource(Source[Entity]):
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
+        """Instantiate object
+
+        Args:
+            config_dict:
+            metadata_config_dict:
+            ctx:
+        Returns:
+            MetabaseSource
+        """
         config = MetabaseSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
@@ -110,11 +137,18 @@ class MetabaseSource(Source[Entity]):
         yield from self.get_dashboards()
 
     def get_charts(self, charts) -> Iterable[Chart]:
+        """Get chart method
+
+        Args:
+            charts:
+        Returns:
+            Iterable[Chart]
+        """
         for chart in charts:
             try:
                 chart_details = chart["card"]
                 if not self.config.chart_pattern.included(chart_details["name"]):
-                    self.status.filter(chart_details["name"])
+                    self.status.filter(chart_details["name"], None)
                     continue
                 yield Chart(
                     id=uuid.uuid4(),
@@ -131,12 +165,13 @@ class MetabaseSource(Source[Entity]):
                 )
                 self.charts.append(chart_details["name"])
                 self.status.scanned(chart_details["name"])
-            except Exception as err:
+            except Exception as err:  # pylint: disable=broad-except
                 logger.error(repr(err))
                 traceback.print_exc()
                 continue
 
     def get_dashboards(self):
+        """Get dashboard method"""
         resp_dashboards = self.req_get("/api/dashboard")
         if resp_dashboards.status_code == 200:
             for dashboard in resp_dashboards.json():
@@ -146,7 +181,7 @@ class MetabaseSource(Source[Entity]):
                 if not self.config.dashboard_pattern.included(
                     dashboard_details["name"]
                 ):
-                    self.status.filter(dashboard_details["name"])
+                    self.status.filter(dashboard_details["name"], None)
                     continue
                 yield from self.get_charts(dashboard_details["ordered_cards"])
                 yield Dashboard(
@@ -167,6 +202,12 @@ class MetabaseSource(Source[Entity]):
                 )
 
     def get_lineage(self, chart_list, dashboard_name):
+        """Get lineage method
+
+        Args:
+            chart_list:
+            dashboard_name
+        """
         metadata = OpenMetadata(self.metadata_config)
         for chart in chart_list:
             try:
@@ -174,7 +215,8 @@ class MetabaseSource(Source[Entity]):
                 resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
-                    table_fqdn = f"{self.config.database_service_name}.{table['schema']}.{table['name']}"
+                    table_fqdn = f"{self.config.database_service_name}.\
+                                    {table['schema']}.{table['name']}"
                     dashboard_fqdn = (
                         f"{self.dashboard_service.name}.{quote(dashboard_name)}"
                     )
@@ -182,7 +224,7 @@ class MetabaseSource(Source[Entity]):
                     chart_entity = metadata.get_by_name(
                         entity=Model_Dashboard, fqdn=dashboard_fqdn
                     )
-                    logger.debug("from entity {}".format(table_entity))
+                    logger.debug("from entity %s", table_entity)
                     lineage = AddLineage(
                         edge=EntitiesEdge(
                             fromEntity=EntityReference(
@@ -194,10 +236,15 @@ class MetabaseSource(Source[Entity]):
                         )
                     )
                     yield lineage
-            except Exception as err:
-                logger.debug(traceback.print_exc())
+            except Exception as err:  # pylint: disable=broad-except,unused-variable
+                logger.error(traceback.print_exc())
 
     def req_get(self, path):
+        """Send get request method
+
+        Args:
+            path:
+        """
         return requests.get(self.config.host_port + path, headers=self.metabase_session)
 
     def get_status(self) -> SourceStatus:
