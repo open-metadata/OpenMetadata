@@ -15,7 +15,6 @@ package org.openmetadata.catalog.resources.dashboards;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,11 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidServiceEntity;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -96,27 +93,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Test
-  void post_DashboardWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1).withDisplayName("Dashboard1"), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_DashboardWithCharts_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(createRequest(test).withCharts(CHART_REFERENCES), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_Dashboard_as_non_admin_401(TestInfo test) {
-    CreateDashboard create = createRequest(test);
-    assertResponse(
-        () -> createEntity(create, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

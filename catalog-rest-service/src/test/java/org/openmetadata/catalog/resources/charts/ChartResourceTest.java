@@ -14,11 +14,9 @@
 package org.openmetadata.catalog.resources.charts;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
@@ -65,25 +63,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     Chart chart = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String expectedFQN = SUPERSET_REFERENCE.getName() + "." + chart.getName();
     assertEquals(expectedFQN, chart.getFullyQualifiedName());
-  }
-
-  @Test
-  void post_chartWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_chartWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_chart_as_non_admin_401(TestInfo test) {
-    CreateChart create = createRequest(test);
-    assertResponse(
-        () -> createEntity(create, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

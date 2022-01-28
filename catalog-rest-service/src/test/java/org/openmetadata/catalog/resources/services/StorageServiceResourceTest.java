@@ -64,16 +64,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  void post_validService_as_non_admin_401(TestInfo test) {
-    // Create storage service with different optional fields
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> createAndCheckEntity(createRequest(test, 1).withDescription(null), TEST_AUTH_HEADERS));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
   void put_updateStorageService_as_admin_2xx(TestInfo test) throws IOException {
     createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
