@@ -29,6 +29,7 @@ function catalogStart {
    catalogStatus -q
    if [[ $? -eq 0 ]]; then
        rm -f ${PID_FILE}
+       validateDbMigrations
        echo "Starting OpenMetadata"
        APP_CLASS="org.openmetadata.catalog.CatalogApplication"
        cd ${CATALOG_HOME}
@@ -100,6 +101,28 @@ function getPID {
 
    PID="$(<$PID_FILE)"
    return 0
+}
+
+# Check if the mysql migrations are up to date
+function validateDbMigrations {
+  echo "Validating DB Migrations..."
+
+  BOOTSTRAP_DIR=$base_dir/bootstrap
+  SCRIPT_ROOT_DIR="${BOOTSTRAP_DIR}/sql"
+  CONFIG_FILE_PATH=$base_dir/conf/openmetadata.yaml
+  TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
+
+  # TableInitializer exits with 1 for Flyway Exception
+  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --validate
+  validation=$?
+
+  if [ $validation -eq 1 ]; then
+      echo "Database Migration validation failed. Please run ./bootstrap/bootstrap_storage.sh migrate-all"
+      echo "You can find more information on how to upgrade OpenMetadata at https://docs.open-metadata.org/install/upgrade-openmetadata"
+      exit 1
+  fi
+
+  echo "Migrations are up to date!"
 }
 
 # Home Dir
