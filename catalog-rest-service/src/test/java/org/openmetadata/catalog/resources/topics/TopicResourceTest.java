@@ -17,13 +17,12 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +51,7 @@ import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
-public class TopicResourceTest extends EntityResourceTest<Topic> {
+public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true, true);
@@ -61,30 +60,30 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   @Test
   void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
-    CreateTopic create = create(test);
-    createAndCheckEntity(create, adminAuthHeaders());
+    CreateTopic create = createRequest(test);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     create.withName(getEntityName(test, 1)).withDescription("description");
-    Topic topic = createAndCheckEntity(create, adminAuthHeaders());
+    Topic topic = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String expectedFQN = KAFKA_REFERENCE.getName() + "." + topic.getName();
     assertEquals(expectedFQN, topic.getFullyQualifiedName());
   }
 
   @Test
   void post_topicWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_topicWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1), ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_topic_as_non_admin_401(TestInfo test) {
-    CreateTopic create = create(test);
+    CreateTopic create = createRequest(test);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createTopic(create, authHeaders("test@open-metadata.org")));
+        assertThrows(HttpResponseException.class, () -> createEntity(create, TEST_AUTH_HEADERS));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
@@ -93,19 +92,20 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     // Service is required field
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> createTopic(create(test).withService(null), adminAuthHeaders()));
+            HttpResponseException.class, () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[service must not be null]");
 
     // Partitions is required field
     exception =
         assertThrows(
-            HttpResponseException.class, () -> createTopic(create(test).withPartitions(null), adminAuthHeaders()));
+            HttpResponseException.class,
+            () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
 
     // Partitions must be >= 1
     exception =
         assertThrows(
-            HttpResponseException.class, () -> createTopic(create(test).withPartitions(0), adminAuthHeaders()));
+            HttpResponseException.class, () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
   }
 
@@ -115,7 +115,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
 
     // Create topic for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
+      createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List topics by filtering on service name and ensure right topics in the response
       Map<String, String> queryParams =
@@ -124,7 +124,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
               put("service", service.getName());
             }
           };
-      ResultList<Topic> list = listEntities(queryParams, adminAuthHeaders());
+      ResultList<Topic> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Topic topic : list.getData()) {
         assertEquals(service.getName(), topic.getService().getName());
       }
@@ -134,7 +134,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   @Test
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
-        create(test)
+        createRequest(test)
             .withOwner(USER_OWNER1)
             .withMaximumMessageSize(1)
             .withMinimumInSyncReplicas(1)
@@ -147,7 +147,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
-    Topic topic = createEntity(createTopic, adminAuthHeaders());
+    Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
     createTopic
         .withOwner(TEAM_OWNER1)
         .withMinimumInSyncReplicas(2)
@@ -181,13 +181,13 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
         .getFieldsAdded()
         .add(new FieldChange().withName("cleanupPolicies").withNewValue(List.of(CleanupPolicy.DELETE)));
 
-    updateAndCheckEntity(createTopic, Status.OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(createTopic, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
   @Test
   void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
     CreateTopic createTopic =
-        create(test)
+        createRequest(test)
             .withOwner(USER_OWNER1)
             .withMaximumMessageSize(1)
             .withMinimumInSyncReplicas(1)
@@ -200,7 +200,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
-    Topic topic = createEntity(createTopic, adminAuthHeaders());
+    Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
     topic.setHref(null);
     topic.getOwner().withHref(null);
     String origJson = JsonUtils.pojoToJson(topic);
@@ -237,16 +237,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     change
         .getFieldsAdded()
         .add(new FieldChange().withName("cleanupPolicies").withNewValue(List.of(CleanupPolicy.DELETE)));
-    patchEntityAndCheck(topic, origJson, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
   @Test
   void delete_nonEmptyTopic_4xx() {
     // TODO
-  }
-
-  public static Topic createTopic(CreateTopic create, Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(getResource("topics"), create, Topic.class, authHeaders);
   }
 
   /** Validate returned fields GET .../topics/{id}?fields="..." or GET .../topics/name/{fqn}?fields="..." */
@@ -256,8 +252,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     String fields = "owner";
     topic =
         byName
-            ? getTopicByName(topic.getFullyQualifiedName(), fields, adminAuthHeaders())
-            : getTopic(topic.getId(), fields, adminAuthHeaders());
+            ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(topic.getOwner(), topic.getService(), topic.getServiceType());
   }
 
@@ -274,29 +270,24 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  private CreateTopic create(TestInfo test) {
-    return create(getEntityName(test));
-  }
-
-  private CreateTopic create(String name) {
-    return new CreateTopic().withName(name).withService(KAFKA_REFERENCE).withPartitions(1);
-  }
-
   @Override
   public CreateTopic createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withOwner(owner);
+    return new CreateTopic()
+        .withName(name)
+        .withService(KAFKA_REFERENCE)
+        .withPartitions(1)
+        .withDescription(description)
+        .withOwner(owner);
   }
 
   @Override
-  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
-    CreateTopic createTopic = (CreateTopic) createRequest;
-    return createTopic.getService();
+  public EntityReference getContainer(CreateTopic createRequest) {
+    return createRequest.getService();
   }
 
   @Override
-  public void validateCreatedEntity(Topic topic, Object request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    CreateTopic createRequest = (CreateTopic) request;
     validateCommonEntityFields(
         getEntityInterface(topic),
         createRequest.getDescription(),
@@ -308,7 +299,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public void validateUpdatedEntity(Topic topic, Object request, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(Topic topic, CreateTopic request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCreatedEntity(topic, request, authHeaders);
   }
@@ -337,6 +328,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
       return;
     }
     if (fieldName.equals("cleanupPolicies")) {
+      @SuppressWarnings("unchecked")
       List<CleanupPolicy> expectedCleanupPolicies = (List<CleanupPolicy>) expected;
       List<CleanupPolicy> actualCleanupPolicies = JsonUtils.readObjects(actual.toString(), CleanupPolicy.class);
       assertEquals(expectedCleanupPolicies, actualCleanupPolicies);
