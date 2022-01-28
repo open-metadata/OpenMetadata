@@ -100,7 +100,7 @@ class MetadataServerConfig(ConfigModel):
     domain: str = None
     email: str = None
     audience: str = "https://www.googleapis.com/oauth2/v4/token"
-    auth_header: str = "X-Catalog-Source"
+    auth_header: str = "Authorization"
 
 
 class NoOpAuthenticationProvider(AuthenticationProvider):
