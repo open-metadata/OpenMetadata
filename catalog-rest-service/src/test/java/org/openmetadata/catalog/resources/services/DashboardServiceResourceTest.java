@@ -89,16 +89,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  void post_validService_as_non_admin_401(TestInfo test) {
-    // Create dashboard service with different optional fields
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> createAndCheckEntity(createRequest(test, 1).withDescription(null), TEST_AUTH_HEADERS));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
   void post_invalidIngestionSchedule_4xx(TestInfo test) {
     // No jdbc connection set
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");

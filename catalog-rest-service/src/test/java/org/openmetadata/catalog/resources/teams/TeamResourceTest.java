@@ -85,14 +85,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void post_validTeams_as_non_admin_401(TestInfo test) {
-    // Create team with different optional fields
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(createRequest(test), TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
   void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
     UserResourceTest userResourceTest = new UserResourceTest();

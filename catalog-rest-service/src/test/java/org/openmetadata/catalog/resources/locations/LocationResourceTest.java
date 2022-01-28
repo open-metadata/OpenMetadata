@@ -14,12 +14,10 @@
 package org.openmetadata.catalog.resources.locations;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
@@ -175,24 +173,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
 
     create.withName(getEntityName(test, 1)).withDescription("description");
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_locationWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_locationWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_location_as_non_admin_401(TestInfo test) {
-    CreateLocation create = createRequest(test);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

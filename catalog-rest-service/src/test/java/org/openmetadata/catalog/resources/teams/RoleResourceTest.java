@@ -78,15 +78,6 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Test
-  void post_validRoles_as_non_admin_401(TestInfo test) {
-    // Create role with different optional fields
-    CreateRole create = createRequest(test, 1);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createAndCheckRole(create, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
   void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create table without any attributes
     Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);

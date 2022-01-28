@@ -13,12 +13,10 @@
 
 package org.openmetadata.catalog.resources.mlmodels;
 
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
@@ -136,16 +134,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   }
 
   @Test
-  void post_MlModelWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_MlModelWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1).withDisplayName("Model1"), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_MlModelWithoutFeatures_200_ok(TestInfo test) throws IOException {
     CreateMlModel create = createRequest(test).withAlgorithm(ALGORITHM);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -167,15 +155,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void post_MlModelWitServer_200_ok(TestInfo test) throws IOException {
     CreateMlModel create = createRequest(test).withServer(SERVER);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_MlModel_as_non_admin_401(TestInfo test) {
-    CreateMlModel create = createRequest(test);
-    assertResponse(
-        () -> createEntity(create, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

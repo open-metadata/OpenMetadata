@@ -16,7 +16,6 @@ package org.openmetadata.catalog.resources.databases;
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -301,29 +300,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void post_tableWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_tableWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_tableWithInvalidDatabase_404(TestInfo test) {
     CreateTable create = createRequest(test).withDatabase(NON_EXISTENT_ENTITY);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
-  }
-
-  @Test
-  void post_table_as_non_admin_401(TestInfo test) {
-    CreateTable create = createRequest(test);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

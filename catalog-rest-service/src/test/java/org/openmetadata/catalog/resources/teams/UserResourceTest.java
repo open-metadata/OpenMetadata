@@ -86,6 +86,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  @Override
+  public void post_entity_as_non_admin_401(TestInfo test) {
+    // Override the method as a User can create a User entity for himself
+    // during first time login without being an admin
+  }
+
+  @Test
   void post_userWithoutEmail_400_badRequest(TestInfo test) {
     // Create user with mandatory email field null
     CreateUser create = createRequest(test).withEmail(null);
