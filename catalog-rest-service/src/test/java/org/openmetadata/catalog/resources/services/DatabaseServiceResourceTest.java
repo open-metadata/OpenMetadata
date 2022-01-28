@@ -81,16 +81,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  void post_validDatabaseService_as_non_admin_401(TestInfo test) {
-    // Create database service with different optional fields
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> createAndCheckEntity(createRequest(test, 1).withDescription(null), TEST_AUTH_HEADERS));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
   void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
     // No jdbc connection set
     CreateDatabaseService create = createRequest(test).withDatabaseConnection(null);

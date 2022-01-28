@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.operations;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,10 +29,8 @@ import static org.openmetadata.catalog.airflow.AirflowUtils.INGESTION_PASSWORD;
 import static org.openmetadata.catalog.airflow.AirflowUtils.INGESTION_SERVICE_NAME;
 import static org.openmetadata.catalog.airflow.AirflowUtils.INGESTION_USERNAME;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -199,26 +196,8 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
   }
 
   @Test
-  void post_AirflowPipelineWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_AirflowPipelineWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1).withDisplayName("Ingestion1"), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_AirflowPipelineWithConfig_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(createRequest(test).withPipelineConfig(INGESTION_CONFIG), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_AirflowPipeline_as_non_admin_401(TestInfo test) {
-    CreateAirflowPipeline create = createRequest(test);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

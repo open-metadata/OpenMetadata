@@ -14,14 +14,12 @@
 package org.openmetadata.catalog.resources.policies;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -147,18 +145,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Test
-  void post_PolicyWithUserOwner_200_ok(TestInfo test) throws IOException {
-    CreatePolicy create = createRequest(test).withOwner(USER_OWNER1);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_PolicyWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    CreatePolicy create = createRequest(test).withOwner(TEAM_OWNER1);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
     rules.add(
@@ -206,14 +192,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         String.format(
             "Found multiple rules with operation UpdateTags within policy %s. Please ensure that operation across all rules within the policy are distinct",
             getEntityName(test)));
-  }
-
-  @Test
-  void post_Policy_as_non_admin_401(TestInfo test) {
-    CreatePolicy create = createRequest(test);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

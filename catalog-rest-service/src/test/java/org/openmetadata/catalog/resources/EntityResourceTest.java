@@ -706,6 +706,26 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   @Test
+  void post_entityWithOwner_200(TestInfo test) throws IOException {
+    if (!supportsOwner) {
+      return;
+    }
+    // Entity with user as owner is created successfully
+    createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER_OWNER1), ADMIN_AUTH_HEADERS);
+
+    // Entity with team as owner is created successfully
+    createAndCheckEntity(createRequest(getEntityName(test, 2), "", "", TEAM_OWNER1), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  protected void post_entity_as_non_admin_401(TestInfo test) {
+    assertResponse(
+        () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
+  }
+
+  @Test
   void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     K create = createRequest(getEntityName(test), "", "", null);
     // Create first time using POST

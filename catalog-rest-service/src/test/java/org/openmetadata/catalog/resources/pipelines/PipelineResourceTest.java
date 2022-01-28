@@ -14,17 +14,14 @@
 package org.openmetadata.catalog.resources.pipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URI;
@@ -171,26 +168,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void post_PipelineWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_PipelineWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withOwner(TEAM_OWNER1).withDisplayName("Pipeline1"), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_PipelineWithTasks_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(createRequest(test).withTasks(TASKS), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_Pipeline_as_non_admin_401(TestInfo test) {
-    CreatePipeline create = createRequest(test);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
