@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -33,6 +34,8 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.Glossary;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.MlModel;
@@ -58,6 +61,8 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterfa
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
+import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
@@ -134,6 +139,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   MlModelDAO mlModelDAO();
+
+  @CreateSqlObject
+  GlossaryDAO glossaryDAO();
+
+  @CreateSqlObject
+  GlossaryTermDAO glossaryTermDAO();
 
   @CreateSqlObject
   BotsDAO botsDAO();
@@ -331,6 +342,10 @@ public interface CollectionDAO {
   }
 
   interface EntityRelationshipDAO {
+    default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
+      return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation);
+    }
+
     @SqlUpdate(
         "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
             + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
@@ -687,6 +702,50 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(MlModel entity) {
       return new MlModelEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface GlossaryDAO extends EntityDAO<Glossary> {
+    @Override
+    default String getTableName() {
+      return "glossary_entity";
+    }
+
+    @Override
+    default Class<Glossary> getEntityClass() {
+      return Glossary.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+
+    @Override
+    default EntityReference getEntityReference(Glossary entity) {
+      return new GlossaryEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface GlossaryTermDAO extends EntityDAO<GlossaryTerm> {
+    @Override
+    default String getTableName() {
+      return "glossary_term_entity";
+    }
+
+    @Override
+    default Class<GlossaryTerm> getEntityClass() {
+      return GlossaryTerm.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
+    default EntityReference getEntityReference(GlossaryTerm entity) {
+      return new GlossaryTermEntityInterface(entity).getEntityReference();
     }
   }
 

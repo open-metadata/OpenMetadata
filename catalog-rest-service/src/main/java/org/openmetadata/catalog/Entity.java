@@ -40,9 +40,16 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public final class Entity {
-  private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
-  private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  // Lower case entity name to canonical entity name map
   private static final Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
+
+  // Canonical entity name to corresponding EntityDAO map
+  private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
+
+  // Canonical entity name to corresponding EntityRepository map
+  private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+
+  // Entity class to entity repository map
   private static final Map<Class<?>, EntityRepository<?>> CLASS_ENTITY_REPOSITORY_MAP = new HashMap<>();
 
   //
@@ -70,6 +77,8 @@ public final class Entity {
   public static final String UNUSED = "unused";
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
+  public static final String GLOSSARY = "glossary";
+  public static final String GLOSSARY_TERM = "glossaryTerm";
 
   //
   // Policies
@@ -92,12 +101,17 @@ public final class Entity {
   private Entity() {}
 
   public static <T> void registerEntity(
-      Class clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
+      Class<T> clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     CLASS_ENTITY_REPOSITORY_MAP.put(clazz, entityRepository);
-    LOG.info("Registering entity {}", entity);
+    LOG.info(
+        "Registering entity {} {} {} {}",
+        clazz,
+        entity,
+        dao.getEntityClass().getSimpleName(),
+        entityRepository.getClass().getSimpleName());
   }
 
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {

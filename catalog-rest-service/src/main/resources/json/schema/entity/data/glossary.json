@@ -1,0 +1,82 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/glossary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Glossary",
+  "description": "This schema defines the Glossary entity based on SKOS.",
+  "type": "object",
+  "definitions": {
+    "name": {
+      "description": "Name that identifies a glossary term.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of a glossary instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Preferred name for the glossary term.",
+      "type": "string",
+      "$ref": "#/definitions/name"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this glossary.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the glossary.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "reviewers": {
+      "description": "User names of the reviewers for this glossary.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "owner": {
+      "description": "Owner of this glossary.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this glossary.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ]
+}
