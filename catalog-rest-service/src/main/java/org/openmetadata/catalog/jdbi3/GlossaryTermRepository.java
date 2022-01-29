@@ -29,7 +29,10 @@ import org.openmetadata.catalog.resources.glossary.GlossaryResource;
 import org.openmetadata.catalog.resources.glossary.GlossaryTermResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+<<<<<<< HEAD
 import org.openmetadata.catalog.type.Relationship;
+=======
+>>>>>>> 06bc2f51 (Fixes #2760 - Add entities for Glossary and initial API)
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
