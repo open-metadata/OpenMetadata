@@ -2,7 +2,6 @@
 
 ## Prerequisites
 
-* Make sure you are using maven 3.5.x or higher and JDK 11 or higher.
 *   Make sure you have a local instance of MySQL and ElasticSearch.
 
     * For an easy install of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory

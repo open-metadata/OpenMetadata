@@ -128,8 +128,10 @@
 ## Open Source Community
 
 * [Community](open-source-community/community.md)
+* [UX Style Guide](open-source-community/ux-style-guide.md)
 * [Developer](open-source-community/developer/README.md)
   * [How to Contribute](open-source-community/developer/how-to-contribute.md)
+  * [Prerequisites](open-source-community/developer/prerequisites.md)
   * [Backend](open-source-community/developer/backend/README.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
   * [Quick Start Guide](open-source-community/developer/quick-start-guide.md)
@@ -140,9 +142,7 @@
     * [Stage](open-source-community/developer/build-a-connector/stage.md)
     * [BulkSink](open-source-community/developer/build-a-connector/bulksink.md)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
-  * [UX Style Guide](open-source-community/developer/ux-style-guide.md)
-  * [Generate Typescript Types From JSON Schema](open-source-community/developer/generate-typescript-types-from-json-schema.md)
-  * [Run OpenMetadata UI Locally](open-source-community/developer/run-openmetadata-ui-locally.md)
+  * [UI](docs/open-source-community/developer/ui/README.md)
   * [Solution Design](open-source-community/developer/solution-design.md)
   * [Python API](open-source-community/developer/python-api.md)
   * [Entities](open-source-community/developer/entities/README.md)
