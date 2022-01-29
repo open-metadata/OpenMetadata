@@ -70,6 +70,7 @@ public final class Entity {
   public static final String UNUSED = "unused";
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
+  public static final String GLOSSARY = "glossary";
 
   //
   // Policies

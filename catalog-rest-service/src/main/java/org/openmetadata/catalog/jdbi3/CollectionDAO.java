@@ -33,6 +33,7 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.MlModel;
@@ -58,6 +59,7 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterfa
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
@@ -133,6 +135,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   MlModelDAO mlModelDAO();
+
+  @CreateSqlObject
+  GlossaryDAO glossaryDAO();
 
   @CreateSqlObject
   BotsDAO botsDAO();
@@ -686,6 +691,28 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(MlModel entity) {
       return new MlModelEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface GlossaryDAO extends EntityDAO<Glossary> {
+    @Override
+    default String getTableName() {
+      return "glossary_entity";
+    }
+
+    @Override
+    default Class<Glossary> getEntityClass() {
+      return Glossary.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
+    default EntityReference getEntityReference(Glossary entity) {
+      return new GlossaryEntityInterface(entity).getEntityReference();
     }
   }
 

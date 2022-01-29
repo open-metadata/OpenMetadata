@@ -23,6 +23,7 @@ from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import Glossary
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class MetadataTablesRestSourceConfig(ConfigModel):
     include_tables: Optional[bool] = True
     include_topics: Optional[bool] = True
     include_dashboards: Optional[bool] = True
+    include_glossary: Optional[bool] = True
     include_pipelines: Optional[bool] = True
     limit_records: int = 1000
 
@@ -59,6 +61,10 @@ class MetadataSourceStatus(SourceStatus):
         """
         self.success.append(table_name)
         logger.info("Table Scanned: %s", table_name)
+
+    def scanned_glossary(self, glossary_name: str) -> None:
+        self.success.append(glossary_name)
+        logger.info("Glossary Scanned: {}".format(glossary_name))
 
     def scanned_topic(self, topic_name: str) -> None:
         """scanned topic method
@@ -143,6 +149,7 @@ class MetadataSource(Source[Entity]):
     def next_record(self) -> Iterable[Entity]:
         yield from self.fetch_table()
         yield from self.fetch_topic()
+        yield from self.fetch_glossary()
         yield from self.fetch_dashboard()
         yield from self.fetch_pipeline()
 
@@ -246,6 +253,23 @@ class MetadataSource(Source[Entity]):
                 if pipeline_entities.after is None:
                     break
                 after = pipeline_entities.after
+
+    def fetch_glossary(self) -> Glossary:
+        if self.config.include_glossary:
+            after = None
+            while True:
+                glossary_entities = self.metadata.list_entities(
+                    entity=Glossary,
+                    fields=["owner", "tags", "followers"],
+                    after=after,
+                    limit=self.config.limit_records,
+                )
+                for glossary in glossary_entities.entities:
+                    self.status.scanned_glossary(glossary.name)
+                    yield glossary
+                if glossary_entities.after is None:
+                    break
+                after = glossary_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status

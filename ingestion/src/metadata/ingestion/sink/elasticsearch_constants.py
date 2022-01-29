@@ -200,6 +200,48 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 )
 
+GLOSSARY_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
+    {
+    "mappings":{
+          "properties": {
+            "glossary_name": {
+              "type":"text"
+            },
+            "display_name": {
+              "type": "text"
+            },
+            "owner": {
+              "type": "text"
+            },
+            "followers": {
+              "type": "keyword"
+            },
+            "last_updated_timestamp": {
+              "type": "date",
+              "format": "epoch_second"
+            },
+            "description": {
+              "type": "text"
+            },
+            "tier": {
+              "type": "keyword"
+            },
+            "tags": {
+              "type": "keyword"
+            },
+            "entity_type": {
+              "type": "keyword"
+            },
+            "suggest": {
+              "type": "completion"
+            }
+          }
+        }
+    }
+    """
+)
+
 DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
     {
