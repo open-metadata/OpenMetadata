@@ -6,6 +6,10 @@ This document summarizes information relevant to OpenMetadata committers and con
 [how-to-contribute.md](how-to-contribute.md)
 {% endcontent-ref %}
 
+{% content-ref url="ux-style-guide.md" %}
+[ux-style-guide.md](docs/open-source-community/ux-style-guide.md)
+{% endcontent-ref %}
+
 {% content-ref url="prerequisites.md" %}
 [prerequisites.md](prerequisites.md)
 {% endcontent-ref %}

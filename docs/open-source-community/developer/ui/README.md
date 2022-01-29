@@ -10,10 +10,6 @@ We use Typescript and React for developing OpenMetadata UI. Following are the ke
 - [ReactJS](https://reactjs.org/)
 
 
-{% content-ref url="ux-style-guide.md" %}
-[ux-style-guide.md](ux-style-guide.md)
-{% endcontent-ref %}
-
 {% content-ref url="generating-types.md" %}
 [generating-types.md](generating-types.md)
 {% endcontent-ref %}

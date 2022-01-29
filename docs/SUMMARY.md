@@ -128,6 +128,7 @@
 ## Open Source Community
 
 * [Community](open-source-community/community.md)
+* [UX Style Guide](open-source-community/ux-style-guide.md)
 * [Developer](open-source-community/developer/README.md)
   * [How to Contribute](open-source-community/developer/how-to-contribute.md)
   * [Prerequisites](open-source-community/developer/prerequisites.md)
