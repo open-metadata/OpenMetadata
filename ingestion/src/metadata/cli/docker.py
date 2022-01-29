@@ -116,7 +116,7 @@ def run_docker(start, stop, pause, resume, clean, file_path):
                 fg="bright_blue",
             )
             click.secho(
-                """We are available in Slack , https://slack.open-metadata.org/ . Reach out to us if you have any questions.
+                """We are available on Slack , https://slack.open-metadata.org/ . Reach out to us if you have any questions.
                 \nIf you like what we are doing, please consider giving us a star on github at https://github.com/open-metadata/OpenMetadata. 
         It helps OpenMetadata reach wider audience and helps our community.\n""",
                 fg="bright_magenta",
