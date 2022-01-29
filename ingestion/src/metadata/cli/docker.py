@@ -106,17 +106,19 @@ def run_docker(start, stop, pause, resume, clean, file_path):
                 f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
             )
             click.secho(
-                "\n✔ OpenMetadata is up and running",
+                "\n✅ OpenMetadata is up and running",
                 fg="bright_green",
             )
             click.secho(
-                """\nHead to http://localhost:8585 to play around with OpenMetadata UI.
+                """\nOpen http://localhost:8585 in your browser to access OpenMetadata..
                 \nTo checkout Ingestion via Airflow, go to http://localhost:8080 \n(username: admin, password: admin)
                 """,
                 fg="bright_blue",
             )
             click.secho(
-                "Need support? Get in touch on Slack: https://slack.open-metadata.org/",
+                """We are available on Slack , https://slack.open-metadata.org/ . Reach out to us if you have any questions.
+                \nIf you like what we are doing, please consider giving us a star on github at https://github.com/open-metadata/OpenMetadata. 
+        It helps OpenMetadata reach wider audience and helps our community.\n""",
                 fg="bright_magenta",
             )
         if pause:
