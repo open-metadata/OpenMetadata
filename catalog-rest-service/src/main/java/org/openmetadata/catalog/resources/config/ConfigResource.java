@@ -24,11 +24,14 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
+import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.Permissions;
+import org.openmetadata.catalog.security.SecurityUtil;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -36,9 +39,11 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 @Collection(name = "config")
 public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
+  private final Authorizer authorizer;
 
-  public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
+  public ConfigResource(CatalogApplicationConfig catalogApplicationConfig, @NonNull Authorizer authorizer) {
     this.catalogApplicationConfig = catalogApplicationConfig;
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -55,7 +60,7 @@ public class ConfigResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = AuthenticationConfiguration.class)))
       })
-  public AuthenticationConfiguration getAuthConfig(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public AuthenticationConfiguration getAuthConfig() {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {
       authenticationConfiguration = catalogApplicationConfig.getAuthenticationConfiguration();
@@ -77,12 +82,26 @@ public class ConfigResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = AuthorizerConfiguration.class)))
       })
-  public AuthorizerConfiguration getAuthorizerConfig(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public AuthorizerConfiguration getAuthorizerConfig() {
     AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
     if (catalogApplicationConfig.getAuthorizerConfiguration() != null) {
       authorizerConfiguration = catalogApplicationConfig.getAuthorizerConfiguration();
     }
     return authorizerConfiguration;
+  }
+
+  @GET
+  @Path(("/permissions"))
+  @Operation(
+      summary = "Retrieves permissions for logged in user",
+      tags = "general",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Permissions for logged in user",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Permissions.class)))
+      })
+  public Permissions getPermissions(@Context SecurityContext securityContext) {
+    return new Permissions(authorizer.listPermissions(SecurityUtil.getAuthenticationContext(securityContext), null));
   }
 }

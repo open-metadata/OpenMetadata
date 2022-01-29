@@ -101,6 +101,11 @@ public final class SecurityUtil {
     return context.getPrincipal() == null ? null : context.getPrincipal().getName().split("[/@]")[0];
   }
 
+  public static AuthenticationContext getAuthenticationContext(SecurityContext securityContext) {
+    Principal principal = securityContext.getUserPrincipal();
+    return SecurityUtil.getAuthenticationContext(principal);
+  }
+
   private static AuthenticationContext getAuthenticationContext(Principal principal) {
     AuthenticationContext context = new AuthenticationContext();
     context.setPrincipal(principal);
