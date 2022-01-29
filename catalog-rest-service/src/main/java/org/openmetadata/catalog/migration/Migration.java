@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.StatementException;
@@ -50,13 +51,15 @@ public final class Migration {
    * @throws IOException If we cannot read the files
    */
   private static List<String> getMigrationVersions(MigrationConfiguration conf) throws IOException {
+    try (Stream<String> names =
+        Files.walk(Paths.get(conf.getPath()))
+            .filter(Files::isRegularFile)
+            .map(Path::toFile)
+            .map(File::getName)
+            .map(Migration::cleanName)) {
 
-    return Files.walk(Paths.get(conf.getPath()))
-        .filter(Files::isRegularFile)
-        .map(Path::toFile)
-        .map(File::getName)
-        .map(Migration::cleanName)
-        .collect(Collectors.toList());
+      return names.collect(Collectors.toList());
+    }
   }
 
   /**
