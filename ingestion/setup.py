@@ -113,12 +113,12 @@ dev = {
     "boto3==1.20.14",
     "botocore==1.23.14",
     "datamodel-code-generator==0.11.14",
+    "black==21.12b0",  # required for datamodel-code-generator==0.11.14
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
 }
 test = {
-    "black==21.12b0",
     "isort",
     "pre-commit",
     "pylint",
