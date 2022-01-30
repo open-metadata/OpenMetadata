@@ -302,7 +302,7 @@ class OpenMetadata(
             [self.class_root, self.api_path, self.get_module_path(entity), file_name]
         )
 
-        class_name = f"Create{entity.__name__}EntityRequest"
+        class_name = f"Create{entity.__name__}Request"
         create_class = getattr(
             __import__(class_path, globals(), locals(), [class_name]), class_name
         )
@@ -313,7 +313,7 @@ class OpenMetadata(
         Inversely, import the Entity type based on the create Entity class
         """
 
-        class_name = create.__name__.replace("Create", "").replace("EntityRequest", "")
+        class_name = create.__name__.replace("Create", "").replace("Request", "")
         file_name = class_name.lower()
 
         class_path = ".".join(
