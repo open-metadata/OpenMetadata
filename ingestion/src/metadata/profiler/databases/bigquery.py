@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from typing import Tuple
+
 from metadata.ingestion.source.bigquery import BigQueryConfig
 from metadata.profiler.common.database_common import DatabaseCommon, SQLExpressions
 
@@ -22,6 +24,11 @@ class Bigquery(DatabaseCommon):
     config: BigQueryConfig = None
     sql_exprs: BigquerySQLExpressions = BigquerySQLExpressions()
 
+    def get_connection_url(self):
+        if self.config.project_id:
+            return f"{self.config.scheme}://{self.config.project_id}"
+        return f"{self.config.scheme}://"
+
     def __init__(self, config):
         super().__init__(config)
         self.config = config
@@ -32,4 +39,6 @@ class Bigquery(DatabaseCommon):
         return cls(config)
 
     def qualify_table_name(self, table_name: str, schema_name: str) -> str:
-        return f"`{self.config.database}.{table_name}`"
+        if schema_name:
+            return f"`{schema_name}.{table_name}`"
+        return f"{table_name}"

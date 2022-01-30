@@ -175,8 +175,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, boolean patchOperation) {
-    return new DashboardUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
+    return new DashboardUpdater(original, updated, operation);
   }
 
   private List<EntityReference> getCharts(Dashboard dashboard) throws IOException {
@@ -380,8 +380,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class DashboardUpdater extends EntityUpdater {
-    public DashboardUpdater(Dashboard original, Dashboard updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public DashboardUpdater(Dashboard original, Dashboard updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

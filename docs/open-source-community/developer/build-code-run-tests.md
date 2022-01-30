@@ -2,7 +2,6 @@
 
 ## Prerequisites
 
-* Make sure you are using maven 3.5.x or higher and JDK 11 or higher.
 *   Make sure you have a local instance of MySQL and ElasticSearch.
 
     * For an easy install of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
@@ -109,7 +108,7 @@ Select it and click "OK". Now run/debug the application.
 
 ## Coding Style
 
-1. [Refer to coding guidelines](coding-style.md)
+1. [Refer to coding guidelines](docs/open-source-community/developer/backend/coding-style.md)
 2.  Configure IntelliJ to disable the \[wild-card imports]
 
     ([https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports](https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports))

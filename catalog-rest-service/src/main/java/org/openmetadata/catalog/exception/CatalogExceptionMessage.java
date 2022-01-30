@@ -21,24 +21,24 @@ public final class CatalogExceptionMessage {
 
   private CatalogExceptionMessage() {}
 
-  public static String entityNotFound(String entity, String id) {
-    return String.format("%s instance for %s not found", entity, id);
+  public static String entityNotFound(String entityType, String id) {
+    return String.format("%s instance for %s not found", entityType, id);
   }
 
-  public static String entityNotFound(String entity, UUID id) {
-    return entityNotFound(entity, id.toString());
+  public static String entityNotFound(String entityType, UUID id) {
+    return entityNotFound(entityType, id.toString());
   }
 
-  public static String readOnlyAttribute(String entity, String attribute) {
-    return String.format("%s attribute %s can't be modified", entity, attribute);
+  public static String readOnlyAttribute(String entityType, String attribute) {
+    return String.format("%s attribute %s can't be modified", entityType, attribute);
   }
 
   public static String invalidField(String field) {
     return String.format("Invalid field name %s", field);
   }
 
-  public static String entityTypeNotFound(String entity) {
-    return String.format("Entity type %s not found", entity);
+  public static String entityTypeNotFound(String entityType) {
+    return String.format("Entity type %s not found", entityType);
   }
 
   public static String fieldIsNull(String field) {
@@ -53,11 +53,11 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid fully qualified column name %s", fqn);
   }
 
-  public static String entityVersionNotFound(String entity, String id, Double version) {
-    return String.format("%s instance for %s and version %s not found", entity, id, version);
+  public static String entityVersionNotFound(String entityType, String id, Double version) {
+    return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
 
-  public static String invalidServiceEntity(String serviceEntity, String entity) {
-    return String.format("Invalid service entity type %s for %s", serviceEntity, entity);
+  public static String invalidServiceEntity(String serviceEntity, String entityType) {
+    return String.format("Invalid service entity type %s for %s", serviceEntity, entityType);
   }
 }

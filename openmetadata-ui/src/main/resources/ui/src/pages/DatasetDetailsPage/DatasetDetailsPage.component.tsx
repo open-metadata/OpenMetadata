@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
@@ -114,6 +114,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
   );
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -217,6 +218,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
@@ -232,16 +237,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       addLineage(edge)
         .then(() => {
-          getLineageByFQN(tableFQN, EntityType.TABLE)
-            .then((res: AxiosResponse) => {
-              setEntityLineage(res.data);
-            })
-            .catch(() => {
-              showToast({
-                variant: 'error',
-                body: `Error while getting entity lineage`,
-              });
-            });
           resolve();
         })
         .catch(() => {
@@ -255,24 +250,32 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
-      .then(() => {
-        getLineageByFQN(tableFQN, EntityType.TABLE)
-          .then((res: AxiosResponse) => {
-            setEntityLineage(res.data);
-          })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: `Error while getting entity lineage`,
-            });
-          });
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch(() => {
+      showToast({
+        variant: 'error',
+        body: `Error while removing edge`,
+      });
+    });
+  };
+
+  const getLineageData = () => {
+    getLineageByFQN(tableFQN, EntityType.TABLE)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
       })
-      .catch(() => {
+      .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: `Error while removing edge`,
+          body: err.message ?? 'Error while fetching lineage data',
         });
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
       });
   };
 
@@ -289,6 +292,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           name,
           columns,
           database,
+          deleted,
           owner,
           usageSummary,
           followers,
@@ -307,6 +311,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTier(getTierTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
+        setDeleted(deleted);
         setSlashedTableName([
           {
             name: service.name,
@@ -345,18 +350,17 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableTags(getTableTags(columns || []));
         setUsageSummary(usageSummary);
         setJoins(joins);
+
+        if (!deleted) {
+          getLineageData();
+        } else {
+          setIsLineageLoading(false);
+        }
       })
       .finally(() => {
         setIsLoading(false);
       });
 
-    getLineageByFQN(tableFQN, EntityType.TABLE)
-      .then((res: AxiosResponse) => {
-        setEntityLineage(res.data);
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
     setActiveTab(getCurrentDatasetTab(tab));
   }, [tableFQN]);
 
@@ -378,9 +382,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
           columnsUpdateHandler={columnsUpdateHandler}
           dataModel={tableDetails.dataModel}
           datasetFQN={tableFQN}
+          deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
+          entityLineageHandler={entityLineageHandler}
           entityName={name}
           followTableHandler={followTable}
           followers={followers}

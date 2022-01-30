@@ -68,6 +68,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -150,6 +151,11 @@ public class AirflowPipelineResource {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description = "Filter airflow pipelines by service fully qualified name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(1)
@@ -174,9 +180,10 @@ public class AirflowPipelineResource {
 
     ResultList<AirflowPipeline> airflowPipelines;
     if (before != null) { // Reverse paging
-      airflowPipelines = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
+      airflowPipelines =
+          dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      airflowPipelines = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
+      airflowPipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
     if (fieldsParam != null && fieldsParam.contains("status")) {
       addStatus(airflowPipelines.getData());
@@ -423,9 +430,11 @@ public class AirflowPipelineResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
-    dao.delete(UUID.fromString(id), false);
-    return Response.ok().build();
+  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    DeleteResponse<AirflowPipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
+    return response.toResponse();
   }
 
   private AirflowPipeline getAirflowPipeline(SecurityContext securityContext, CreateAirflowPipeline create) {

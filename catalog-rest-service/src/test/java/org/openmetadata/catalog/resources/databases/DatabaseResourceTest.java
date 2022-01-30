@@ -14,23 +14,17 @@
 package org.openmetadata.catalog.resources.databases;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,16 +37,14 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DatabaseResourceTest extends EntityResourceTest<Database> {
+public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(
         Entity.DATABASE,
@@ -74,46 +66,28 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   @Test
   void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
-    CreateDatabase create = create(test);
-    createAndCheckEntity(create, adminAuthHeaders());
+    CreateDatabase create = createRequest(test);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, adminAuthHeaders());
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
-    CreateDatabase create = create(test);
+    CreateDatabase create = createRequest(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
-    Database db = createAndCheckEntity(create, adminAuthHeaders());
+    Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String expectedFQN = SNOWFLAKE_REFERENCE.getName() + "." + create.getName();
     assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
   @Test
-  void post_databaseWithUserOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
-  }
-
-  @Test
-  void post_databaseWithTeamOwner_200_ok(TestInfo test) throws IOException {
-    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
-  }
-
-  @Test
-  void post_database_as_non_admin_401(TestInfo test) {
-    CreateDatabase create = create(test);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createDatabase(create, authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  @Test
   void post_databaseWithoutRequiredService_4xx(TestInfo test) {
-    CreateDatabase create = create(test).withService(null);
+    CreateDatabase create = createRequest(test).withService(null);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createDatabase(create, adminAuthHeaders()));
+        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
   }
 
@@ -125,7 +99,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
 
     // Create database for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
+      createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List databases by filtering on service name and ensure right databases in the response
       Map<String, String> queryParams =
@@ -134,7 +108,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
               put("service", service.getName());
             }
           };
-      ResultList<Database> list = listEntities(queryParams, adminAuthHeaders());
+      ResultList<Database> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Database db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
       }
@@ -142,38 +116,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
-    Database database = createDatabase(create(test), adminAuthHeaders());
-    deleteEntity(database.getId(), adminAuthHeaders());
-  }
-
-  @Test
-  void delete_put_Database_200(TestInfo test) throws IOException {
-    CreateDatabase request = create(test).withService(MYSQL_REFERENCE).withDescription("");
-    Database database = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteEntity(database.getId(), adminAuthHeaders());
-
-    ChangeDescription change = getChangeDescription(database.getVersion());
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
   void delete_nonEmptyDatabase_4xx() {
     // TODO
-  }
-
-  public static Database createDatabase(CreateDatabase create, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    return TestUtils.post(getResource("databases"), create, Database.class, authHeaders);
   }
 
   /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
@@ -183,8 +127,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     String fields = "owner";
     database =
         byName
-            ? getEntityByName(database.getFullyQualifiedName(), null, fields, adminAuthHeaders())
-            : getEntity(database.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getOwner(), database.getService(), database.getServiceType());
     assertListNull(database.getTables(), database.getUsageSummary());
 
@@ -192,8 +136,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     fields = "owner,tables,usageSummary";
     database =
         byName
-            ? getEntityByName(database.getFullyQualifiedName(), null, fields, adminAuthHeaders())
-            : getEntity(database.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(
         database.getOwner(),
         database.getService(),
@@ -203,28 +147,22 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
     TestUtils.validateEntityReference(database.getTables());
   }
 
-  public CreateDatabase create(TestInfo test) {
-    return create(getEntityName(test));
-  }
-
-  private CreateDatabase create(String entityName) {
-    return new CreateDatabase().withName(entityName).withService(SNOWFLAKE_REFERENCE);
+  @Override
+  public CreateDatabase createRequest(String name, String description, String displayName, EntityReference owner) {
+    return new CreateDatabase()
+        .withName(name)
+        .withDescription(description)
+        .withOwner(owner)
+        .withService(SNOWFLAKE_REFERENCE);
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description).withOwner(owner);
+  public EntityReference getContainer(CreateDatabase createRequest) {
+    return createRequest.getService();
   }
 
   @Override
-  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
-    CreateDatabase createDatabase = (CreateDatabase) createRequest;
-    return createDatabase.getService();
-  }
-
-  @Override
-  public void validateCreatedEntity(Database database, Object request, Map<String, String> authHeaders) {
-    CreateDatabase createRequest = (CreateDatabase) request;
+  public void validateCreatedEntity(Database database, CreateDatabase createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
         getEntityInterface(database),
         createRequest.getDescription(),
@@ -237,7 +175,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public void validateUpdatedEntity(Database updatedEntity, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(Database updatedEntity, CreateDatabase request, Map<String, String> authHeaders) {
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 

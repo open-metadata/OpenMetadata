@@ -28,8 +28,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
 
-@Slf4j
 /** REST resource used for webhook callback tests. */
+@Slf4j
 @Path("v1/test/webhook")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

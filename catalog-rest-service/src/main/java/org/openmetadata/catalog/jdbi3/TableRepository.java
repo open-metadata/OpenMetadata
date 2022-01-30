@@ -374,8 +374,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Table original, Table updated, boolean patchOperation) {
-    return new TableUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
+    return new TableUpdater(original, updated, operation);
   }
 
   List<Column> cloneWithoutTags(List<Column> columns) {
@@ -775,8 +775,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends EntityUpdater {
-    public TableUpdater(Table original, Table updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public TableUpdater(Table original, Table updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
@@ -850,7 +850,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (!patchOperation && origColumn.getDescription() != null && !origColumn.getDescription().isEmpty()) {
+      if (operation.isPut() && origColumn.getDescription() != null && !origColumn.getDescription().isEmpty()) {
         // Update description only when stored is empty to retain user authored descriptions
         updatedColumn.setDescription(origColumn.getDescription());
         return;

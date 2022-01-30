@@ -355,7 +355,7 @@ class ElasticsearchSink(Sink[Entity]):
                 chart_descriptions.append(chart.description)
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
-                    tags.add(col_tag.tagFQN)
+                    tags.add(col_tag.tagFQN.__root__)
         change_descriptions = self._get_change_descriptions(
             Dashboard, dashboard.id.__root__
         )

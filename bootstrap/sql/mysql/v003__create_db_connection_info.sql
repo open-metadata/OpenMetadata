@@ -29,6 +29,8 @@ DROP INDEX updatedAt;
 
 UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.updatedAt', UNIX_TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ')), '$.deleted', FALSE);
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.jdbc');
 
 ALTER TABLE dbservice_entity
 ADD COLUMN updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL AFTER json,
@@ -260,9 +262,10 @@ ADD INDEX(updatedAt),
 ADD COLUMN deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
 ADD INDEX (deleted);
 
+-- Update entity extension data where we store versions of entities which will have updatedAt in old format.
 UPDATE entity_extension
-SET json = JSON_SET(json, '$.updatedAt', UNIX_TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ')));
-
+SET json = JSON_SET(json, '$.updatedAt', UNIX_TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ')))
+where extension like '%.version.%';
 
 ALTER TABLE ingestion_entity
 DROP COLUMN updatedAt,

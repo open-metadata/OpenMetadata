@@ -43,7 +43,7 @@ from metadata.ingestion.source.sql_source_common import (
     SQLConnectionConfig,
     SQLSourceStatus,
 )
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -117,12 +117,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 return True
         # Catch any errors during profiling init and continue ingestion
-        except Exception as exc:  # pylint: disable=broad-except
+        except ModuleNotFoundError as err:
             logger.error(
-                f"Error loading profiler {exc}"
-                "DataProfiler configuration is enabled. Please make sure you ran "
-                "pip install 'openmetadata-ingestion[data-profiler]'"
+                f"Profiling not available for this databaseService: {str(err)}"
             )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.print_exc())
+            logger.debug(f"Error loading profiler {repr(exc)}")
         return False
 
     def prepare(self):
@@ -217,11 +218,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(repr(err))
                     logger.error(err)
 
-                if self._instantiate_profiler():
-                    profile = self.run_data_profiler(table_name, schema)
-                    table_entity.tableProfile = (
-                        [profile] if profile is not None else None
-                    )
+                try:
+                    if self._instantiate_profiler():
+                        profile = self.run_data_profiler(table_name, schema)
+                        table_entity.tableProfile = (
+                            [profile] if profile is not None else None
+                        )
+                # Catch any errors during the profile runner and continue
+                except Exception as err:
+                    logger.error(err)
                 # check if we have any model to associate with
                 table_entity.dataModel = self._get_data_model(schema, table_name)
 
@@ -233,7 +238,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     "{}.{}".format(self.config.get_service_name(), table_name)
                 )
             except Exception as err:
-                traceback.print_exc()
+                logger.debug(traceback.print_exc())
                 logger.error(err)
                 self.status.failures.append(
                     "{}.{}".format(self.config.service_name, table_name)
@@ -387,7 +392,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ccolumn = ccolumns[key]
             try:
                 ctype = ccolumn["type"]
-                col_type = get_column_type(self.status, model_name, ctype)
+                col_type = ColumnTypeParser.get_column_type(ctype)
                 description = manifest_columns.get(key.lower(), {}).get(
                     "description", None
                 )
@@ -460,43 +465,34 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             if "column_names" in constraint.keys()
         ]
 
-        dataset_name = f"{schema}.{table}"
         table_columns = []
         columns = inspector.get_columns(table, schema)
         try:
             for row_order, column in enumerate(columns):
                 try:
+                    col_dict = None
                     if "." in column["name"]:
-                        logger.info(
-                            f"Found '.' in {column['name']}, changing '.' to '_DOT_'"
-                        )
                         column["name"] = column["name"].replace(".", "_DOT_")
                     children = None
                     data_type_display = None
                     col_data_length = None
                     arr_data_type = None
+                    parsed_string = None
                     if (
                         "raw_data_type" in column
                         and column["raw_data_type"] is not None
                     ):
+
                         column["raw_data_type"] = self.parse_raw_data_type(
                             column["raw_data_type"]
                         )
-                        (
-                            col_type,
-                            data_type_display,
-                            arr_data_type,
-                            children,
-                        ) = check_column_complex_type(
-                            self.status,
-                            dataset_name,
-                            column["raw_data_type"],
-                            column["name"],
-                        )
+                        if not column["raw_data_type"].startswith(schema):
+                            parsed_string = ColumnTypeParser._parse_datatype_string(
+                                column["raw_data_type"]
+                            )
+                            parsed_string["name"] = column["name"]
                     else:
-                        col_type = get_column_type(
-                            self.status, dataset_name, column["type"]
-                        )
+                        col_type = ColumnTypeParser.get_column_type(column["type"])
                         if col_type == "ARRAY" and re.match(
                             r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
                         ):
@@ -504,42 +500,68 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
                             ).groups()
                             data_type_display = column["type"]
-                    if repr(column["type"]).upper().startswith("ARRAY("):
-                        arr_data_type = "STRUCT"
-                        data_type_display = (
-                            repr(column["type"])
-                            .replace("(", "<")
-                            .replace(")", ">")
-                            .lower()
+                    if parsed_string is None:
+                        col_type = ColumnTypeParser.get_column_type(column["type"])
+                        col_constraint = self._get_column_constraints(
+                            column, pk_columns, unique_columns
                         )
-                    col_constraint = self._get_column_constraints(
-                        column, pk_columns, unique_columns
-                    )
-                    if col_type.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
-                        col_data_length = column["type"].length
-                    if col_type == "NULL":
-                        col_type = "VARCHAR"
-                        data_type_display = "varchar"
-                        logger.warning(
-                            f"Unknown type {column['type']} mapped to VARCHAR: {column['name']}"
+                        col_data_length = self._check_col_length(
+                            col_type, column["type"]
                         )
-                    om_column = Column(
-                        name=column["name"],
-                        description=column.get("comment", None),
-                        dataType=col_type,
-                        dataTypeDisplay="{}({})".format(
-                            col_type, 1 if col_data_length is None else col_data_length
+                        if col_type == "NULL" or col_type is None:
+                            col_type = "VARCHAR"
+                            data_type_display = "varchar"
+                            logger.warning(
+                                "Unknown type {} mapped to VARCHAR: {}".format(
+                                    repr(column["type"]), column["name"]
+                                )
+                            )
+                        col_data_length = (
+                            1 if col_data_length is None else col_data_length
                         )
-                        if data_type_display is None
-                        else f"{data_type_display}",
-                        dataLength=1 if col_data_length is None else col_data_length,
-                        constraint=col_constraint,
-                        ordinalPosition=row_order,
-                        children=children if children is not None else None,
-                        arrayDataType=arr_data_type,
-                    )
+                        dataTypeDisplay = (
+                            f"{data_type_display}"
+                            if data_type_display
+                            else "{}({})".format(col_type, col_data_length)
+                        )
+                        om_column = Column(
+                            name=column["name"],
+                            description=column.get("comment", None),
+                            dataType=col_type,
+                            dataTypeDisplay=dataTypeDisplay,
+                            dataLength=col_data_length,
+                            constraint=col_constraint,
+                            ordinalPosition=row_order,
+                            children=children if children else None,
+                            arrayDataType=arr_data_type,
+                        )
+                    else:
+                        parsed_string["dataLength"] = self._check_col_length(
+                            parsed_string["dataType"], column["type"]
+                        )
+                        if column["raw_data_type"] == "array":
+                            array_data_type_display = (
+                                repr(column["type"])
+                                .replace("(", "<")
+                                .replace(")", ">")
+                                .replace("=", ":")
+                                .replace("<>", "")
+                                .lower()
+                            )
+                            parsed_string[
+                                "dataTypeDisplay"
+                            ] = f"{array_data_type_display}"
+                            parsed_string[
+                                "arrayDataType"
+                            ] = ColumnTypeParser._parse_primitive_datatype_string(
+                                array_data_type_display[6:-1]
+                            )[
+                                "dataType"
+                            ]
+                        col_dict = Column(**parsed_string)
+                        om_column = col_dict
                 except Exception as err:
-                    logger.error(traceback.print_exc())
+                    logger.debug(traceback.print_exc())
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)
@@ -547,6 +569,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         except Exception as err:
             logger.error(f"{repr(err)}: {table} {err}")
             return None
+
+    def _check_col_length(self, datatype, col_raw_type):
+        if datatype and datatype.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
+            return col_raw_type.length if col_raw_type.length else 1
 
     def run_data_profiler(self, table: str, schema: str) -> TableProfile:
         """

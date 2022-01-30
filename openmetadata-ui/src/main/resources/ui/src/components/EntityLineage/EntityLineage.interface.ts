@@ -28,9 +28,11 @@ export interface EntityLineageProp {
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;
   entityLineage: EntityLineage;
+  deleted?: boolean;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
+  entityLineageHandler: (lineage: EntityLineage) => void;
 }
 
 export interface Edge {

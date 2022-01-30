@@ -13,10 +13,11 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNil, isNull } from 'lodash';
+import { isNil } from 'lodash';
 import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
   deleteService,
   getServiceDetails,
@@ -49,6 +50,7 @@ import {
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateAirflowPipeline } from '../../generated/api/operations/pipelines/createAirflowPipeline';
 import {
   DashboardService,
   DashboardServiceType,
@@ -56,10 +58,14 @@ import {
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
-import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
+import {
+  getActiveCatClass,
+  getCountBadge,
+  getServiceLogo,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 type ServiceRecord = {
@@ -179,11 +185,6 @@ const ServicesPage = () => {
     setEditData(undefined);
   };
 
-  const handleEdit = (value: ServiceDataObj) => {
-    setEditData(value);
-    setIsModalOpen(true);
-  };
-
   const handleUpdate = (
     selectedService: string,
     id: string,
@@ -212,9 +213,10 @@ const ServicesPage = () => {
   };
 
   const handleAdd = (selectedService: string, dataObj: DataObj) => {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<AxiosResponse>((resolve, reject) => {
       postService(selectedService, dataObj)
-        .then(({ data }: { data: AxiosResponse['data'] }) => {
+        .then((res: AxiosResponse) => {
+          const { data } = res;
           const updatedData = {
             ...data,
             ...data.jdbc,
@@ -228,7 +230,7 @@ const ServicesPage = () => {
             [serviceName]: pre[serviceName] + 1,
           }));
           setServiceList(updatedServiceList);
-          resolve();
+          resolve(res);
         })
         .catch((err: AxiosError) => {
           reject(err);
@@ -239,7 +241,8 @@ const ServicesPage = () => {
   const handleSave = (
     dataObj: DataObj,
     selectedService: string,
-    isEdit: EditObj
+    isEdit: EditObj,
+    ingestionList?: CreateAirflowPipeline[]
   ) => {
     let promiseSave;
     if (isEdit.edit && isEdit.id) {
@@ -248,9 +251,37 @@ const ServicesPage = () => {
       promiseSave = handleAdd(selectedService, dataObj);
     }
     promiseSave
-      .then(() => {
-        setIsModalOpen(false);
-        setEditData(undefined);
+      .then((serviceRes: AxiosResponse | void) => {
+        const serviceId = serviceRes?.data.id;
+        if (ingestionList?.length && serviceId) {
+          const promises = ingestionList.map((ingestion) => {
+            return addAirflowPipeline({
+              ...ingestion,
+              service: {
+                ...ingestion.service,
+                id: serviceId,
+              },
+              pipelineType: PipelineType.Metadata,
+            });
+          });
+
+          Promise.allSettled(promises).then(
+            (response: PromiseSettledResult<AxiosResponse>[]) => {
+              response.map((data) => {
+                data.status === 'rejected' &&
+                  showToast({
+                    variant: 'error',
+                    body: data.reason || 'Something went wrong!',
+                  });
+              });
+              setIsModalOpen(false);
+              setEditData(undefined);
+            }
+          );
+        } else {
+          setIsModalOpen(false);
+          setEditData(undefined);
+        }
       })
       .catch((err: AxiosError) => {
         showToast({
@@ -269,17 +300,25 @@ const ServicesPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    deleteService(serviceName, id).then((res: AxiosResponse) => {
-      if (res.statusText === 'OK') {
-        const updatedServiceList = serviceList.filter((s) => s.id !== id);
-        setServices({ ...services, [serviceName]: updatedServiceList });
-        setServicesCount((pre) => ({
-          ...servicesCount,
-          [serviceName]: pre[serviceName] - 1,
-        }));
-        setServiceList(updatedServiceList);
-      }
-    });
+    deleteService(serviceName, id)
+      .then((res: AxiosResponse) => {
+        if (res.statusText === 'OK') {
+          const updatedServiceList = serviceList.filter((s) => s.id !== id);
+          setServices({ ...services, [serviceName]: updatedServiceList });
+          setServicesCount((pre) => ({
+            ...servicesCount,
+            [serviceName]: pre[serviceName] - 1,
+          }));
+          setServiceList(updatedServiceList);
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = err.response?.data.message || 'Something went wrong!';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
 
     handleCancelConfirmationModal();
   };
@@ -290,15 +329,6 @@ const ServicesPage = () => {
       name,
     });
     setIsConfirmationModalOpen(true);
-  };
-
-  const getServiceLogo = (serviceType: string): JSX.Element | null => {
-    const logo = serviceTypeLogo(serviceType);
-    if (!isNull(logo)) {
-      return <img alt="" className="tw-h-8 tw-w-8" src={logo} />;
-    }
-
-    return null;
   };
 
   const getServiceTabs = (): Array<{
@@ -364,20 +394,6 @@ const ServicesPage = () => {
 
   const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
     switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        const databaseService = service as unknown as DatabaseService;
-
-        return (
-          <>
-            <div className="tw-mb-1" data-testid="additional-field">
-              <label className="tw-mb-0">Driver Class:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {databaseService.jdbc.driverClass}
-              </span>
-            </div>
-          </>
-        );
-      }
       case ServiceCategory.MESSAGING_SERVICES: {
         const messagingService = service as unknown as MessagingService;
 
@@ -553,18 +569,7 @@ const ServicesPage = () => {
                             )}
                           </div>
                           {getOptionalFields(service)}
-                          <div
-                            className="tw-mb-1"
-                            data-testid="service-ingestion">
-                            <label className="tw-mb-0">Ingestion:</label>
-                            <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                              {service.ingestionSchedule?.repeatFrequency
-                                ? getFrequencyTime(
-                                    service.ingestionSchedule.repeatFrequency
-                                  )
-                                : '--'}
-                            </span>
-                          </div>
+
                           <div className="" data-testid="service-type">
                             <label className="tw-mb-0">Type:</label>
                             <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
@@ -574,21 +579,6 @@ const ServicesPage = () => {
                         </div>
                         <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                           <div className="tw-flex tw-justify-end">
-                            <NonAdminAction
-                              position="top"
-                              title={TITLE_FOR_NON_ADMIN_ACTION}>
-                              <button
-                                className="tw-pr-3 focus:tw-outline-none"
-                                data-testid={`edit-service-${service.name}`}
-                                onClick={() => handleEdit(service)}>
-                                <SVGIcons
-                                  alt="edit"
-                                  icon="icon-edit"
-                                  title="Edit"
-                                  width="12px"
-                                />
-                              </button>
-                            </NonAdminAction>
                             <NonAdminAction
                               position="top"
                               title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -610,7 +600,10 @@ const ServicesPage = () => {
                           <div
                             className="tw-flex tw-justify-end"
                             data-testid="service-icon">
-                            {getServiceLogo(service.serviceType || '')}
+                            {getServiceLogo(
+                              service.serviceType || '',
+                              'tw-h-8 tw-w-8'
+                            )}
                           </div>
                         </div>
                       </div>
@@ -633,12 +626,16 @@ const ServicesPage = () => {
                       }`}
                     </p>
                     <p className="tw-text-lg tw-text-center">
-                      <button
-                        className="link-text tw-underline"
-                        data-testid="add-service-button"
-                        onClick={handleAddService}>
-                        Click here
-                      </button>{' '}
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className="link-text tw-underline"
+                          data-testid="add-service-button"
+                          onClick={handleAddService}>
+                          Click here
+                        </button>
+                      </NonAdminAction>{' '}
                       to add new {servicesDisplayName[serviceName]}
                     </p>
                   </div>
@@ -655,7 +652,7 @@ const ServicesPage = () => {
 
               {isModalOpen && (
                 <AddServiceModal
-                  data={editData}
+                  data={editData as DataObj}
                   header={`${editData ? 'Edit' : 'Add new'} service`}
                   serviceList={serviceList}
                   serviceName={serviceName}

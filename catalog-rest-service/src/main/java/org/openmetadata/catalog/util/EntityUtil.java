@@ -48,6 +48,8 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventFilter;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
@@ -356,15 +358,15 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(
-      EntityInterface followedEntityInterface,
-      String entityName,
+      EntityInterface<?> followedEntityInterface,
+      String name,
       EntityRelationshipDAO entityRelationshipDAO,
       UserDAO userDAO)
       throws IOException {
     List<String> followerIds =
         entityRelationshipDAO.findFrom(
             followedEntityInterface.getId().toString(),
-            entityName,
+            name,
             Relationship.FOLLOWS.ordinal(),
             Entity.USER,
             toBoolean(ALL));
@@ -384,7 +386,7 @@ public final class EntityUtil {
     private final List<String> fieldList;
 
     public Fields(List<String> validFields, String fieldsParam) {
-      if (fieldsParam == null) {
+      if (fieldsParam == null || fieldsParam.isEmpty()) {
         fieldList = Collections.emptyList();
         return;
       }
@@ -408,12 +410,14 @@ public final class EntityUtil {
     return refList.stream().sorted(compareEntityReference).map(EntityReference::getId).collect(Collectors.toList());
   }
 
-  public static String getVersionExtension(String entityName, Double version) {
-    return String.format("%s.%s.%s", entityName, "version", version.toString());
+  /** Entity version extension name formed by entityType.version.versionNumber. Example - `table.version.0.1` */
+  public static String getVersionExtension(String entityType, Double version) {
+    return String.format("%s.%s", getVersionExtensionPrefix(entityType), version.toString());
   }
 
-  public static String getVersionExtensionPrefix(String entityName) {
-    return String.format("%s.%s", entityName, "version");
+  /** Entity version extension name prefix formed by entityType.version Example - `table.version` */
+  public static String getVersionExtensionPrefix(String entityType) {
+    return String.format("%s.%s", entityType, "version");
   }
 
   public static Double getVersion(String extension) {
@@ -442,5 +446,25 @@ public final class EntityUtil {
     } else { // "non-deleted"
       return Boolean.FALSE;
     }
+  }
+
+  public static Double nextVersion(Double version) {
+    return Math.round((version + 0.1) * 10.0) / 10.0;
+  }
+
+  public static Double nextMajorVersion(Double version) {
+    return Math.round((version + 1.0) * 10.0) / 10.0;
+  }
+
+  public static void addSoftDeleteFilter(List<EventFilter> filters) {
+    // Add filter for soft delete events if delete event type is requested
+    Optional<EventFilter> deleteFilter =
+        filters.stream().filter(eventFilter -> eventFilter.getEventType().equals(EventType.ENTITY_DELETED)).findAny();
+    deleteFilter.ifPresent(
+        eventFilter ->
+            filters.add(
+                new EventFilter()
+                    .withEventType(EventType.ENTITY_SOFT_DELETED)
+                    .withEntities(eventFilter.getEntities())));
   }
 }

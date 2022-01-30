@@ -89,7 +89,6 @@ const MyAssetStats: FunctionComponent<Props> = ({
         icon: Icons.INGESTION,
         data: 'Ingestion',
         count: ingestionCount,
-        link: ROUTES.INGESTION,
         dataTestId: 'ingestion',
       },
       user: {
@@ -155,7 +154,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
                 </Link>
               )
             ) : (
-              <p className="tw-font-medium tw-pl-2">{data.data}</p>
+              <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
             )}
           </div>
           {!isNil(data.count) && getCountBadge(data.count, '', false)}

@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
@@ -173,8 +174,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Policy original, Policy updated, boolean patchOperation) {
-    return new PolicyUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Policy original, Policy updated, Operation operation) {
+    return new PolicyUpdater(original, updated, operation);
   }
 
   /**
@@ -404,8 +405,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class PolicyUpdater extends EntityUpdater {
-    public PolicyUpdater(Policy original, Policy updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public PolicyUpdater(Policy original, Policy updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
@@ -443,7 +444,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
                 Entity.LOCATION,
                 Relationship.APPLIED_TO.ordinal());
       }
-      recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation());
+      recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
     }
   }
 }

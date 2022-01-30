@@ -76,6 +76,7 @@ const DatasetDetailsProps = {
   isNodeLoading: {} as LoadingNodeState,
   addLineageHandler: jest.fn(),
   removeLineageHandler: jest.fn(),
+  entityLineageHandler: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);

@@ -110,4 +110,4 @@ This schema <u>does not</u> accept additional properties.
 - Type: `string`
 - Length: between 1 and 256
 
-_This document was updated on: Tuesday, December 14, 2021_
+_This document was updated on: Tuesday, January 25, 2022_

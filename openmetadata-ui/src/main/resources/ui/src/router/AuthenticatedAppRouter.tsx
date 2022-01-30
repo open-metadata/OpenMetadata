@@ -22,7 +22,6 @@ import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
-import IngestionPage from '../pages/IngestionPage/IngestionPage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import RolesPage from '../pages/RolesPage/RolesPage.component';
@@ -88,7 +87,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
-      <Route exact component={IngestionPage} path={ROUTES.INGESTION} />
       {isAuthDisabled || isAdminUser ? (
         <>
           <Route exact component={RolesPage} path={ROUTES.ROLES} />

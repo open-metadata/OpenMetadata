@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -67,8 +67,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     TableResourceTest tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
-    CreateTable createTable = tableResourceTest.create(test);
-    TABLE = tableResourceTest.createAndCheckEntity(createTable, adminAuthHeaders());
+    CreateTable createTable = tableResourceTest.createRequest(test);
+    TABLE = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E/table/%s>", TABLE.getFullyQualifiedName());
 
@@ -79,7 +79,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TEAM_LINK = String.format("<#E/team/%s>", TEAM.getName());
 
     CreateThread createThread = create();
-    THREAD = createAndCheck(createThread, adminAuthHeaders());
+    THREAD = createAndCheck(createThread, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -151,10 +151,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   void post_validThreadAndList_200(TestInfo test) throws HttpResponseException {
-    int totalThreadCount = listThreads(null, adminAuthHeaders()).getData().size();
-    int userThreadCount = listThreads(USER_LINK, adminAuthHeaders()).getData().size();
-    int teamThreadCount = listThreads(TEAM_LINK, adminAuthHeaders()).getData().size();
-    int tableThreadCount = listThreads(TABLE_LINK, adminAuthHeaders()).getData().size();
+    int totalThreadCount = listThreads(null, ADMIN_AUTH_HEADERS).getData().size();
+    int userThreadCount = listThreads(USER_LINK, ADMIN_AUTH_HEADERS).getData().size();
+    int teamThreadCount = listThreads(TEAM_LINK, ADMIN_AUTH_HEADERS).getData().size();
+    int tableThreadCount = listThreads(TABLE_LINK, ADMIN_AUTH_HEADERS).getData().size();
 
     CreateThread create =
         create()

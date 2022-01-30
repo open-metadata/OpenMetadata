@@ -11,7 +11,12 @@
       "javaType": "org.openmetadata.catalog.type.EventType",
       "description": "Type of event.",
       "type": "string",
-      "enum": ["entityCreated", "entityUpdated", "entityDeleted"]
+      "enum": [
+        "entityCreated",
+        "entityUpdated",
+        "entitySoftDeleted",
+        "entityDeleted"
+      ]
     },
     "eventFilter": {
       "type": "object",

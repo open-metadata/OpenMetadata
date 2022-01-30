@@ -28,7 +28,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -164,7 +163,7 @@ public class RoleRepository extends EntityRepository<Role> {
                 .withDeleted(false)
                 .withUpdatedAt(role.getUpdatedAt())
                 .withUpdatedBy(role.getUpdatedBy());
-        Entity.getEntityRepository(Entity.POLICY).storeEntity(policy, false);
+        Entity.getEntityRepository(Entity.POLICY).storeEntity(policy, update);
       }
     }
 
@@ -189,8 +188,8 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Role original, Role updated, boolean patchOperation) {
-    return new RoleUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Role original, Role updated, Operation operation) {
+    return new RoleUpdater(original, updated, operation);
   }
 
   public static class RoleEntityInterface implements EntityInterface<Role> {
@@ -306,16 +305,8 @@ public class RoleRepository extends EntityRepository<Role> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class RoleUpdater extends EntityUpdater {
-    public RoleUpdater(Role original, Role updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      // Update operation cannot undelete a role.
-      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("Role", "deleted"));
-      }
+    public RoleUpdater(Role original, Role updated, Operation operation) {
+      super(original, updated, operation);
     }
   }
 }

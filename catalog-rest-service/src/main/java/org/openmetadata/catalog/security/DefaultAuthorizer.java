@@ -133,13 +133,18 @@ public class DefaultAuthorizer implements Authorizer {
       AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
     validateAuthenticationContext(ctx);
     try {
+      User user = getUserFromAuthenticationContext(ctx);
+      if (entityReference == null) {
+        // In some cases there is no specific entity being acted upon. Eg: Lineage.
+        return policyEvaluator.hasPermission(user, null, operation);
+      }
+
       Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
       if (owner == null) {
         // Entity does not have an owner.
         return true;
       }
-      User user = getUserFromAuthenticationContext(ctx);
       if (isOwnedByUser(user, owner)) {
         // Entity is owned by the user.
         return true;

@@ -12,13 +12,14 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isNull, isUndefined } from 'lodash';
 import {
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
+import { utc } from 'moment';
 import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -33,6 +34,8 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
+import { serviceTypeLogo } from './ServiceUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const arraySorterByKey = (
   key: string,
@@ -125,6 +128,14 @@ export const getUserTeams = (): Array<UserTeams> => {
   }
 
   return retVal || [];
+};
+
+export const hasEditAccess = (type: string, id: string) => {
+  if (type === 'user') {
+    return id === getCurrentUserId();
+  } else {
+    return getUserTeams().some((team) => team.id === id);
+  }
 };
 
 export const getTabClasses = (
@@ -294,6 +305,23 @@ export const errorMsg = (value: string) => {
   );
 };
 
+export const requiredField = (label: string, excludeSpace = false) => (
+  <>
+    {label}{' '}
+    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+  </>
+);
+
+export const getSeparator = (title: string | JSX.Element) => {
+  return (
+    <span className="tw-flex tw-py-2 tw-text-grey-muted">
+      <hr className="tw-mt-2.5 tw-w-full" />
+      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
+      <hr className="tw-mt-2.5 tw-w-full" />
+    </span>
+  );
+};
+
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
   for (const type in imageTypes) {
@@ -304,6 +332,31 @@ export const getImages = (imageUri: string) => {
   }
 
   return imagesObj;
+};
+
+export const getServiceLogo = (
+  serviceType: string,
+  className = ''
+): JSX.Element | null => {
+  const logo = serviceTypeLogo(serviceType);
+
+  if (!isNull(logo)) {
+    return <img alt="" className={className} src={logo} />;
+  }
+
+  return null;
+};
+
+export const getCurrentDate = () => {
+  return `${utc(new Date()).format('YYYY-MM-DD')}`;
+};
+
+export const getSvgArrow = (isActive: boolean) => {
+  return isActive ? (
+    <SVGIcons alt="arrow-down" icon={Icons.ARROW_DOWN_PRIMARY} />
+  ) : (
+    <SVGIcons alt="arrow-right" icon={Icons.ARROW_RIGHT_PRIMARY} />
+  );
 };
 
 export const isValidUrl = (href: string) => {

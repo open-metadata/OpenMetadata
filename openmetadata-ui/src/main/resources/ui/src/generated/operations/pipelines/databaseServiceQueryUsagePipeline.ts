@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +12,14 @@
  *  limitations under the License.
  */
 
-export type Steps = {
-  name: string;
-  step: number;
-};
+export interface DatabaseServiceQueryUsagePipelineObject {
+  /**
+   * Configuration to tune how far we want to look back in query logs to process usage data.
+   */
+  queryLogDuration?: number;
+  /**
+   * Temporary file name to store the query logs before processing. Absolute file path
+   * required.
+   */
+  stageFileLocation?: string;
+}

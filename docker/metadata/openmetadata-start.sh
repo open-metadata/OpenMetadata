@@ -10,7 +10,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-while ! wget -O /dev/null -o /dev/null mysql:3306; do sleep 5; done
+MYSQL="${MYSQL_HOST:-mysql}":"${MYSQL_PORT:-3306}"
+while ! wget -O /dev/null -o /dev/null "${MYSQL}";
+  do echo "Trying to connect to ${MYSQL}"; sleep 5;
+done
 cp /openmetadata.yaml /openmetadata-*/conf/openmetadata.yaml
 cd /openmetadata-*/
 ./bootstrap/bootstrap_storage.sh migrate-all
