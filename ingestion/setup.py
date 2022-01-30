@@ -118,7 +118,7 @@ dev = {
     "twine",
 }
 test = {
-    "black",
+    "black==21.12b0",
     "isort",
     "pre-commit",
     "pylint",
