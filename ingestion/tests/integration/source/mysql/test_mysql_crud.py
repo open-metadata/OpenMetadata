@@ -17,9 +17,7 @@ from requests.exceptions import ConnectionError
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseRequest,
-)
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -47,9 +45,7 @@ def create_delete_table(client: OpenMetadata):
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
-    table = CreateTableRequest(
-        name="test1", columns=columns, database=databases[0].id
-    )
+    table = CreateTableRequest(name="test1", columns=columns, database=databases[0].id)
     created_table = client.create_or_update(table)
     if table.name.__root__ == created_table.name.__root__:
         requests.delete(

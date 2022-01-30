@@ -76,9 +76,7 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
-    table = CreateTableRequest(
-        name="test1", columns=columns, database=databases[0].id
-    )
+    table = CreateTableRequest(name="test1", columns=columns, database=databases[0].id)
     created_table = client.create_or_update(table)
     if table.name.__root__ == created_table.name.__root__:
         client.delete(entity=Table, entity_id=str(created_table.id.__root__))

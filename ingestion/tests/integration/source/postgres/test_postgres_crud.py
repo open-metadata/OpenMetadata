@@ -12,9 +12,7 @@
 import pytest
 import requests
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseRequest,
-)
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,

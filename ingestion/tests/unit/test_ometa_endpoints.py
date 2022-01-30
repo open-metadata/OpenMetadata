@@ -115,9 +115,7 @@ class OMetaEndpointTest(TestCase):
         entity = self.metadata.get_entity_from_create(CreateTopicRequest)
         assert issubclass(entity, Topic)
 
-        entity = self.metadata.get_entity_from_create(
-            CreateDatabaseServiceRequest
-        )
+        entity = self.metadata.get_entity_from_create(CreateDatabaseServiceRequest)
         assert issubclass(entity, DatabaseService)
 
         entity = self.metadata.get_entity_from_create(CreateUserRequest)

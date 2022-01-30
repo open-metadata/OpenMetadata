@@ -16,9 +16,7 @@ import requests
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseRequest,
-)
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -66,9 +64,7 @@ def create_delete_table(client):
         Column(name="id", columnDataType="INT"),
         Column(name="name", columnDataType="VARCHAR"),
     ]
-    table = CreateTableRequest(
-        name="test1", columns=columns, database=databases[0].id
-    )
+    table = CreateTableRequest(name="test1", columns=columns, database=databases[0].id)
     created_table = client.create_or_update_table(table)
     if table.name.__root__ == created_table.name.__root__:
         requests.delete(
