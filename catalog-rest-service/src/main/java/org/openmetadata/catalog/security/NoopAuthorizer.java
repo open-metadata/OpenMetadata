@@ -13,12 +13,13 @@
 
 package org.openmetadata.catalog.security;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 
-@Slf4j
 public class NoopAuthorizer implements Authorizer {
 
   @Override
@@ -35,6 +36,12 @@ public class NoopAuthorizer implements Authorizer {
   public boolean hasPermissions(
       AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
     return true;
+  }
+
+  @Override
+  public List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference) {
+    // Return all operations.
+    return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
   }
 
   @Override
