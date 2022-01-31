@@ -2,12 +2,11 @@
     "source": {
       "type": "dynamodb",
       "config": {
-        "aws_session_token": "session_token",
         "aws_access_key_id": "AKIATXFWJZHNC2HIQPPF",
         "aws_secret_access_key": "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",
-        "service_name": "DynamoDBTest",
+        "service_name": "DynamoDB",
         "region_name": "us-east-2",
-        "endpoint_url": "dynamodb.us-east-2.amazonaws.com"
+        "endpoint_url": "https://dynamodb.us-east-2.amazonaws.com"
       }
     },
     "sink": {
@@ -22,4 +21,3 @@
       }
     }
   }
-    

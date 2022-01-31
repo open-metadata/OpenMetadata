@@ -17,7 +17,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, IncludeFilterPattern
 from metadata.utils.helpers import get_database_service_or_create
-
+from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from typing import Any, Generic, Iterable, List
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -38,13 +38,15 @@ class DynamodbSource(Source[Entity]):
         self, config: DynamoDBSourceConfig, metadata_config: MetadataServerConfig, ctx
     ):
         super().__init__(ctx)
+        self.status = SQLSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service = get_database_service_or_create(
             config, metadata_config, self.config.service_name
         )
-        self.dynamodb = AWSClient(self.config).get_client("dynamodb")
+        self.dynamodb = AWSClient(self.config).get_resource("dynamodb")
+
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -57,6 +59,7 @@ class DynamodbSource(Source[Entity]):
 
     def next_record(self) -> Iterable[Entity]:
         try:
+            print(self)
             table_list = self.dynamodb.tables.all()
             if not table_list:
                 return
@@ -68,15 +71,19 @@ class DynamodbSource(Source[Entity]):
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
         try:
-            tables = self.dynamodb.tables.all()
-            for table in tables:
+            table_list = list(self.dynamodb.tables.all())
+            print(table_list)
+            
+            for table in table_list:
                 database_entity = Database(
-                    name="DynamoDBTest",
+                    name="DynamoDB",
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
-                fqn = f"{self.config.service_name}.{self.database_name}.{table.name}"
+                database_name = "dynamodb"
+                fqn = f"{self.config.service_name}.{database_name}.{table}"
                 self.dataset_name = fqn
-                table_columns = table.attribute_definitions
+                print(table.attribute_definitions)
+                table_columns = self.get_columns(table.attribute_definitions)
 
                 table_entity = Table(
                     id=uuid.uuid4(),
@@ -94,6 +101,13 @@ class DynamodbSource(Source[Entity]):
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             logger.debug(err)
+
+    def get_columns(self, column_data):
+        
+            parsed_string = {}
+               
+            yield Column(**parsed_string)
+
 
     def close(self):
         pass
