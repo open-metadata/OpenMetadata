@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -45,28 +46,26 @@ import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 
 @Slf4j
 public final class TestUtils {
-  // Entity name length allowed is 64 characters. This is a 65 char length invalid entity name
+  // Entity name length allowed is 128 characters
   public static final int ENTITY_NAME_MAX_LEN = 128;
-  public static final String LONG_ENTITY_NAME;
-
-  static {
-    // Create an entity name with length longer than the
-    LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
-  }
-
-  public static final String ADMIN_USER_NAME = "admin";
+  public static final String LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
   public static final String ENTITY_NAME_LENGTH_ERROR =
       String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
 
+  public static final String ADMIN_USER_NAME = "admin";
+  public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
+  public static final Map<String, String> TEST_AUTH_HEADERS = authHeaders("test@open-metadata.org");
+
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
-  public static final JdbcInfo JDBC_INFO;
+
+  public static final DatabaseConnection DATABASE_CONNECTION;
   public static URI DASHBOARD_URL;
   public static URI PIPELINE_URL;
 
@@ -78,10 +77,12 @@ public final class TestUtils {
   }
 
   static {
-    JDBC_INFO =
-        new JdbcInfo()
-            .withConnectionUrl("scheme://user_name:password#_@%:localhost:1000/test")
-            .withDriverClass("driverClass");
+    DATABASE_CONNECTION =
+        new DatabaseConnection()
+            .withHostPort("localhost:1000")
+            .withUsername("user_name")
+            .withPassword("password")
+            .withDatabase("test");
   }
 
   static {
@@ -250,10 +251,10 @@ public final class TestUtils {
     // So add to the expectedList, the derived tags before validating the tags
     List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
     for (TagLabel expected : expectedList) {
-      Tag tag = TagResourceTest.getTag(expected.getTagFQN(), adminAuthHeaders());
+      Tag tag = TagResourceTest.getTag(expected.getTagFQN(), ADMIN_AUTH_HEADERS);
       List<TagLabel> derived = new ArrayList<>();
       for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
-        Tag associatedTag = TagResourceTest.getTag(fqn, adminAuthHeaders());
+        Tag associatedTag = TagResourceTest.getTag(fqn, ADMIN_AUTH_HEADERS);
         derived.add(
             new TagLabel()
                 .withTagFQN(fqn)
@@ -269,12 +270,8 @@ public final class TestUtils {
     assertEquals(updatedExpectedList, actualList);
   }
 
-  public static Map<String, String> adminAuthHeaders() {
-    return SecurityUtil.authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
-  }
-
   public static Map<String, String> userAuthHeaders() {
-    return SecurityUtil.authHeaders("test@open-metadata.org");
+    return authHeaders("test@open-metadata.org");
   }
 
   public static void checkUserFollowing(
@@ -301,9 +298,10 @@ public final class TestUtils {
     } else if (updateType == UpdateType.NO_CHANGE) {
       assertEquals(previousVersion, newVersion); // No change in the version
     } else if (updateType == UpdateType.MINOR_UPDATE) {
-      assertEquals(Math.round((previousVersion + 0.1) * 10.0) / 10.0, newVersion); // Minor version change
+      assertEquals(EntityUtil.nextVersion(previousVersion), newVersion); //
+      // Minor version change
     } else if (updateType == UpdateType.MAJOR_UPDATE) {
-      assertEquals(Math.round((previousVersion + 1.0) * 10.0) / 10.0, newVersion); // Major version change
+      assertEquals(EntityUtil.nextMajorVersion(previousVersion), newVersion); // Major version change
     }
   }
 

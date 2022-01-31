@@ -17,6 +17,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import { UserType } from '../../enums/user.enum';
+import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -27,6 +28,7 @@ import UserDataCard from '../UserDataCard/UserDataCard';
 
 interface Props {
   teams: Array<Team>;
+  roles: Array<Role>;
   allUsers: Array<User>;
   updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   isLoading: boolean;
@@ -37,6 +39,7 @@ const UserList: FunctionComponent<Props> = ({
   isLoading,
   updateUser,
   teams = [],
+  roles = [],
 }: Props) => {
   const [userList, setUserList] = useState<Array<User>>(allUsers);
   const [users, setUsers] = useState<Array<User>>([]);
@@ -133,11 +136,19 @@ const UserList: FunctionComponent<Props> = ({
     return tab === currentTab ? 'active' : '';
   };
 
-  const handleSave = () => {
+  const handleSave = (rolesData: Array<string>) => {
     if (selectedUser) {
       const updatedData: User = {
         ...selectedUser,
-        isAdmin: !selectedUser.isAdmin,
+        isAdmin: Boolean(rolesData.find((role) => role === 'admin')),
+        roles: roles
+          .filter((role) => rolesData.includes(role.id))
+          .map((role) => ({
+            id: role.id,
+            type: 'role',
+            href: role.href,
+            displayName: role.displayName,
+          })),
       };
       const jsonPatch = compare(selectedUser, updatedData);
       updateUser(selectedUser.id, jsonPatch, updatedData);
@@ -328,7 +339,8 @@ const UserList: FunctionComponent<Props> = ({
                 {currentTab === 3 && getUserCards(UserType.ISBOT)}
                 {!isUndefined(selectedUser) && (
                   <UserDetailsModal
-                    header="User Details"
+                    header="Update user"
+                    roles={roles}
                     userData={selectedUser}
                     onCancel={() => setSelectedUser(undefined)}
                     onSave={handleSave}

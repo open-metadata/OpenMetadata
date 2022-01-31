@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/webhook.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ChangeEvent",
-  "description": "This schema defines webhook for receiving events from OpenMetadata",
+  "description": "This schema defines webhook for receiving events from OpenMetadata.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.Webhook",
   "properties": {
@@ -17,7 +17,7 @@
       "maxLength": 128
     },
     "description": {
-      "description": "Description of the application",
+      "description": "Description of the application.",
       "type": "string"
     },
     "endpoint": {
@@ -38,12 +38,12 @@
       "default": 10
     },
     "timeout": {
-      "description": "Connection timeout in seconds. (Default 10s)",
+      "description": "Connection timeout in seconds. (Default 10s).",
       "type": "integer",
       "default": 10
     },
     "enabled": {
-      "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`)",
+      "description": "When set to `true`, the webhook event notification is enabled. Set it to `false` to disable the subscription. (Default `true`).",
       "type": "boolean",
       "default": true
     },
@@ -75,23 +75,23 @@
       ]
     },
     "failureDetails": {
-      "description": "Failure details are set only when `status` is not `success`",
+      "description": "Failure details are set only when `status` is not `success`.",
       "type": "object",
       "properties": {
         "lastSuccessfulAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds",
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "lastFailedAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds",
+          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "lastFailedStatusCode": {
-          "description": "Last non-successful activity response code received during callback",
+          "description": "Last non-successful activity response code received during callback.",
           "type": "integer"
         },
         "lastFailedReason": {
-          "description": "Last non-successful activity response reason received during callback",
+          "description": "Last non-successful activity response reason received during callback.",
           "type": "string"
         },
         "nextAttempt": {

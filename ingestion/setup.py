@@ -23,7 +23,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion-core==0.8.0.dev0",
+    "openmetadata-ingestion-core==0.8.0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
@@ -44,6 +44,7 @@ base_requirements = {
     "cryptography",
     "Jinja2>=2.11.3, <3.0",
     "PyYAML",
+    "jsonschema",
 }
 
 report_requirements = {
@@ -62,10 +63,11 @@ base_plugins = {
 plugins: Dict[str, Set[str]] = {
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
-    "bigquery": {"sqlalchemy-bigquery==1.2.2"},
+    "bigquery": {"sqlalchemy-bigquery==1.2.2", "pyarrow~=6.0.1"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     # "docker": {"docker==5.0.3"},
     "docker": {"python_on_whales==0.34.0"},
+    "backup": {"boto3~=1.19.12"},
     "dbt": {},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
@@ -94,7 +96,6 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         "GeoAlchemy2",
     },
-    "data-profiler": {"openmetadata-data-profiler"},
     "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
@@ -112,12 +113,12 @@ dev = {
     "boto3==1.20.14",
     "botocore==1.23.14",
     "datamodel-code-generator==0.11.14",
+    "black==21.12b0",  # required for datamodel-code-generator==0.11.14
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
 }
 test = {
-    "black",
     "isort",
     "pre-commit",
     "pylint",
@@ -133,7 +134,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.6.1.dev0",
+    version="0.9.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

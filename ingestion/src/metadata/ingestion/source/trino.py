@@ -8,6 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Trino source module"""
+
 import logging
 import sys
 from typing import Iterable
@@ -25,6 +27,16 @@ logger = logging.getLogger(__name__)
 
 
 class TrinoConfig(SQLConnectionConfig):
+    """Trinio config class -- extends SQLConnectionConfig class
+
+    Attributes:
+        host_port:
+        scheme:
+        service_type:
+        catalog:
+        database:
+    """
+
     host_port = "localhost:8080"
     scheme = "trino"
     service_type = "Trino"
@@ -57,9 +69,19 @@ class TrinoConfig(SQLConnectionConfig):
 
 
 class TrinoSource(SQLSource):
+    """Trino source -- extends SQLSource
+
+    Args:
+        config:
+        metadata_config:
+        ctx
+    """
+
     def __init__(self, config, metadata_config, ctx):
         try:
-            from sqlalchemy_trino import dbapi
+            from sqlalchemy_trino import (
+                dbapi,  # pylint: disable=import-outside-toplevel,unused-import
+            )
         except ModuleNotFoundError:
             click.secho(
                 "Trino source dependencies are missing. Please run\n"
@@ -68,8 +90,7 @@ class TrinoSource(SQLSource):
             )
             if logger.isEnabledFor(logging.DEBUG):
                 raise
-            else:
-                sys.exit(1)
+            sys.exit(1)
         super().__init__(config, metadata_config, ctx)
 
     @classmethod

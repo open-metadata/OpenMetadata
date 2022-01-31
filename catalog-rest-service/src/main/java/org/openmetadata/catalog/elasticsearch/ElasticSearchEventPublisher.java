@@ -43,6 +43,7 @@ import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -171,7 +172,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, event.getEntityId().toString());
     TableESIndex tableESIndex = null;
-    if (event.getEntity() != null) {
+    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
       Table table = (Table) event.getEntity();
       tableESIndex = TableESIndex.builder(table, event.getEventType()).build();
     }
@@ -188,6 +189,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           scriptedUpsert(tableESIndex, updateRequest);
         }
         break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        break;
       case ENTITY_DELETED:
         break;
     }
@@ -199,7 +203,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, event.getEntityId().toString());
     TopicESIndex topicESIndex = null;
-    if (event.getEntity() != null) {
+    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
       Topic topic;
       topic = (Topic) event.getEntity();
       topicESIndex = TopicESIndex.builder(topic, event.getEventType()).build();
@@ -217,6 +221,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           scriptedUpsert(topicESIndex, updateRequest);
         }
         break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        break;
       case ENTITY_DELETED:
         break;
     }
@@ -227,7 +234,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     DashboardESIndex dashboardESIndex = null;
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    if (event.getEntity() != null) {
+    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
       Dashboard dashboard = (Dashboard) event.getEntity();
       dashboardESIndex = DashboardESIndex.builder(dashboard, event.getEventType()).build();
     }
@@ -244,6 +251,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           scriptedUpsert(dashboardESIndex, updateRequest);
         }
         break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        break;
       case ENTITY_DELETED:
         break;
     }
@@ -252,7 +262,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private UpdateRequest updatePipeline(ChangeEvent event) throws IOException {
     PipelineESIndex pipelineESIndex = null;
-    if (event.getEntity() != null) {
+    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
       Pipeline pipeline = (Pipeline) event.getEntity();
       pipelineESIndex = PipelineESIndex.builder(pipeline, event.getEventType()).build();
     }
@@ -271,6 +281,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           scriptedUpsert(pipelineESIndex, updateRequest);
         }
         break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        break;
       case ENTITY_DELETED:
         break;
     }
@@ -287,6 +300,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
     updateRequest.script(script);
     updateRequest.scriptedUpsert(true);
+  }
+
+  private void softDeleteEntity(UpdateRequest updateRequest) {
+    String scriptTxt = "ctx._source.deleted=true";
+    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, new HashMap<>());
+    updateRequest.script(script);
   }
 
   public void close() {

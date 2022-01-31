@@ -51,6 +51,8 @@ export interface DatasetDetailsProps {
   followers: Array<User>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
+  deleted?: boolean;
+  isLineageLoading?: boolean;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
@@ -61,4 +63,5 @@ export interface DatasetDetailsProps {
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
+  entityLineageHandler: (lineage: EntityLineage) => void;
 }

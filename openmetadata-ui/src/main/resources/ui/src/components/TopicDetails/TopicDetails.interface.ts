@@ -37,6 +37,7 @@ export interface TopicDetailsProps {
   followers: Array<User>;
   topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
+  deleted?: boolean;
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;

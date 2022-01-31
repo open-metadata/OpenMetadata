@@ -13,8 +13,9 @@
 
 package org.openmetadata.catalog.security;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 import java.security.Principal;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.json.JsonPatch;
@@ -55,6 +56,24 @@ public final class SecurityUtil {
     }
   }
 
+  /** This helper function checks if user has permission to perform the given metadata operation. */
+  public static void checkAdminRoleOrPermissions(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      EntityReference entityReference,
+      MetadataOperation metadataOperation) {
+    Principal principal = securityContext.getUserPrincipal();
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
+
+    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
+      return;
+    }
+
+    if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
+      throw new AuthorizationException("Principal: " + principal + " does not have permission to " + metadataOperation);
+    }
+  }
+
   /**
    * Most REST API requests should yield in a single metadata operation. There are cases where the JSON patch request
    * may yield multiple metadata operations. This helper function checks if user has permission to perform the given set
@@ -65,7 +84,9 @@ public final class SecurityUtil {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
 
-    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) return;
+    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
+      return;
+    }
 
     List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
     for (MetadataOperation metadataOperation : metadataOperations) {
@@ -76,12 +97,13 @@ public final class SecurityUtil {
     }
   }
 
-  public static String getUserName(String principalName) {
-    return principalName == null ? null : principalName.split("[/@]")[0];
+  public static String getUserName(AuthenticationContext context) {
+    return context.getPrincipal() == null ? null : context.getPrincipal().getName().split("[/@]")[0];
   }
 
-  public static String getUserName(AuthenticationContext context) {
-    return context.getPrincipal() == null ? null : context.getPrincipal().getName();
+  public static AuthenticationContext getAuthenticationContext(SecurityContext securityContext) {
+    Principal principal = securityContext.getUserPrincipal();
+    return SecurityUtil.getAuthenticationContext(principal);
   }
 
   private static AuthenticationContext getAuthenticationContext(Principal principal) {
@@ -91,11 +113,11 @@ public final class SecurityUtil {
   }
 
   public static Map<String, String> authHeaders(String username) {
-    Map<String, String> headers = new HashMap<>();
+    Builder<String, String> builder = ImmutableMap.builder();
     if (username != null) {
-      headers.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
+      builder.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
     }
-    return headers;
+    return builder.build();
   }
 
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {

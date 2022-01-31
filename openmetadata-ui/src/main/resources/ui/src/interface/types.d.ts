@@ -204,6 +204,7 @@ declare module 'Models' {
     };
     index: string;
     database?: string;
+    deleted?: boolean;
     entityType?: string;
   };
 
@@ -436,4 +437,51 @@ declare module 'Models' {
   export interface FormErrorData {
     [key: string]: string | undefined;
   }
+
+  export type StepperStepType = {
+    name: string;
+    step: number;
+  };
+
+  type DynamicObj = {
+    [key: string]: string;
+  };
+
+  type DynamicFormFieldType = {
+    key: string;
+    value: string;
+  };
+
+  export type ServicesData = {
+    id?: string;
+    description?: string | undefined;
+    ingestionSchedule?:
+      | {
+          repeatFrequency: string;
+          startDate: string;
+        }
+      | undefined;
+    name?: string;
+    serviceType?: string;
+    databaseConnection?: {
+      hostPort: string;
+      password: string;
+      username: string;
+      database: string;
+      connectionArguments: DynamicObj;
+      connectionOptions: DynamicObj;
+    };
+    brokers?: Array<string>;
+    schemaRegistry?: string;
+    dashboardUrl?: string;
+    username?: string;
+    password?: string;
+    url?: string;
+    api_key?: string;
+    site_name?: string;
+    api_version?: string;
+    server?: string;
+    env?: string;
+    pipelineUrl?: string;
+  };
 }

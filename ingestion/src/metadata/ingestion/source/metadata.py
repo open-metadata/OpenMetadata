@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Metadata source module"""
 
 import logging
 from dataclasses import dataclass, field
@@ -27,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 class MetadataTablesRestSourceConfig(ConfigModel):
+    """Metadata Table Rest pydantic config model"""
+
     include_tables: Optional[bool] = True
     include_topics: Optional[bool] = True
     include_dashboards: Optional[bool] = True
@@ -36,31 +39,78 @@ class MetadataTablesRestSourceConfig(ConfigModel):
 
 @dataclass
 class MetadataSourceStatus(SourceStatus):
+    """Metadata Source class -- extends SourceStatus class
+
+    Attributes:
+        success:
+        failures:
+        warnings:
+    """
 
     success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
     def scanned_table(self, table_name: str) -> None:
+        """scanned table method
+
+        Args:
+            table_name (str):
+        """
         self.success.append(table_name)
-        logger.info("Table Scanned: {}".format(table_name))
+        logger.info("Table Scanned: %s", table_name)
 
     def scanned_topic(self, topic_name: str) -> None:
+        """scanned topic method
+
+        Args:
+            topic_name (str):
+        """
         self.success.append(topic_name)
-        logger.info("Topic Scanned: {}".format(topic_name))
+        logger.info("Topic Scanned: %s", topic_name)
 
     def scanned_dashboard(self, dashboard_name: str) -> None:
-        self.success.append(dashboard_name)
-        logger.info("Dashboard Scanned: {}".format(dashboard_name))
+        """scanned dashboard method
 
+        Args:
+            dashboard_name (str)
+        """
+        self.success.append(dashboard_name)
+        logger.info("Dashboard Scanned: %s", dashboard_name)
+
+    # pylint: disable=unused-argument
     def filtered(
         self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
     ) -> None:
+        """filtered methods
+
+        Args:
+            table_name (str):
+            err (str):
+        """
         self.warnings.append(table_name)
-        logger.warning("Dropped Entity {} due to {}".format(table_name, err))
+        logger.warning("Dropped Entity %s due to %s", table_name, err)
 
 
 class MetadataSource(Source[Entity]):
+    """Metadata source class
+
+    Args:
+        config:
+        metadata_config:
+        ctx:
+
+    Attributes:
+        config:
+        report:
+        metadata_config:
+        status:
+        wrote_something:
+        metadata:
+        tables:
+        topics:
+    """
+
     config: MetadataTablesRestSourceConfig
     report: SourceStatus
 
@@ -97,6 +147,11 @@ class MetadataSource(Source[Entity]):
         yield from self.fetch_pipeline()
 
     def fetch_table(self) -> Table:
+        """Fetch table method
+
+        Returns:
+            Table
+        """
         if self.config.include_tables:
             after = None
             while True:
@@ -121,6 +176,11 @@ class MetadataSource(Source[Entity]):
                 after = table_entities.after
 
     def fetch_topic(self) -> Topic:
+        """fetch topic method
+
+        Returns:
+            Topic
+        """
         if self.config.include_topics:
             after = None
             while True:
@@ -138,6 +198,11 @@ class MetadataSource(Source[Entity]):
                 after = topic_entities.after
 
     def fetch_dashboard(self) -> Dashboard:
+        """fetch dashboard method
+
+        Returns:
+            Dashboard:
+        """
         if self.config.include_dashboards:
             after = None
             while True:
@@ -161,6 +226,11 @@ class MetadataSource(Source[Entity]):
                 after = dashboard_entities.after
 
     def fetch_pipeline(self) -> Pipeline:
+        """fetch pipeline method
+
+        Returns:
+            Pipeline:
+        """
         if self.config.include_pipelines:
             after = None
             while True:

@@ -38,7 +38,8 @@ import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 public class JwtFilter implements ContainerRequestFilter {
   @Context private UriInfo uriInfo;
 
-  public static final String TOKEN_HEADER = "X-Catalog-Source";
+  public static final String AUTHORIZATION_HEADER = "Authorization";
+  public static final String TOKEN_PREFIX = "Bearer";
   private String publicKeyUri;
 
   @SuppressWarnings("unused")
@@ -103,10 +104,14 @@ public class JwtFilter implements ContainerRequestFilter {
 
   protected static String extractToken(MultivaluedMap<String, String> headers) {
     LOG.debug("Request Headers:{}", headers);
-    String source = headers.getFirst(TOKEN_HEADER);
+    String source = headers.getFirst(AUTHORIZATION_HEADER);
     if (Strings.isNullOrEmpty(source)) {
       throw new AuthenticationException("Not Authorized! Token not present");
     }
-    return source;
+    // Extract the bearer token
+    if (source.startsWith(TOKEN_PREFIX)) {
+      return source.substring(TOKEN_PREFIX.length() + 1);
+    }
+    throw new AuthenticationException("Not Authorized! Token not present");
   }
 }

@@ -58,6 +58,7 @@ describe('Test Explore component', () => {
         searchQuery=""
         searchResult={mockSearchResult}
         searchText=""
+        showDeleted={false}
         sortValue=""
         tab=""
         tabCounts={{
@@ -72,6 +73,7 @@ describe('Test Explore component', () => {
         updatePipelineCount={mockFunction}
         updateTableCount={mockFunction}
         updateTopicCount={mockFunction}
+        onShowDeleted={mockFunction}
       />,
       {
         wrapper: MemoryRouter,

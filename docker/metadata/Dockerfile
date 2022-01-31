@@ -18,8 +18,8 @@ RUN  apk update \
   && apk add --update wget curl bash openjdk11 \
   && rm -rf /var/cache/apk/*
 
-COPY openmetadata-start.sh openmetadata.yaml ./
-RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/0.7.0-release/openmetadata-0.7.0.tar.gz && \
+COPY docker/metadata/openmetadata-start.sh docker/metadata/openmetadata.yaml ./
+RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/0.8.0-release/openmetadata-0.8.0.tar.gz && \
     tar zxvf openmetadata-*.tar.gz && \
     rm openmetadata-*.tar.gz
 RUN chmod 777 openmetadata-start.sh

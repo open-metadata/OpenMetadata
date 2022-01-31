@@ -53,7 +53,6 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   @Override
   public void publish(ChangeEventList events) throws EventPublisherException {
     for (ChangeEvent event : events.getData()) {
-      LOG.info("log event {}", event);
       try {
         SlackMessage slackMessage = buildSlackMessage(event);
         Response response =
@@ -65,8 +64,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
           throw new SlackRetriableException(response.getStatusInfo().getReasonPhrase());
         }
       } catch (Exception e) {
-        LOG.error("Failed to publish event {} to slack ", event);
-        throw new EventPublisherException(e.getMessage());
+        LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
       }
     }
   }
@@ -97,7 +95,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
       operation = "created";
     } else if (event.getEventType().equals(EventType.ENTITY_UPDATED)) {
       operation = "updated";
-    } else if (event.getEventType().equals(EventType.ENTITY_DELETED)) {
+    } else if (event.getEventType().equals(EventType.ENTITY_SOFT_DELETED)) {
       operation = "deleted";
     }
     return String.format(headerTxt, event.getUserName(), operation, entityUrl);
@@ -106,7 +104,9 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private List<SlackAttachment> getAddedEventsText(ChangeEvent event) {
     List<SlackAttachment> attachments = new ArrayList<>();
     ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsAdded() != null && !changeDescription.getFieldsAdded().isEmpty()) {
+    if (changeDescription != null
+        && changeDescription.getFieldsAdded() != null
+        && !changeDescription.getFieldsAdded().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsAdded()) {
         SlackAttachment attachment = new SlackAttachment();
         StringBuilder title = new StringBuilder();
@@ -124,6 +124,10 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
           String followers = parseFollowers((List<EntityReference>) fieldChange.getNewValue());
           String entityUrl = getEntityUrl(event);
           attachment.setText(followers + " started following " + entityUrl);
+        } else if (fieldChange.getName().contains("description")) {
+          title.append("Added description to ");
+          title.append(fieldChange.getName());
+          attachment.setText((String) fieldChange.getNewValue());
         }
         attachment.setTitle(title.toString());
         attachments.add(attachment);
@@ -135,16 +139,22 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private List<SlackAttachment> getUpdatedEventsText(ChangeEvent event) {
     List<SlackAttachment> attachments = new ArrayList<>();
     ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsUpdated() != null && !changeDescription.getFieldsUpdated().isEmpty()) {
+    if (changeDescription != null
+        && changeDescription.getFieldsUpdated() != null
+        && !changeDescription.getFieldsUpdated().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-        SlackAttachment attachment = new SlackAttachment();
-        attachment.setTitle("Updated " + fieldChange.getName());
-        if (fieldChange.getName().equals("owner")) {
-          attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
-        } else {
-          attachment.setText((String) fieldChange.getNewValue());
+        // when the entity is deleted we will get deleted set as true. We do not need to parse this for slack messages.
+        if (!fieldChange.getName().equals("deleted")) {
+          SlackAttachment attachment = new SlackAttachment();
+          attachment.setTitle("Updated " + fieldChange.getName());
+          if (fieldChange.getName().equals("owner")) {
+            attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
+          } else {
+            String updatedStr = fieldChange.getOldValue() + " to " + fieldChange.getNewValue();
+            attachment.setText(updatedStr);
+          }
+          attachments.add(attachment);
         }
-        attachments.add(attachment);
       }
     }
     return attachments;
@@ -153,7 +163,9 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
   private List<SlackAttachment> getDeletedEventsText(ChangeEvent event) {
     List<SlackAttachment> attachments = new ArrayList<>();
     ChangeDescription changeDescription = event.getChangeDescription();
-    if (changeDescription.getFieldsDeleted() != null && !changeDescription.getFieldsDeleted().isEmpty()) {
+    if (changeDescription != null
+        && changeDescription.getFieldsDeleted() != null
+        && !changeDescription.getFieldsDeleted().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
         SlackAttachment attachment = new SlackAttachment();
         StringBuilder title = new StringBuilder();

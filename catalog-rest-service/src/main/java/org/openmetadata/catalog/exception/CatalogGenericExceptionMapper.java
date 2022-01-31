@@ -25,7 +25,6 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.ws.rs.Path;
 import javax.ws.rs.ProcessingException;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
@@ -60,7 +59,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
           .type(MediaType.APPLICATION_JSON_TYPE)
           .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), ex.getMessage()))
           .build();
-    } else if (ex instanceof IngestionPipelineDeploymentException) {
+    } else if (ex instanceof AirflowPipelineDeploymentException) {
       return Response.status(BAD_REQUEST)
           .type(MediaType.APPLICATION_JSON_TYPE)
           .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), ex.getMessage()))
@@ -76,7 +75,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
           .entity(new ErrorMessage(FORBIDDEN.getStatusCode(), ex.getMessage()))
           .build();
     } else if (ex instanceof WebServiceException) {
-      final Response response = ((WebApplicationException) ex).getResponse();
+      final Response response = ((WebServiceException) ex).getResponse();
       Family family = response.getStatusInfo().getFamily();
       if (family.equals(Response.Status.Family.REDIRECTION)) {
         return response;

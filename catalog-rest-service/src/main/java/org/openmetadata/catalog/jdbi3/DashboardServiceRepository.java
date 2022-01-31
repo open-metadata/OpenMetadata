@@ -97,8 +97,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public void storeRelationships(DashboardService entity) {}
 
   @Override
-  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
-    return new DashboardServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, Operation operation) {
+    return new DashboardServiceUpdater(original, updated, operation);
   }
 
   public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
@@ -212,8 +212,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   public class DashboardServiceUpdater extends EntityUpdater {
-    public DashboardServiceUpdater(DashboardService original, DashboardService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public DashboardServiceUpdater(DashboardService original, DashboardService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

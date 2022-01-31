@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import { FilterContainerProp } from './FacetTypes';
@@ -20,7 +21,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   count,
   onSelect,
   isSelected,
-  type,
+  type = '',
   isDisabled = false,
 }: FilterContainerProp) => {
   return (
@@ -49,7 +50,8 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
           {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
         </div>
       </div>
-      {getCountBadge(count, classNames('tw-py-0 tw-px-0'), isSelected)}
+      {!isNil(count) &&
+        getCountBadge(count, classNames('tw-py-0 tw-px-0'), isSelected)}
     </div>
   );
 };

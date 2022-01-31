@@ -25,7 +25,8 @@ export const searchData: Function = (
   filters: string,
   sortField: string,
   sortOrder: string,
-  searchIndex: string
+  searchIndex: string,
+  onlyDeleted = false
 ): Promise<AxiosResponse> => {
   return APIClient.get(
     `/search/query?${getSearchAPIQuery(
@@ -35,7 +36,8 @@ export const searchData: Function = (
       filters,
       sortField,
       sortOrder,
-      searchIndex
+      searchIndex,
+      onlyDeleted
     )}`
   );
 };

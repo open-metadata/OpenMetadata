@@ -19,9 +19,9 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPipeline';
 import { mockIngestionWorkFlow } from '../../pages/IngestionPage/IngestionPage.mock';
 import Ingestion from './Ingestion.component';
-import { IngestionData } from './ingestion.interface';
 
 const mockPaging = {
   after: 'after',
@@ -74,7 +74,10 @@ describe('Test Ingestion page', () => {
       <Ingestion
         addIngestion={mockFunction}
         deleteIngestion={mockDeleteIngestion}
-        ingestionList={mockIngestionWorkFlow.data.data as IngestionData[]}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+        }
+        isRequiredDetailsAvailable={false}
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
         serviceList={[]}
@@ -108,7 +111,10 @@ describe('Test Ingestion page', () => {
       <Ingestion
         addIngestion={mockFunction}
         deleteIngestion={mockDeleteIngestion}
-        ingestionList={mockIngestionWorkFlow.data.data as IngestionData[]}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+        }
+        isRequiredDetailsAvailable={false}
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
         serviceList={[]}
@@ -156,7 +162,10 @@ describe('Test Ingestion page', () => {
       <Ingestion
         addIngestion={mockFunction}
         deleteIngestion={mockDeleteIngestion}
-        ingestionList={mockIngestionWorkFlow.data.data as IngestionData[]}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+        }
+        isRequiredDetailsAvailable={false}
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
         serviceList={[]}
@@ -183,7 +192,10 @@ describe('Test Ingestion page', () => {
       <Ingestion
         addIngestion={mockFunction}
         deleteIngestion={mockDeleteIngestion}
-        ingestionList={mockIngestionWorkFlow.data.data as IngestionData[]}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+        }
+        isRequiredDetailsAvailable={false}
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
         serviceList={[]}

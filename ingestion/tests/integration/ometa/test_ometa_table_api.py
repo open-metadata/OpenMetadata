@@ -37,11 +37,11 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
 )
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -68,7 +68,7 @@ class OMetaTableTest(TestCase):
     service = CreateDatabaseServiceEntityRequest(
         name="test-service-table",
         serviceType=DatabaseServiceType.MySQL,
-        jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+        databaseConnection=DatabaseConnection(hostPort="localhost:0000"),
     )
     service_type = "databaseService"
 

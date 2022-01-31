@@ -15,7 +15,7 @@ from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import uuid_to_str
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 logger = logging.getLogger(__name__)
 
 

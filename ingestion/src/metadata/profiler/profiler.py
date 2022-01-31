@@ -44,6 +44,12 @@ class Profiler:
         self.schema_name = schema_name
         self.excluded_columns = excluded_columns
         self.time = profile_time
+        if "." in table_name:
+            schema_name = table_name.split(".")[0]
+            table_name = "".join(table_name.split(".")[1:])
+            self.table = Table(name=table_name)
+            self.schema_name = schema_name
+
         self.qualified_table_name = self.database.qualify_table_name(
             table_name, schema_name
         )
@@ -348,7 +354,9 @@ class Profiler:
                             boundary += bucket_width
                             boundaries.append(round(boundary, 3))
 
-                        group_by_cte = get_group_by_cte(column_name, self.table.name)
+                        group_by_cte = get_group_by_cte(
+                            column_name, self.qualified_table_name
+                        )
                         numeric_value_expr = get_group_by_cte_numeric_value_expression(
                             column, self.database, None
                         )
@@ -382,7 +390,6 @@ class Profiler:
                             f"  {fields} \n"
                             f"FROM group_by_value"
                         )
-
                         row = self.database.execute_query(sql)
                         self.queries_executed += 1
 

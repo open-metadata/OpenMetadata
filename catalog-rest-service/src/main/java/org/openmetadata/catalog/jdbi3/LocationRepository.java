@@ -216,8 +216,8 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Location original, Location updated, boolean patchOperation) {
-    return new LocationUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Location original, Location updated, Operation operation) {
+    return new LocationUpdater(original, updated, operation);
   }
 
   private EntityReference getService(Location location) throws IOException, ParseException {
@@ -389,8 +389,8 @@ public class LocationRepository extends EntityRepository<Location> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class LocationUpdater extends EntityUpdater {
-    public LocationUpdater(Location original, Location updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public LocationUpdater(Location original, Location updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

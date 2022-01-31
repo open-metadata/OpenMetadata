@@ -11,37 +11,40 @@
  *  limitations under the License.
  */
 
-import screenShot1 from '../assets/img/screen-shot1.png';
+import screenShot2 from '../assets/img/ss-explore.png';
+import screenShot1 from '../assets/img/ss-landing.png';
+import screenShot3 from '../assets/img/ss-table-details.png';
+import screenShot4 from '../assets/img/ss-users.png';
 
 export const LOGIN_SLIDE = [
   {
     image: screenShot1,
     description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+      'Enables End-to-end Metadata Management with Data Discovery, Data Quality, Observability, and People Collaboration',
   },
   {
-    image: screenShot1,
-    description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+    image: screenShot2,
+    description: 'Discover your Data and Unlock the Value of Data Assets',
   },
   {
-    image: screenShot1,
+    image: screenShot3,
     description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+      'Assess Data Reliability with Data Profiler, Lineage, Sample Data, and more',
   },
   {
-    image: screenShot1,
+    image: screenShot4,
     description:
-      'Centralized Metadata Store, Discover, Collaborate and get your Data Right',
+      'Fosters Collaboration among the Producers and Consumers of Data',
   },
 ];
 
 export const LOGIN_SLIDER_SETTINGS = {
+  arrows: false,
+  autoplay: true,
   dots: true,
   dotsClass: 'login-slider slick-dots',
-  arrows: false,
   infinite: true,
-  speed: 200,
   slidesToShow: 1,
   slidesToScroll: 1,
+  speed: 500,
 };

@@ -54,6 +54,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -280,7 +281,7 @@ public class MessagingServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = getService(update, securityContext);
-    PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service);
+    PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service, true);
     return response.toResponse();
   }
 
@@ -303,10 +304,10 @@ public class MessagingServiceResource {
           boolean recursive,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException {
+      throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(UUID.fromString(id), recursive);
-    return Response.ok().build();
+    DeleteResponse<MessagingService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
+    return response.toResponse();
   }
 
   private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {

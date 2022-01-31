@@ -20,6 +20,7 @@ import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import UserList from '../../components/UserList/UserList';
+import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import useToastContext from '../../hooks/useToastContext';
@@ -28,6 +29,7 @@ const UserListPage = () => {
   const showToast = useToastContext();
 
   const [teams, setTeams] = useState<Array<Team>>([]);
+  const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [allUsers, setAllUsers] = useState<Array<User>>([]);
 
@@ -70,6 +72,9 @@ const UserListPage = () => {
   useEffect(() => {
     setAllUsers(AppState.users);
   }, [AppState.users]);
+  useEffect(() => {
+    setRoles(AppState.userRoles);
+  }, [AppState.userRoles]);
 
   useEffect(() => {
     fetchTeams();
@@ -80,6 +85,7 @@ const UserListPage = () => {
       <UserList
         allUsers={allUsers}
         isLoading={isLoading}
+        roles={roles}
         teams={teams}
         updateUser={updateUser}
       />
