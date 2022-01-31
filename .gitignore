@@ -69,6 +69,7 @@ secrets
 # ts build info and report
 openmetadata-ui/src/main/resources/ui/webpack
 openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
+openmetadata-ui/src/main/resources/ui/src/test
 
 #tests
 .coverage
