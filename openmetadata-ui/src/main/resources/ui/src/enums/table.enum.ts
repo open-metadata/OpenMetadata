@@ -17,3 +17,8 @@ export enum ConstraintTypes {
   NOT_NULL = 'NOT_NULL',
   UNIQUE = 'UNIQUE',
 }
+
+export enum TabSpecificField {
+  SAMPLE_DATA = 'sampleData',
+  TABLE_PROFILE = 'tableProfile',
+}

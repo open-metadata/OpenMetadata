@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+export const defaultFields =
+  'columns, usageSummary, followers, joins, tags, owner, dataModel';
+
 export const datasetTableTabs = [
   {
     name: 'Schema',
@@ -19,10 +22,12 @@ export const datasetTableTabs = [
   {
     name: 'Sample Data',
     path: 'sample_data',
+    field: 'sampleData',
   },
   {
     name: 'Profiler',
     path: 'profiler',
+    field: 'tableProfile',
   },
   {
     name: 'Lineage',

@@ -367,3 +367,14 @@ export const isValidUrl = (href: string) => {
 
   return href.match(regex);
 };
+
+export const getFields = (defaultFields: string, tabSpecificField: string) => {
+  if (!tabSpecificField) {
+    return defaultFields;
+  }
+  if (!defaultFields) {
+    return tabSpecificField;
+  }
+
+  return `${defaultFields}, ${tabSpecificField}`;
+};

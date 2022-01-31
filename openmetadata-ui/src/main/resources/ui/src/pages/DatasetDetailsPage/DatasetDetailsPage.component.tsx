@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
@@ -41,6 +42,7 @@ import {
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { TabSpecificField } from '../../enums/table.enum';
 import {
   EntityReference,
   Table,
@@ -55,10 +57,12 @@ import useToastContext from '../../hooks/useToastContext';
 import {
   addToRecentViewed,
   getCurrentUserId,
+  getFields,
   getPartialNameFromFQN,
 } from '../../utils/CommonUtils';
 import {
   datasetTableTabs,
+  defaultFields,
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
@@ -131,7 +135,157 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const getLineageData = () => {
+    getLineageByFQN(tableFQN, EntityType.TABLE)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message ?? 'Error while fetching lineage data',
+        });
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
+  const fetchTableDetail = () => {
+    setIsLoading(true);
+    getTableDetailsByFQN(
+      tableFQN,
+      getFields(defaultFields, datasetTableTabs[activeTab - 1].field ?? '')
+    )
+      .then((res: AxiosResponse) => {
+        const {
+          description,
+          id,
+          name,
+          columns,
+          database,
+          deleted,
+          owner,
+          usageSummary,
+          followers,
+          fullyQualifiedName,
+          joins,
+          tags,
+          sampleData,
+          tableProfile,
+          version,
+          service,
+          serviceType,
+        } = res.data;
+        setTableDetails(res.data);
+        setTableId(id);
+        setCurrentVersion(version);
+        setTier(getTierTags(tags));
+        setOwner(getOwnerFromId(owner?.id));
+        setFollowers(followers);
+        setDeleted(deleted);
+        setSlashedTableName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: getPartialNameFromFQN(database.name, ['database']),
+            url: getDatabaseDetailsPath(database.name),
+          },
+          {
+            name: name,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
+
+        addToRecentViewed({
+          entityType: EntityType.TABLE,
+          fqn: fullyQualifiedName,
+          serviceType: serviceType,
+          timestamp: 0,
+        });
+        setName(name);
+
+        setDescription(description);
+        setColumns(columns || []);
+        setSampleData(sampleData);
+        setTableProfile(tableProfile || []);
+        setTableTags(getTableTags(columns || []));
+        setUsageSummary(usageSummary);
+        setJoins(joins);
+
+        if (!deleted) {
+          getLineageData();
+        } else {
+          setIsLineageLoading(false);
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  const fetchTabSpecificData = (tabField = '') => {
+    switch (tabField) {
+      case TabSpecificField.SAMPLE_DATA: {
+        if (!isUndefined(sampleData)) {
+          break;
+        } else {
+          setIsLoading(true);
+          getTableDetailsByFQN(tableFQN, tabField)
+            .then((res: AxiosResponse) => {
+              const { sampleData } = res.data;
+              setSampleData(sampleData);
+            })
+            .catch(() =>
+              showToast({
+                variant: 'error',
+                body: 'Error while getting sample data',
+              })
+            )
+            .finally(() => setIsLoading(false));
+
+          break;
+        }
+      }
+      case TabSpecificField.TABLE_PROFILE: {
+        if ((tableProfile?.length ?? 0) > 0) {
+          break;
+        } else {
+          setIsLoading(true);
+          getTableDetailsByFQN(tableFQN, tabField)
+            .then((res: AxiosResponse) => {
+              const { tableProfile } = res.data;
+              setTableProfile(tableProfile || []);
+            })
+            .catch(() =>
+              showToast({
+                variant: 'error',
+                body: 'Error while getting table profile',
+              })
+            )
+            .finally(() => setIsLoading(false));
+
+          break;
+        }
+      }
+
+      default:
+        break;
+    }
+  };
+
   useEffect(() => {
+    fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
     if (datasetTableTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentDatasetTab(tab));
     }
@@ -263,104 +417,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
     });
   };
 
-  const getLineageData = () => {
-    getLineageByFQN(tableFQN, EntityType.TABLE)
-      .then((res: AxiosResponse) => {
-        setEntityLineage(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message ?? 'Error while fetching lineage data',
-        });
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
-  };
-
   useEffect(() => {
-    setIsLoading(true);
-    getTableDetailsByFQN(
-      tableFQN,
-      'columns, usageSummary, followers, joins, tags, owner, sampleData, tableProfile, dataModel'
-    )
-      .then((res: AxiosResponse) => {
-        const {
-          description,
-          id,
-          name,
-          columns,
-          database,
-          deleted,
-          owner,
-          usageSummary,
-          followers,
-          fullyQualifiedName,
-          joins,
-          tags,
-          sampleData,
-          tableProfile,
-          version,
-          service,
-          serviceType,
-        } = res.data;
-        setTableDetails(res.data);
-        setTableId(id);
-        setCurrentVersion(version);
-        setTier(getTierTags(tags));
-        setOwner(getOwnerFromId(owner?.id));
-        setFollowers(followers);
-        setDeleted(deleted);
-        setSlashedTableName([
-          {
-            name: service.name,
-            url: service.name
-              ? getServiceDetailsPath(
-                  service.name,
-                  serviceType,
-                  ServiceCategory.DATABASE_SERVICES
-                )
-              : '',
-            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-          },
-          {
-            name: getPartialNameFromFQN(database.name, ['database']),
-            url: getDatabaseDetailsPath(database.name),
-          },
-          {
-            name: name,
-            url: '',
-            activeTitle: true,
-          },
-        ]);
-
-        addToRecentViewed({
-          entityType: EntityType.TABLE,
-          fqn: fullyQualifiedName,
-          serviceType: serviceType,
-          timestamp: 0,
-        });
-        setName(name);
-
-        setDescription(description);
-        setColumns(columns || []);
-        setSampleData(sampleData);
-        setTableProfile(tableProfile || []);
-        setTableTags(getTableTags(columns || []));
-        setUsageSummary(usageSummary);
-        setJoins(joins);
-
-        if (!deleted) {
-          getLineageData();
-        } else {
-          setIsLineageLoading(false);
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-
+    fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
   }, [tableFQN]);
 
