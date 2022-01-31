@@ -180,7 +180,7 @@ const Appbar: React.FC = (): JSX.Element => {
     },
     {
       name: 'Logout',
-      to: '#/action-1',
+      to: '',
       disabled: false,
       method: userSignOut,
     },

@@ -533,7 +533,7 @@ const ServicesPage = () => {
                     </NonAdminAction>
                   </div>
                   <div
-                    className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mb-4"
+                    className="tw-grid xl:tw-grid-cols-4 tw-grid-cols-2 tw-gap-4 tw-mb-4"
                     data-testid="data-container">
                     {serviceList.map((service, index) => (
                       <div
