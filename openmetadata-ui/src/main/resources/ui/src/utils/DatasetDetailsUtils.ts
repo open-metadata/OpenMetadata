@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import { TabSpecificField } from '../enums/table.enum';
+
+export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
+${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
+${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_PROFILE}`;
+
 export const datasetTableTabs = [
   {
     name: 'Schema',
@@ -19,6 +25,7 @@ export const datasetTableTabs = [
   {
     name: 'Sample Data',
     path: 'sample_data',
+    field: TabSpecificField.SAMPLE_DATA,
   },
   {
     name: 'Profiler',
@@ -27,6 +34,7 @@ export const datasetTableTabs = [
   {
     name: 'Lineage',
     path: 'lineage',
+    field: TabSpecificField.LINEAGE,
   },
   {
     name: 'DBT',
