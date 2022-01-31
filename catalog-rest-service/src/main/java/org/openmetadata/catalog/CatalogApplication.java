@@ -93,9 +93,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment, jdbi);
 
-    // Registering config api
-    environment.jersey().register(new ConfigResource(catalogConfig));
-
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
     environment.jersey().property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
@@ -173,6 +170,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
       environment.jersey().register(filter);
     }
+    // Registering config api
+    environment.jersey().register(new ConfigResource(catalogConfig, authorizer));
   }
 
   private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {

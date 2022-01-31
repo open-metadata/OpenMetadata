@@ -1,10 +1,24 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.security.policyevaluator;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.Builder;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Facts;
 import org.openmetadata.catalog.Entity;
@@ -19,9 +33,10 @@ import org.openmetadata.catalog.util.EntityInterface;
 @Builder(setterPrefix = "with")
 class AttributeBasedFacts {
 
-  @NonNull private User user;
-  @NonNull private MetadataOperation operation;
+  private User user;
+  private MetadataOperation operation;
   private Object entity; // Entity can be null in some cases, where the operation may not be on a specific entity.
+  private boolean checkOperation;
 
   // Do not allow anything external or the builder itself change the value of facts.
   // Individual Fact(s) within facts may be changed by the RulesEngine.
@@ -32,11 +47,18 @@ class AttributeBasedFacts {
    * by {@link org.jeasy.rules.api.RulesEngine}
    */
   public Facts getFacts() {
+    // Facts to be taken into consideration by RuleCondition.
     facts.put(CommonFields.USER_ROLES, getUserRoles(user));
     facts.put(CommonFields.ENTITY_TAGS, getEntityTags(entity));
     facts.put(CommonFields.ENTITY_TYPE, getEntityType(entity));
-    facts.put(CommonFields.OPERATION, operation);
+    if (checkOperation) {
+      facts.put(CommonFields.OPERATION, operation);
+    }
+    facts.put(CommonFields.CHECK_OPERATION, checkOperation);
+
+    // Facts to be taken into consideration by Actions. The values of these facts will change as Action(s) get executed.
     facts.put(CommonFields.ALLOW, CommonFields.DEFAULT_ACCESS);
+    facts.put(CommonFields.ALLOWED_OPERATIONS, new HashSet<MetadataOperation>());
     LOG.debug("Generated facts successfully - {}", facts);
     return facts;
   }
@@ -45,7 +67,11 @@ class AttributeBasedFacts {
     return facts.get(CommonFields.ALLOW);
   }
 
-  private List<String> getUserRoles(@NonNull User user) {
+  public List<MetadataOperation> getAllowedOperations() {
+    return new ArrayList<>(facts.get(CommonFields.ALLOWED_OPERATIONS));
+  }
+
+  private List<String> getUserRoles(User user) {
     return user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toList());
   }
 

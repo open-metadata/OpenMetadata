@@ -69,7 +69,7 @@ class DataProfiler:
             return profile
         except Exception as err:
             logger.error(f"Failed to run data profiler on {dataset_name} due to {err}")
-            traceback.print_exc()
+            logger.debug(traceback.print_exc())
             pass
 
     def _parse_test_results_to_table_profile(

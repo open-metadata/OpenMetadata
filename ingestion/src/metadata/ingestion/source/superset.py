@@ -8,6 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Superset source module
+"""
+
 
 import json
 from typing import Iterable
@@ -27,16 +31,32 @@ from metadata.utils.helpers import get_dashboard_service_or_create
 
 
 def get_metric_name(metric):
+    """
+    Get metric name
+
+    Args:
+        metric:
+    Returns:
+    """
     if not metric:
         return ""
     if isinstance(metric, str):
         return metric
     label = metric.get("label")
-    if label:
-        return label
+
+    return label or None
 
 
 def get_filter_name(filter_obj):
+    """
+    Get filter name
+
+    Args:
+        filter_obj:
+
+    Returns:
+        str
+    """
     sql_expression = filter_obj.get("sqlExpression")
     if sql_expression:
         return sql_expression
@@ -49,6 +69,14 @@ def get_filter_name(filter_obj):
 
 
 def get_owners(owners_obj):
+    """
+    Get owner
+
+    Args:
+        owners_obj:
+    Returns:
+        list
+    """
     owners = []
     for owner in owners_obj:
         dashboard_owner = DashboardOwner(
@@ -60,7 +88,17 @@ def get_owners(owners_obj):
     return owners
 
 
+# pylint: disable=too-many-return-statements, too-many-branches
 def get_service_type_from_database_uri(uri: str) -> str:
+    """
+    Get service type from database URI
+
+    Args:
+        uri (str):
+
+    Returns:
+        str
+    """
     if uri.startswith("bigquery"):
         return "bigquery"
     if uri.startswith("druid"):
@@ -91,6 +129,24 @@ def get_service_type_from_database_uri(uri: str) -> str:
 
 
 class SupersetSource(Source[Entity]):
+    """
+    Superset source class
+
+    Args:
+        config:
+        metadata_config:
+        ctx:
+
+    Attributes:
+        config:
+        metadata_config:
+        status:
+        platform:
+        service_type:
+        service:
+
+    """
+
     config: SupersetConfig
     metadata_config: MetadataServerConfig
     status: SourceStatus
@@ -197,6 +253,7 @@ class SupersetSource(Source[Entity]):
             return dataset_fqn
         return None
 
+    # pylint: disable=too-many-locals
     def _build_chart(self, chart_json) -> Chart:
         chart_id = chart_json["id"]
         name = chart_json["slice_name"]

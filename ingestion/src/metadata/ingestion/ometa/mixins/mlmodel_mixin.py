@@ -87,7 +87,8 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         except ModuleNotFoundError as exc:
             logger.error(
                 "Cannot import BaseEstimator, please install sklearn plugin: "
-                + f"pip install openmetadata-ingestion[sklearn], {exc}"
+                "pip install openmetadata-ingestion[sklearn], %s",
+                exc,
             )
             raise exc
 

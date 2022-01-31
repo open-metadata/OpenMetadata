@@ -69,7 +69,7 @@
     },
     {
       "name": "NationalId",
-      "description": "National identification number of the user. This varies from countries to countries. See [National identification number](https://en.wikipedia.org/wiki/National_identification_number) for more details.",
+      "description": "National identification number of the user. This varies from country to country. See [National identification number](https://en.wikipedia.org/wiki/National_identification_number) for more details.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
