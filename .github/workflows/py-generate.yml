@@ -39,3 +39,5 @@ jobs:
         run: |
           source env/bin/activate
           make generate
+      - name: Generate core models
+        run: make core_generate

@@ -13,19 +13,27 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
-/**
- * CommonFields defines all the fields used within the Rules and Facts for the RulesEngine used by {@link
- * PolicyEvaluator}
- */
-class CommonFields {
-  static final String ALLOW = "allow";
-  static final String ALLOWED_OPERATIONS = "allowedOperations";
-  static final String CHECK_OPERATION = "checkOperation";
-  static final String ENTITY_TAGS = "entityTags";
-  static final String ENTITY_TYPE = "entityType";
-  static final String OPERATION = "operation";
-  static final String USER_ROLES = "userRoles";
+import java.util.Set;
+import org.jeasy.rules.api.Action;
+import org.jeasy.rules.api.Facts;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.type.MetadataOperation;
 
-  // By default, if no rule matches, do not grant access.
-  static final boolean DEFAULT_ACCESS = false;
+class SetAllowedOperationAction implements Action {
+
+  private final Rule rule;
+
+  public SetAllowedOperationAction(Rule rule) {
+    this.rule = rule;
+  }
+
+  @Override
+  public void execute(Facts facts) throws Exception {
+    if (Boolean.FALSE.equals(rule.getAllow())) {
+      return;
+    }
+
+    Set<MetadataOperation> operations = facts.get(CommonFields.ALLOWED_OPERATIONS);
+    operations.add(rule.getOperation());
+  }
 }

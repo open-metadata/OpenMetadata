@@ -51,6 +51,11 @@ public abstract class CatalogApplicationTest {
     return client.target(targetURI);
   }
 
+  public static WebTarget getConfigResource(String resource) {
+    String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/v1/config/" + resource;
+    return APP.client().target(targetURI);
+  }
+
   public static WebTarget getOperationsResource(String collection) {
     String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/operations/v1/" + collection;
     return APP.client().target(targetURI);

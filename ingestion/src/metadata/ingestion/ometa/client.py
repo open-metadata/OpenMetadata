@@ -128,7 +128,7 @@ class REST:
         url: URL = URL(base_url + "/" + version + path)
         headers = {"Content-type": "application/json"}
         if self._auth_token is not None and self._auth_token != "no_token":
-            headers[self.config.auth_header] = self._auth_token
+            headers[self.config.auth_header] = f"Bearer {self._auth_token}"
         opts = {
             "headers": headers,
             # Since we allow users to set endpoint URL via env var,
