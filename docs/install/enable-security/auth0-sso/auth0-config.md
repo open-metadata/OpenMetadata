@@ -11,7 +11,7 @@ authenticationConfiguration:
   provider: "auth0"
   publicKey: "https://parth-panchal.us.auth0.com/.well-known/jwks.json"
   authority: "https://parth-panchal.us.auth0.com/"
-  clientId: "{Client Secret}"
+  clientId: "{Client Id}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
@@ -26,5 +26,5 @@ authorizerConfiguration:
     - "suresh"
   botPrincipals:
     - "ingestion-bot"
-  prinicipalDomain: "open-metadata.org"
+  principalDomain: "open-metadata.org"
 ```
