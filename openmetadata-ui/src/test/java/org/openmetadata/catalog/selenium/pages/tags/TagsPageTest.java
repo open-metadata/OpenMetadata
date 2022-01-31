@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
+import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.pages.myData.MyDataPageTest;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
@@ -79,20 +80,20 @@ public class TagsPageTest {
   @Order(2)
   public void addTagCategory() throws InterruptedException {
     openTagsPage();
-    Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
-    wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.name("name"))));
-    Events.sendKeys(webDriver, By.name("name"), tagCategoryDisplayName);
-    Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.xpath(enterDescription));
-    Events.sendEnter(webDriver, By.xpath(enterDescription));
-    Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.xpath(enterDescription));
-    Events.sendEnter(webDriver, By.xpath(enterDescription));
-    Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    TagsPage tagsPage = new TagsPage(webDriver);
+    Events.click(webDriver, tagsPage.addTagCategory());
+    Events.sendKeys(webDriver, tagsPage.displayName(), tagCategoryDisplayName);
+    Events.click(webDriver, tagsPage.descriptionBoldButton());
+    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, tagsPage.addDescriptionString());
+    Events.sendEnter(webDriver, tagsPage.addDescriptionString());
+    Events.click(webDriver, tagsPage.descriptionItalicButton());
+    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, tagsPage.addDescriptionString());
+    Events.sendEnter(webDriver, tagsPage.addDescriptionString());
+    Events.click(webDriver, tagsPage.descriptionLinkButton());
+    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, tagsPage.descriptionSaveButton());
   }
 
   @Test
