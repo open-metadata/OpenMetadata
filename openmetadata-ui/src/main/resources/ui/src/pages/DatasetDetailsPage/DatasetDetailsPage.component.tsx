@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
@@ -74,7 +74,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
   const [tier, setTier] = useState<TagLabel>();
@@ -136,6 +136,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const getLineageData = () => {
+    setIsLineageLoading(true);
     getLineageByFQN(tableFQN, EntityType.TABLE)
       .then((res: AxiosResponse) => {
         setEntityLineage(res.data);
@@ -222,12 +223,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableTags(getTableTags(columns || []));
         setUsageSummary(usageSummary);
         setJoins(joins);
-
-        if (!deleted) {
-          getLineageData();
-        } else {
-          setIsLineageLoading(false);
-        }
       })
       .finally(() => {
         setIsLoading(false);
@@ -257,26 +252,17 @@ const DatasetDetailsPage: FunctionComponent = () => {
           break;
         }
       }
-      case TabSpecificField.TABLE_PROFILE: {
-        if ((tableProfile?.length ?? 0) > 0) {
-          break;
-        } else {
-          setIsLoading(true);
-          getTableDetailsByFQN(tableFQN, tabField)
-            .then((res: AxiosResponse) => {
-              const { tableProfile } = res.data;
-              setTableProfile(tableProfile || []);
-            })
-            .catch(() =>
-              showToast({
-                variant: 'error',
-                body: 'Error while getting table profile',
-              })
-            )
-            .finally(() => setIsLoading(false));
+
+      case TabSpecificField.LINEAGE: {
+        if (!deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
 
           break;
         }
+
+        break;
       }
 
       default:
@@ -285,11 +271,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
     if (datasetTableTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentDatasetTab(tab));
     }
   }, [tab]);
+
+  useEffect(() => {
+    fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
+  }, [activeTab]);
 
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
     const jsonPatch = compare(tableDetails, updatedData);
@@ -430,7 +419,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   return (
     <>
-      {isLoading || isLineageLoading ? (
+      {isLoading ? (
         <Loader />
       ) : (
         <DatasetDetails
@@ -448,6 +437,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           entityName={name}
           followTableHandler={followTable}
           followers={followers}
+          isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           joins={joins}
           lineageLeafNodes={leafNodes}
