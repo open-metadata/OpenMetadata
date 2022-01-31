@@ -83,6 +83,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  isLineageLoading,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -487,6 +488,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   deleted={deleted}
                   entityLineage={entityLineage}
                   entityLineageHandler={entityLineageHandler}
+                  isLineageLoading={isLineageLoading}
                   isNodeLoading={isNodeLoading}
                   lineageLeafNodes={lineageLeafNodes}
                   loadNodeHandler={loadNodeHandler}

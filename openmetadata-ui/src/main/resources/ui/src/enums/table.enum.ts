@@ -17,3 +17,16 @@ export enum ConstraintTypes {
   NOT_NULL = 'NOT_NULL',
   UNIQUE = 'UNIQUE',
 }
+
+export enum TabSpecificField {
+  SAMPLE_DATA = 'sampleData',
+  TABLE_PROFILE = 'tableProfile',
+  LINEAGE = 'lineage',
+  COLUMNS = 'columns',
+  USAGE_SUMMARY = 'usageSummary',
+  FOLLOWERS = 'followers',
+  JOINS = 'joins',
+  TAGS = 'tags',
+  OWNER = 'owner',
+  DATAMODEL = 'dataModel',
+}
