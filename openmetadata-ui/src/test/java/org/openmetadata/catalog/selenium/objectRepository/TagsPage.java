@@ -33,7 +33,6 @@ public class TagsPage {
   By descriptionSaveButton = By.cssSelector("[data-testid='saveButton']");
   By addDescriptionString = By.xpath(enterDescription);
 
-
   public WebElement addTagCategory() {
     return webDriver.findElement(addTagCategory);
   }
@@ -61,5 +60,4 @@ public class TagsPage {
   public WebElement addDescriptionString() {
     return webDriver.findElement(addDescriptionString);
   }
-
 }

@@ -40,7 +40,7 @@ public final class Events {
     driver.findElement(by).sendKeys(sendKeys);
   }
 
-  public static void sendKeys(WebDriver driver,WebElement webElement , String sendKeys) {
+  public static void sendKeys(WebDriver driver, WebElement webElement, String sendKeys) {
     (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(webElement));
     webElement.sendKeys(sendKeys);
   }
