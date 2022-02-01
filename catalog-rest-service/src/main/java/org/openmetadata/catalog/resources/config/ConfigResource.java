@@ -22,11 +22,9 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-import lombok.NonNull;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
-import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 
 @Path("/v1/config")
@@ -35,11 +33,9 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 @Collection(name = "config")
 public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
-  private final Authorizer authorizer;
 
-  public ConfigResource(CatalogApplicationConfig catalogApplicationConfig, @NonNull Authorizer authorizer) {
+  public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
     this.catalogApplicationConfig = catalogApplicationConfig;
-    this.authorizer = authorizer;
   }
 
   @GET

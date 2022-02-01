@@ -172,7 +172,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       environment.jersey().register(filter);
     }
     // Register config API
-    environment.jersey().register(new ConfigResource(catalogConfig, authorizer));
+    environment.jersey().register(new ConfigResource(catalogConfig));
     // Register permissions API
     environment.jersey().register(new PermissionsResource(authorizer));
   }
