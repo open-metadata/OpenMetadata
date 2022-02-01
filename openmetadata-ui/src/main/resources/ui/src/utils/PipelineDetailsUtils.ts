@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import { TabSpecificField } from '../enums/entity.enum';
+
+export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
+${TabSpecificField.TASKS}`;
+
 export const pipelineDetailsTabs = [
   {
     name: 'Details',
@@ -19,6 +24,7 @@ export const pipelineDetailsTabs = [
   {
     name: 'Lineage',
     path: 'lineage',
+    field: TabSpecificField.LINEAGE,
   },
   {
     name: 'Manage',

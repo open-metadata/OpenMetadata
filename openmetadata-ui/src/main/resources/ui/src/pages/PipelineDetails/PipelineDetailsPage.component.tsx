@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityTags,
@@ -44,7 +45,7 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
   EntityReference,
@@ -58,6 +59,7 @@ import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import {
+  defaultFields,
   getCurrentPipelineTab,
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
@@ -80,7 +82,7 @@ const PipelineDetailsPage = () => {
   );
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
@@ -150,6 +152,7 @@ const PipelineDetailsPage = () => {
   };
 
   const getLineageData = () => {
+    setIsLineageLoading(true);
     getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
       .then((res: AxiosResponse) => {
         setEntityLineage(res.data);
@@ -167,7 +170,7 @@ const PipelineDetailsPage = () => {
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
-    getPipelineByFqn(pipelineFQN, ['owner', 'followers', 'tags', 'tasks'])
+    getPipelineByFqn(pipelineFQN, defaultFields)
       .then((res: AxiosResponse) => {
         const {
           id,
@@ -221,16 +224,29 @@ const PipelineDetailsPage = () => {
           timestamp: 0,
         });
 
-        if (!deleted) {
-          getLineageData();
-        } else {
-          setIsLineageLoading(false);
-        }
-
         setPipelineUrl(pipelineUrl);
         setTasks(tasks);
       })
       .finally(() => setLoading(false));
+  };
+
+  const fetchTabSpecificData = (tabField = '') => {
+    switch (tabField) {
+      case TabSpecificField.LINEAGE: {
+        if (!deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
+
+          break;
+        }
+
+        break;
+      }
+
+      default:
+        break;
+    }
   };
 
   const followPipeline = () => {
@@ -354,6 +370,10 @@ const PipelineDetailsPage = () => {
   };
 
   useEffect(() => {
+    fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
+  }, [activeTab]);
+
+  useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
   }, [pipelineFQN]);
 
@@ -363,7 +383,7 @@ const PipelineDetailsPage = () => {
 
   return (
     <>
-      {isLoading || isLineageLoading ? (
+      {isLoading ? (
         <Loader />
       ) : (
         <PipelineDetails
@@ -377,6 +397,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           followPipelineHandler={followPipeline}
           followers={followers}
+          isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

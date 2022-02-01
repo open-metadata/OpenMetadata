@@ -29,8 +29,8 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
-import { TabSpecificField } from '../enums/table.enum';
 import {
   EntityReference as UserTeams,
   User,

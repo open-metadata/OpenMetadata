@@ -40,9 +40,8 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { TabSpecificField } from '../../enums/table.enum';
 import {
   EntityReference,
   Table,
