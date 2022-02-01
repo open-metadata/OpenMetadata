@@ -32,7 +32,6 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
@@ -43,6 +42,10 @@ from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_TABLE_QUERY,
     NEO4J_AMUNDSEN_USER_QUERY,
 )
+
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.ingestion.models.user import OMetaUserProfile
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -119,16 +122,19 @@ class AmundsenSource(Source[Entity]):
 
     def create_user_entity(self, user):
         try:
-            user_metadata = User(
+            user_metadata = CreateUserRequest(
                 email=user["email"],
-                first_name=user["first_name"],
-                last_name=user["last_name"],
                 name=user["full_name"],
-                team_name=user["team_name"],
-                is_active=user["is_active"],
+                displayName=f"{user['first_name']} {user['last_name']}"
             )
-            self.status.scanned(user_metadata.email)
-            yield user_metadata
+            team_metadata = CreateTeamRequest(
+                name=user["team_name"]
+            )
+            self.status.scanned(str(user_metadata.email))
+            yield OMetaUserProfile(
+                user=user_metadata,
+                teams=[team_metadata],
+            )
         except Exception as err:
             logger.error(err)
 
