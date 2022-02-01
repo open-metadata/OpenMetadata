@@ -68,7 +68,7 @@ class QueryParserTest(TestCase):
         """
         expected_result = {
             "dim_address": 100,
-            "dim_shop": 195,
+            "dim_shop": 196,
             "dim_customer": 140,
             "dim_location": 75,
             "dim_location.shop_id": 25,
@@ -81,6 +81,14 @@ class QueryParserTest(TestCase):
             "fact_order": 185,
             "dim_api_client": 85,
             "fact_sale": 400,
+            "customer": 4,
+            "orders": 2,
+            "products": 2,
+            "orderdetails": 2,
+            "country": 1,
+            "city": 1,
+            "call": 1,
+            "countries": 1,
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()
