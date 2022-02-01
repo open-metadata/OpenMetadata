@@ -48,7 +48,6 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
-
 logger = logging.getLogger(__name__)
 
 # Allow types from the generated pydantic models
@@ -409,7 +408,9 @@ class MetadataRestSink(Sink[Entity]):
             role_ids = []
             for role in record.roles:
                 try:
-                    role_entity = self.metadata.get_by_name(entity=Role, fqdn=str(role.name.__root__))
+                    role_entity = self.metadata.get_by_name(
+                        entity=Role, fqdn=str(role.name.__root__)
+                    )
                 except APIError:
                     role_entity = self._create_role(role)
                 role_ids.append(str(role_entity.id.__root__))
@@ -421,7 +422,9 @@ class MetadataRestSink(Sink[Entity]):
             team_ids = []
             for team in record.teams:
                 try:
-                    team_entity = self.metadata.get_by_name(entity=Team, fqdn=str(team.name.__root__))
+                    team_entity = self.metadata.get_by_name(
+                        entity=Team, fqdn=str(team.name.__root__)
+                    )
                 except APIError:
                     team_entity = self._create_team(team)
                 team_ids.append(str(team_entity.id.__root__))

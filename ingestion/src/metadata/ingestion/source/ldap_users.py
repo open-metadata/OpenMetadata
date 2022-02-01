@@ -90,9 +90,7 @@ class LdapUsersSource(Source[OMetaUserProfile]):
                 name=user["attributes"]["givenName"],
             )
             self.status.scanned(user_metadata.name)
-            yield OMetaUserProfile(
-                user=user_metadata
-            )
+            yield OMetaUserProfile(user=user_metadata)
 
     def get_status(self) -> SourceStatus:
         return self.status

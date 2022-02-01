@@ -461,11 +461,7 @@ class SampleDataSource(Source[Entity]):
                     email=user["email"],
                 )
 
-                yield OMetaUserProfile(
-                    user=user_metadata,
-                    teams=teams,
-                    roles=roles
-                )
+                yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
         except Exception as err:
             logger.error(err)
 
