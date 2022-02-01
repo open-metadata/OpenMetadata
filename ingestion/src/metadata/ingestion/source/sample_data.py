@@ -21,9 +21,9 @@ from typing import Any, Dict, Iterable, List, Union
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -339,12 +339,12 @@ class SampleDataSource(Source[Entity]):
             self.status.scanned("table", table_metadata.name.__root__)
             yield table_and_db
 
-    def ingest_topics(self) -> Iterable[CreateTopicEntityRequest]:
+    def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         for topic in self.topics["topics"]:
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = CreateTopicEntityRequest(**topic)
+            create_topic = CreateTopicRequest(**topic)
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
@@ -396,16 +396,16 @@ class SampleDataSource(Source[Entity]):
             )
             yield pipeline_ev
 
-    def ingest_lineage(self) -> Iterable[AddLineage]:
+    def ingest_lineage(self) -> Iterable[AddLineageRequest]:
         for edge in self.lineage:
             from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
             to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
-            lineage = AddLineage(
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
             yield lineage
 
-    def ingest_mlmodels(self) -> Iterable[CreateMlModelEntityRequest]:
+    def ingest_mlmodels(self) -> Iterable[CreateMlModelRequest]:
         """
         Convert sample model data into a Model Entity
         to feed the metastore
@@ -424,7 +424,7 @@ class SampleDataSource(Source[Entity]):
 
             dashboard_id = str(dashboard.id.__root__)
 
-            model_ev = CreateMlModelEntityRequest(
+            model_ev = CreateMlModelRequest(
                 name=model["name"],
                 displayName=model["displayName"],
                 description=model["description"],

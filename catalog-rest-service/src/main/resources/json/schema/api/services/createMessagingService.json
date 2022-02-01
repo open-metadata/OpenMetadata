@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/api/services/createMessagingService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Messaging service entity request",
+  "title": "CreateMessagingServiceRequest",
   "description": "Create Messaging service entity request",
   "type": "object",
   "properties": {
@@ -20,7 +20,7 @@
     },
     "brokers": {
       "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "$ref" : "../../entity/services/messagingService.json#/definitions/brokers"
+      "$ref": "../../entity/services/messagingService.json#/definitions/brokers"
     },
     "schemaRegistry": {
       "description": "Schema registry URL",
@@ -32,9 +32,5 @@
       "$ref": "../../type/schedule.json"
     }
   },
-  "required": [
-    "name",
-    "serviceType",
-    "brokers"
-  ]
+  "required": ["name", "serviceType", "brokers"]
 }

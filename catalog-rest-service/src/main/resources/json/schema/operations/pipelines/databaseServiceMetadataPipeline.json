@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/operations/pipelines/databaseServiceMetadataPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DatabaseService Metadata Pipeline",
+  "title": "DatabaseServiceMetadataPipeline",
   "description": "DatabaseService Metadata Pipeline Configuration.",
   "definitions": {
     "filterPattern": {
@@ -30,7 +30,7 @@
   },
   "properties": {
     "markDeletedTables": {
-      "description":"Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
+      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
       "type": "boolean",
       "default": "true"
     },

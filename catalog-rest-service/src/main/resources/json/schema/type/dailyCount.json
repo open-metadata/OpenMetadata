@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Daily count of some measurement",
   "description": "This schema defines the type for reporting the daily count of some measurement. For example, you might use this schema for the number of times a table is queried each day.",
-  "type" : "object",
+  "type": "object",
 
   "properties": {
     "count": {

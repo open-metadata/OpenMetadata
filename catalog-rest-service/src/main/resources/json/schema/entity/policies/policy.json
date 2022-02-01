@@ -15,10 +15,7 @@
       "javaType": "org.openmetadata.catalog.type.PolicyType",
       "description": "This schema defines the type used for describing different types of policies.",
       "type": "string",
-      "enum": [
-        "AccessControl",
-        "Lifecycle"
-      ],
+      "enum": ["AccessControl", "Lifecycle"],
       "javaEnums": [
         {
           "name": "AccessControl"
@@ -110,16 +107,12 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "policyType"
-  ],
+  "required": ["id", "name", "policyType"],
   "additionalProperties": false
 }

@@ -21,7 +21,7 @@ from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -205,7 +205,7 @@ class OpenMetadata(
         if issubclass(entity, Metrics):
             return "/metrics"
 
-        if issubclass(entity, AddLineage):
+        if issubclass(entity, AddLineageRequest):
             return "/lineage"
 
         if issubclass(entity, Report):
@@ -302,7 +302,7 @@ class OpenMetadata(
             [self.class_root, self.api_path, self.get_module_path(entity), file_name]
         )
 
-        class_name = f"Create{entity.__name__}EntityRequest"
+        class_name = f"Create{entity.__name__}Request"
         create_class = getattr(
             __import__(class_path, globals(), locals(), [class_name]), class_name
         )
@@ -313,7 +313,7 @@ class OpenMetadata(
         Inversely, import the Entity type based on the create Entity class
         """
 
-        class_name = create.__name__.replace("Create", "").replace("EntityRequest", "")
+        class_name = create.__name__.replace("Create", "").replace("Request", "")
         file_name = class_name.lower()
 
         class_path = ".".join(

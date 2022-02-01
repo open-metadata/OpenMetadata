@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.type.ChangeEvent",
 
   "definitions": {
-    "eventType" :{
+    "eventType": {
       "javaType": "org.openmetadata.catalog.type.EventType",
       "description": "Type of event.",
       "type": "string",
@@ -38,11 +38,11 @@
       "additionalProperties": false
     }
   },
-  "properties" : {
-    "eventType" : {
+  "properties": {
+    "eventType": {
       "$ref": "#/definitions/eventType"
     },
-    "entityType" : {
+    "entityType": {
       "description": "Entity type that changed. Use the schema of this entity to process the entity attribute.",
       "type": "string"
     },
@@ -54,13 +54,13 @@
       "description": "Fully Qualified Name of entity that was modified by the operation.",
       "type": "string"
     },
-    "previousVersion" : {
-      "description" : "Version of the entity before this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`.",
-      "$ref" : "entityHistory.json#/definitions/entityVersion"
+    "previousVersion": {
+      "description": "Version of the entity before this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`.",
+      "$ref": "entityHistory.json#/definitions/entityVersion"
     },
-    "currentVersion" : {
-      "description" : "Current version of the entity after this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`.",
-      "$ref" : "entityHistory.json#/definitions/entityVersion"
+    "currentVersion": {
+      "description": "Current version of the entity after this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`.",
+      "$ref": "entityHistory.json#/definitions/entityVersion"
     },
     "userName": {
       "description": "Name of the user whose activity resulted in the change.",
@@ -70,11 +70,11 @@
       "description": "Timestamp when the change was made in Unix epoch time milliseconds.",
       "$ref": "basic.json#/definitions/timestamp"
     },
-    "changeDescription" : {
+    "changeDescription": {
       "description": "For `eventType` `entityUpdated` this field captures details about what fields were added/updated/deleted. For `eventType` `entityCreated` or `entityDeleted` this field is null.",
-      "$ref" : "entityHistory.json#/definitions/changeDescription"
+      "$ref": "entityHistory.json#/definitions/changeDescription"
     },
-    "entity" : {
+    "entity": {
       "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`."
     }
   },

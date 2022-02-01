@@ -1,10 +1,10 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createDatabase.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Dashboard entity request",
+  "title": "CreateDashboardRequest",
   "description": "Create Dashboard entity request",
   "type": "object",
-  "properties" : {
+  "properties": {
     "name": {
       "description": "Name that identifies this dashboard.",
       "type": "string",
@@ -19,7 +19,7 @@
       "description": "Description of the database instance. What it has and how to use it.",
       "type": "string"
     },
-    "dashboardUrl" : {
+    "dashboardUrl": {
       "description": "Dashboard URL",
       "type": "string",
       "format": "uri"
@@ -44,9 +44,9 @@
       "description": "Owner of this database",
       "$ref": "../../type/entityReference.json"
     },
-    "service" : {
+    "service": {
       "description": "Link to the database service where this database is hosted in",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "service"]

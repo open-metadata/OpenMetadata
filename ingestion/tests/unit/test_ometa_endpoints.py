@@ -14,11 +14,11 @@ OpenMetadata high-level API endpoint test
 """
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -99,26 +99,24 @@ class OMetaEndpointTest(TestCase):
         """
 
         create = self.metadata.get_create_entity_type(Topic)
-        assert issubclass(create, CreateTopicEntityRequest)
+        assert issubclass(create, CreateTopicRequest)
 
         create = self.metadata.get_create_entity_type(DatabaseService)
-        assert issubclass(create, CreateDatabaseServiceEntityRequest)
+        assert issubclass(create, CreateDatabaseServiceRequest)
 
         create = self.metadata.get_create_entity_type(User)
-        assert issubclass(create, CreateUserEntityRequest)
+        assert issubclass(create, CreateUserRequest)
 
     def test_get_entity_from_create(self):
         """
         Validate the mapping from CreateEntity to Entity
         """
 
-        entity = self.metadata.get_entity_from_create(CreateTopicEntityRequest)
+        entity = self.metadata.get_entity_from_create(CreateTopicRequest)
         assert issubclass(entity, Topic)
 
-        entity = self.metadata.get_entity_from_create(
-            CreateDatabaseServiceEntityRequest
-        )
+        entity = self.metadata.get_entity_from_create(CreateDatabaseServiceRequest)
         assert issubclass(entity, DatabaseService)
 
-        entity = self.metadata.get_entity_from_create(CreateUserEntityRequest)
+        entity = self.metadata.get_entity_from_create(CreateUserRequest)
         assert issubclass(entity, User)
