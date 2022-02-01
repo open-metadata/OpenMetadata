@@ -2,8 +2,8 @@
     "source": {
       "type": "dynamodb",
       "config": {
-        "aws_access_key_id": "AKIATXFWJZHNC2HIQPPF",
-        "aws_secret_access_key": "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",
+        "aws_access_key_id": "",
+        "aws_secret_access_key": "",
         "service_name": "DynamoDB",
         "region_name": "us-east-2",
         "endpoint_url": "https://dynamodb.us-east-2.amazonaws.com"
