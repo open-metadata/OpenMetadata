@@ -750,4 +750,4 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   );
 };
 
-export default withLoader(Entitylineage);
+export default withLoader<EntityLineageProp>(Entitylineage);

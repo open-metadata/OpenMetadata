@@ -140,4 +140,4 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   );
 };
 
-export default withLoader(SampleDataTable);
+export default withLoader<Props>(SampleDataTable);
