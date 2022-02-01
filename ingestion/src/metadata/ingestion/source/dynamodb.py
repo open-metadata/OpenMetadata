@@ -47,7 +47,6 @@ class DynamodbSource(Source[Entity]):
         )
         self.dynamodb = AWSClient(self.config).get_resource("dynamodb")
 
-
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
         config = DynamoDBSourceConfig.parse_obj(config_dict)
@@ -73,7 +72,7 @@ class DynamodbSource(Source[Entity]):
         try:
             table_list = list(self.dynamodb.tables.all())
             print(table_list)
-            
+
             for table in table_list:
                 database_entity = Database(
                     name="DynamoDB",
@@ -103,11 +102,10 @@ class DynamodbSource(Source[Entity]):
             logger.debug(err)
 
     def get_columns(self, column_data):
-        
-            parsed_string = {}
-               
-            yield Column(**parsed_string)
 
+        parsed_string = {}
+
+        yield Column(**parsed_string)
 
     def close(self):
         pass
