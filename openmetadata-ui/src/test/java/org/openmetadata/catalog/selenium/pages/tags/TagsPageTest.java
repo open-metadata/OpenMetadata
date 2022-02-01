@@ -27,7 +27,6 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.pages.myData.MyDataPageTest;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -203,7 +202,7 @@ public class TagsPageTest {
     Events.click(webDriver, tagsPage.containsText(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
     Events.click(webDriver, tagsPage.tableLink());
-//    actions.moveToElement(webDriver.findElement(tagsPage.editAssociatedTagButton())).perform();
+    //    actions.moveToElement(webDriver.findElement(tagsPage.editAssociatedTagButton())).perform();
     Events.click(webDriver, tagsPage.editAssociatedTagButton());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
     Events.click(webDriver, tagsPage.saveAssociatedTag());
