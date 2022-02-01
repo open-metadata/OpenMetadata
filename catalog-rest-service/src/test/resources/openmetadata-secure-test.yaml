@@ -104,6 +104,9 @@ database:
   # the JDBC URL; the database is called washvalet
   url: jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
+migrationConfiguration:
+  path: "../bootstrap/sql/mysql"
+
 elasticsearch:
   host: localhost
   port: 0
