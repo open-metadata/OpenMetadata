@@ -390,6 +390,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         manifest_columns = mnode.get("columns", {})
         for key in ccolumns:
             ccolumn = ccolumns[key]
+            col_name = ccolumn["name"].lower().replace(".", "_DOT_")
             try:
                 ctype = ccolumn["type"]
                 col_type = ColumnTypeParser.get_column_type(ctype)
@@ -399,7 +400,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if description is None:
                     description = ccolumn.get("comment", None)
                 col = Column(
-                    name=ccolumn["name"].lower(),
+                    name=col_name,
                     description=description,
                     dataType=col_type,
                     dataLength=1,
@@ -407,7 +408,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 )
                 columns.append(col)
             except Exception as err:  # pylint: disable=broad-except
-                logger.error(f"Failed to parse column type due to {err}")
+                logger.error(f"Failed to parse column {col_name} due to {err}")
 
         return columns
 
