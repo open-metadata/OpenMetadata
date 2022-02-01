@@ -15,7 +15,7 @@ from typing import Iterable
 from ldap3 import ALL, LEVEL, Connection, Server
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -29,7 +29,7 @@ class LDAPUserConfig(ConfigModel):
     password: str
 
 
-class LdapUsersSource(Source[CreateUserEntityRequest]):
+class LdapUsersSource(Source[CreateUserRequest]):
     config: LDAPUserConfig
     status: SourceStatus
 
@@ -81,9 +81,9 @@ class LdapUsersSource(Source[CreateUserEntityRequest]):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def next_record(self) -> Iterable[CreateUserEntityRequest]:
+    def next_record(self) -> Iterable[CreateUserRequest]:
         for user in self.users:
-            user_metadata = CreateUserEntityRequest(
+            user_metadata = CreateUserRequest(
                 email=user["attributes"]["mail"],
                 displayName=user["attributes"]["cn"],
                 name=user["attributes"]["givenName"],

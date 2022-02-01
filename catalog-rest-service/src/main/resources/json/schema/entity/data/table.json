@@ -10,13 +10,7 @@
       "javaType": "org.openmetadata.catalog.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
       "type": "string",
-      "enum": [
-        "Regular",
-        "External",
-        "View",
-        "SecureView",
-        "MaterializedView"
-      ],
+      "enum": ["Regular", "External", "View", "SecureView", "MaterializedView"],
       "javaEnums": [
         {
           "name": "Regular"
@@ -81,27 +75,19 @@
       "javaType": "org.openmetadata.catalog.type.ColumnConstraint",
       "description": "This enum defines the type for column constraint.",
       "type": "string",
-      "enum": [
-        "NULL",
-        "NOT_NULL",
-        "UNIQUE",
-        "PRIMARY_KEY"
-      ],
+      "enum": ["NULL", "NOT_NULL", "UNIQUE", "PRIMARY_KEY"],
       "default": null,
       "additionalProperties": false
     },
     "tableConstraint": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableConstraint",
+      "title": "TableConstraint",
       "description": "This enum defines the type for table constraint.",
       "properties": {
         "constraintType": {
           "type": "string",
-          "enum": [
-            "UNIQUE",
-            "PRIMARY_KEY",
-            "FOREIGN_KEY"
-          ]
+          "enum": ["UNIQUE", "PRIMARY_KEY", "FOREIGN_KEY"]
         },
         "columns": {
           "description": "List of column names corresponding to the constraint.",
@@ -144,16 +130,16 @@
           "description": "Data type of the column (int, date etc.).",
           "$ref": "#/definitions/dataType"
         },
-        "arrayDataType" : {
+        "arrayDataType": {
           "description": "Data type used array in dataType. For example, `array<int>` has dataType as `array` and arrayDataType as `int`.",
           "$ref": "#/definitions/dataType"
         },
-        "dataLength" : {
+        "dataLength": {
           "description": "Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example, `varchar(20)` has dataType as `varchar` and dataLength as `20`.",
           "type": "integer"
         },
-        "dataTypeDisplay" : {
-          "description" : "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
+        "dataTypeDisplay": {
+          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
           "type": "string"
         },
         "description": {
@@ -179,23 +165,20 @@
           "description": "Ordinal position of the column.",
           "type": "integer"
         },
-        "jsonSchema" : {
+        "jsonSchema": {
           "description": "Json schema only if the dataType is JSON else null.",
           "type": "string"
         },
-        "children" : {
+        "children": {
           "description": "Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/column"
           },
-          "default" : null
+          "default": null
         }
       },
-      "required": [
-        "name",
-        "dataType"
-      ],
+      "required": ["name", "dataType"],
       "additionalProperties": false
     },
     "columnJoins": {
@@ -210,13 +193,13 @@
           "description": "Fully qualified names of the columns that this column is joined with.",
           "type": "array",
           "items": {
-            "type" : "object",
+            "type": "object",
             "properties": {
-              "fullyQualifiedName" : {
-                "$ref" : "#/definitions/fullyQualifiedColumnName"
+              "fullyQualifiedName": {
+                "$ref": "#/definitions/fullyQualifiedColumnName"
               },
-              "joinCount" : {
-                "type" : "integer"
+              "joinCount": {
+                "type": "integer"
               }
             }
           }
@@ -318,7 +301,7 @@
           "description": "Proportion of number of unique values in a column.",
           "type": "number"
         },
-        "distinctCount" : {
+        "distinctCount": {
           "description": "Number of values that contain distinct values.",
           "type": "number"
         },
@@ -422,46 +405,44 @@
         }
       }
     },
-    "modelType" : {
+    "modelType": {
       "$comment": "Currently only DBT model type is supported",
-      "enum": [
-        "DBT"
-      ],
+      "enum": ["DBT"],
       "javaEnums": [
         {
           "name": "DBT"
         }
       ]
     },
-    "dataModel" : {
+    "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
-      "type" : "object",
+      "type": "object",
       "javaType": "org.openmetadata.catalog.type.DataModel",
       "properties": {
-        "modelType" : {
-          "$ref" : "#/definitions/modelType"
+        "modelType": {
+          "$ref": "#/definitions/modelType"
         },
-        "description" : {
+        "description": {
           "description": "Description of the Table from the model.",
-          "type" : "string"
+          "type": "string"
         },
-        "path" : {
+        "path": {
           "description": "Path to sql definition file.",
-          "type" : "string"
+          "type": "string"
         },
-        "rawSql" : {
+        "rawSql": {
           "description": "This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL query need not be compiled as done in DBT.",
           "$ref": "../../type/basic.json#/definitions/sqlQuery"
         },
-        "sql" : {
+        "sql": {
           "description": "This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where compilation is not necessary, this corresponds to SQL that created the table.",
           "$ref": "../../type/basic.json#/definitions/sqlQuery"
         },
-        "upstream" : {
+        "upstream": {
           "description": "Fully qualified name of Models/tables used for in `sql` for creating this table.",
           "type": "array",
           "items": {
-            "type" : "string"
+            "type": "string"
           }
         },
         "columns": {
@@ -472,11 +453,11 @@
           },
           "default": null
         },
-        "generatedAt" : {
+        "generatedAt": {
           "$ref": "../../type/basic.json#/definitions/dateTime"
         }
       },
-      "required" : [ "modelType", "sql"]
+      "required": ["modelType", "sql"]
     }
   },
   "properties": {
@@ -500,15 +481,15 @@
       "description": "Description of a table.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -531,6 +512,7 @@
       "description": "Table constraints.",
       "type": "array",
       "items": {
+        "title": "TableConstraint",
         "$ref": "#/definitions/tableConstraint"
       },
       "default": null
@@ -548,9 +530,9 @@
       "description": "Link to Database service this table is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
-    "serviceType" : {
+    "serviceType": {
       "description": "Service type this table is hosted in.",
-      "$ref" : "../services/databaseService.json#/definitions/databaseServiceType"
+      "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
     },
     "location": {
       "description": "Reference to the Location that contains this table.",
@@ -603,24 +585,20 @@
       },
       "default": null
     },
-    "dataModel" : {
+    "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
       "$ref": "#/definitions/dataModel"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "columns"
-  ],
+  "required": ["id", "name", "columns"],
   "additionalProperties": false
 }

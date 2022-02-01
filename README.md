@@ -1,8 +1,9 @@
 <div align="center">
-  <img src="https://i.imgur.com/5VumwFS.png" align="center" alt="OpenMetadata" height="90"/>
+    <img src="./docs/.gitbook/assets/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
   <hr />
 
 [![Build Status](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=open-metadata_OpenMetadata&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=open-metadata_OpenMetadata)
 [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg)](https://github.com/open-metadata/OpenMetadata/releases)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata)
 [![Twitter Follow](https://img.shields.io/twitter/follow/open_metadata?style=social)](https://twitter.com/intent/follow?screen_name=open_metadata)
@@ -12,6 +13,7 @@
 </div>
 
 - [What is OpenMetadata?](#what-is-openmetadata )
+- [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
 - [Roadmap](docs/roadmap.md)
@@ -34,9 +36,18 @@ OpenMetadata includes the following:
 
 - **OpenMetadata User Interface** - one single place for users to discover, and collaborate on all data.
 
+## Features
+
+Check all the supported features [here](https://docs.open-metadata.org/features) ✨
+
+![](./docs/.gitbook/assets/lineage.gif)
+
 ## Try our Sandbox
 
-Visit our demo at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
+Take a look and play with sample data at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
+
+[<img src="./docs/.gitbook/assets/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
+
 
 ## Install and run OpenMetadata
 Get up and running in few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/install/run-openmetadata).
@@ -53,11 +64,13 @@ We're here to help - and make OpenMetadata even better!
 
 ## Contributors
 
-We ❤️ all contributions, big and small!
+We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started and let us know how we can help.
 
-Read [Build Code and Run Tests](https://docs.open-metadata.org/open-source-community/developer/build-code-run-tests) for how to setup your local development environment. Get started with our [Good first issues](https://github.com/open-metadata/OpenMetadata/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+Don't want to miss anything? Give the project a ⭐ 🚀 
 
-If you want to, you can reach out via [Slack](https://openmetadata.slack.com/join/shared_invite/zt-wksh1bww-iQGk45NTw6Tp4Q9UZd6QOw#/shared-invite/email) or [email](mailto:dev@open-metadata.org) and we'll set up a pair programming session to get you started.
+Big thanks to all of you who already support us!
+
+[![Stargazers repo roster for @open-metadata/OpenMetadata](https://reporoster.com/stars/open-metadata/OpenMetadata)](https://github.com/open-metadata/OpenMetadata/stargazers)
 
 ## License
 OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)

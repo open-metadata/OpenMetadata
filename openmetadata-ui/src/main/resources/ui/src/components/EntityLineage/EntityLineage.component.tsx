@@ -85,6 +85,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  isLineageLoading = false,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -127,7 +128,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   const getNodeClass = (node: FlowElement) => {
     return `${
-      node.id.includes(lineageData.entity.id) && !isEditMode
+      node.id.includes(lineageData.entity?.id) && !isEditMode
         ? 'leaf-node core'
         : 'leaf-node'
     }`;
@@ -302,12 +303,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     let sourceNode = lineageData.nodes?.find((n) => source?.includes(n.id));
 
     if (isUndefined(targetNode)) {
-      targetNode = target?.includes(lineageData.entity.id)
+      targetNode = target?.includes(lineageData.entity?.id)
         ? lineageData.entity
         : selectedEntity;
     }
     if (isUndefined(sourceNode)) {
-      sourceNode = source?.includes(lineageData.entity.id)
+      sourceNode = source?.includes(lineageData.entity?.id)
         ? lineageData.entity
         : selectedEntity;
     }
@@ -343,7 +344,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 : lineageData.nodes,
               downstreamEdges:
                 !isUndefined(downstreamNode) ||
-                sourceNode?.id === lineageData.entity.id
+                sourceNode?.id === lineageData.entity?.id
                   ? [
                       ...(lineageData.downstreamEdges as EntityEdge[]),
                       {
@@ -354,7 +355,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   : lineageData.downstreamEdges,
               upstreamEdges:
                 isUndefined(downstreamNode) &&
-                sourceNode?.id !== lineageData.entity.id
+                sourceNode?.id !== lineageData.entity?.id
                   ? [
                       ...(lineageData.upstreamEdges as EntityEdge[]),
                       {
@@ -619,129 +620,141 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   return (
     <Fragment>
       {!deleted ? (
-        <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
-          <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
-            <ReactFlowProvider>
-              <ReactFlow
-                edgeTypes={{ buttonedge: CustomEdge }}
-                elements={elements as Elements}
-                elementsSelectable={!isEditMode}
-                maxZoom={2}
-                minZoom={0.5}
-                nodeTypes={{
-                  output: CustomNode,
-                  input: CustomNode,
-                  default: CustomNode,
-                }}
-                nodesConnectable={isEditMode}
-                selectNodesOnDrag={false}
-                zoomOnDoubleClick={false}
-                zoomOnPinch={false}
-                zoomOnScroll={false}
-                onConnect={onConnect}
-                onDragOver={onDragOver}
-                onDrop={onDrop}
-                onElementClick={(_e, el) => onElementClick(el)}
-                onElementsRemove={onElementsRemove}
-                onLoad={(reactFlowInstance: OnLoadParams) => {
-                  onLoad(reactFlowInstance);
-                  setReactFlowInstance(reactFlowInstance);
-                }}
-                onNodeContextMenu={onNodeContextMenu}
-                onNodeDrag={dragHandle}
-                onNodeDragStart={dragHandle}
-                onNodeDragStop={dragHandle}
-                onNodeMouseEnter={onNodeMouseEnter}
-                onNodeMouseLeave={onNodeMouseLeave}
-                onNodeMouseMove={onNodeMouseMove}>
-                <CustomControls
-                  className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
-                  fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
-                  {!deleted && (
-                    <ControlButton
-                      className={classNames(
-                        'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
-                        {
-                          'tw-bg-primary': isEditMode,
-                          'tw-bg-primary-hover-lite': !isEditMode,
-                        }
+        <Fragment>
+          {isLineageLoading ? (
+            <Loader />
+          ) : (
+            <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
+              <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
+                <ReactFlowProvider>
+                  <ReactFlow
+                    edgeTypes={{ buttonedge: CustomEdge }}
+                    elements={elements as Elements}
+                    elementsSelectable={!isEditMode}
+                    maxZoom={2}
+                    minZoom={0.5}
+                    nodeTypes={{
+                      output: CustomNode,
+                      input: CustomNode,
+                      default: CustomNode,
+                    }}
+                    nodesConnectable={isEditMode}
+                    selectNodesOnDrag={false}
+                    zoomOnDoubleClick={false}
+                    zoomOnPinch={false}
+                    zoomOnScroll={false}
+                    onConnect={onConnect}
+                    onDragOver={onDragOver}
+                    onDrop={onDrop}
+                    onElementClick={(_e, el) => onElementClick(el)}
+                    onElementsRemove={onElementsRemove}
+                    onLoad={(reactFlowInstance: OnLoadParams) => {
+                      onLoad(reactFlowInstance);
+                      setReactFlowInstance(reactFlowInstance);
+                    }}
+                    onNodeContextMenu={onNodeContextMenu}
+                    onNodeDrag={dragHandle}
+                    onNodeDragStart={dragHandle}
+                    onNodeDragStop={dragHandle}
+                    onNodeMouseEnter={onNodeMouseEnter}
+                    onNodeMouseLeave={onNodeMouseLeave}
+                    onNodeMouseMove={onNodeMouseMove}>
+                    <CustomControls
+                      className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
+                      fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
+                      {!deleted && (
+                        <ControlButton
+                          className={classNames(
+                            'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
+                            {
+                              'tw-bg-primary': isEditMode,
+                              'tw-bg-primary-hover-lite': !isEditMode,
+                            }
+                          )}
+                          onClick={() => {
+                            setEditMode((pre) => !pre && !deleted);
+                            setSelectedNode({} as SelectedNode);
+                            setIsDrawerOpen(false);
+                            setNewAddedNode({} as FlowElement);
+                          }}>
+                          {loading ? (
+                            <Loader size="small" type="white" />
+                          ) : status === 'success' ? (
+                            <i
+                              aria-hidden="true"
+                              className="fa fa-check tw-text-white"
+                            />
+                          ) : (
+                            <SVGIcons
+                              alt="icon-edit-lineag"
+                              className="tw--mt-1"
+                              data-testid="edit-lineage"
+                              icon={
+                                !isEditMode
+                                  ? 'icon-edit-lineage-color'
+                                  : 'icon-edit-lineage'
+                              }
+                              width="14"
+                            />
+                          )}
+                        </ControlButton>
                       )}
-                      onClick={() => {
-                        setEditMode((pre) => !pre && !deleted);
-                        setSelectedNode({} as SelectedNode);
-                        setIsDrawerOpen(false);
-                        setNewAddedNode({} as FlowElement);
-                      }}>
-                      {loading ? (
-                        <Loader size="small" type="white" />
-                      ) : status === 'success' ? (
-                        <i
-                          aria-hidden="true"
-                          className="fa fa-check tw-text-white"
-                        />
-                      ) : (
-                        <SVGIcons
-                          alt="icon-edit-lineag"
-                          className="tw--mt-1"
-                          data-testid="edit-lineage"
-                          icon={
-                            !isEditMode
-                              ? 'icon-edit-lineage-color'
-                              : 'icon-edit-lineage'
-                          }
-                          width="14"
-                        />
-                      )}
-                    </ControlButton>
-                  )}
-                </CustomControls>
-                {isEditMode ? (
-                  <Background
-                    gap={12}
-                    size={1}
-                    variant={BackgroundVariant.Lines}
-                  />
-                ) : null}
-              </ReactFlow>
-            </ReactFlowProvider>
-            :
-          </div>
-          <EntityInfoDrawer
-            isMainNode={selectedNode.name === entityLineage.entity.name}
-            selectedNode={selectedNode}
-            show={isDrawerOpen && !isEditMode}
-            onCancel={closeDrawer}
-          />
-          <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
-          {showdeleteModal ? (
-            <ConfirmationModal
-              bodyText={getModalBodyText(selectedEdge)}
-              cancelText={
-                <span
-                  className={classNames({
-                    'tw-pointer-events-none tw-opacity-70':
-                      deletionState.loading,
-                  })}>
-                  Cancel
-                </span>
-              }
-              confirmText={
-                deletionState.loading ? (
-                  <Loader size="small" type="white" />
-                ) : deletionState.status === 'success' ? (
-                  <i aria-hidden="true" className="fa fa-check tw-text-white" />
-                ) : (
-                  'Confirm'
-                )
-              }
-              header="Remove lineage edge"
-              onCancel={() => {
-                setShowDeleteModal(false);
-              }}
-              onConfirm={onRemove}
-            />
-          ) : null}
-        </div>
+                    </CustomControls>
+                    {isEditMode ? (
+                      <Background
+                        gap={12}
+                        size={1}
+                        variant={BackgroundVariant.Lines}
+                      />
+                    ) : null}
+                  </ReactFlow>
+                </ReactFlowProvider>
+                :
+              </div>
+              <EntityInfoDrawer
+                isMainNode={selectedNode.name === lineageData.entity?.name}
+                selectedNode={selectedNode}
+                show={isDrawerOpen && !isEditMode}
+                onCancel={closeDrawer}
+              />
+              <EntityLineageSidebar
+                newAddedNode={newAddedNode}
+                show={isEditMode}
+              />
+              {showdeleteModal ? (
+                <ConfirmationModal
+                  bodyText={getModalBodyText(selectedEdge)}
+                  cancelText={
+                    <span
+                      className={classNames({
+                        'tw-pointer-events-none tw-opacity-70':
+                          deletionState.loading,
+                      })}>
+                      Cancel
+                    </span>
+                  }
+                  confirmText={
+                    deletionState.loading ? (
+                      <Loader size="small" type="white" />
+                    ) : deletionState.status === 'success' ? (
+                      <i
+                        aria-hidden="true"
+                        className="fa fa-check tw-text-white"
+                      />
+                    ) : (
+                      'Confirm'
+                    )
+                  }
+                  header="Remove lineage edge"
+                  onCancel={() => {
+                    setShowDeleteModal(false);
+                  }}
+                  onConfirm={onRemove}
+                />
+              ) : null}
+            </div>
+          )}
+        </Fragment>
       ) : (
         getDeletedLineagePlaceholder()
       )}

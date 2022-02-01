@@ -16,29 +16,19 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
-from metadata.generated.schema.api.data.createDashboard import (
-    CreateDashboardEntityRequest,
-)
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createLocation import (
-    CreateLocationEntityRequest,
-)
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.policies.createPolicy import (
-    CreatePolicyEntityRequest,
-)
-from metadata.generated.schema.api.teams.createRole import CreateRoleEntityRequest
-from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
+from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -112,7 +102,7 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, CreateTopicEntityRequest):
+        elif isinstance(record, CreateTopicRequest):
             self.write_topics(record)
         elif isinstance(record, Chart):
             self.write_charts(record)
@@ -124,11 +114,11 @@ class MetadataRestSink(Sink[Entity]):
             self.write_policies(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
-        elif isinstance(record, AddLineage):
+        elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
         elif isinstance(record, User):
             self.write_users(record)
-        elif isinstance(record, CreateMlModelEntityRequest):
+        elif isinstance(record, CreateMlModelRequest):
             self.write_ml_model(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
@@ -139,7 +129,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_tables(self, db_and_table: OMetaDatabaseAndTable):
         try:
-            db_request = CreateDatabaseEntityRequest(
+            db_request = CreateDatabaseRequest(
                 name=db_and_table.database.name,
                 description=db_and_table.database.description,
                 service=EntityReference(
@@ -151,7 +141,7 @@ class MetadataRestSink(Sink[Entity]):
             if db_and_table.table.description is not None:
                 db_and_table.table.description = db_and_table.table.description.strip()
 
-            table_request = CreateTableEntityRequest(
+            table_request = CreateTableRequest(
                 name=db_and_table.table.name,
                 tableType=db_and_table.table.tableType,
                 columns=db_and_table.table.columns,
@@ -169,7 +159,7 @@ class MetadataRestSink(Sink[Entity]):
                     db_and_table.location.description = (
                         db_and_table.location.description.strip()
                     )
-                location_request = CreateLocationEntityRequest(
+                location_request = CreateLocationRequest(
                     name=db_and_table.location.name,
                     description=db_and_table.location.description,
                     locationType=db_and_table.location.locationType,
@@ -227,7 +217,7 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Table: {db_and_table.table.name.__root__}")
 
-    def write_topics(self, topic: CreateTopicEntityRequest) -> None:
+    def write_topics(self, topic: CreateTopicRequest) -> None:
         try:
             created_topic = self.metadata.create_or_update(topic)
             logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
@@ -246,7 +236,7 @@ class MetadataRestSink(Sink[Entity]):
             ):
                 om_chart_type = om_chart_type_dict[chart.chart_type]
 
-            chart_request = CreateChartEntityRequest(
+            chart_request = CreateChartRequest(
                 name=chart.name,
                 displayName=chart.displayName,
                 description=chart.description,
@@ -269,7 +259,7 @@ class MetadataRestSink(Sink[Entity]):
         try:
             charts = self._get_chart_references(dashboard)
 
-            dashboard_request = CreateDashboardEntityRequest(
+            dashboard_request = CreateDashboardRequest(
                 name=dashboard.name,
                 displayName=dashboard.displayName,
                 description=dashboard.description,
@@ -306,7 +296,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_pipelines(self, pipeline: Pipeline):
         try:
-            pipeline_request = CreatePipelineEntityRequest(
+            pipeline_request = CreatePipelineRequest(
                 name=pipeline.name,
                 displayName=pipeline.displayName,
                 description=pipeline.description,
@@ -332,7 +322,7 @@ class MetadataRestSink(Sink[Entity]):
                 logger.info(f"Successfully ingested Location {created_location.name}")
                 self.status.records_written(f"Location: {created_location.name}")
 
-            policy_request = CreatePolicyEntityRequest(
+            policy_request = CreatePolicyRequest(
                 name=ometa_policy.policy.name,
                 displayName=ometa_policy.policy.displayName,
                 description=ometa_policy.policy.description,
@@ -353,7 +343,7 @@ class MetadataRestSink(Sink[Entity]):
             self.status.failure(f"Policy: {ometa_policy.policy.name}")
 
     def _create_location(self, location: Location) -> Location:
-        location_request = CreateLocationEntityRequest(
+        location_request = CreateLocationRequest(
             name=location.name,
             description=location.description,
             locationType=location.locationType,
@@ -363,7 +353,7 @@ class MetadataRestSink(Sink[Entity]):
         )
         return self.metadata.create_or_update(location_request)
 
-    def write_lineage(self, add_lineage: AddLineage):
+    def write_lineage(self, add_lineage: AddLineageRequest):
         try:
             logger.info(add_lineage)
             created_lineage = self.metadata.add_lineage(add_lineage)
@@ -374,7 +364,7 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
 
-    def write_ml_model(self, model: CreateMlModelEntityRequest):
+    def write_ml_model(self, model: CreateMlModelRequest):
         try:
             created_model = self.metadata.create_or_update(model)
             logger.info(f"Successfully added Model {created_model.name}")
@@ -385,7 +375,7 @@ class MetadataRestSink(Sink[Entity]):
             self.status.failure(f"Model: {model.name}")
 
     def _create_role(self, role: EntityReference) -> None:
-        metadata_role = CreateRoleEntityRequest(
+        metadata_role = CreateRoleRequest(
             name=role.name, displayName=role.name, description=role.description
         )
         try:
@@ -398,7 +388,7 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
 
     def _create_team(self, team: EntityReference) -> None:
-        metadata_team = CreateTeamEntityRequest(
+        metadata_team = CreateTeamRequest(
             name=team.name, displayName=team.name, description=team.description
         )
         try:
@@ -426,7 +416,7 @@ class MetadataRestSink(Sink[Entity]):
                 self._create_team(team)
             teams.append(self.team_entities[team.name])
 
-        metadata_user = CreateUserEntityRequest(
+        metadata_user = CreateUserRequest(
             name=record.name.__root__,
             displayName=record.displayName,
             email=record.email,

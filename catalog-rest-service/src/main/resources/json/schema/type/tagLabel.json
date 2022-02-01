@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/type/tagLabel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Tag Label",
+  "title": "TagLabel",
   "description": "This schema defines the type for labeling an entity with a Tag.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.TagLabel",
@@ -20,23 +20,15 @@
       "type": "string"
     },
     "labelType": {
-      "description" : "Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.",
+      "description": "Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.",
       "type": "string",
-      "enum": [
-        "Manual",
-        "Propagated",
-        "Automated",
-        "Derived"
-      ],
+      "enum": ["Manual", "Propagated", "Automated", "Derived"],
       "default": "Manual"
     },
     "state": {
-      "description" : "'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.",
+      "description": "'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.",
       "type": "string",
-      "enum": [
-        "Suggested",
-        "Confirmed"
-      ],
+      "enum": ["Suggested", "Confirmed"],
       "default": "Confirmed"
     },
     "href": {

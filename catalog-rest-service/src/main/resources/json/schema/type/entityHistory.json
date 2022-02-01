@@ -7,17 +7,17 @@
   "javaType": "org.openmetadata.catalog.type.EntityHistory",
   "definitions": {
     "entityVersion": {
-      "description" : "Metadata version of the entity in the form `Major.Minor`. First version always starts from `0.1` when the entity is created. When the backward compatible changes are made to the entity, only the `Minor` version is incremented - example `1.0` is changed to `1.1`. When backward incompatible changes are made the `Major` version is incremented - example `1.1` to `2.0`.",
-      "type" : "number",
+      "description": "Metadata version of the entity in the form `Major.Minor`. First version always starts from `0.1` when the entity is created. When the backward compatible changes are made to the entity, only the `Minor` version is incremented - example `1.0` is changed to `1.1`. When backward incompatible changes are made the `Major` version is incremented - example `1.1` to `2.0`.",
+      "type": "number",
       "multipleOf": 0.1,
-      "default" : 0.1,
+      "default": 0.1,
       "minimum": 0.1
     },
-    "fieldName" : {
-      "description" : "Name of the field of an entity.",
-      "type" : "string"
+    "fieldName": {
+      "description": "Name of the field of an entity.",
+      "type": "string"
     },
-    "fieldChange" : {
+    "fieldChange": {
       "type": "object",
       "properties": {
         "name": {
@@ -35,50 +35,48 @@
     },
     "changeDescription": {
       "description": "Description of the change.",
-      "type" : "object",
+      "type": "object",
       "javaType": "org.openmetadata.catalog.type.ChangeDescription",
       "properties": {
-        "fieldsAdded" : {
+        "fieldsAdded": {
           "description": "Names of fields added during the version changes.",
-          "type" : "array",
-          "items" : {
+          "type": "array",
+          "items": {
             "$ref": "#/definitions/fieldChange"
           }
         },
-        "fieldsUpdated" : {
+        "fieldsUpdated": {
           "description": "Fields modified during the version changes with old and new values.",
-          "type" : "array",
-          "items" : {
+          "type": "array",
+          "items": {
             "$ref": "#/definitions/fieldChange"
           }
         },
-        "fieldsDeleted" : {
+        "fieldsDeleted": {
           "description": "Fields deleted during the version changes with old value before deleted.",
-          "type" : "array",
-          "items" : {
+          "type": "array",
+          "items": {
             "$ref": "#/definitions/fieldChange"
           }
         },
-        "previousVersion" : {
+        "previousVersion": {
           "description": "When a change did not result in change, this could be same as the current version.",
-          "$ref" : "#/definitions/entityVersion"
+          "$ref": "#/definitions/entityVersion"
         }
       },
       "additionalProperties": false
     }
   },
   "properties": {
-    "entityType" : {
+    "entityType": {
       "description": "Entity type, such as `database`, `table`, `dashboard`, for which this version history is produced.",
       "type": "string"
     },
     "versions": {
-      "descriptions" : "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to schema of the entity from the `entityType` attribute. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
-      "type" : "array"
+      "descriptions": "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to schema of the entity from the `entityType` attribute. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
+      "type": "array"
     }
   },
-  "required": [
-    "entityType", "versions"
-  ],
+  "required": ["entityType", "versions"],
   "additionalProperties": false
 }

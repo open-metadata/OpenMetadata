@@ -15,7 +15,7 @@ from typing import Generic
 from pydantic import BaseModel
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -58,7 +58,7 @@ class LdapRestUsersSink(Sink[User]):
         self._create_user(record)
 
     def _create_user(self, record: User) -> None:
-        metadata_user = CreateUserEntityRequest(
+        metadata_user = CreateUserRequest(
             name=record.name, displayName=record.displayName, email=record.email
         )
         self.rest.post(self.api_users, data=metadata_user.json())

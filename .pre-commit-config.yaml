@@ -11,6 +11,11 @@ repos:
       - id: isort
         args: ["--profile", "black"]
         exclude: ingestion/src/metadata/generated
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.5.1
+    hooks:
+      - id: prettier
+        files: ^catalog-rest-service/src/main/resources/json/schema/
   - repo: local
     hooks:
       - id: google-style-java
