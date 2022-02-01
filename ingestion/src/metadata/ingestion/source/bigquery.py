@@ -85,7 +85,7 @@ class BigquerySource(SQLSource):
                 ]
             elif config.options.get("credentials"):
                 cls.temp_credentials = cls.create_credential_temp_file(
-                    cls, credentials=config.options.get("credentials")
+                    credentials=config.options.get("credentials")
                 )
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
                 del config.options["credentials"]
@@ -96,7 +96,8 @@ class BigquerySource(SQLSource):
                 )
         return cls(config, metadata_config, ctx)
 
-    def create_credential_temp_file(self, credentials: dict) -> str:
+    @staticmethod
+    def create_credential_temp_file(credentials: dict) -> str:
         with tempfile.NamedTemporaryFile(delete=False) as fp:
             cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
             fp.write(cred_json.encode())
