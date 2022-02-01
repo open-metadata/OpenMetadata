@@ -273,7 +273,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               height={38}
               toolTipPos={{ x: 20, y: -30 }}
             />
-            <span className="tw--ml-6">rows</span>
+            <span className="tw--ml-6">{`${
+              tableProfile[0].rowCount || 0
+            } rows`}</span>
           </div>
         ) : (
           ''
