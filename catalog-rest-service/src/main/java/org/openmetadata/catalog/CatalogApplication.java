@@ -31,7 +31,9 @@ import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.sql.SQLException;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -50,6 +52,8 @@ import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
+import org.openmetadata.catalog.migration.Migration;
+import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.config.ConfigResource;
 import org.openmetadata.catalog.resources.search.SearchResource;
@@ -70,7 +74,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException {
+          InvocationTargetException, IOException, SQLException {
 
     final JdbiFactory factory = new JdbiFactory();
     final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
@@ -89,6 +93,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     if (LOG.isDebugEnabled()) {
       jdbi.setSqlLogger(sqlLogger);
     }
+
+    // Validate flyway Migrations
+    validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment, jdbi);
@@ -142,6 +149,27 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         });
     // bootstrap.addBundle(new CatalogJdbiExceptionsBundle());
     super.initialize(bootstrap);
+  }
+
+  private void validateMigrations(Jdbi jdbi, MigrationConfiguration conf) throws IOException {
+    LOG.info("Validating Flyway migrations");
+    Optional<String> lastMigrated = Migration.lastMigrated(jdbi);
+    String maxMigration = Migration.lastMigrationFile(conf);
+
+    if (lastMigrated.isEmpty()) {
+      System.out.println(
+          "Could not validate Flyway migrations in MySQL."
+              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
+      System.exit(1);
+    }
+    if (lastMigrated.get().compareTo(maxMigration) < 0) {
+      System.out.println(
+          "There are pending migrations to be run on MySQL."
+              + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
+              + " You can find more information on upgrading OpenMetadata at"
+              + " https://docs.open-metadata.org/install/upgrade-openmetadata");
+      System.exit(1);
+    }
   }
 
   private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
