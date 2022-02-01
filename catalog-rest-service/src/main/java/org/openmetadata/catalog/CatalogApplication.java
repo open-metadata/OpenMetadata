@@ -56,6 +56,7 @@ import org.openmetadata.catalog.migration.Migration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.config.ConfigResource;
+import org.openmetadata.catalog.resources.permissions.PermissionsResource;
 import org.openmetadata.catalog.resources.search.SearchResource;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.Authorizer;
@@ -198,8 +199,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
       environment.jersey().register(filter);
     }
-    // Registering config api
-    environment.jersey().register(new ConfigResource(catalogConfig, authorizer));
+    // Register config API
+    environment.jersey().register(new ConfigResource(catalogConfig));
+    // Register permissions API
+    environment.jersey().register(new PermissionsResource(authorizer));
   }
 
   private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
