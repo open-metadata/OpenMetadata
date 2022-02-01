@@ -21,27 +21,24 @@
       "description": "Type for capturing JDBC connector information.",
       "properties": {
         "driverClass": {
-          "$ref" : "#/definitions/driverClass"
+          "$ref": "#/definitions/driverClass"
         },
         "connectionUrl": {
-          "$ref" : "#/definitions/connectionUrl"
+          "$ref": "#/definitions/connectionUrl"
         }
       },
-      "required": [
-        "driverClass",
-        "connectionUrl"
-      ]
+      "required": ["driverClass", "connectionUrl"]
     }
   },
 
   "properties": {
     "driverClass": {
       "description": "JDBC driver class.",
-      "$ref" : "#/definitions/driverClass"
+      "$ref": "#/definitions/driverClass"
     },
     "connectionUrl": {
       "description": "JDBC connection URL.",
-      "$ref" : "#/definitions/connectionUrl"
+      "$ref": "#/definitions/connectionUrl"
     },
     "userName": {
       "description": "Login user name.",
@@ -56,4 +53,3 @@
   "required": ["driverClass", "connectionUrl", "userName", "password"],
   "additionalProperties": false
 }
-

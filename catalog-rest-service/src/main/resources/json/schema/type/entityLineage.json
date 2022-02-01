@@ -5,76 +5,74 @@
   "description": "This schema defines the type used for lineage of an entity.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.EntityLineage",
-  "definitions" : {
-    "edge" : {
+  "definitions": {
+    "edge": {
       "description": "Edge in the lineage graph from one entity to another by entity IDs.",
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.Edge",
       "properties": {
         "fromEntity": {
-          "description" : "From entity that is upstream of lineage edge.",
-          "$ref" : "basic.json#/definitions/uuid"
+          "description": "From entity that is upstream of lineage edge.",
+          "$ref": "basic.json#/definitions/uuid"
         },
         "toEntity": {
-          "description" : "To entity that is downstream of lineage edge.",
-          "$ref" : "basic.json#/definitions/uuid"
+          "description": "To entity that is downstream of lineage edge.",
+          "$ref": "basic.json#/definitions/uuid"
         },
-        "description" : {
+        "description": {
           "type": "string"
         }
       }
     },
-    "entitiesEdge" : {
+    "entitiesEdge": {
       "description": "Edge in the lineage graph from one entity to another using entity references.",
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.EntitiesEdge",
       "properties": {
         "fromEntity": {
-          "description" : "From entity that is upstream of lineage edge.",
-          "$ref" : "entityReference.json"
+          "description": "From entity that is upstream of lineage edge.",
+          "$ref": "entityReference.json"
         },
         "toEntity": {
-          "description" : "To entity that is downstream of lineage edge.",
-          "$ref" : "entityReference.json"
+          "description": "To entity that is downstream of lineage edge.",
+          "$ref": "entityReference.json"
         },
-        "description" : {
+        "description": {
           "type": "string"
         }
       }
     }
   },
   "properties": {
-    "entity" : {
+    "entity": {
       "description": "Primary entity for which this lineage graph is created.",
       "$ref": "entityReference.json"
     },
     "nodes": {
-      "descriptions" : "All the entities that are the nodes in the lineage graph excluding the primary entity.",
-      "type" : "array",
-      "items" : {
+      "descriptions": "All the entities that are the nodes in the lineage graph excluding the primary entity.",
+      "type": "array",
+      "items": {
         "$ref": "entityReference.json"
       },
-      "default" : null
+      "default": null
     },
     "upstreamEdges": {
-      "descriptions" : "All the edges in the lineage graph that are upstream from the primary entity.",
+      "descriptions": "All the edges in the lineage graph that are upstream from the primary entity.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/edge"
       },
-      "default" : null
+      "default": null
     },
     "downstreamEdges": {
-      "descriptions" : "All the edges in the lineage graph that are downstream from the primary entity.",
+      "descriptions": "All the edges in the lineage graph that are downstream from the primary entity.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/edge"
       },
-      "default" : null
+      "default": null
     }
   },
-  "required": [
-    "entity"
-  ],
+  "required": ["entity"],
   "additionalProperties": false
 }

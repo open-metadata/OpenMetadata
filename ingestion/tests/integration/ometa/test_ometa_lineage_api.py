@@ -14,19 +14,15 @@ OpenMetadata high-level API Lineage test
 """
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
+    CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -59,13 +55,13 @@ class OMetaLineageTest(TestCase):
 
     assert metadata.health_check()
 
-    db_service = CreateDatabaseServiceEntityRequest(
+    db_service = CreateDatabaseServiceRequest(
         name="test-service-db-lineage",
         serviceType=DatabaseServiceType.MySQL,
         databaseConnection=DatabaseConnection(hostPort="localhost:1000"),
     )
 
-    pipeline_service = CreatePipelineServiceEntityRequest(
+    pipeline_service = CreatePipelineServiceRequest(
         name="test-service-pipeline-lineage",
         serviceType=PipelineServiceType.Airflow,
         pipelineUrl="https://localhost:1000",
@@ -82,7 +78,7 @@ class OMetaLineageTest(TestCase):
             data=cls.pipeline_service
         )
 
-        cls.create_db = CreateDatabaseEntityRequest(
+        cls.create_db = CreateDatabaseRequest(
             name="test-db",
             service=EntityReference(
                 id=cls.db_service_entity.id, type="databaseService"
@@ -91,7 +87,7 @@ class OMetaLineageTest(TestCase):
 
         cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
 
-        cls.table = CreateTableEntityRequest(
+        cls.table = CreateTableRequest(
             name="test",
             database=cls.create_db_entity.id,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
@@ -99,7 +95,7 @@ class OMetaLineageTest(TestCase):
 
         cls.table_entity = cls.metadata.create_or_update(data=cls.table)
 
-        cls.pipeline = CreatePipelineEntityRequest(
+        cls.pipeline = CreatePipelineRequest(
             name="test",
             service=EntityReference(
                 id=cls.pipeline_service_entity.id, type="pipelineService"
@@ -108,7 +104,7 @@ class OMetaLineageTest(TestCase):
 
         cls.pipeline_entity = cls.metadata.create_or_update(data=cls.pipeline)
 
-        cls.create = AddLineage(
+        cls.create = AddLineageRequest(
             description="test lineage",
             edge=EntitiesEdge(
                 fromEntity=EntityReference(id=cls.table_entity.id, type="table"),

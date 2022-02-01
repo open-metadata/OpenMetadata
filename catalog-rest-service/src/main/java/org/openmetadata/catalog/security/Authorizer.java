@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.security;
 
 import java.io.IOException;
+import java.util.List;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -34,6 +35,9 @@ public interface Authorizer {
    * entity (object).
    */
   boolean hasPermissions(AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation);
+
+  /** Returns a list of operations that the authenticated user (subject) can perform on the target entity (object). */
+  List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference);
 
   boolean isAdmin(AuthenticationContext ctx);
 

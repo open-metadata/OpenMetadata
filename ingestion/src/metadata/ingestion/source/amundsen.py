@@ -19,7 +19,7 @@ from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -260,6 +260,6 @@ class AmundsenSource(Source[Entity]):
                 "serviceType": service_type.capitalize(),
             }
             created_service = metadata.create_or_update(
-                CreateDatabaseServiceEntityRequest(**service)
+                CreateDatabaseServiceRequest(**service)
             )
             return created_service

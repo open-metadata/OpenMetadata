@@ -15,13 +15,11 @@ OpenMetadata high-level API Dashboard test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createDashboard import (
-    CreateDashboardEntityRequest,
-)
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceEntityRequest,
+    CreateDashboardServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardService,
@@ -46,11 +44,11 @@ class OMetaDashboardTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
-    service = CreateDashboardServiceEntityRequest(
+    service = CreateDashboardServiceRequest(
         name="test-service-dashboard",
         serviceType=DashboardServiceType.Superset,
         dashboardUrl="https://localhost:1000",
@@ -71,7 +69,7 @@ class OMetaDashboardTest(TestCase):
             fullyQualifiedName="test-service-dashboard.test",
         )
 
-        cls.create = CreateDashboardEntityRequest(
+        cls.create = CreateDashboardRequest(
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
         )
@@ -116,7 +114,7 @@ class OMetaDashboardTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreateDashboardEntityRequest(**updated)
+        updated_entity = CreateDashboardRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 

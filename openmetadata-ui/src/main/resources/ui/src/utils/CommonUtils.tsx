@@ -30,6 +30,7 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import { Ownership } from '../enums/mydata.enum';
+import { TabSpecificField } from '../enums/table.enum';
 import {
   EntityReference as UserTeams,
   User,
@@ -366,4 +367,18 @@ export const isValidUrl = (href: string) => {
   );
 
   return href.match(regex);
+};
+
+export const getFields = (defaultFields: string, tabSpecificField: string) => {
+  if (!tabSpecificField) {
+    return defaultFields;
+  }
+  if (!defaultFields) {
+    return tabSpecificField;
+  }
+  if (tabSpecificField === TabSpecificField.LINEAGE) {
+    return defaultFields;
+  }
+
+  return `${defaultFields}, ${tabSpecificField}`;
 };

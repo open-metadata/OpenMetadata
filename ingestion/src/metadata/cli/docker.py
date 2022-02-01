@@ -12,7 +12,6 @@ import requests as requests
 logger = logging.getLogger(__name__)
 
 logging.getLogger("urllib3").setLevel(logging.WARN)
-# Configure logger.
 handler = logging.StreamHandler()
 handler.setFormatter(
     logging.Formatter(
@@ -147,7 +146,7 @@ def run_docker(start, stop, pause, resume, clean, file_path):
     except MemoryError:
         click.secho(
             f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
-            f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}",
+            f"{round(float(dict(docker_info).get('mem_total')) / calc_gb, 2)}",
             fg="red",
         )
     except Exception as err:

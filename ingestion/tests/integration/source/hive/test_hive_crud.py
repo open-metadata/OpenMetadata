@@ -19,12 +19,10 @@ import requests
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -78,9 +76,7 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
-    table = CreateTableEntityRequest(
-        name="test1", columns=columns, database=databases[0].id
-    )
+    table = CreateTableRequest(name="test1", columns=columns, database=databases[0].id)
     created_table = client.create_or_update(table)
     if table.name.__root__ == created_table.name.__root__:
         client.delete(entity=Table, entity_id=str(created_table.id.__root__))
@@ -97,9 +93,9 @@ def create_delete_database(client: OpenMetadata, databases: List[Database]):
         "serviceType": "Hive",
         "description": "local hive env",
     }
-    create_hive_service = CreateDatabaseServiceEntityRequest(**data)
+    create_hive_service = CreateDatabaseServiceRequest(**data)
     hive_service = client.create_or_update(create_hive_service)
-    create_database_request = CreateDatabaseEntityRequest(
+    create_database_request = CreateDatabaseRequest(
         name="dwh", service=EntityReference(id=hive_service.id, type="databaseService")
     )
     created_database = client.create_or_update(create_database_request)

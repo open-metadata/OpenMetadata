@@ -19,7 +19,7 @@
     },
     "timestamp": {
       "description": "Timestamp in Unix epoch time milliseconds.",
-      "@comment" : "Note that during code generation this is converted into long",
+      "@comment": "Note that during code generation this is converted into long",
       "type": "integer",
       "format": "utc-millisec"
     },

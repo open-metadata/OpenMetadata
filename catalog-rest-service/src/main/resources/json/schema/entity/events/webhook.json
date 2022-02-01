@@ -1,8 +1,8 @@
 {
   "$id": "https://open-metadata.org/schema/type/webhook.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ChangeEvent",
-  "description": "This schema defines webhook for receiving events from OpenMetadata.",
+  "title": "Webhook",
+  "description": "This schema defines webhook for receiving events from OpenMetadata",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.Webhook",
   "properties": {
@@ -47,11 +47,11 @@
       "type": "boolean",
       "default": true
     },
-    "secretKey" : {
-      "description" : "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
-      "type" : "string"
+    "secretKey": {
+      "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
+      "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
@@ -106,20 +106,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "endPoint",
-    "eventFilter"
-  ],
+  "required": ["id", "name", "endpoint", "eventFilters"],
   "additionalProperties": false
 }
