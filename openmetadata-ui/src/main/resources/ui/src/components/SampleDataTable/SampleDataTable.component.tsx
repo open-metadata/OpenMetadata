@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { TableData } from '../../generated/entity/data/table';
+import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
 
 export type SampleColumns = { name: string; dataType: string };
@@ -139,4 +140,4 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   );
 };
 
-export default SampleDataTable;
+export default withLoader(SampleDataTable);

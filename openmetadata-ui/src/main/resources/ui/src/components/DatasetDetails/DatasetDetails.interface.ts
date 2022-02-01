@@ -53,6 +53,7 @@ export interface DatasetDetailsProps {
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   deleted?: boolean;
   isLineageLoading?: boolean;
+  isSampleDataLoading?: boolean;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;

@@ -75,6 +75,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+  const [isSampleDataLoading, setIsSampleDataLoading] =
+    useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
   const [tier, setTier] = useState<TagLabel>();
@@ -235,7 +237,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (!isUndefined(sampleData)) {
           break;
         } else {
-          setIsLoading(true);
+          setIsSampleDataLoading(true);
           getTableDetailsByFQN(tableFQN, tabField)
             .then((res: AxiosResponse) => {
               const { sampleData } = res.data;
@@ -247,7 +249,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
                 body: 'Error while getting sample data',
               })
             )
-            .finally(() => setIsLoading(false));
+            .finally(() => setIsSampleDataLoading(false));
 
           break;
         }
@@ -439,6 +441,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isSampleDataLoading={isSampleDataLoading}
           joins={joins}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

@@ -22,10 +22,10 @@ module.exports = {
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx,js,jsx}'], // All test files in subdirectories under /src
 
   // Test coverage
-  coverageDirectory: "<rootDir>/src/test/unit/coverage",
+  coverageDirectory: '<rootDir>/src/test/unit/coverage',
   collectCoverageFrom: [
-      "<rootDir>/src/**/*.{ts,tsx,js,jsx}", // All files in subdirectories under src/app
-      "!<rootDir>/src/*", // Exclude files directly under src/app
+    '<rootDir>/src/**/*.{ts,tsx,js,jsx}', // All files in subdirectories under src/app
+    '!<rootDir>/src/*', // Exclude files directly under src/app
   ],
 
   // TypeScript
