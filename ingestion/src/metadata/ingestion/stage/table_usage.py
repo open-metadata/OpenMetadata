@@ -86,35 +86,36 @@ class TableUsageStage(Stage[QueryParserData]):
         return cls(ctx, config, metadata_config)
 
     def stage_record(self, record: QueryParserData) -> None:
-        if record is not None:
-            for table in record.tables:
-                table_usage_count = None
-                if table in self.table_usage.keys():
-                    table_usage_count = self.table_usage.get(table)
-                    table_usage_count.count = table_usage_count.count + 1
-                    if "join" in record.columns:
-                        table_usage_count.joins.append(
-                            get_table_column_join(
-                                table, record.tables_aliases, record.columns["join"]
-                            )
-                        )
-                else:
-                    joins = []
-                    if "join" in record.columns:
-                        tbl_column_join = get_table_column_join(
+        if record is None:
+            return None
+        for table in record.tables:
+            table_usage_count = None
+            try:
+                table_usage_count = self.table_usage[table]
+                table_usage_count.count = table_usage_count.count + 1
+                if "join" in record.columns:
+                    table_usage_count.joins.append(
+                        get_table_column_join(
                             table, record.tables_aliases, record.columns["join"]
                         )
-                        if tbl_column_join is not None:
-                            joins.append(tbl_column_join)
-
-                    table_usage_count = TableUsageCount(
-                        table=table,
-                        database=record.database,
-                        date=record.date,
-                        joins=joins,
-                        service_name=record.service_name,
                     )
-                self.table_usage[table] = table_usage_count
+            except KeyError as err:
+                joins = []
+                if "join" in record.columns:
+                    tbl_column_join = get_table_column_join(
+                        table, record.tables_aliases, record.columns["join"]
+                    )
+                    if tbl_column_join is not None:
+                        joins.append(tbl_column_join)
+
+                table_usage_count = TableUsageCount(
+                    table=table,
+                    database=record.database,
+                    date=record.date,
+                    joins=joins,
+                    service_name=record.service_name,
+                )
+            self.table_usage[table] = table_usage_count
 
     def get_status(self):
         return self.status
