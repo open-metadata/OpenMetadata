@@ -30,28 +30,13 @@ public final class Events {
     driver.findElement(by).click();
   }
 
-  public static void click(WebDriver driver, WebElement webElement) {
-    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(webElement));
-    webElement.click();
-  }
-
   public static void sendKeys(WebDriver driver, By by, String sendKeys) {
     (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
     driver.findElement(by).sendKeys(sendKeys);
   }
 
-  public static void sendKeys(WebDriver driver, WebElement webElement, String sendKeys) {
-    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(webElement));
-    webElement.sendKeys(sendKeys);
-  }
-
   public static void sendEnter(WebDriver driver, By by) {
     (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
     driver.findElement(by).sendKeys(Keys.ENTER);
-  }
-
-  public static void sendEnter(WebDriver driver, WebElement webElement) {
-    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(webElement));
-    webElement.sendKeys(Keys.ENTER);
   }
 }

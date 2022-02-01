@@ -172,8 +172,8 @@ public class TagsPage {
     return By.xpath("(//button[@data-testid='tab'])[" + index + "]//span[@data-testid='filter-count']");
   }
 
-  public WebElement entityTabIndex(int index) {
-    return webDriver.findElement(By.xpath("(//button[@data-testid='tab'])" + "[" + index + "]"));
+  public By entityTabIndex(int index) {
+    return By.xpath("(//button[@data-testid='tab'])" + "[" + index + "]");
   }
 
   public By headerExplore() {
