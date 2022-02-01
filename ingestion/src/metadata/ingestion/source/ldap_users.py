@@ -18,6 +18,7 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ class LDAPUserConfig(ConfigModel):
     password: str
 
 
-class LdapUsersSource(Source[CreateUserRequest]):
+class LdapUsersSource(Source[OMetaUserProfile]):
     config: LDAPUserConfig
     status: SourceStatus
 
@@ -89,7 +90,7 @@ class LdapUsersSource(Source[CreateUserRequest]):
                 name=user["attributes"]["givenName"],
             )
             self.status.scanned(user_metadata.name)
-            yield user_metadata
+            yield OMetaUserProfile(user=user_metadata)
 
     def get_status(self) -> SourceStatus:
         return self.status

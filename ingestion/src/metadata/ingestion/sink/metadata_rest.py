@@ -31,10 +31,11 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
-from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.teams.role import Role
+from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
@@ -42,6 +43,7 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
+from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -87,7 +89,6 @@ class MetadataRestSink(Sink[Entity]):
         self.wrote_something = False
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
-        self.api_client = self.metadata.client
         self.role_entities = {}
         self.team_entities = {}
 
@@ -116,7 +117,7 @@ class MetadataRestSink(Sink[Entity]):
             self.write_pipelines(record)
         elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
-        elif isinstance(record, User):
+        elif isinstance(record, OMetaUserProfile):
             self.write_users(record)
         elif isinstance(record, CreateMlModelRequest):
             self.write_ml_model(record)
@@ -374,59 +375,73 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Model: {model.name}")
 
-    def _create_role(self, role: EntityReference) -> None:
-        metadata_role = CreateRoleRequest(
-            name=role.name, displayName=role.name, description=role.description
-        )
+    def _create_role(self, create_role: CreateRoleRequest) -> Role:
         try:
-            r = self.metadata.create_or_update(metadata_role)
-            instance_id = str(r.id.__root__)
-            self.role_entities[role.name] = instance_id
+            role = self.metadata.create_or_update(create_role)
+            self.role_entities[role.name] = str(role.id.__root__)
+            return role
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             logger.error(err)
 
-    def _create_team(self, team: EntityReference) -> None:
-        metadata_team = CreateTeamRequest(
-            name=team.name, displayName=team.name, description=team.description
-        )
+    def _create_team(self, create_team: CreateTeamRequest) -> Team:
         try:
-            r = self.metadata.create_or_update(metadata_team)
-            instance_id = str(r.id.__root__)
-            self.team_entities[team.name] = instance_id
+            team = self.metadata.create_or_update(create_team)
+            self.team_entities[team.name] = str(team.id.__root__)
+            return team
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             logger.error(err)
 
-    def write_users(self, record: User):
-        roles = []
-        for role in record.roles.__root__:
-            try:
-                role_response = self.api_client.get(f"/roles/{role.id.__root__}")
-            except APIError:
-                self._create_role(role)
-            roles.append(self.role_entities[role.name])
-        teams = []
-        for team in record.teams.__root__:
-            try:
-                team_response = self.api_client.get(f"/teams/{team.id.__root__}")
-            except APIError:
-                self._create_team(team)
-            teams.append(self.team_entities[team.name])
+    def write_users(self, record: OMetaUserProfile):
+        """
+        Given a User profile (User + Teams + Roles create requests):
+        1. Check if role & team exist, otherwise create
+        2. Add ids of role & team to the User
+        3. Create or update User
+        """
 
-        metadata_user = CreateUserRequest(
-            name=record.name.__root__,
-            displayName=record.displayName,
-            email=record.email,
-            roles=roles,
-            teams=teams,
-        )
+        # Create roles if they don't exist
+        if record.roles:  # Roles can be optional
+            role_ids = []
+            for role in record.roles:
+                try:
+                    role_entity = self.metadata.get_by_name(
+                        entity=Role, fqdn=str(role.name.__root__)
+                    )
+                except APIError:
+                    role_entity = self._create_role(role)
+                role_ids.append(role_entity.id)
+        else:
+            role_ids = None
+
+        # Create teams if they don't exist
+        if record.teams:  # Teams can be optional
+            team_ids = []
+            for team in record.teams:
+                try:
+                    team_entity = self.metadata.get_by_name(
+                        entity=Team, fqdn=str(team.name.__root__)
+                    )
+                except APIError:
+                    team_entity = self._create_team(team)
+                team_ids.append(team_entity.id)
+        else:
+            team_ids = None
+
+        # Update user data with the new Role and Team IDs
+        user_profile = record.user.dict(exclude_unset=True)
+        user_profile["roles"] = role_ids
+        user_profile["teams"] = team_ids
+        metadata_user = CreateUserRequest(**user_profile)
+
+        # Create user
         try:
-            self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.displayName)
-            logger.info("Sink: {}".format(record.displayName))
+            user = self.metadata.create_or_update(metadata_user)
+            self.status.records_written(user.displayName)
+            logger.info("User: {}".format(user.displayName))
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
