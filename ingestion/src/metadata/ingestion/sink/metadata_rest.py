@@ -440,7 +440,6 @@ class MetadataRestSink(Sink[Entity]):
         # Create user
         try:
             user = self.metadata.create_or_update(metadata_user)
-            print("INGESTED USER")
             self.status.records_written(user.displayName)
             logger.info("User: {}".format(user.displayName))
         except Exception as err:
