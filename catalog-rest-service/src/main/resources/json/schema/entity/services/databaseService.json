@@ -23,9 +23,7 @@
         "Vertica",
         "Glue",
         "MariaDB",
-        "Druid",
-        "DynamoDB"
-
+        "Druid"
       ],
       "javaEnums": [
         {
@@ -72,9 +70,6 @@
         },
         {
           "name": "Druid"
-        },
-        {
-          "name":"DynamoDB"
         }
       ]
     },

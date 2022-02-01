@@ -75,3 +75,4 @@ class AWSClient:
                 service_name=service_name, endpoint_url=self.config.endpoint_url
             )
         return session.resource(service_name=service_name)
+    
