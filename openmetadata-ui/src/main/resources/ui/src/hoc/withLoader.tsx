@@ -19,10 +19,10 @@ export interface ComponentProps<T> {
   [key: string]: T;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export const withLoader = (Component: ComponentType<any>) => {
-  const WithLoader = (props: PropsWithChildren<ComponentProps<any>>) => {
-    return props.isLoading ? <Loader /> : <Component {...props} />;
+export function withLoader<T>(Component: ComponentType<T>) {
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const WithLoader = (props: T & PropsWithChildren<ComponentProps<any>>) => {
+    return props.isLoading ? <Loader /> : <Component {...(props as T)} />;
   };
 
   WithLoader.displayName =
@@ -33,4 +33,4 @@ export const withLoader = (Component: ComponentType<any>) => {
   };
 
   return WithLoader;
-};
+}
