@@ -33,7 +33,9 @@ def get_table_column_join(table, table_aliases, joins):
     for join in joins:
         try:
             if "." in join:
-                if join.count(".") < 3:
+                if join.count(".") == 2:
+                    jtable, column = join.split(".")[1:]
+                elif join.count(".") == 1:
                     jtable, column = join.split(".")
                 else:
                     jtable, column = join.split(".")[2:]
