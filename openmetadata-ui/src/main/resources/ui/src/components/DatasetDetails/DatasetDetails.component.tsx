@@ -84,6 +84,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   removeLineageHandler,
   entityLineageHandler,
   isLineageLoading,
+  isSampleDataLoading,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -461,7 +462,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 2 && (
               <div id="sampleDataDetails">
-                <SampleDataTable sampleData={getSampleDataWithType()} />
+                <SampleDataTable
+                  isLoading={isSampleDataLoading}
+                  sampleData={getSampleDataWithType()}
+                />
               </div>
             )}
             {activeTab === 3 && (
@@ -488,7 +492,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   deleted={deleted}
                   entityLineage={entityLineage}
                   entityLineageHandler={entityLineageHandler}
-                  isLineageLoading={isLineageLoading}
+                  isLoading={isLineageLoading}
                   isNodeLoading={isNodeLoading}
                   lineageLeafNodes={lineageLeafNodes}
                   loadNodeHandler={loadNodeHandler}
