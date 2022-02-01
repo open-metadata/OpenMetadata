@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TabSpecificField } from '../enums/table.enum';
+import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
 ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
