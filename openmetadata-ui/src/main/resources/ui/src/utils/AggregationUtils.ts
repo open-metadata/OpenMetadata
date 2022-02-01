@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { lowerCase } from 'lodash';
+import { capitalize, lowerCase } from 'lodash';
 import { AggregationType, Sterm } from 'Models';
+import { getQueryParam } from '../constants/explore.constants';
+import { getFilterKey } from './FilterUtils';
 
 export const getAggregationList = (
   aggregation: Record<string, Sterm>,
@@ -34,4 +36,18 @@ export const getAggregationList = (
   });
 
   return aggregationList;
+};
+
+export const getAggregationListFromQS = (qsSearch?: string) => {
+  return [
+    ...Object.entries(getQueryParam(qsSearch)).map((qEntry) => {
+      return {
+        title: capitalize(getFilterKey(qEntry[0])),
+        buckets: qEntry[1].map((key) => {
+          // eslint-disable-next-line @typescript-eslint/camelcase
+          return { key, doc_count: 0 };
+        }),
+      };
+    }),
+  ];
 };
