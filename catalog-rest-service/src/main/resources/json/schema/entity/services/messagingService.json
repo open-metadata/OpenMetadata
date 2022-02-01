@@ -75,6 +75,10 @@
       "description": "Schedule for running metadata ingestion jobs.",
       "$ref": "../../type/schedule.json"
     },
+    "owner": {
+      "description": "Owner of this messaging service.",
+      "$ref": "../../type/entityReference.json"
+    },
     "href": {
       "description": "Link to the resource corresponding to this messaging service.",
       "$ref": "../../type/basic.json#/definitions/href"

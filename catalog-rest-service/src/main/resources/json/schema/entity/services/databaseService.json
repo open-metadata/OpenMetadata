@@ -148,6 +148,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "owner": {
+      "description": "Owner of this database service.",
+      "$ref": "../../type/entityReference.json"
+    },
     "href": {
       "description": "Link to the resource corresponding to this database service.",
       "$ref": "../../type/basic.json#/definitions/href"

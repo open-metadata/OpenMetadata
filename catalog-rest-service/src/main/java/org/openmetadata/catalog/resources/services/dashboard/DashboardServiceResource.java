@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -53,6 +54,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -67,6 +69,9 @@ public class DashboardServiceResource {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   private final DashboardServiceRepository dao;
   private final Authorizer authorizer;
+
+  static final String FIELDS = "owner";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardServiceRepository must not be null");
@@ -99,6 +104,11 @@ public class DashboardServiceResource {
   public ResultList<DashboardService> list(
       @Context UriInfo uriInfo,
       @QueryParam("name") String name,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @DefaultValue("10") @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(
               description = "Returns list of dashboard services before this cursor",
@@ -118,12 +128,12 @@ public class DashboardServiceResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     if (before != null) { // Reverse paging
-      return dao.listBefore(uriInfo, null, null, limitParam, before, include);
+      return dao.listBefore(uriInfo, fields, null, limitParam, before, include);
     }
     // Forward paging
-    return dao.listAfter(uriInfo, null, null, limitParam, after, include);
+    return dao.listAfter(uriInfo, fields, null, limitParam, after, include);
   }
 
   @GET
@@ -145,13 +155,19 @@ public class DashboardServiceResource {
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, null, include);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return dao.get(uriInfo, id, fields, include);
   }
 
   @GET
@@ -173,13 +189,19 @@ public class DashboardServiceResource {
       @Context SecurityContext securityContext,
       @PathParam("name") String name,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, name, null, include);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return dao.getByName(uriInfo, name, fields, include);
   }
 
   @GET
@@ -314,6 +336,7 @@ public class DashboardServiceResource {
         .withDashboardUrl(create.getDashboardUrl())
         .withUsername(create.getUsername())
         .withPassword(create.getPassword())
+        .withOwner(create.getOwner())
         .withIngestionSchedule(create.getIngestionSchedule())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

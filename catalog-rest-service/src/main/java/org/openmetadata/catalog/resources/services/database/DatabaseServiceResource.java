@@ -70,7 +70,7 @@ public class DatabaseServiceResource {
   private final DatabaseServiceRepository dao;
   private final Authorizer authorizer;
 
-  static final String FIELDS = "airflowPipeline";
+  static final String FIELDS = "airflowPipeline,owner";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
@@ -330,6 +330,7 @@ public class DatabaseServiceResource {
         .withDescription(create.getDescription())
         .withServiceType(create.getServiceType())
         .withDatabaseConnection(create.getDatabaseConnection())
+        .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }

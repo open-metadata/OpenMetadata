@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -54,6 +55,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -68,6 +70,9 @@ public class PipelineServiceResource {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
   private final PipelineServiceRepository dao;
   private final Authorizer authorizer;
+
+  static final String FIELDS = "owner";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
     return service.withHref(RestUtil.getHref(uriInfo, "v1/services/pipelineServices/", service.getId()));
@@ -106,6 +111,11 @@ public class PipelineServiceResource {
   public ResultList<PipelineService> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
           @DefaultValue("10")
           @Min(1)
@@ -126,12 +136,12 @@ public class PipelineServiceResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     if (before != null) { // Reverse paging
-      return dao.listBefore(uriInfo, null, null, limitParam, before, include);
+      return dao.listBefore(uriInfo, fields, null, limitParam, before, include);
     }
     // Forward paging or first page
-    return dao.listAfter(uriInfo, null, null, limitParam, after, include);
+    return dao.listAfter(uriInfo, fields, null, limitParam, after, include);
   }
 
   @GET
@@ -153,13 +163,19 @@ public class PipelineServiceResource {
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, null, include);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return dao.get(uriInfo, id, fields, include);
   }
 
   @GET
@@ -181,13 +197,19 @@ public class PipelineServiceResource {
       @Context SecurityContext securityContext,
       @PathParam("name") String name,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, name, null, include);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return dao.getByName(uriInfo, name, fields, include);
   }
 
   @GET
@@ -321,6 +343,7 @@ public class PipelineServiceResource {
         .withServiceType(create.getServiceType())
         .withPipelineUrl(create.getPipelineUrl())
         .withIngestionSchedule(create.getIngestionSchedule())
+        .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }

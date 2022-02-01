@@ -13,8 +13,12 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
+
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -37,12 +41,13 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
   @Override
-  public PipelineService setFields(PipelineService entity, Fields fields) {
+  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -57,7 +62,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void prepare(PipelineService entity) {
+  public void prepare(PipelineService entity) throws IOException, ParseException {
+    // Check if owner is valid and set the relationship
+    entity.setOwner(helper(entity).validateOwnerOrNull());
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
@@ -72,7 +79,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
   @Override
   public void storeRelationships(PipelineService entity) {
-    /* Nothing to do */
+    // Add owner relationship
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), entity.getId(), PIPELINE_SERVICE, entity.getOwner());
   }
 
   @Override
@@ -133,6 +141,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
+    }
+
+    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
@@ -177,6 +190,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
     }
 
     @Override

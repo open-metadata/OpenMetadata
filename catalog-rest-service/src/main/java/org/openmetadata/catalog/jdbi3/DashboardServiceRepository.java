@@ -13,11 +13,14 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.UUID;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
@@ -40,34 +43,13 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
-  public DashboardService update(
-      UriInfo uriInfo,
-      UUID id,
-      String description,
-      URI dashboardUrl,
-      String username,
-      String password,
-      Schedule ingestionSchedule)
-      throws IOException {
-    EntityUtil.validateIngestionSchedule(ingestionSchedule);
-    DashboardService dashboardService = daoCollection.dashboardServiceDAO().findEntityById(id);
-    // Update fields
-    dashboardService
-        .withDescription(description)
-        .withDashboardUrl(dashboardUrl)
-        .withUsername(username)
-        .withPassword(password)
-        .withIngestionSchedule(ingestionSchedule);
-    daoCollection.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
-    return withHref(uriInfo, dashboardService);
-  }
-
   @Override
-  public DashboardService setFields(DashboardService entity, Fields fields) {
+  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -80,7 +62,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void prepare(DashboardService entity) {
+  public void prepare(DashboardService entity) throws IOException, ParseException {
+    // Check if owner is valid and set the relationship
+    entity.setOwner(helper(entity).validateOwnerOrNull());
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
@@ -94,7 +78,10 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void storeRelationships(DashboardService entity) {}
+  public void storeRelationships(DashboardService entity) {
+    // Add owner relationship
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), entity.getId(), DASHBOARD_SERVICE, entity.getOwner());
+  }
 
   @Override
   public EntityUpdater getUpdater(DashboardService original, DashboardService updated, Operation operation) {
@@ -126,6 +113,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
     }
 
     @Override
@@ -198,6 +190,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
     }
 
     @Override

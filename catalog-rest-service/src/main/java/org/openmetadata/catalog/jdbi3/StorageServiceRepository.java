@@ -13,10 +13,13 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
@@ -24,6 +27,7 @@ import org.openmetadata.catalog.resources.services.storage.StorageServiceResourc
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
   public StorageServiceRepository(CollectionDAO dao) {
@@ -36,12 +40,13 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         Fields.EMPTY_FIELDS,
         Fields.EMPTY_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
   @Override
-  public StorageService setFields(StorageService entity, Fields fields) {
+  public StorageService setFields(StorageService entity, Fields fields) throws IOException, ParseException {
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -56,8 +61,9 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void prepare(StorageService entity) {
-    /* Nothing to do */
+  public void prepare(StorageService entity) throws IOException, ParseException {
+    // Check if owner is valid and set the relationship
+    entity.setOwner(helper(entity).validateOwnerOrNull());
   }
 
   @Override
@@ -67,7 +73,8 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
   @Override
   public void storeRelationships(StorageService entity) {
-    /* Nothing to do */
+    // Add owner relationship
+    EntityUtil.setOwner(daoCollection.relationshipDAO(), entity.getId(), STORAGE_SERVICE, entity.getOwner());
   }
 
   public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
@@ -110,6 +117,11 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     @Override
     public String getUpdatedBy() {
       return entity.getUpdatedBy();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
     }
 
     @Override
@@ -167,6 +179,11 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
     }
 
     @Override
