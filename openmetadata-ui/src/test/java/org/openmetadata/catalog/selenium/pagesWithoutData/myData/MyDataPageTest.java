@@ -23,10 +23,12 @@ public class MyDataPageTest {
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
+  String webDriverInstance = Property.getInstance().getWebDriver();
+  String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");

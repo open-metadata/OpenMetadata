@@ -47,10 +47,12 @@ public class TeamsPageTest {
   static Actions actions;
   static WebDriverWait wait;
   String teamsFilterCountXpath = "//div[@data-testid='terms-summary']//span[@data-testid='filter-count']";
+  String webDriverInstance = Property.getInstance().getWebDriver();
+  String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--no-sandbox");
     options.addArguments("--disable-dev-shm-usage");
