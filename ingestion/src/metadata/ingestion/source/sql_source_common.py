@@ -106,7 +106,9 @@ class SQLConnectionConfig(ConfigModel):
             host_port=self.host_port,
             scheme=self.scheme,
             username=self.username,
-            password=self.password.get_secret_value(),
+            password=self.password.get_secret_value()
+            if self.password is not None
+            else self.password,
             database=self.database,
             options=self.options,
         )
