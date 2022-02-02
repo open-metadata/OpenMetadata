@@ -133,6 +133,10 @@ Note: Please see the installation instructions for the connectors you are using 
 
 ## Troubleshooting
 
+### No data in OpenMetadata after migrating
+
+If you don't see any data in OpenMetadata after migrating and restarting, this is probably because you failed to re-index the data in Elasticsearch. Please go to [7. Re-index data in Elasticsearch](upgrade-openmetadata.md#8.-re-index-data-in-elasticsearch) above and complete that step of this upgrade guide.
+
 ### "migrate" option failed
 
 In some circumstances, when attempting to migrate your database schemas and Elasticsearch indexes, you might encounter an error similar to the following.
