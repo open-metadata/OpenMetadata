@@ -24,8 +24,10 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
+import org.openmetadata.catalog.selenium.objectRepository.DashboardServicePage;
+import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
+import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -37,10 +39,12 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardServiceTestPage {
   static WebDriver webDriver;
+  static TagsPage tagsPage;
+  static DatabaseServicePage databaseServicePage;
+  static DashboardServicePage dashboardServicePage;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
   static String serviceName = faker.name().firstName();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -54,6 +58,9 @@ public class DashboardServiceTestPage {
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
+    tagsPage = new TagsPage(webDriver);
+    databaseServicePage = new DatabaseServicePage(webDriver);
+    dashboardServicePage = new DashboardServicePage(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -63,10 +70,10 @@ public class DashboardServiceTestPage {
   @Test
   @Order(1)
   public void openDashboardServicePage() throws InterruptedException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
-    Events.click(webDriver, By.xpath("(//div[@data-testid='tab'])[3]"));
+    Events.click(webDriver, tagsPage.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, tagsPage.headerSettings()); // Setting
+    Events.click(webDriver, databaseServicePage.headerSettingsServices()); // Setting/Services
+    Events.click(webDriver, dashboardServicePage.selectServiceTab(3));
     Thread.sleep(waitTime);
   }
 
@@ -75,72 +82,65 @@ public class DashboardServiceTestPage {
   public void addDashboardService() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
-    List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+    List<WebElement> webElementList = webDriver.findElements(databaseServicePage.addServiceButton());
     if (webElementList.isEmpty()) {
-      Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
+      Events.click(webDriver, databaseServicePage.noServicesAddServiceButton());
     } else {
-      Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+      Events.click(webDriver, databaseServicePage.addServiceButton());
     }
-    Events.click(webDriver, By.cssSelector("[value='Looker']"));
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='name']"), serviceName);
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='dashboard-url']"), "http://localhost:8080");
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='username']"), faker.name().firstName());
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='password']"), faker.name().firstName());
-
-    Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.xpath(enterDescription));
-    Events.sendEnter(webDriver, By.xpath(enterDescription));
-    Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.xpath(enterDescription));
-    Events.sendEnter(webDriver, By.xpath(enterDescription));
-    Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    Events.click(webDriver, databaseServicePage.serviceType("Looker"));
+    Events.click(webDriver, databaseServicePage.nextButton());
+    Events.sendKeys(webDriver, databaseServicePage.serviceName(), serviceName);
+    Events.click(webDriver, tagsPage.descriptionBoldButton());
+    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, tagsPage.addDescriptionString());
+    Events.sendEnter(webDriver, tagsPage.addDescriptionString());
+    Events.click(webDriver, tagsPage.descriptionItalicButton());
+    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, tagsPage.addDescriptionString());
+    Events.sendEnter(webDriver, tagsPage.addDescriptionString());
+    Events.click(webDriver, tagsPage.descriptionLinkButton());
+    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, databaseServicePage.nextButton());
+    Events.sendKeys(webDriver, dashboardServicePage.dashboardServiceUrl(), "localhost:8080");
+    Events.sendKeys(webDriver, databaseServicePage.serviceUsername(), "openmetadata_user");
+    Events.sendKeys(webDriver, databaseServicePage.servicePassword(), "openmetadata_password");
+    Events.click(webDriver, databaseServicePage.nextButton());
+    Events.click(webDriver, databaseServicePage.saveServiceButton());
   }
 
   @Test
   @Order(3)
-  public void editDashboardService() throws InterruptedException {
+  public void checkDashboardServiceDetails() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='edit-service-" + serviceName + "']"));
-    Events.click(webDriver, By.xpath(enterDescription));
-    Events.sendEnter(webDriver, By.xpath(enterDescription));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    Events.click(webDriver, tagsPage.containsText(serviceName));
+    Events.click(webDriver, tagsPage.editTagCategoryDescription());
+    Events.click(webDriver, tagsPage.addDescriptionString());
+    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, tagsPage.editDescriptionSaveButton());
   }
 
   @Test
   @Order(4)
-  public void checkDashboardServiceDetails() throws InterruptedException {
+  public void checkConnectionConfigTab() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
-    Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
-    Events.click(webDriver, By.xpath(enterDescription));
-    Events.sendEnter(webDriver, By.xpath(enterDescription));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    Events.click(webDriver, tagsPage.containsText(serviceName));
+    Events.click(webDriver, databaseServicePage.serviceDetailsTabs("connectionConfig"));
+    Events.sendKeys(webDriver, dashboardServicePage.dashboardServiceUrl(), "1");
+    Events.sendKeys(webDriver, databaseServicePage.serviceUsername(), "1");
+    Events.sendKeys(webDriver, databaseServicePage.servicePassword(), "1");
+    Events.click(webDriver, databaseServicePage.saveConnectionConfig());
   }
 
   @Test
   @Order(5)
-  public void searchDashboardService() throws InterruptedException {
-    openDashboardServicePage();
-    Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='service-name-" + serviceName + "']"));
-  }
-
-  @Test
-  @Order(6)
   public void deleteDashboardService() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, By.cssSelector("[data-testid='delete-service-" + serviceName + "']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    Events.click(webDriver, databaseServicePage.deleteServiceButton(serviceName));
+    Events.click(webDriver, databaseServicePage.saveEditedService());
   }
 
   @AfterEach
