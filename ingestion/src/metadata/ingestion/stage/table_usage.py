@@ -32,14 +32,9 @@ def get_table_column_join(table, table_aliases, joins):
     joined_with = []
     for join in joins:
         try:
-            if "." in join:
-                if join.count(".") == 2:
-                    jtable, column = join.split(".")[1:]
-                elif join.count(".") == 1:
-                    jtable, column = join.split(".")
-                else:
-                    jtable, column = join.split(".")[2:]
-
+            if "." not in join:
+                continue
+            jtable, column = join.split(".")[-2:]
             if table == jtable or jtable in table_aliases:
                 table_column = TableColumn(
                     table=table_aliases[jtable] if jtable in table_aliases else jtable,
@@ -91,19 +86,18 @@ class TableUsageStage(Stage[QueryParserData]):
         if record is None:
             return None
         for table in record.tables:
-            table_usage_count = None
-            try:
-                table_usage_count = self.table_usage[table]
+            table_usage_count = self.table_usage.get(table)
+            if table_usage_count is not None:
                 table_usage_count.count = table_usage_count.count + 1
-                if "join" in record.columns:
+                if record.columns.get("join") is not None:
                     table_usage_count.joins.append(
                         get_table_column_join(
                             table, record.tables_aliases, record.columns["join"]
                         )
                     )
-            except KeyError as err:
+            else:
                 joins = []
-                if "join" in record.columns:
+                if record.columns.get("join") is not None:
                     tbl_column_join = get_table_column_join(
                         table, record.tables_aliases, record.columns["join"]
                     )
