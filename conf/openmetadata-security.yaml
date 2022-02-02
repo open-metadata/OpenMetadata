@@ -12,9 +12,8 @@
 swagger:
   resourcePackage: org.openmetadata.catalog.resources
 
-
 server:
-  rootPath: '/api/*'
+  rootPath: "/api/*"
   applicationConnectors:
     - type: http
       port: ${SERVER_PORT:-8585}
@@ -28,61 +27,61 @@ server:
 # keyStorePath and keyStorePassword are mandatory properties. Values
 # for other properties are defaults
 #server:
-  #applicationConnectors:
-  #  - type: https
-  #    port: 8585
-  #    keyStorePath: ./conf/keystore.jks
-  #    keyStorePassword: changeit
-  #    keyStoreType: JKS
-  #    keyStoreProvider:
-  #    trustStorePath: /path/to/file
-  #    trustStorePassword: changeit
-  #    trustStoreType: JKS
-  #    trustStoreProvider:
-  #    keyManagerPassword: changeit
-  #    needClientAuth: false
-  #    wantClientAuth:
-  #    certAlias: <alias>
-  #    crlPath: /path/to/file
-  #    enableCRLDP: false
-  #    enableOCSP: false
-  #    maxCertPathLength: (unlimited)
-  #    ocspResponderUrl: (none)
-  #    jceProvider: (none)
-  #    validateCerts: true
-  #    validatePeers: true
-  #    supportedProtocols: SSLv3
-  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
-  #    allowRenegotiation: true
-  #    endpointIdentificationAlgorithm: (none)
+#applicationConnectors:
+#  - type: https
+#    port: 8585
+#    keyStorePath: ./conf/keystore.jks
+#    keyStorePassword: changeit
+#    keyStoreType: JKS
+#    keyStoreProvider:
+#    trustStorePath: /path/to/file
+#    trustStorePassword: changeit
+#    trustStoreType: JKS
+#    trustStoreProvider:
+#    keyManagerPassword: changeit
+#    needClientAuth: false
+#    wantClientAuth:
+#    certAlias: <alias>
+#    crlPath: /path/to/file
+#    enableCRLDP: false
+#    enableOCSP: false
+#    maxCertPathLength: (unlimited)
+#    ocspResponderUrl: (none)
+#    jceProvider: (none)
+#    validateCerts: true
+#    validatePeers: true
+#    supportedProtocols: SSLv3
+#    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+#    allowRenegotiation: true
+#    endpointIdentificationAlgorithm: (none)
 
-  #adminConnectors:
-  #  - type: https
-  #    port: 8586
-  #    keyStorePath: ./conf/keystore.jks
-  #    keyStorePassword: changeit
-  #    keyStoreType: JKS
-  #    keyStoreProvider:
-  #    trustStorePath: /path/to/file
-  #    trustStorePassword: changeit
-  #    trustStoreType: JKS
-  #    trustStoreProvider:
-  #    keyManagerPassword: changeit
-  #    needClientAuth: false
-  #    wantClientAuth:
-  #    certAlias: <alias>
-  #    crlPath: /path/to/file
-  #    enableCRLDP: false
-  #    enableOCSP: false
-  #    maxCertPathLength: (unlimited)
-  #    ocspResponderUrl: (none)
-  #    jceProvider: (none)
-  #    validateCerts: true
-  #    validatePeers: true
-  #    supportedProtocols: SSLv3
-  #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
-  #    allowRenegotiation: true
-  #    endpointIdentificationAlgorithm: (none)
+#adminConnectors:
+#  - type: https
+#    port: 8586
+#    keyStorePath: ./conf/keystore.jks
+#    keyStorePassword: changeit
+#    keyStoreType: JKS
+#    keyStoreProvider:
+#    trustStorePath: /path/to/file
+#    trustStorePassword: changeit
+#    trustStoreType: JKS
+#    trustStoreProvider:
+#    keyManagerPassword: changeit
+#    needClientAuth: false
+#    wantClientAuth:
+#    certAlias: <alias>
+#    crlPath: /path/to/file
+#    enableCRLDP: false
+#    enableOCSP: false
+#    maxCertPathLength: (unlimited)
+#    ocspResponderUrl: (none)
+#    jceProvider: (none)
+#    validateCerts: true
+#    validatePeers: true
+#    supportedProtocols: SSLv3
+#    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+#    allowRenegotiation: true
+#    endpointIdentificationAlgorithm: (none)
 
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
@@ -111,6 +110,8 @@ database:
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:mysql://${MYSQL_HOST:-localhost}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
 
+migrationConfiguration:
+  path: "./bootstrap/sql/mysql"
 
 # Authorizer Configuration
 authorizerConfiguration:
