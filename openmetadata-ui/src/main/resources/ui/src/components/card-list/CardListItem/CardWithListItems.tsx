@@ -50,7 +50,10 @@ const CardListItem: FunctionComponent<Props> = ({
           cardStyle.body.base,
           isActive ? cardStyle.body.active : cardStyle.body.default
         )}>
-        <RichTextEditorPreviewer markdown={card.data} />
+        <RichTextEditorPreviewer
+          enableSeeMoreVariant={false}
+          markdown={card.data}
+        />
       </div>
     </div>
   );

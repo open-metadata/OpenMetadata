@@ -30,7 +30,10 @@ const ChangeLogs = ({ data }: Props) => {
           <div className="tw-border-b tw-mb-2.5 tw-border-text">
             <p className="tw-text-base tw-font-medium tw-mb-2.5">{log}</p>
           </div>
-          <RichTextEditorPreviewer markdown={data[log]} />
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={false}
+            markdown={data[log]}
+          />
         </div>
       ))}
     </div>

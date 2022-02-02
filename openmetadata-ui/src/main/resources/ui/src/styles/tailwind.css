@@ -333,6 +333,10 @@
     animation: highlight 3000ms ease-out;
   }
 
+  .rotate-inverse {
+    transform: rotate(180deg);
+  }
+
   @keyframes highlight {
     0% {
       @apply tw-bg-warning-lite;

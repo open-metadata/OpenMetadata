@@ -557,6 +557,7 @@ const RolesPage = () => {
                       className="tw-mb-3 tw--ml-5"
                       data-testid="description-container">
                       <Description
+                        blurWithBodyBG
                         description={currentRole?.description || ''}
                         entityName={currentRole?.displayName}
                         isEdit={isEditable}

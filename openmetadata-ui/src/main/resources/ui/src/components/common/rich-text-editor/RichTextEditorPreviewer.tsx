@@ -18,21 +18,43 @@ import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 import { isValidUrl } from '../../../utils/CommonUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+
+const MAX_LENGTH = 300;
 
 /*eslint-disable  */
 const RichTextEditorPreviewer = ({
   markdown,
   className = '',
+  blurClasses = 'see-more-blur',
+  maxHtClass = 'tw-h-24',
+  maxLen = MAX_LENGTH,
+  enableSeeMoreVariant = true,
 }: {
   markdown: string;
   className?: string;
+  blurClasses?: string;
+  maxHtClass?: string;
+  maxLen?: number;
+  enableSeeMoreVariant?: boolean;
 }) => {
   const [content, setContent] = useState<string>('');
+  const [displayMoreText, setDisplayMoreText] = useState(false);
   useEffect(() => {
     setContent(markdown);
   }, [markdown]);
   return (
-    <div className={classNames('content-container', className)}>
+    <div
+      className={classNames(
+        'content-container tw-relative',
+        className,
+        enableSeeMoreVariant && markdown.length > maxLen && !displayMoreText
+          ? `${maxHtClass} tw-overflow-hidden`
+          : null,
+        {
+          'tw-mb-5': displayMoreText,
+        }
+      )}>
       <ReactMarkdown
         children={content
           .replaceAll(/&lt;/g, '<')
@@ -78,6 +100,30 @@ const RichTextEditorPreviewer = ({
         remarkPlugins={[gfm] as unknown as PluggableList | undefined}
         rehypePlugins={[[rehypeRaw, { allowDangerousHtml: false }]]}
       />
+      {enableSeeMoreVariant && markdown.length > MAX_LENGTH && (
+        <div
+          className={classNames(
+            'tw-absolute tw-flex tw-h-full tw-w-full tw-inset-x-0',
+            !displayMoreText ? blurClasses : null,
+            {
+              'tw-top-0 tw-bottom-0': !displayMoreText,
+              ' tw--bottom-4': displayMoreText,
+            }
+          )}>
+          <p
+            className="tw-cursor-pointer tw-self-end tw-pointer-events-auto tw-text-primary tw-mx-auto"
+            onClick={() => setDisplayMoreText((pre) => !pre)}>
+            <span className="tw-flex tw-items-center tw-gap-2">
+              <SVGIcons
+                alt="expand-collapse"
+                className={classNames({ 'rotate-inverse': displayMoreText })}
+                width="32"
+                icon={Icons.CHEVRON_DOWN}
+              />
+            </span>
+          </p>
+        </div>
+      )}
     </div>
   );
 };
