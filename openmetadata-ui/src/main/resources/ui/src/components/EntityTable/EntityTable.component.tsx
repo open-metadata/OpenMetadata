@@ -25,6 +25,7 @@ import {
   JoinedWith,
   Table,
 } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import {
   getHtmlForNonAdminAction,
@@ -435,6 +436,7 @@ const EntityTable = ({
                               <NonAdminAction
                                 html={getHtmlForNonAdminAction(Boolean(owner))}
                                 isOwner={hasEditAccess}
+                                permission={Operation.UpdateTags}
                                 position="left"
                                 trigger="click">
                                 <TagsContainer
@@ -496,6 +498,7 @@ const EntityTable = ({
                                     Boolean(owner)
                                   )}
                                   isOwner={hasEditAccess}
+                                  permission={Operation.UpdateDescription}
                                   position="top">
                                   <button
                                     className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"

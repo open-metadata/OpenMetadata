@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
+import { UserPermissions } from 'Models';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
 import React, {
   ComponentType,
@@ -32,7 +33,10 @@ import {
 } from 'react-router-dom';
 import appState from '../AppState';
 import axiosClient from '../axiosAPIs';
-import { fetchAuthorizerConfig } from '../axiosAPIs/miscAPI';
+import {
+  fetchAuthorizerConfig,
+  getLoggedInUserPermissions,
+} from '../axiosAPIs/miscAPI';
 import {
   getLoggedInUser,
   getUserByName,
@@ -130,6 +134,21 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     }
   };
 
+  const getUserPermissions = () => {
+    setLoading(true);
+    getLoggedInUserPermissions()
+      .then((res: AxiosResponse) => {
+        appState.updateUserPermissions(res.data.metadataOperations);
+      })
+      .catch(() =>
+        showToast({
+          variant: 'error',
+          body: 'Error while getting user permissions',
+        })
+      )
+      .finally(() => setLoading(false));
+  };
+
   const fetchUserByEmail = (user: OidcUser) => {
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
@@ -137,6 +156,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
           if (res.data?.isAdmin) {
             getUpdatedUser(res.data, user);
           }
+          getUserPermissions();
           appState.updateUserDetails(res.data);
           fetchAllUsers();
           handledVerifiedUser();
@@ -148,6 +168,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
         if (err.response.data.code === 404) {
           appState.updateNewUser(user.profile);
           appState.updateUserDetails({} as User);
+          appState.updateUserPermissions({} as UserPermissions);
           history.push(ROUTES.SIGNUP);
         }
       });
@@ -155,6 +176,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
 
   const resetUserDetails = () => {
     appState.updateUserDetails({} as User);
+    appState.updateUserPermissions({} as UserPermissions);
     cookieStorage.removeItem(oidcTokenKey);
     cookieStorage.removeItem(
       `oidc.user:${userManagerConfig?.authority}:${userManagerConfig?.client_id}`
@@ -167,11 +189,12 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     getLoggedInUser(userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          getUserPermissions();
           appState.updateUserDetails(res.data);
         } else {
           resetUserDetails();
+          setLoading(false);
         }
-        setLoading(false);
       })
       .catch((err) => {
         if (err.response.data.code === 404) {
@@ -179,6 +202,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
         }
       });
   };
+
   const fetchAuthConfig = (): void => {
     fetchAuthorizerConfig()
       .then((res: AxiosResponse) => {
