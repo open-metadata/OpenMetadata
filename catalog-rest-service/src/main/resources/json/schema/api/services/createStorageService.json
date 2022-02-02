@@ -17,6 +17,10 @@
     },
     "serviceType": {
       "$ref": "../../type/storage.json#/definitions/storageServiceType"
+    },
+    "owner": {
+      "description": "Owner of this storage service.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name"]

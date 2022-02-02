@@ -44,6 +44,10 @@
       "description": "Link to the resource corresponding to this storage service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "owner": {
+      "description": "Owner of this storage service.",
+      "$ref": "../../type/entityReference.json"
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

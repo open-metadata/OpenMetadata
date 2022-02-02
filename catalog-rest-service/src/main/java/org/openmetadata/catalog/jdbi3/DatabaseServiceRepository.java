@@ -13,11 +13,13 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +33,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
-  public static final String COLLECTION_PATH = "v1/services/databaseServices";
+  private static final Fields UPDATE_FIELDS = new Fields(DatabaseServiceResource.FIELD_LIST, "owner");
 
   public DatabaseServiceRepository(CollectionDAO dao) {
     super(
@@ -41,15 +43,16 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao.dbServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
   @Override
-  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException {
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
     entity.setAirflowPipelines(fields.contains("airflowPipeline") ? getAirflowPipelines(entity) : null);
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -86,17 +89,29 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void prepare(DatabaseService entity) {}
+  public void prepare(DatabaseService entity) throws IOException, ParseException {
+    // Check if owner is valid and set the relationship
+    entity.setOwner(helper(entity).validateOwnerOrNull());
+  }
 
   @Override
   public void storeEntity(DatabaseService service, boolean update) throws IOException {
-    service.withHref(null);
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
     store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(DatabaseService entity) {
-    /* Nothing to do */
+    // Add owner relationship
+    setOwner(entity, entity.getOwner());
   }
 
   @Override
@@ -124,6 +139,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
     }
 
     @Override
@@ -201,6 +221,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
     }
 
     @Override

@@ -47,9 +47,9 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
         StorageService.class,
         StorageServiceList.class,
         "services/storageServices",
-        "",
+        "owner",
         false,
-        false,
+        true,
         false,
         false);
     this.supportsPatch = false;
@@ -71,15 +71,16 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Test
-  void put_update_as_non_admin_401(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+  void put_update_as_non_owner_401(TestInfo test) throws IOException {
+    createAndCheckEntity(createRequest(test).withDescription(null).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
 
-    // Update storage description and ingestion service that are null
+    // Update storage description and ingestion service as non owner should be forbidden
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
             () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Override
@@ -88,6 +89,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     return new CreateStorageService()
         .withName(name)
         .withServiceType(StorageServiceType.S3)
+        .withOwner(owner)
         .withDescription(description);
   }
 
@@ -95,7 +97,10 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   public void validateCreatedEntity(
       StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders), null);
+        getEntityInterface(service),
+        createRequest.getDescription(),
+        getPrincipal(authHeaders),
+        createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
   }
 
@@ -117,13 +122,14 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
 
   @Override
   public void validateGetWithDifferentFields(StorageService service, boolean byName) throws HttpResponseException {
-    // No fields support
+    String fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), "", ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), "", ADMIN_AUTH_HEADERS);
+            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNotNull(
         service.getHref(),
+        service.getOwner(),
         service.getVersion(),
         service.getUpdatedBy(),
         service.getServiceType(),

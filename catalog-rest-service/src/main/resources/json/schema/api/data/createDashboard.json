@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createDatabase.json",
+  "$id": "https://open-metadata.org/schema/api/data/createDashboard.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateDashboardRequest",
   "description": "Create Dashboard entity request",
@@ -33,7 +33,7 @@
       "default": null
     },
     "tags": {
-      "description": "Tags for this chart",
+      "description": "Tags for this dashboard",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -41,11 +41,11 @@
       "default": null
     },
     "owner": {
-      "description": "Owner of this database",
+      "description": "Owner of this dashboard",
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the database service where this database is hosted in",
+      "description": "Link to the dashboard service where this dashboard is hosted in",
       "$ref": "../../type/entityReference.json"
     }
   },

@@ -54,9 +54,9 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         DashboardService.class,
         DashboardServiceList.class,
         "services/dashboardServices",
-        "",
+        "owner",
         false,
-        false,
+        true,
         false,
         false);
     this.supportsPatch = false;
@@ -71,7 +71,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
 
-    // Create dashboard with mandatory brokers field empty
+    // Create dashboard with mandatory dashboardUrl field empty
     exception =
         assertThrows(
             HttpResponseException.class,
@@ -192,16 +192,18 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Test
-  void put_update_as_non_admin_401(TestInfo test) throws IOException {
-    Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
-    createAndCheckEntity(createRequest(test).withDescription(null).withIngestionSchedule(null), authHeaders);
+  void put_update_as_non_owner_401(TestInfo test) throws IOException {
+    createAndCheckEntity(
+        createRequest(test).withDescription(null).withIngestionSchedule(null).withOwner(USER_OWNER1),
+        ADMIN_AUTH_HEADERS);
 
     // Update dashboard description and ingestion service that are null
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
             () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Override
@@ -214,6 +216,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
           .withDashboardUrl(new URI("http://192.1.1.1:0"))
           //          .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"))
           .withIngestionSchedule(null)
+          .withOwner(owner)
           .withDescription(description);
     } catch (URISyntaxException e) {
       e.printStackTrace();
@@ -225,7 +228,10 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   public void validateCreatedEntity(
       DashboardService service, CreateDashboardService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders), null);
+        getEntityInterface(service),
+        createRequest.getDescription(),
+        getPrincipal(authHeaders),
+        createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
     Schedule expectedIngestion = createRequest.getIngestionSchedule();
@@ -253,14 +259,14 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Override
   public void validateGetWithDifferentFields(DashboardService service, boolean byName) throws HttpResponseException {
-    // No fields support
-    String fields = "";
+    String fields = "owner";
     service =
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNotNull(
         service.getHref(),
+        service.getOwner(),
         service.getVersion(),
         service.getUpdatedBy(),
         service.getServiceType(),
