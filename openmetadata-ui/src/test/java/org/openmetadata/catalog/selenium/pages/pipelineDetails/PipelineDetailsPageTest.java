@@ -43,10 +43,12 @@ public class PipelineDetailsPageTest {
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
+  String webDriverInstance = Property.getInstance().getWebDriver();
+  String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     webDriver = new ChromeDriver(options);
