@@ -479,13 +479,19 @@ const TeamsPage = () => {
                   </>
                 ) : (
                   <ErrorPlaceHolder>
-                    <p className="w-text-lg tw-text-center">No Teams Added.</p>
-                    <p className="w-text-lg tw-text-center">
-                      <button
-                        className="link-text tw-underline"
-                        onClick={() => setIsAddingTeam(true)}>
-                        Click here
-                      </button>
+                    <p className="tw-text-lg tw-text-center">No Teams Added.</p>
+                    <p className="tw-text-lg tw-text-center">
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className={classNames('link-text tw-underline', {
+                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                          })}
+                          onClick={() => setIsAddingTeam(true)}>
+                          Click here
+                        </button>
+                      </NonAdminAction>
                       {' to add new Team'}
                     </p>
                   </ErrorPlaceHolder>
