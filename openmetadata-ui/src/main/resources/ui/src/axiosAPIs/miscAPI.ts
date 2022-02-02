@@ -85,3 +85,8 @@ export const deleteLineageEdge: Function = (
     `/lineage/${fromEntity}/${fromId}/${toEntity}/${toId}`
   );
 };
+
+export const getLoggedInUserPermissions: Function =
+  (): Promise<AxiosResponse> => {
+    return APIClient.get('/permissions');
+  };

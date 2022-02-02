@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React from 'react';
 import { Table } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -94,6 +95,7 @@ const Description = ({
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}
+              permission={Operation.UpdateDescription}
               position="right">
               <button
                 className="focus:tw-outline-none"
