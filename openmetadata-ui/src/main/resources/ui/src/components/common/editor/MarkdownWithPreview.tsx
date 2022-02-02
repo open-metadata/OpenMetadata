@@ -56,7 +56,12 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
         return 'Nothing to preview';
       }
 
-      return <RichTextEditorPreviewer markdown={preview} />;
+      return (
+        <RichTextEditorPreviewer
+          enableSeeMoreVariant={false}
+          markdown={preview}
+        />
+      );
     };
 
     useImperativeHandle(ref, () => ({
