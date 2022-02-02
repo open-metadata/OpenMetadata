@@ -69,23 +69,23 @@ class DynamodbSource(Source[Entity]):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
-            logger.debug(err)
+            logger.error(err)
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
         try:
             tables = list(self.dynamodb.tables.all())
             for table in tables:
                 database_entity = Database(
-                    name="DynamoDBTest",
+                    name="Dynamo_Database",
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
-                database_name = "dynamodb"
-                fqn = f"{self.config.service_name}.{database_name}.{table}"
+
+                fqn = f"{self.config.service_name}.{database_entity.name}.{table}"
                 self.dataset_name = fqn
                 table_columns = self.get_columns(table.attribute_definitions)
                 table_entity = Table(
                     id=uuid.uuid4(),
-                    name=table.name[:128],
+                    name=table.name,
                     description="",
                     fullyQualifiedName=fqn,
                     columns=table_columns,
@@ -98,24 +98,28 @@ class DynamodbSource(Source[Entity]):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
-            logger.debug(err)
+            logger.error(err)
 
     def get_columns(self, column_data):
         for index, column in enumerate(column_data):
-            if "S" in column["AttributeType"].lower():
-                column["AttributeType"] = column["AttributeType"].replace(" ", "")
-            parsed_string = ColumnTypeParser._parse_datatype_string(
-                column["AttributeType"].lower()
-            )
-            if isinstance(parsed_string, list):
-                parsed_string = {}
-                parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
-                parsed_string["dataType"] = "UNION"
-            parsed_string["name"] = column["AttributeName"][:64]
-            parsed_string["ordinalPosition"] = index
-            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-            print(parsed_string)
-            yield Column(**parsed_string)
+            try:
+                if "S" in column["AttributeType"].lower():
+                    column["AttributeType"] = column["AttributeType"].replace(" ", "")
+                parsed_string = ColumnTypeParser._parse_datatype_string(
+                    column["AttributeType"].lower()
+                )
+                if isinstance(parsed_string, list):
+                    parsed_string = {}
+                    parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
+                    parsed_string["dataType"] = "UNION"
+                parsed_string["name"] = column["AttributeName"][:64]
+                parsed_string["ordinalPosition"] = index
+                parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                yield Column(**parsed_string)
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.debug(traceback.print_exc())
+                logger.error(err)
 
     def close(self):
         pass
