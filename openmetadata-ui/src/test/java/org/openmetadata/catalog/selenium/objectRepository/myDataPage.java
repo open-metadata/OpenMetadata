@@ -21,7 +21,7 @@ public class myDataPage {
   By dashboard = By.xpath("//a[@data-testid=\"dashboards\"]");
   By pipelines = By.xpath("//a[@data-testid=\"pipelines\"]");
   By services = By.xpath("//a[@data-testid=\"service\"]");
-  //By ingestion = By.linkText("Ingestion");
+  // By ingestion = By.linkText("Ingestion");
   By users = By.xpath("//a[@data-testid=\"user\"]");
   By teams = By.xpath("//a[@data-testid=\"terms\"]");
   By searchBox = By.xpath("//input[@data-testid=\"searchBox\"]");
