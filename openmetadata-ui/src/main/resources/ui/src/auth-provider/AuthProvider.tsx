@@ -193,8 +193,8 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
           appState.updateUserDetails(res.data);
         } else {
           resetUserDetails();
+          setLoading(false);
         }
-        setLoading(false);
       })
       .catch((err) => {
         if (err.response.data.code === 404) {
