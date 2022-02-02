@@ -29,7 +29,6 @@ import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
 import org.openmetadata.catalog.selenium.objectRepository.MessagingServicePage;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
