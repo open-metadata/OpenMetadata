@@ -1,11 +1,11 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createDatabase.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Database entity request",
+  "title": "CreateDatabaseRequest",
   "description": "Create Database entity request",
   "type": "object",
 
-  "properties" : {
+  "properties": {
     "name": {
       "description": "Name that identifies this database instance uniquely.",
       "$ref": "../../entity/data/database.json#/definitions/databaseName"
@@ -18,9 +18,9 @@
       "description": "Owner of this database",
       "$ref": "../../type/entityReference.json"
     },
-    "service" : {
+    "service": {
       "description": "Link to the database service where this database is hosted in",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "service"]

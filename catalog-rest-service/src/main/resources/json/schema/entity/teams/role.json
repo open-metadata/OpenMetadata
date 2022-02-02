@@ -4,15 +4,15 @@
   "title": "Role",
   "description": "This schema defines the Role entity. A Role has access to zero or more data assets.",
   "type": "object",
-  "definitions" : {
-    "roleName" : {
+  "definitions": {
+    "roleName": {
       "description": "A unique name of the role.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128
     }
   },
-  "properties" : {
+  "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
@@ -27,15 +27,15 @@
       "description": "Description of the role.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -44,26 +44,23 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
-      "default" : false
+      "default": false
     },
-    "policy" : {
+    "policy": {
       "description": "Policy that is attached to this role.",
       "$ref": "../../type/entityReference.json"
     },
-    "users" : {
+    "users": {
       "description": "Users that have this role assigned.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
-  "required" : [
-    "id",
-    "name"
-  ],
+  "required": ["id", "name"],
   "additionalProperties": false
 }

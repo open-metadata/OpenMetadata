@@ -19,12 +19,10 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tupl
 from airflow.configuration import conf
 
 from airflow_provider_openmetadata.lineage.config import OpenMetadataLineageConfig
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
+    CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
@@ -217,7 +215,7 @@ def create_pipeline_entity(
         endDate=task_end_date,
         downstreamTasks=downstream_tasks,
     )
-    create_pipeline = CreatePipelineEntityRequest(
+    create_pipeline = CreatePipelineRequest(
         name=dag.dag_id,
         displayName=dag.dag_id,
         description=dag.description,
@@ -287,7 +285,7 @@ def parse_lineage_to_openmetadata(
         for table in inlets if inlets else []:
             table_entity = client.get_by_name(entity=Table, fqdn=table)
             operator.log.debug(f"from entity {table_entity}")
-            lineage = AddLineage(
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=table_entity.id, type="table"),
                     toEntity=EntityReference(id=pipeline.id, type="pipeline"),
@@ -299,7 +297,7 @@ def parse_lineage_to_openmetadata(
         for table in outlets if outlets else []:
             table_entity = client.get_by_name(entity=Table, fqdn=table)
             operator.log.debug(f"to entity {table_entity}")
-            lineage = AddLineage(
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
                     toEntity=EntityReference(id=table_entity.id, type="table"),
@@ -333,7 +331,7 @@ def get_or_create_pipeline_service(
     )
 
     if airflow_service_entity is None:
-        pipeline_service = CreatePipelineServiceEntityRequest(
+        pipeline_service = CreatePipelineServiceRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
             pipelineUrl=conf.get("webserver", "base_url"),

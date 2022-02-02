@@ -15,11 +15,11 @@ OpenMetadata high-level API Chart test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceEntityRequest,
+    CreateDashboardServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardService,
@@ -44,11 +44,11 @@ class OMetaChartTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
-    service = CreateDashboardServiceEntityRequest(
+    service = CreateDashboardServiceRequest(
         name="test-service-chart",
         serviceType=DashboardServiceType.Superset,
         dashboardUrl="https://localhost:1000",
@@ -69,7 +69,7 @@ class OMetaChartTest(TestCase):
             fullyQualifiedName="test-service-chart.test",
         )
 
-        cls.create = CreateChartEntityRequest(
+        cls.create = CreateChartRequest(
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
         )
@@ -114,7 +114,7 @@ class OMetaChartTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreateChartEntityRequest(**updated)
+        updated_entity = CreateChartRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 

@@ -35,12 +35,10 @@ from airflow_provider_openmetadata.lineage.utils import (
     iso_dag_start_date,
     iso_task_start_end_date,
 )
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
@@ -63,7 +61,7 @@ class AirflowLineageTest(TestCase):
 
     assert metadata.health_check()
 
-    service = CreateDatabaseServiceEntityRequest(
+    service = CreateDatabaseServiceRequest(
         name="test-service-table-lineage",
         serviceType=DatabaseServiceType.MySQL,
         databaseConnection=DatabaseConnection(hostPort="localhost"),
@@ -78,14 +76,14 @@ class AirflowLineageTest(TestCase):
 
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
-        cls.create_db = CreateDatabaseEntityRequest(
+        cls.create_db = CreateDatabaseRequest(
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
 
         cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
 
-        cls.create = CreateTableEntityRequest(
+        cls.create = CreateTableRequest(
             name="lineage-test",
             database=cls.create_db_entity.id,
             columns=[Column(name="id", dataType=DataType.BIGINT)],

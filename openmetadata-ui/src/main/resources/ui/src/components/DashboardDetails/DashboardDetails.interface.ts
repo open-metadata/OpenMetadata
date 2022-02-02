@@ -52,6 +52,7 @@ export interface DashboardDetailsProps {
   dashboardTags: Array<EntityTags>;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   deleted?: boolean;
+  isLineageLoading?: boolean;
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;

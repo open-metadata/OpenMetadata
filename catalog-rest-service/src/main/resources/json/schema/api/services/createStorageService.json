@@ -1,10 +1,10 @@
 {
   "$id": "https://open-metadata.org/schema/api/services/createStorageService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Storage service entity request",
+  "title": "CreateStorageServiceRequest",
   "description": "Create Storage service entity request",
   "type": "object",
-  "properties" : {
+  "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
       "type": "string",

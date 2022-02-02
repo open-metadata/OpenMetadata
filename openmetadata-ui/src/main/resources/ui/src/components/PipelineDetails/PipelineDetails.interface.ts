@@ -49,6 +49,7 @@ export interface PipeLineDetailsProp {
   entityLineage: EntityLineage;
   tasks: Task[];
   deleted?: boolean;
+  isLineageLoading?: boolean;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
