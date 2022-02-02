@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -27,9 +26,10 @@ import org.openmetadata.catalog.resources.services.storage.StorageServiceResourc
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
+  private static final Fields UPDATE_FIELDS = new Fields(StorageServiceResource.FIELD_LIST, "owner");
+
   public StorageServiceRepository(CollectionDAO dao) {
     super(
         StorageServiceResource.COLLECTION_PATH,
@@ -38,7 +38,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         dao.storageServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
         true,
         false);
@@ -68,13 +68,22 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
   @Override
   public void storeEntity(StorageService service, boolean update) throws IOException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
     store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(StorageService entity) {
     // Add owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), entity.getId(), STORAGE_SERVICE, entity.getOwner());
+    setOwner(entity, entity.getOwner());
   }
 
   public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {

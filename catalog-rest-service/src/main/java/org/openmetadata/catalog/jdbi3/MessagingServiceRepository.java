@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,6 +32,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
+  private static final Fields UPDATE_FIELDS = new Fields(MessagingServiceResource.FIELD_LIST, "owner");
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(
@@ -42,7 +42,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         dao.messagingServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
         true,
         false);
@@ -74,14 +74,22 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
   @Override
   public void storeEntity(MessagingService service, boolean update) throws IOException {
-    service.withHref(null);
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
     store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(MessagingService entity) {
     // Add owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), entity.getId(), MESSAGING_SERVICE, entity.getOwner());
+    setOwner(entity, entity.getOwner());
   }
 
   @Override

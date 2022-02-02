@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -30,9 +29,10 @@ import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
+  private static final Fields UPDATE_FIELDS = new Fields(DashboardServiceResource.FIELD_LIST, "owner");
+
   public DashboardServiceRepository(CollectionDAO dao) {
     super(
         DashboardServiceResource.COLLECTION_PATH,
@@ -41,7 +41,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         dao.dashboardServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
         true,
         false);
@@ -70,17 +70,22 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
   @Override
   public void storeEntity(DashboardService service, boolean update) throws IOException {
-    if (update) {
-      daoCollection.dashboardServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
-    } else {
-      daoCollection.dashboardServiceDAO().insert(service);
-    }
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
+    store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(DashboardService entity) {
     // Add owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), entity.getId(), DASHBOARD_SERVICE, entity.getOwner());
+    setOwner(entity, entity.getOwner());
   }
 
   @Override

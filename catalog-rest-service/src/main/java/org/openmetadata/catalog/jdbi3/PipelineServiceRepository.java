@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
@@ -28,9 +27,10 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
+  private static final Fields UPDATE_FIELDS = new Fields(PipelineServiceResource.FIELD_LIST, "owner");
+
   public PipelineServiceRepository(CollectionDAO dao) {
     super(
         PipelineServiceResource.COLLECTION_PATH,
@@ -39,7 +39,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao.pipelineServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
         true,
         false);
@@ -70,17 +70,22 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
   @Override
   public void storeEntity(PipelineService service, boolean update) throws IOException {
-    if (update) {
-      daoCollection.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
-    } else {
-      daoCollection.pipelineServiceDAO().insert(service);
-    }
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
+    store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(PipelineService entity) {
     // Add owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), entity.getId(), PIPELINE_SERVICE, entity.getOwner());
+    setOwner(entity, entity.getOwner());
   }
 
   @Override
