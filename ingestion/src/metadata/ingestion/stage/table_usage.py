@@ -86,31 +86,34 @@ class TableUsageStage(Stage[QueryParserData]):
         if record is None:
             return None
         for table in record.tables:
-            table_usage_count = self.table_usage.get(table)
-            if table_usage_count is not None:
-                table_usage_count.count = table_usage_count.count + 1
-                if record.columns.get("join") is not None:
-                    table_usage_count.joins.append(
-                        get_table_column_join(
+            try:
+                table_usage_count = self.table_usage.get(table)
+                if table_usage_count is not None:
+                    table_usage_count.count = table_usage_count.count + 1
+                    if record.columns.get("join") is not None:
+                        table_usage_count.joins.append(
+                            get_table_column_join(
+                                table, record.tables_aliases, record.columns["join"]
+                            )
+                        )
+                else:
+                    joins = []
+                    if record.columns.get("join") is not None:
+                        tbl_column_join = get_table_column_join(
                             table, record.tables_aliases, record.columns["join"]
                         )
-                    )
-            else:
-                joins = []
-                if record.columns.get("join") is not None:
-                    tbl_column_join = get_table_column_join(
-                        table, record.tables_aliases, record.columns["join"]
-                    )
-                    if tbl_column_join is not None:
-                        joins.append(tbl_column_join)
+                        if tbl_column_join is not None:
+                            joins.append(tbl_column_join)
 
-                table_usage_count = TableUsageCount(
-                    table=table,
-                    database=record.database,
-                    date=record.date,
-                    joins=joins,
-                    service_name=record.service_name,
-                )
+                    table_usage_count = TableUsageCount(
+                        table=table,
+                        database=record.database,
+                        date=record.date,
+                        joins=joins,
+                        service_name=record.service_name,
+                    )
+            except Exception as exc:
+                logger.error("Error in staging record {}".format(exc))
             self.table_usage[table] = table_usage_count
 
     def get_status(self):
