@@ -14,7 +14,7 @@
       "pattern": "^[^.]*$"
     }
   },
-  "properties" : {
+  "properties": {
     "id": {
       "description": "Unique identifier that identifies this database instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -35,15 +35,15 @@
       "description": "Description of the database instance.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -55,19 +55,19 @@
       "description": "Owner of this database.",
       "$ref": "../../type/entityReference.json"
     },
-    "service" : {
+    "service": {
       "description": "Link to the database cluster/service where this database is hosted in.",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     },
-    "serviceType" : {
+    "serviceType": {
       "description": "Service type where this database is hosted in.",
-      "$ref" : "../services/databaseService.json#/definitions/databaseServiceType"
+      "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
     },
     "location": {
       "description": "Reference to the Location that contains this database.",
       "$ref": "../../type/entityReference.json"
     },
-    "usageSummary" : {
+    "usageSummary": {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
       "default": null
@@ -77,12 +77,12 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },

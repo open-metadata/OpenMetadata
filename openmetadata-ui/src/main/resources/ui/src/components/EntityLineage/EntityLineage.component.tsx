@@ -43,6 +43,7 @@ import {
   EntityLineage,
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
+import { withLoader } from '../../hoc/withLoader';
 import useToastContext from '../../hooks/useToastContext';
 import {
   dragHandle,
@@ -127,7 +128,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   const getNodeClass = (node: FlowElement) => {
     return `${
-      node.id.includes(lineageData.entity.id) && !isEditMode
+      node.id.includes(lineageData.entity?.id) && !isEditMode
         ? 'leaf-node core'
         : 'leaf-node'
     }`;
@@ -302,12 +303,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     let sourceNode = lineageData.nodes?.find((n) => source?.includes(n.id));
 
     if (isUndefined(targetNode)) {
-      targetNode = target?.includes(lineageData.entity.id)
+      targetNode = target?.includes(lineageData.entity?.id)
         ? lineageData.entity
         : selectedEntity;
     }
     if (isUndefined(sourceNode)) {
-      sourceNode = source?.includes(lineageData.entity.id)
+      sourceNode = source?.includes(lineageData.entity?.id)
         ? lineageData.entity
         : selectedEntity;
     }
@@ -343,7 +344,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 : lineageData.nodes,
               downstreamEdges:
                 !isUndefined(downstreamNode) ||
-                sourceNode?.id === lineageData.entity.id
+                sourceNode?.id === lineageData.entity?.id
                   ? [
                       ...(lineageData.downstreamEdges as EntityEdge[]),
                       {
@@ -354,7 +355,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   : lineageData.downstreamEdges,
               upstreamEdges:
                 isUndefined(downstreamNode) &&
-                sourceNode?.id !== lineageData.entity.id
+                sourceNode?.id !== lineageData.entity?.id
                   ? [
                       ...(lineageData.upstreamEdges as EntityEdge[]),
                       {
@@ -707,7 +708,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             :
           </div>
           <EntityInfoDrawer
-            isMainNode={selectedNode.name === entityLineage.entity.name}
+            isMainNode={selectedNode.name === lineageData.entity?.name}
             selectedNode={selectedNode}
             show={isDrawerOpen && !isEditMode}
             onCancel={closeDrawer}
@@ -749,4 +750,4 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   );
 };
 
-export default Entitylineage;
+export default withLoader<EntityLineageProp>(Entitylineage);

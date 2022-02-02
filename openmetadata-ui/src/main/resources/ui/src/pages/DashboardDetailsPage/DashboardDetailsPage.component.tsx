@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import {
   EntityTags,
   LeafNodes,
@@ -44,7 +45,7 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -56,6 +57,7 @@ import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
+  defaultFields,
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
@@ -99,7 +101,7 @@ const DashboardDetailsPage = () => {
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
     id: undefined,
@@ -201,6 +203,7 @@ const DashboardDetailsPage = () => {
   };
 
   const getLineageData = () => {
+    setIsLineageLoading(true);
     getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
       .then((res: AxiosResponse) => {
         setEntityLineage(res.data);
@@ -218,13 +221,7 @@ const DashboardDetailsPage = () => {
 
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
-    getDashboardByFqn(dashboardFQN, [
-      'owner',
-      'followers',
-      'tags',
-      'usageSummary',
-      'charts',
-    ])
+    getDashboardByFqn(dashboardFQN, defaultFields)
       .then((res: AxiosResponse) => {
         const {
           id,
@@ -278,18 +275,31 @@ const DashboardDetailsPage = () => {
           timestamp: 0,
         });
 
-        if (!deleted) {
-          getLineageData();
-        } else {
-          setIsLineageLoading(false);
-        }
-
         setDashboardUrl(dashboardUrl);
         fetchCharts(charts).then((charts) => setCharts(charts));
       })
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  const fetchTabSpecificData = (tabField = '') => {
+    switch (tabField) {
+      case TabSpecificField.LINEAGE: {
+        if (!deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
+
+          break;
+        }
+
+        break;
+      }
+
+      default:
+        break;
+    }
   };
 
   const descriptionUpdateHandler = (updatedDashboard: Dashboard) => {
@@ -417,6 +427,10 @@ const DashboardDetailsPage = () => {
   };
 
   useEffect(() => {
+    fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
+  }, [activeTab]);
+
+  useEffect(() => {
     fetchDashboardDetail(dashboardFQN);
   }, [dashboardFQN]);
 
@@ -426,7 +440,7 @@ const DashboardDetailsPage = () => {
 
   return (
     <>
-      {isLoading || isLineageLoading ? (
+      {isLoading ? (
         <Loader />
       ) : (
         <DashboardDetails
@@ -446,6 +460,7 @@ const DashboardDetailsPage = () => {
           entityName={displayName}
           followDashboardHandler={followDashboard}
           followers={followers}
+          isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

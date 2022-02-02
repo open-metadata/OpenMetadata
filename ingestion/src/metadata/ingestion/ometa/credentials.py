@@ -22,6 +22,16 @@ Credentials = Tuple[str, str, str]
 
 
 class URL(str):
+    """
+    Handle URL for creds retrieval
+
+    Args:
+        value (tuple):
+
+    Attributes:
+        value (value):
+    """
+
     def __new__(cls, *value):
         """
         note: we use *value and v0 to allow an empty URL string
@@ -60,8 +70,8 @@ class DATE(str):
         try:
             dateutil.parser.parse(value)
         except Exception as exc:
-            msg = f"{value} is not a valid date string: {exc}"
-            raise Exception(msg)
+            msg = f"{value} is not a valid date string"
+            raise Exception(msg) from exc
 
         return str.__new__(cls, value)
 
@@ -85,6 +95,16 @@ class FLOAT(str):
 def get_credentials(
     key_id: str = None, secret_key: str = None, oauth: str = None
 ) -> Credentials:
+    """
+    Get credentials
+
+    Args:
+        key_id (str):
+        secret_key (str):
+        oauth (oauth):
+    Returns:
+        Credentials
+    """
     oauth = oauth or os.environ.get("OMETA_API_OAUTH_TOKEN")
 
     key_id = key_id or os.environ.get("OMETA_API_KEY_ID")
@@ -105,6 +125,14 @@ def get_credentials(
 
 
 def get_api_version(api_version: str) -> str:
+    """
+    Get version API
+
+    Args:
+        api_version (str):
+    Returns:
+         str
+    """
     api_version = api_version or os.environ.get("APCA_API_VERSION")
     if api_version is None:
         api_version = "v1"

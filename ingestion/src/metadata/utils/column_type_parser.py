@@ -96,7 +96,7 @@ class ColumnTypeParser:
         "MONEY": "NUMBER",
         "NCHAR": "CHAR",
         "NTEXT": "TEXT",
-        "NULL": "VARCHAR",
+        "NULL": "NULL",
         "NUMBER": "NUMBER",
         "NUMERIC": "NUMERIC",
         "NVARCHAR": "VARCHAR",
@@ -143,6 +143,8 @@ class ColumnTypeParser:
     @staticmethod
     def get_column_type(column_type: Any) -> str:
         type_class: Optional[str] = None
+        if isinstance(column_type, types.NullType):
+            return "NULL"
         for sql_type in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.keys():
             if str(column_type) in sql_type:
                 type_class = ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[sql_type]

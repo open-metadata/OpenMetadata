@@ -23,7 +23,7 @@ from confluent_kafka.schema_registry.schema_registry_client import (
 )
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import SchemaType, Topic
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
@@ -57,7 +57,7 @@ class KafkaSourceConfig(ConfigModel):
 
 
 @dataclass
-class KafkaSource(Source[CreateTopicEntityRequest]):
+class KafkaSource(Source[CreateTopicRequest]):
     config: KafkaSourceConfig
     admin_client: AdminClient
     report: KafkaSourceStatus
@@ -98,14 +98,14 @@ class KafkaSource(Source[CreateTopicEntityRequest]):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[CreateTopicEntityRequest]:
+    def next_record(self) -> Iterable[CreateTopicRequest]:
         topics = self.admin_client.list_topics().topics
         for t in topics:
             try:
                 if self.config.filter_pattern.included(t):
                     logger.info("Fetching topic schema {}".format(t))
                     topic_schema = self._parse_topic_metadata(t)
-                    topic = CreateTopicEntityRequest(
+                    topic = CreateTopicRequest(
                         name=t.replace(".", "_DOT_"),
                         service=EntityReference(
                             id=self.service.id, type="messagingService"

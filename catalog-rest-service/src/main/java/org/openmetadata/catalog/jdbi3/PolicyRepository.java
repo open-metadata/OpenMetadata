@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
@@ -443,7 +444,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
                 Entity.LOCATION,
                 Relationship.APPLIED_TO.ordinal());
       }
-      recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation());
+      recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
     }
   }
 }

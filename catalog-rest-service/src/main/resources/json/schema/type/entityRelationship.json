@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/type/entityRelationship.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Entity Relationship",
+  "title": "EntityRelationship",
   "description": "This schema defines the EntityRelationship type used for establishing relationship between two entities. EntityRelationship is used for capturing relationships from one entity to another. For example, a database contains tables.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.EntityRelationship",
@@ -34,16 +34,12 @@
       "description": "Describes relationship between the two entities.",
       "type": "string"
     },
-    "deleted" : {
+    "deleted": {
       "description": "`true` indicates the relationship has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "fromEntity",
-    "toEntity",
-    "relation"
-  ],
+  "required": ["fromEntity", "toEntity", "relation"],
   "additionalProperties": false
 }

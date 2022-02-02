@@ -17,10 +17,13 @@ import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
@@ -152,6 +155,32 @@ public class DefaultAuthorizer implements Authorizer {
       return policyEvaluator.hasPermission(user, entity, operation);
     } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
+    }
+  }
+
+  @Override
+  public List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference) {
+    validateAuthenticationContext(ctx);
+
+    if (isAdmin(ctx) || isBot(ctx)) {
+      // Admins and bots have permissions to do all operations.
+      return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+    }
+
+    try {
+      User user = getUserFromAuthenticationContext(ctx);
+      if (entityReference == null) {
+        return policyEvaluator.getAllowedOperations(user, null);
+      }
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      if (owner == null || isOwnedByUser(user, owner)) {
+        // Entity does not have an owner or is owned by the user - allow all operations.
+        return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+      }
+      return policyEvaluator.getAllowedOperations(user, entity);
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
+      return Collections.emptyList();
     }
   }
 

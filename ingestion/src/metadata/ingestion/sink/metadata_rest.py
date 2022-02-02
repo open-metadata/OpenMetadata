@@ -16,35 +16,26 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
-from metadata.generated.schema.api.data.createDashboard import (
-    CreateDashboardEntityRequest,
-)
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createLocation import (
-    CreateLocationEntityRequest,
-)
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.policies.createPolicy import (
-    CreatePolicyEntityRequest,
-)
-from metadata.generated.schema.api.teams.createRole import CreateRoleEntityRequest
-from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
+from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
-from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.teams.role import Role
+from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
@@ -52,6 +43,7 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
+from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -97,7 +89,6 @@ class MetadataRestSink(Sink[Entity]):
         self.wrote_something = False
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
-        self.api_client = self.metadata.client
         self.role_entities = {}
         self.team_entities = {}
 
@@ -112,7 +103,7 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, CreateTopicEntityRequest):
+        elif isinstance(record, CreateTopicRequest):
             self.write_topics(record)
         elif isinstance(record, Chart):
             self.write_charts(record)
@@ -124,11 +115,11 @@ class MetadataRestSink(Sink[Entity]):
             self.write_policies(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
-        elif isinstance(record, AddLineage):
+        elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
-        elif isinstance(record, User):
+        elif isinstance(record, OMetaUserProfile):
             self.write_users(record)
-        elif isinstance(record, CreateMlModelEntityRequest):
+        elif isinstance(record, CreateMlModelRequest):
             self.write_ml_model(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
@@ -139,7 +130,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_tables(self, db_and_table: OMetaDatabaseAndTable):
         try:
-            db_request = CreateDatabaseEntityRequest(
+            db_request = CreateDatabaseRequest(
                 name=db_and_table.database.name,
                 description=db_and_table.database.description,
                 service=EntityReference(
@@ -151,7 +142,7 @@ class MetadataRestSink(Sink[Entity]):
             if db_and_table.table.description is not None:
                 db_and_table.table.description = db_and_table.table.description.strip()
 
-            table_request = CreateTableEntityRequest(
+            table_request = CreateTableRequest(
                 name=db_and_table.table.name,
                 tableType=db_and_table.table.tableType,
                 columns=db_and_table.table.columns,
@@ -169,7 +160,7 @@ class MetadataRestSink(Sink[Entity]):
                     db_and_table.location.description = (
                         db_and_table.location.description.strip()
                     )
-                location_request = CreateLocationEntityRequest(
+                location_request = CreateLocationRequest(
                     name=db_and_table.location.name,
                     description=db_and_table.location.description,
                     locationType=db_and_table.location.locationType,
@@ -227,7 +218,7 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Table: {db_and_table.table.name.__root__}")
 
-    def write_topics(self, topic: CreateTopicEntityRequest) -> None:
+    def write_topics(self, topic: CreateTopicRequest) -> None:
         try:
             created_topic = self.metadata.create_or_update(topic)
             logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
@@ -246,7 +237,7 @@ class MetadataRestSink(Sink[Entity]):
             ):
                 om_chart_type = om_chart_type_dict[chart.chart_type]
 
-            chart_request = CreateChartEntityRequest(
+            chart_request = CreateChartRequest(
                 name=chart.name,
                 displayName=chart.displayName,
                 description=chart.description,
@@ -269,7 +260,7 @@ class MetadataRestSink(Sink[Entity]):
         try:
             charts = self._get_chart_references(dashboard)
 
-            dashboard_request = CreateDashboardEntityRequest(
+            dashboard_request = CreateDashboardRequest(
                 name=dashboard.name,
                 displayName=dashboard.displayName,
                 description=dashboard.description,
@@ -306,7 +297,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_pipelines(self, pipeline: Pipeline):
         try:
-            pipeline_request = CreatePipelineEntityRequest(
+            pipeline_request = CreatePipelineRequest(
                 name=pipeline.name,
                 displayName=pipeline.displayName,
                 description=pipeline.description,
@@ -332,7 +323,7 @@ class MetadataRestSink(Sink[Entity]):
                 logger.info(f"Successfully ingested Location {created_location.name}")
                 self.status.records_written(f"Location: {created_location.name}")
 
-            policy_request = CreatePolicyEntityRequest(
+            policy_request = CreatePolicyRequest(
                 name=ometa_policy.policy.name,
                 displayName=ometa_policy.policy.displayName,
                 description=ometa_policy.policy.description,
@@ -349,11 +340,11 @@ class MetadataRestSink(Sink[Entity]):
         except (APIError, ValidationError) as err:
             logger.error(f"Failed to ingest Policy {ometa_policy.policy.name}")
             logger.error(err)
-            traceback.print_exc()
+            logger.debug(traceback.print_exc())
             self.status.failure(f"Policy: {ometa_policy.policy.name}")
 
     def _create_location(self, location: Location) -> Location:
-        location_request = CreateLocationEntityRequest(
+        location_request = CreateLocationRequest(
             name=location.name,
             description=location.description,
             locationType=location.locationType,
@@ -363,7 +354,7 @@ class MetadataRestSink(Sink[Entity]):
         )
         return self.metadata.create_or_update(location_request)
 
-    def write_lineage(self, add_lineage: AddLineage):
+    def write_lineage(self, add_lineage: AddLineageRequest):
         try:
             logger.info(add_lineage)
             created_lineage = self.metadata.add_lineage(add_lineage)
@@ -374,7 +365,7 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
 
-    def write_ml_model(self, model: CreateMlModelEntityRequest):
+    def write_ml_model(self, model: CreateMlModelRequest):
         try:
             created_model = self.metadata.create_or_update(model)
             logger.info(f"Successfully added Model {created_model.name}")
@@ -384,59 +375,73 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Model: {model.name}")
 
-    def _create_role(self, role: EntityReference) -> None:
-        metadata_role = CreateRoleEntityRequest(
-            name=role.name, displayName=role.name, description=role.description
-        )
+    def _create_role(self, create_role: CreateRoleRequest) -> Role:
         try:
-            r = self.metadata.create_or_update(metadata_role)
-            instance_id = str(r.id.__root__)
-            self.role_entities[role.name] = instance_id
+            role = self.metadata.create_or_update(create_role)
+            self.role_entities[role.name] = str(role.id.__root__)
+            return role
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             logger.error(err)
 
-    def _create_team(self, team: EntityReference) -> None:
-        metadata_team = CreateTeamEntityRequest(
-            name=team.name, displayName=team.name, description=team.description
-        )
+    def _create_team(self, create_team: CreateTeamRequest) -> Team:
         try:
-            r = self.metadata.create_or_update(metadata_team)
-            instance_id = str(r.id.__root__)
-            self.team_entities[team.name] = instance_id
+            team = self.metadata.create_or_update(create_team)
+            self.team_entities[team.name] = str(team.id.__root__)
+            return team
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             logger.error(err)
 
-    def write_users(self, record: User):
-        roles = []
-        for role in record.roles.__root__:
-            try:
-                role_response = self.api_client.get(f"/roles/{role.id.__root__}")
-            except APIError:
-                self._create_role(role)
-            roles.append(self.role_entities[role.name])
-        teams = []
-        for team in record.teams.__root__:
-            try:
-                team_response = self.api_client.get(f"/teams/{team.id.__root__}")
-            except APIError:
-                self._create_team(team)
-            teams.append(self.team_entities[team.name])
+    def write_users(self, record: OMetaUserProfile):
+        """
+        Given a User profile (User + Teams + Roles create requests):
+        1. Check if role & team exist, otherwise create
+        2. Add ids of role & team to the User
+        3. Create or update User
+        """
 
-        metadata_user = CreateUserEntityRequest(
-            name=record.name.__root__,
-            displayName=record.displayName,
-            email=record.email,
-            roles=roles,
-            teams=teams,
-        )
+        # Create roles if they don't exist
+        if record.roles:  # Roles can be optional
+            role_ids = []
+            for role in record.roles:
+                try:
+                    role_entity = self.metadata.get_by_name(
+                        entity=Role, fqdn=str(role.name.__root__)
+                    )
+                except APIError:
+                    role_entity = self._create_role(role)
+                role_ids.append(role_entity.id)
+        else:
+            role_ids = None
+
+        # Create teams if they don't exist
+        if record.teams:  # Teams can be optional
+            team_ids = []
+            for team in record.teams:
+                try:
+                    team_entity = self.metadata.get_by_name(
+                        entity=Team, fqdn=str(team.name.__root__)
+                    )
+                except APIError:
+                    team_entity = self._create_team(team)
+                team_ids.append(team_entity.id)
+        else:
+            team_ids = None
+
+        # Update user data with the new Role and Team IDs
+        user_profile = record.user.dict(exclude_unset=True)
+        user_profile["roles"] = role_ids
+        user_profile["teams"] = team_ids
+        metadata_user = CreateUserRequest(**user_profile)
+
+        # Create user
         try:
-            self.metadata.create_or_update(metadata_user)
-            self.status.records_written(record.displayName)
-            logger.info("Sink: {}".format(record.displayName))
+            user = self.metadata.create_or_update(metadata_user)
+            self.status.records_written(user.displayName)
+            logger.info("User: {}".format(user.displayName))
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())

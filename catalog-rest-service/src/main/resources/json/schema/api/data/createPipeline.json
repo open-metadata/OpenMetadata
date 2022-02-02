@@ -1,11 +1,11 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Pipeline entity request",
+  "title": "CreatePipelineRequest",
   "description": "Create Pipeline entity request",
   "type": "object",
 
-  "properties" : {
+  "properties": {
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
       "type": "string",
@@ -20,7 +20,7 @@
       "description": "Description of the database instance. What it has and how to use it.",
       "type": "string"
     },
-    "pipelineUrl" : {
+    "pipelineUrl": {
       "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI",
       "type": "string",
       "format": "uri"
@@ -57,9 +57,9 @@
       "description": "Owner of this database",
       "$ref": "../../type/entityReference.json"
     },
-    "service" : {
+    "service": {
       "description": "Link to the database service where this database is hosted in",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "service"]

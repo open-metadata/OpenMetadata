@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import { TabSpecificField } from '../enums/entity.enum';
+
+export const defaultFields = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},
+${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS}`;
+
 export const dashboardDetailsTabs = [
   {
     name: 'Details',
@@ -19,6 +24,7 @@ export const dashboardDetailsTabs = [
   {
     name: 'Lineage',
     path: 'lineage',
+    field: TabSpecificField.LINEAGE,
   },
   {
     name: 'Manage',

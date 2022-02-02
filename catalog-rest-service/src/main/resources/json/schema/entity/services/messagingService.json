@@ -8,10 +8,7 @@
     "messagingServiceType": {
       "description": "Type of messaging service - Kafka or Pulsar.",
       "type": "string",
-      "enum": [
-        "Kafka",
-        "Pulsar"
-      ],
+      "enum": ["Kafka", "Pulsar"],
       "javaEnums": [
         {
           "name": "Kafka"
@@ -53,23 +50,23 @@
       "description": "Display Name that identifies this messaging service. It could be title or label from the source services.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
     "brokers": {
       "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "$ref" : "#/definitions/brokers"
+      "$ref": "#/definitions/brokers"
     },
-    "schemaRegistry" : {
+    "schemaRegistry": {
       "description": "Schema registry URL.",
       "type": "string",
       "format": "uri"
@@ -83,20 +80,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "serviceType",
-    "brokers"
-  ],
+  "required": ["id", "name", "serviceType", "brokers"],
   "additionalProperties": false
 }

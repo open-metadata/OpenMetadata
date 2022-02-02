@@ -12,12 +12,10 @@
 import pytest
 import requests
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -58,7 +56,7 @@ def test_create_database_service(catalog_service):
         "serviceType": "POSTGRES",
         "description": "local postgres env",
     }
-    create_postgres_service = CreateDatabaseServiceEntityRequest(**data)
+    create_postgres_service = CreateDatabaseServiceRequest(**data)
     database_service = client.create_database_service(create_postgres_service)
     if database_service:
         assert 1
@@ -84,12 +82,12 @@ def test_create_table_service(catalog_service):
         ),
     ]
 
-    create_database_request = CreateDatabaseEntityRequest(
+    create_database_request = CreateDatabaseRequest(
         name=database_name,
         service=EntityReference(id=postgres_dbservice.id, type="databaseService"),
     )
     created_database = client.create_database(create_database_request)
-    table = CreateTableEntityRequest(
+    table = CreateTableRequest(
         name=table_name, columns=columns, database=created_database.id.__root__
     )
     created_table = client.create_or_update_table(table)

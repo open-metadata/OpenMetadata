@@ -21,10 +21,14 @@ public class Property {
 
   private static Integer waitTime;
   private static String URL;
+  private static String webDriver;
+  private static String webDriverPath;
   private static final Object LOCK = new Object();
   private static Property instance;
   String openMetadataUrl = "openMetadataUrl";
   String openMetadataWaitTime = "waitTime";
+  String openMetadataWebDriver = "webDriver";
+  String openMetadataWebDriverPath = "webDriverPath";
 
   public static Property getInstance() {
     if (instance == null) {
@@ -45,6 +49,8 @@ public class Property {
     }
     URL = properties.getProperty(openMetadataUrl);
     waitTime = Integer.parseInt(properties.getProperty(openMetadataWaitTime));
+    webDriver = properties.getProperty(openMetadataWebDriver);
+    webDriverPath = properties.getProperty(openMetadataWebDriverPath);
   }
 
   public static String getURL() {
@@ -53,5 +59,13 @@ public class Property {
 
   public static Integer getSleepTime() {
     return waitTime;
+  }
+
+  public static String getWebDriver() {
+    return webDriver;
+  }
+
+  public static String getWebDriverPath() {
+    return webDriverPath;
   }
 }
