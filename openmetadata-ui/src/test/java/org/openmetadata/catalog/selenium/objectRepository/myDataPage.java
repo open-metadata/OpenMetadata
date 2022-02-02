@@ -2,7 +2,6 @@ package org.openmetadata.catalog.selenium.objectRepository;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
 
 public class myDataPage {
 
@@ -17,24 +16,24 @@ public class myDataPage {
   By page2 = By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]");
   By changeLog = By.xpath("//button[@data-testid='WhatsNewModalChangeLogs']");
   By version = By.cssSelector("p[class=\"tw-text-base tw-font-medium\"]");
-  By tables = By.linkText("Tables");
-  By topics = By.linkText("Topics");
-  By dashboard = By.linkText("Dashboards");
-  By pipelines = By.linkText("Pipelines");
-  By services = By.linkText("Services");
-  By ingestion = By.linkText("Ingestion");
-  By users = By.linkText("Users");
-  By teams = By.linkText("Teams");
-  By searchBox = By.id("searchBox");
+  By tables = By.xpath("//a[@data-testid=\"tables\"]");
+  By topics = By.xpath("//a[@data-testid=\"topics\"]");
+  By dashboard = By.xpath("//a[@data-testid=\"dashboards\"]");
+  By pipelines = By.xpath("//a[@data-testid=\"pipelines\"]");
+  By services = By.xpath("//a[@data-testid=\"service\"]");
+  //By ingestion = By.linkText("Ingestion");
+  By users = By.xpath("//a[@data-testid=\"user\"]");
+  By teams = By.xpath("//a[@data-testid=\"terms\"]");
+  By searchBox = By.xpath("//input[@data-testid=\"searchBox\"]");
   By tableName = By.linkText("dim_address");
-  By explore = By.linkText("Explore");
-  By settings = By.id("menu-button-Settings");
-  By tags = By.id("menu-item-2");
+  By explore = By.xpath("//a[@data-testid=\"appbar-item\"]");
+  By settings = By.xpath("(//button[@data-testid=\"menu-button\"])[1]");
+  By tags = By.xpath("//a[@data-testid=\"menu-item-Tags\"]");
   By ingestions = By.linkText("Ingestions");
   By home = By.cssSelector("[data-testid='image']");
   By profile = By.cssSelector("[data-testid='dropdown-profile']");
   By logout = By.cssSelector("[data-testid='menu-item-Logout']");
-  By help = By.xpath("//button[@id='menu-button-Need Help']");
+  By help = By.xpath("(//button[@data-testid=\"menu-button\"])[2]");
   By following = By.xpath("//*[@id=\"feedData\"]/div[1]/div[2]/div[2]/div/div/div/p");
   By recentlyViewed = By.xpath("//*[@id=\"left-panel\"]/div/div[3]/div/a/button");
   By recentSearch = By.xpath("/html/body/div/div/div[1]/div[2]/div/div[1]/div/div[4]/div/a/button");
@@ -45,131 +44,131 @@ public class myDataPage {
   By userName = By.cssSelector("[data-testid='greeting-text']");
   By heading = By.className("tw-heading");
 
-  public WebElement heading() {
-    return webDriver.findElement(heading);
+  public By heading() {
+    return heading;
   }
 
-  public WebElement closeWhatsNew() {
-    return webDriver.findElement(closeWhatsNew);
+  public By closeWhatsNew() {
+    return closeWhatsNew;
   }
 
-  public WebElement openWhatsNew() {
-    return webDriver.findElement(openWhatsNew);
+  public By openWhatsNew() {
+    return openWhatsNew;
   }
 
-  public WebElement page2() {
-    return webDriver.findElement(page2);
+  public By page2() {
+    return page2;
   }
 
-  public WebElement changeLog() {
-    return webDriver.findElement(changeLog);
+  public By changeLog() {
+    return changeLog;
   }
 
-  public String getVersion() {
-    return webDriver.findElement(version).getText();
+  public By getVersion() {
+    return version;
   }
 
-  public WebElement getTables() {
-    return webDriver.findElement(tables);
+  public By getTables() {
+    return tables;
   }
 
-  public WebElement getTopics() {
-    return webDriver.findElement(topics);
+  public By getTopics() {
+    return topics;
   }
 
-  public WebElement getDashboard() {
-    return webDriver.findElement(dashboard);
+  public By getDashboard() {
+    return dashboard;
   }
 
-  public WebElement getPipelines() {
-    return webDriver.findElement(pipelines);
+  public By getPipelines() {
+    return pipelines;
   }
 
-  public WebElement getServices() {
-    return webDriver.findElement(services);
+  public By getServices() {
+    return services;
   }
 
-  public WebElement getIngestion() {
-    return webDriver.findElement(ingestion);
+  /*public By getIngestion() {
+    return ingestion;
+  }*/
+
+  public By getUsers() {
+    return users;
   }
 
-  public WebElement getUsers() {
-    return webDriver.findElement(users);
+  public By getTeams() {
+    return teams;
   }
 
-  public WebElement getTeams() {
-    return webDriver.findElement(teams);
+  public By getSearchBox() {
+    return searchBox;
   }
 
-  public WebElement getSearchBox() {
-    return webDriver.findElement(searchBox);
+  public By selectTable() {
+    return tableName;
   }
 
-  public WebElement selectTable() {
-    return webDriver.findElement(tableName);
+  public By clickExplore() {
+    return explore;
   }
 
-  public WebElement clickExplore() {
-    return webDriver.findElement(explore);
+  public By openSettings() {
+    return settings;
   }
 
-  public WebElement openSettings() {
-    return webDriver.findElement(settings);
+  public By getTags() {
+    return tags;
   }
 
-  public WebElement getTags() {
-    return webDriver.findElement(tags);
+  public By getIngestions() {
+    return ingestions;
   }
 
-  public WebElement getIngestions() {
-    return webDriver.findElement(ingestions);
+  public By clickHome() {
+    return home;
   }
 
-  public WebElement clickHome() {
-    return webDriver.findElement(home);
+  public By profile() {
+    return profile;
   }
 
-  public WebElement profile() {
-    return webDriver.findElement(profile);
+  public By logout() {
+    return logout;
   }
 
-  public WebElement logout() {
-    return webDriver.findElement(logout);
+  public By help() {
+    return help;
   }
 
-  public WebElement help() {
-    return webDriver.findElement(help);
+  public By following() {
+    return following;
   }
 
-  public WebElement following() {
-    return webDriver.findElement(following);
+  public By recentlyViewed() {
+    return recentlyViewed;
   }
 
-  public WebElement recentlyViewed() {
-    return webDriver.findElement(recentlyViewed);
+  public By recentSearch() {
+    return recentSearch;
   }
 
-  public WebElement recentSearch() {
-    return webDriver.findElement(recentSearch);
+  public By recentSearchWithSpace() {
+    return recentSearchWithSpace;
   }
 
-  public WebElement recentSearchWithSpace() {
-    return webDriver.findElement(recentSearchWithSpace);
+  public By docs() {
+    return Docs;
   }
 
-  public WebElement docs() {
-    return webDriver.findElement(Docs);
+  public By api() {
+    return API;
   }
 
-  public WebElement api() {
-    return webDriver.findElement(API);
+  public By slack() {
+    return Slack;
   }
 
-  public WebElement slack() {
-    return webDriver.findElement(Slack);
-  }
-
-  public WebElement userName() {
-    return webDriver.findElement(userName);
+  public By userName() {
+    return userName;
   }
 }
