@@ -59,7 +59,7 @@ public class CommonTests {
   String tableName = "dim_address";
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  
+
   @BeforeEach
   public void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);

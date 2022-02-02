@@ -49,7 +49,7 @@ public class PaginationAndFilterTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  
+
   @BeforeEach
   public void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
