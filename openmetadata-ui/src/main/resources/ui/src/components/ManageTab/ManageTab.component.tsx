@@ -19,6 +19,8 @@ import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import { getCategory } from '../../axiosAPIs/tagAPI';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { useAuth } from '../../hooks/authHooks';
 import { getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
@@ -44,6 +46,7 @@ const ManageTab: FunctionComponent<Props> = ({
   onSave,
   hasEditAccess,
 }: Props) => {
+  const { userPermissions, isAuthDisabled } = useAuth();
   const getOwnerList = () => {
     const user = !isEmpty(appState.userDetails)
       ? appState.userDetails
@@ -220,33 +223,46 @@ const ManageTab: FunctionComponent<Props> = ({
       <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator">
         <span className="tw-mr-2">Owner:</span>
         <span className="tw-relative">
-          <Button
-            className="tw-underline"
-            data-testid="owner-dropdown"
-            disabled={!listOwners.length}
-            size="custom"
-            theme="primary"
-            variant="link"
-            onClick={() => setListVisible((visible) => !visible)}>
-            {ownerName ? (
-              <span
-                className={classNames('tw-truncate', {
-                  'tw-w-52': ownerName.length > 32,
-                })}
-                title={ownerName}>
-                {ownerName}
-              </span>
-            ) : (
-              'Select Owner'
-            )}
-            <SVGIcons
-              alt="edit"
-              className="tw-ml-1"
-              icon="icon-edit"
-              title="Edit"
-              width="12px"
-            />
-          </Button>
+          <NonAdminAction
+            html={
+              <>
+                <p>You do not have permissions to update the owner.</p>
+              </>
+            }
+            isOwner={hasEditAccess || Boolean(owner)}
+            permission={Operation.UpdateOwner}
+            position="left">
+            <Button
+              className={classNames('tw-underline', {
+                'tw-opacity-40':
+                  !userPermissions[Operation.UpdateOwner] && !isAuthDisabled,
+              })}
+              data-testid="owner-dropdown"
+              disabled={!listOwners.length}
+              size="custom"
+              theme="primary"
+              variant="link"
+              onClick={() => setListVisible((visible) => !visible)}>
+              {ownerName ? (
+                <span
+                  className={classNames('tw-truncate', {
+                    'tw-w-52': ownerName.length > 32,
+                  })}
+                  title={ownerName}>
+                  {ownerName}
+                </span>
+              ) : (
+                'Select Owner'
+              )}
+              <SVGIcons
+                alt="edit"
+                className="tw-ml-1"
+                icon="icon-edit"
+                title="Edit"
+                width="12px"
+              />
+            </Button>
+          </NonAdminAction>
           {listVisible && (
             <DropDownList
               showSearchBar
@@ -273,6 +289,7 @@ const ManageTab: FunctionComponent<Props> = ({
               }
               isOwner={hasEditAccess || Boolean(owner)}
               key={i}
+              permission={Operation.UpdateTags}
               position="left">
               <CardListItem
                 card={card}

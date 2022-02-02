@@ -91,7 +91,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineageHandler,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
-  const { userPermissions } = useAuth();
+  const { userPermissions, isAuthDisabled } = useAuth();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
   const [reactFlowInstance, setReactFlowInstance] = useState<OnLoadParams>();
@@ -679,7 +679,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                           },
                           {
                             'tw-opacity-40':
-                              !userPermissions[Operation.UpdateLineage],
+                              !userPermissions[Operation.UpdateLineage] &&
+                              !isAuthDisabled,
                           }
                         )}
                         onClick={() => {
