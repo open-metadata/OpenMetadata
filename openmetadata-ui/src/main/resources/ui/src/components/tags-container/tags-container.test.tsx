@@ -19,6 +19,14 @@ const tagList = ['tag 1', 'tag 2', 'tag 3'];
 const onCancel = jest.fn();
 const onSelectionChange = jest.fn();
 
+jest.mock('../dropdown/DropDownList', () => {
+  return jest.fn().mockReturnValue(<p>DropDownList</p>);
+});
+
+jest.mock('../tags/tags', () => {
+  return jest.fn().mockReturnValue(<p>tags</p>);
+});
+
 describe('Test TagsContainer Component', () => {
   it('Component should render', () => {
     const { container } = render(
