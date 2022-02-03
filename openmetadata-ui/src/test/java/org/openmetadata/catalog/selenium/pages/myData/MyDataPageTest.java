@@ -52,6 +52,7 @@ public class MyDataPageTest {
   ingestionPage ingestionPage;
   UserListPage userListPage;
   TableDetails tableDetails;
+  ExplorePage explorePage;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
@@ -68,6 +69,7 @@ public class MyDataPageTest {
     teamsPage = new TeamsPage(webDriver);
     tagsPage = new tagsPage(webDriver);
     tableDetails = new TableDetails(webDriver);
+    explorePage = new ExplorePage(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -139,7 +141,6 @@ public class MyDataPageTest {
   @Order(4)
   public void checkExplore() {
     String url;
-    ExplorePage explorePage = new ExplorePage(webDriver);
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.clickExplore());
     url = webDriver.getCurrentUrl();
@@ -154,7 +155,7 @@ public class MyDataPageTest {
   }
 
   @Test
-  @Order(4)
+  @Order(5)
   public void checkHeaders() throws InterruptedException {
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
@@ -220,7 +221,7 @@ public class MyDataPageTest {
   }
 
   @Test
-  @Order(5)
+  @Order(6)
   public void checkMyDataTab() throws InterruptedException {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.getTables());
@@ -239,14 +240,13 @@ public class MyDataPageTest {
         Assert.assertEquals(tableName.getText(), "dim_address");
         webDriver.findElement(By.linkText(table)).click();
       }
-
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
   @Test
-  @Order(6)
+  @Order(7)
   public void checkFollowingTab() throws InterruptedException {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.getTables());
@@ -270,7 +270,7 @@ public class MyDataPageTest {
   }
 
   @Test
-  @Order(7)
+  @Order(8)
   public void checkRecentlyViewed() throws InterruptedException {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
