@@ -119,7 +119,6 @@ const ServicesPage = () => {
   const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
-  const [currentTabTotalCount, setCurrentTabTotalCount] = useState(0);
 
   const [servicesCount, setServicesCount] = useState({
     databaseServices: 0,
@@ -168,7 +167,6 @@ const ServicesPage = () => {
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
-            setCurrentTabTotalCount(servicePaging[serviceName].total || 0);
           }
           setIsLoading(false);
         }
@@ -349,10 +347,6 @@ const ServicesPage = () => {
 
   const handleTabChange = (tabName: ServiceTypes) => {
     setSearchText('');
-    setServicesCount({
-      ...servicesCount,
-      [serviceName]: currentTabTotalCount,
-    });
     setServiceName(tabName);
     setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
   };
@@ -495,10 +489,6 @@ const ServicesPage = () => {
       updateServiceList(allServiceCollectionArr);
     });
   }, []);
-
-  useEffect(() => {
-    setCurrentTabTotalCount(servicesCount[serviceName]);
-  }, [serviceName]);
 
   return (
     <>

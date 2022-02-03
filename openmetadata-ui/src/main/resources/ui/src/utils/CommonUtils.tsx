@@ -20,7 +20,7 @@ import {
   RecentlyViewedData,
 } from 'Models';
 import { utc } from 'moment';
-import React from 'react';
+import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
@@ -381,4 +381,8 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
   }
 
   return `${defaultFields}, ${tabSpecificField}`;
+};
+
+export const restrictFormSubmit = (e: FormEvent) => {
+  e.preventDefault();
 };
