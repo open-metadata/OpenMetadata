@@ -74,7 +74,9 @@ const SigninPage = () => {
   }
 
   return (
-    <div className="tw-flex tw-bg-body-main tw-h-screen">
+    <div
+      className="tw-flex tw-bg-body-main tw-h-screen"
+      data-testid="signin-page">
       <div className="tw-w-5/12">
         <div className="tw-mt-52 tw-text-center">
           <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
@@ -89,7 +91,12 @@ const SigninPage = () => {
       </div>
       <div className="tw-w-7/12 tw-relative">
         <div className="tw-absolute tw-inset-0">
-          <img alt="bg-image" className="tw-w-full tw-h-screen" src={loginBG} />
+          <img
+            alt="bg-image"
+            className="tw-w-full tw-h-screen"
+            data-testid="bg-image"
+            src={loginBG}
+          />
         </div>
         <div className="tw-relative">
           <div className="tw-flex tw-justify-center tw-mt-44">
