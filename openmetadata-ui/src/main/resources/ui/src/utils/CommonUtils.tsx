@@ -238,6 +238,18 @@ export const addToRecentSearched = (searchTerm: string): void => {
   }
 };
 
+export const removeRecentSearchTerm = (searchTerm: string) => {
+  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_SEARCHED
+  ) as RecentlySearched;
+  if (recentlySearch?.data) {
+    const arrData = recentlySearch.data.filter(
+      (item) => item.term !== searchTerm
+    );
+    setRecentlySearchedData(arrData);
+  }
+};
+
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   const entityData = { ...eData, timestamp: Date.now() };
   let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
