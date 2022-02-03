@@ -6,16 +6,6 @@ description: This guide will help you to run OpenMetadata UI locally.
 
 ### **Pre-requisites**
 
-Before proceeding, ensure that you have installed the node and yarn with the versions given below.
-
-```
-"node": ">=10.0.0",
-"yarn": "^1.22.0"
-```
-
-[**Install Node**](https://nodejs.org/en/download/)\
-[**Install Yarn**](https://classic.yarnpkg.com/lang/en/docs/install/)****
-
 Using the command below, spin up the server locally from the directory.`openmetadata-dist/target/openmetadata-*-SNAPSHOT`.
 
 ```shell

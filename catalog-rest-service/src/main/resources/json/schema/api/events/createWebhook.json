@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/type/createWebhook.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ChangeEvent",
+  "title": "CreateWebhookRequest",
   "description": "This schema defines webhook for receiving events from OpenMetadata",
   "type": "object",
   "properties": {
@@ -42,15 +42,11 @@
       "type": "boolean",
       "default": true
     },
-    "secretKey" : {
-      "description" : "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
-      "type" : "string"
+    "secretKey": {
+      "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
+      "type": "string"
     }
   },
-  "required": [
-    "name",
-    "endPoint",
-    "eventFilter"
-  ],
+  "required": ["name", "endpoint", "eventFilters"],
   "additionalProperties": false
 }

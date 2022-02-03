@@ -19,7 +19,7 @@ import sklearn.datasets as datasets
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import MlFeature, MlModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -49,7 +49,7 @@ class OMetaModelMixinTest(TestCase):
         dtree = DecisionTreeClassifier()
         dtree.fit(x_train, y_train)
 
-        entity_create: CreateMlModelEntityRequest = self.metadata.get_mlmodel_sklearn(
+        entity_create: CreateMlModelRequest = self.metadata.get_mlmodel_sklearn(
             name="test-sklearn",
             model=dtree,
             description="Creating a test sklearn model",

@@ -15,13 +15,11 @@ OpenMetadata high-level API Pipeline test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
+    CreatePipelineServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
@@ -46,11 +44,11 @@ class OMetaPipelineTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
-    service = CreatePipelineServiceEntityRequest(
+    service = CreatePipelineServiceRequest(
         name="test-service-pipeline",
         serviceType=PipelineServiceType.Airflow,
         pipelineUrl="https://localhost:1000",
@@ -71,7 +69,7 @@ class OMetaPipelineTest(TestCase):
             fullyQualifiedName="test-service-pipeline.test",
         )
 
-        cls.create = CreatePipelineEntityRequest(
+        cls.create = CreatePipelineRequest(
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
         )
@@ -116,7 +114,7 @@ class OMetaPipelineTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreatePipelineEntityRequest(**updated)
+        updated_entity = CreatePipelineRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 

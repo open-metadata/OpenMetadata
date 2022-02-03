@@ -15,19 +15,19 @@ from typing import List
 from pydantic import SecretStr
 
 from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceEntityRequest,
+    CreateDashboardServiceRequest,
 )
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceEntityRequest,
+    CreateMessagingServiceRequest,
 )
 from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
+    CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceEntityRequest,
+    CreateStorageServiceRequest,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -86,7 +86,7 @@ def get_database_service_or_create(
             "serviceType": config.get_service_type(),
         }
         created_service = metadata.create_or_update(
-            CreateDatabaseServiceEntityRequest(**service)
+            CreateDatabaseServiceRequest(**service)
         )
         return created_service
 
@@ -104,7 +104,7 @@ def get_messaging_service_or_create(
         return service
     else:
         created_service = metadata.create_or_update(
-            CreateMessagingServiceEntityRequest(
+            CreateMessagingServiceRequest(
                 name=service_name,
                 serviceType=message_service_type,
                 brokers=brokers,
@@ -128,7 +128,7 @@ def get_dashboard_service_or_create(
         return service
     else:
         created_service = metadata.create_or_update(
-            CreateDashboardServiceEntityRequest(
+            CreateDashboardServiceRequest(
                 name=service_name,
                 serviceType=dashboard_service_type,
                 username=username,
@@ -146,7 +146,7 @@ def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineSer
         return service
     else:
         created_service = metadata.create_or_update(
-            CreatePipelineServiceEntityRequest(**service_json)
+            CreatePipelineServiceRequest(**service_json)
         )
         return created_service
 
@@ -158,7 +158,7 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
         return service
     else:
         created_service = metadata.create_or_update(
-            CreateStorageServiceEntityRequest(**service_json)
+            CreateStorageServiceRequest(**service_json)
         )
         return created_service
 
@@ -170,7 +170,7 @@ def get_database_service_or_create_v2(service_json, metadata_config) -> Database
         return service
     else:
         created_service = metadata.create_or_update(
-            CreateDatabaseServiceEntityRequest(**service_json)
+            CreateDatabaseServiceRequest(**service_json)
         )
     return created_service
 

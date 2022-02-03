@@ -10,10 +10,7 @@
       "javaType": "org.openmetadata.catalog.type.MlFeatureDataType",
       "description": "This enum defines the type of data stored in a ML Feature.",
       "type": "string",
-      "enum": [
-        "numerical",
-        "categorical"
-      ],
+      "enum": ["numerical", "categorical"],
       "javaEnums": [
         {
           "name": "Numerical"
@@ -85,8 +82,8 @@
           "$ref": "#/definitions/fullyQualifiedFeatureSourceName"
         },
         "dataSource": {
-          "description": "Description of the Data Source (e.g., a Table).",
-          "$ref" : "../../type/entityReference.json"
+          "description": "Description of the Data Source (e.g., a Table)",
+          "$ref": "../../type/entityReference.json"
         },
         "tags": {
           "description": "Tags associated with the feature source.",
@@ -177,7 +174,7 @@
       }
     }
   },
-  "properties" : {
+  "properties": {
     "id": {
       "description": "Unique identifier of an ML Model instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -226,9 +223,9 @@
       "description": "For supervised ML Models, the value to estimate.",
       "$ref": "#/definitions/featureName"
     },
-    "dashboard" : {
+    "dashboard": {
       "description": "Performance Dashboard URL to track metric evolution.",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     },
     "mlStore": {
       "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
@@ -258,30 +255,30 @@
       },
       "default": null
     },
-    "usageSummary" : {
+    "usageSummary": {
       "description": "Latest usage information for this ML Model.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },

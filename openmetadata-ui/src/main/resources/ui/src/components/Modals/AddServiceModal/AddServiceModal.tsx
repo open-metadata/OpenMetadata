@@ -1624,6 +1624,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         'tw-border-primary': service === selectService,
                       }
                     )}
+                    data-testid={service}
                     key={service}
                     onClick={() => handleServiceClick(service)}>
                     <div className="tw-flex tw-items-center">

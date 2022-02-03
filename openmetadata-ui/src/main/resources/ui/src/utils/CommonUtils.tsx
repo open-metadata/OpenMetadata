@@ -29,6 +29,7 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
   EntityReference as UserTeams,
@@ -366,4 +367,18 @@ export const isValidUrl = (href: string) => {
   );
 
   return href.match(regex);
+};
+
+export const getFields = (defaultFields: string, tabSpecificField: string) => {
+  if (!tabSpecificField) {
+    return defaultFields;
+  }
+  if (!defaultFields) {
+    return tabSpecificField;
+  }
+  if (tabSpecificField === TabSpecificField.LINEAGE) {
+    return defaultFields;
+  }
+
+  return `${defaultFields}, ${tabSpecificField}`;
 };

@@ -1,11 +1,11 @@
 {
   "$id": "https://open-metadata.org/schema/api/services/createDatabaseService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Database service entity request",
+  "title": "CreateDatabaseServiceRequest",
   "description": "Create Database service entity request",
   "type": "object",
 
-  "properties" : {
+  "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
       "type": "string",
@@ -20,7 +20,7 @@
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
     },
     "databaseConnection": {
-      "$ref" : "../../entity/services/databaseService.json#/definitions/databaseConnection"
+      "$ref": "../../entity/services/databaseService.json#/definitions/databaseConnection"
     }
   },
   "required": ["name", "serviceType", "databaseConnection"]

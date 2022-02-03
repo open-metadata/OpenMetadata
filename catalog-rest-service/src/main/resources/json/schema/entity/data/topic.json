@@ -16,12 +16,7 @@
     "schemaType": {
       "description": "Schema type used for the message.",
       "javaType": "org.openmetadata.catalog.type.topic.SchemaType",
-      "enum" : [
-        "Avro",
-        "Protobuf",
-        "JSON",
-        "Other"
-      ],
+      "enum": ["Avro", "Protobuf", "JSON", "Other"],
       "javaEnums": [
         {
           "name": "Avro"
@@ -40,10 +35,7 @@
     "cleanupPolicy": {
       "javaType": "org.openmetadata.catalog.type.topic.CleanupPolicy",
       "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
-      "enum": [
-        "delete",
-        "compact"
-      ]
+      "enum": ["delete", "compact"]
     }
   },
   "properties": {
@@ -67,15 +59,15 @@
       "description": "Description of the topic instance.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -83,50 +75,50 @@
       "description": "Link to the messaging cluster/service where this topic is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
-    "serviceType" : {
+    "serviceType": {
       "description": "Service type where this topic is hosted in.",
-      "$ref" : "../services/messagingService.json#/definitions/messagingServiceType"
+      "$ref": "../services/messagingService.json#/definitions/messagingServiceType"
     },
-    "partitions" : {
-      "description" : "Number of partitions into which the topic is divided.",
-      "type" : "integer",
+    "partitions": {
+      "description": "Number of partitions into which the topic is divided.",
+      "type": "integer",
       "minimum": 1
     },
-    "schemaText" : {
-      "description" : "Schema used for message serialization. Optional as some topics may not have associated schemas.",
-      "type" : "string"
+    "schemaText": {
+      "description": "Schema used for message serialization. Optional as some topics may not have associated schemas.",
+      "type": "string"
     },
-    "schemaType" : {
-      "description" : "Schema used for message serialization.",
+    "schemaType": {
+      "description": "Schema used for message serialization.",
       "$ref": "#/definitions/schemaType"
     },
     "cleanupPolicies": {
       "description": "Topic clean up policies. For Kafka - `cleanup.policy` configuration.",
       "type": "array",
       "items": {
-        "$ref" : "#/definitions/cleanupPolicy"
+        "$ref": "#/definitions/cleanupPolicy"
       }
     },
     "retentionTime": {
       "description": "Retention time in milliseconds. For Kafka - `retention.ms` configuration.",
-      "type" : "integer"
+      "type": "integer"
     },
     "replicationFactor": {
       "description": "Replication Factor in integer (more than 1).",
-      "type" : "integer"
+      "type": "integer"
     },
-    "maximumMessageSize" : {
+    "maximumMessageSize": {
       "description": "Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.",
-      "type" : "integer"
+      "type": "integer"
     },
-    "minimumInSyncReplicas" : {
+    "minimumInSyncReplicas": {
       "description": "Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas` configuration.",
-      "type" : "integer"
+      "type": "integer"
     },
     "retentionSize": {
       "description": "Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
-      "type" : "integer",
-      "default" : "-1"
+      "type": "integer",
+      "default": "-1"
     },
     "owner": {
       "description": "Owner of this topic.",
@@ -149,20 +141,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "partitions",
-    "service"
-  ],
+  "required": ["id", "name", "partitions", "service"],
   "additionalProperties": false
 }

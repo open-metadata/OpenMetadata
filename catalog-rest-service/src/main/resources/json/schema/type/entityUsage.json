@@ -1,9 +1,9 @@
 {
   "$id": "https://open-metadata.org/schema/type/entityUsage.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Usage details of an entity",
+  "title": "EntityUsage",
   "description": "This schema defines the type used for capturing usage details of an entity.",
-  "type" : "object",
+  "type": "object",
 
   "properties": {
     "entity": {

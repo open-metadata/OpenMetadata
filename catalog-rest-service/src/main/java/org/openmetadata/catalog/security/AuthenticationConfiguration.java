@@ -63,4 +63,25 @@ public class AuthenticationConfiguration {
   public void setCallbackUrl(String callbackUrl) {
     this.callbackUrl = callbackUrl;
   }
+
+  @Override
+  public String toString() {
+    return "AuthenticationConfiguration{"
+        + "provider='"
+        + provider
+        + '\''
+        + ", publicKey='"
+        + publicKey
+        + '\''
+        + ", authority='"
+        + authority
+        + '\''
+        + ", clientId='"
+        + clientId
+        + '\''
+        + ", callbackUrl='"
+        + callbackUrl
+        + '\''
+        + '}';
+  }
 }

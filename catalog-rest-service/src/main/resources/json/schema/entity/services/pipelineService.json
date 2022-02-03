@@ -8,11 +8,7 @@
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
-      "enum": [
-        "Airflow",
-        "Prefect",
-        "Glue"
-      ],
+      "enum": ["Airflow", "Prefect", "Glue"],
       "javaEnums": [
         {
           "name": "Airflow"
@@ -49,15 +45,15 @@
       "description": "Display Name that identifies this pipeline service. It could be title or label from the source services.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -75,19 +71,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "pipelineUrl"
-  ],
+  "required": ["id", "name", "pipelineUrl"],
   "additionalProperties": false
 }

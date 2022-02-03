@@ -14,6 +14,7 @@
 import { lowerCase } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
+import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
 import { tableSortingFields, tiers, topicSortingFields } from './constants';
 
@@ -50,7 +51,9 @@ export const getQueryParam = (urlSearchQuery = ''): FilterObject => {
       const arrFilter = filter.split('=');
 
       return {
-        [arrFilter[0]]: [arrFilter[1]].map((r) => r.split(',')).flat(1),
+        [getFilterKey(arrFilter[0])]: [arrFilter[1]]
+          .map((r) => r.split(','))
+          .flat(1),
       };
     })
     .reduce((prev, curr) => {

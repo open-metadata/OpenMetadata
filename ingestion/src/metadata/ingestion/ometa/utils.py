@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 
 
 def format_name(name: str) -> str:

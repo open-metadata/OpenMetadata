@@ -17,7 +17,7 @@ import pytest
 import requests
 from ldap3 import ALL, Connection, Server
 
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 
 headers = {"Content-type": "application/json"}
 url = "http://localhost:8585/api/v1/users"
@@ -102,7 +102,7 @@ def datetime_suffix():
 
 
 def test_insert_user(ldap_user_entry, datetime_suffix):
-    metadata_user = CreateUserEntityRequest(
+    metadata_user = CreateUserRequest(
         name=str(ldap_user_entry["uid"]) + datetime_suffix,
         displayName=str(ldap_user_entry["cn"]),
         email=str(ldap_user_entry["mail"]),
@@ -122,7 +122,7 @@ def test_read_user(ldap_user_entry, datetime_suffix):
 def test_update_user(ldap_user_entry, datetime_suffix):
     user = read_user_by_name(str(ldap_user_entry["uid"]) + datetime_suffix)
     user[1]["displayName"] = "Jane Doe"
-    metadata_user = CreateUserEntityRequest(
+    metadata_user = CreateUserRequest(
         name=user[1]["name"],
         displayName=user[1]["displayName"],
         email=user[1]["email"],

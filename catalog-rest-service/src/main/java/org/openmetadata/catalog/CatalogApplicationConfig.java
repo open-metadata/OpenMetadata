@@ -24,6 +24,7 @@ import javax.validation.constraints.NotNull;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
+import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
@@ -55,6 +56,10 @@ public class CatalogApplicationConfig extends Configuration {
 
   @JsonProperty("slackEventPublishers")
   private List<SlackPublisherConfiguration> slackEventPublishers;
+
+  @NotNull
+  @JsonProperty("migrationConfiguration")
+  private MigrationConfiguration migrationConfiguration;
 
   public DataSourceFactory getDataSourceFactory() {
     return dataSourceFactory;
@@ -106,6 +111,14 @@ public class CatalogApplicationConfig extends Configuration {
 
   public List<SlackPublisherConfiguration> getSlackEventPublishers() {
     return slackEventPublishers;
+  }
+
+  public MigrationConfiguration getMigrationConfiguration() {
+    return migrationConfiguration;
+  }
+
+  public void setMigrationConfiguration(MigrationConfiguration migrationConfiguration) {
+    this.migrationConfiguration = migrationConfiguration;
   }
 
   public void setSlackEventPublishers(List<SlackPublisherConfiguration> slackEventPublishers) {

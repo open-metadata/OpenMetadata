@@ -72,6 +72,7 @@ const PipelineDetails = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  isLineageLoading,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -408,6 +409,7 @@ const PipelineDetails = ({
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
+                    isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}

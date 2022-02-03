@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createPolicy.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Policy Entity Request",
+  "title": "CreatePolicyRequest",
   "description": "Create Policy Entity Request",
   "type": "object",
   "properties": {
@@ -37,15 +37,12 @@
       "type": "boolean",
       "default": true
     },
-    "location" : {
+    "location": {
       "description": "UUID of Location where this policy is applied",
       "$ref": "../../type/basic.json#/definitions/uuid",
-      "default" : null
+      "default": null
     }
   },
-  "required": [
-    "name",
-    "policyType"
-  ],
+  "required": ["name", "policyType"],
   "additionalProperties": false
 }
