@@ -17,12 +17,10 @@ import org.openmetadata.catalog.selenium.objectRepository.RolesPage;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.objectRepository.UserPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -78,14 +76,14 @@ public class RolesPageTest {
   @Order(2)
   public void addRole() throws InterruptedException {
     openRolesPage();
-//    Events.click(webDriver, By.cssSelector("[data-testid='add-role']"));
-//    Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
-//    Events.sendKeys(webDriver, By.name("displayName"), roleDisplayName); // displayName
-//    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-//    Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='add-role']"));
+    //    Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
+    //    Events.sendKeys(webDriver, By.name("displayName"), roleDisplayName); // displayName
+    //    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    //    Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
 
     Events.click(webDriver, rolesPage.addRoleButton());
     Events.sendKeys(webDriver, tagsPage.displayName(), faker.name().firstName());
@@ -107,11 +105,11 @@ public class RolesPageTest {
   @Order(3)
   public void editDescription() throws InterruptedException {
     openRolesPage();
-//    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-//    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
-//    wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
-//    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-//    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
+    //    wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
+    //    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    //    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
 
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, tagsPage.editTagCategoryDescription());
@@ -123,14 +121,14 @@ public class RolesPageTest {
   @Order(4)
   public void addRules() throws InterruptedException {
     openRolesPage();
-//    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-//    Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='select-operation']"));
-//    Events.click(webDriver, By.cssSelector("[value='UpdateDescription']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='select-access']"));
-//    Events.click(webDriver, By.cssSelector("[value='allow']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='rule-switch']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='select-operation']"));
+    //    Events.click(webDriver, By.cssSelector("[value='UpdateDescription']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='select-access']"));
+    //    Events.click(webDriver, By.cssSelector("[value='allow']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='rule-switch']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
 
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, databaseServicePage.noServicesAddServiceButton());
@@ -146,15 +144,16 @@ public class RolesPageTest {
   @Order(5)
   public void editRule() throws InterruptedException {
     openRolesPage();
-//    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-//    Events.click(webDriver, By.xpath("//tbody[@data-testid='table-body']/tr/td[4]/div/span"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='select-access']"));
-//    Events.click(webDriver, By.cssSelector("[value='deny']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
-//    Thread.sleep(2000);
-//    String access =
-//        webDriver.findElement(By.xpath("//tbody[@data-testid='table-body']/tr/td[2]/p")).getAttribute("innerHTML");
-//    Assert.assertEquals(access, "DENY");
+    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
+    //    Events.click(webDriver, By.xpath("//tbody[@data-testid='table-body']/tr/td[4]/div/span"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='select-access']"));
+    //    Events.click(webDriver, By.cssSelector("[value='deny']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
+    //    Thread.sleep(2000);
+    //    String access =
+    //
+    // webDriver.findElement(By.xpath("//tbody[@data-testid='table-body']/tr/td[2]/p")).getAttribute("innerHTML");
+    //    Assert.assertEquals(access, "DENY");
 
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.editRuleButton());
@@ -169,9 +168,9 @@ public class RolesPageTest {
   @Order(6)
   public void deleteRule() throws InterruptedException {
     openRolesPage();
-//    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-//    Events.click(webDriver, By.cssSelector("[data-testid='image'][title='Delete']"));
-//    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='image'][title='Delete']"));
+    //    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
 
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.deleteRuleButton());

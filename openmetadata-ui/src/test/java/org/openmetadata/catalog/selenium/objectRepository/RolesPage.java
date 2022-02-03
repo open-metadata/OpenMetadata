@@ -58,5 +58,4 @@ public class RolesPage {
   public By selectAccess(String access) {
     return By.cssSelector("[value='" + access + "']");
   }
-
 }
