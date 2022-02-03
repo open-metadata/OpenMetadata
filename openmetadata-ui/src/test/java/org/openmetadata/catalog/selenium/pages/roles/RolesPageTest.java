@@ -76,15 +76,6 @@ public class RolesPageTest {
   @Order(2)
   public void addRole() throws InterruptedException {
     openRolesPage();
-    //    Events.click(webDriver, By.cssSelector("[data-testid='add-role']"));
-    //    Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
-    //    Events.sendKeys(webDriver, By.name("displayName"), roleDisplayName); // displayName
-    //    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    //    Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
-
     Events.click(webDriver, rolesPage.addRoleButton());
     Events.sendKeys(webDriver, tagsPage.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
@@ -105,12 +96,6 @@ public class RolesPageTest {
   @Order(3)
   public void editDescription() throws InterruptedException {
     openRolesPage();
-    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
-    //    wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
-    //    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
-    //    Events.click(webDriver, By.cssSelector("[data-testid='save']"));
-
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, tagsPage.editTagCategoryDescription());
     Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
@@ -121,15 +106,6 @@ public class RolesPageTest {
   @Order(4)
   public void addRules() throws InterruptedException {
     openRolesPage();
-    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='select-operation']"));
-    //    Events.click(webDriver, By.cssSelector("[value='UpdateDescription']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='select-access']"));
-    //    Events.click(webDriver, By.cssSelector("[value='allow']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='rule-switch']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
-
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, databaseServicePage.noServicesAddServiceButton());
     Events.click(webDriver, rolesPage.listOperation());
@@ -144,17 +120,6 @@ public class RolesPageTest {
   @Order(5)
   public void editRule() throws InterruptedException {
     openRolesPage();
-    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-    //    Events.click(webDriver, By.xpath("//tbody[@data-testid='table-body']/tr/td[4]/div/span"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='select-access']"));
-    //    Events.click(webDriver, By.cssSelector("[value='deny']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
-    //    Thread.sleep(2000);
-    //    String access =
-    //
-    // webDriver.findElement(By.xpath("//tbody[@data-testid='table-body']/tr/td[2]/p")).getAttribute("innerHTML");
-    //    Assert.assertEquals(access, "DENY");
-
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.editRuleButton());
     Events.click(webDriver, rolesPage.listAccess());
@@ -168,10 +133,6 @@ public class RolesPageTest {
   @Order(6)
   public void deleteRule() throws InterruptedException {
     openRolesPage();
-    //    Events.click(webDriver, By.xpath("//*[text()[contains(.,'" + roleDisplayName + "')]] "));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='image'][title='Delete']"));
-    //    Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
-
     Events.click(webDriver, tagsPage.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.deleteRuleButton());
     Events.click(webDriver, databaseServicePage.saveEditedService());
