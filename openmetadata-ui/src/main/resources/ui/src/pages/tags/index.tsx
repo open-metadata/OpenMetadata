@@ -43,6 +43,7 @@ import {
   CreateTagCategory,
   TagCategoryType,
 } from '../../generated/api/tags/createTagCategory';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -389,6 +390,7 @@ const TagsPage = () => {
                                     )}
                                   </div>
                                   <NonAdminAction
+                                    permission={Operation.UpdateDescription}
                                     position="left"
                                     title={TITLE_FOR_NON_ADMIN_ACTION}>
                                     <button
@@ -435,6 +437,7 @@ const TagsPage = () => {
                                   setEditTag(tag);
                                 }}>
                                 <NonAdminAction
+                                  permission={Operation.UpdateTags}
                                   position="left"
                                   title={TITLE_FOR_NON_ADMIN_ACTION}
                                   trigger="click">

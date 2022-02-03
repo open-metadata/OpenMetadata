@@ -16,6 +16,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
+import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { User } from '../../../generated/entity/teams/user';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
@@ -341,6 +342,7 @@ const EntityPageInfo = ({
           <NonAdminAction
             html={getHtmlForNonAdminAction(Boolean(owner))}
             isOwner={hasEditAccess}
+            permission={Operation.UpdateTags}
             position="bottom"
             trigger="click">
             <div

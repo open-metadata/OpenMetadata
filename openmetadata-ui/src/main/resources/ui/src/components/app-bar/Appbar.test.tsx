@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByTestId,
-  findByTestId,
-  findByText,
-  fireEvent,
-  render,
-} from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Appbar from './Appbar';
@@ -33,9 +27,9 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
-jest.mock('../Modals/WhatsNewModal', () => ({
-  WhatsNewModal: jest.fn().mockReturnValue(<p>WhatsNewModal</p>),
-}));
+jest.mock('../nav-bar/NavBar', () => {
+  return jest.fn().mockReturnValue(<p>NavBar</p>);
+});
 
 jest.mock('../../axiosAPIs/miscAPI', () => ({
   getVersion: jest.fn().mockImplementation(() =>
@@ -53,33 +47,8 @@ describe('Test Appbar Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const dropdown = await findByTestId(container, 'dropdown-profile');
-    const whatsnewModal = await findByTestId(container, 'whatsnew-modal');
-    const greetingText = await findByTestId(container, 'greeting-text');
+    const NavBar = await findByText(container, 'NavBar');
 
-    expect(dropdown).toBeInTheDocument();
-    expect(whatsnewModal).toBeInTheDocument();
-    expect(greetingText).toBeInTheDocument();
-  });
-
-  it('Check for render Items by default', async () => {
-    const { container } = render(<Appbar />, {
-      wrapper: MemoryRouter,
-    });
-    const items = await findAllByTestId(container, 'appbar-item');
-
-    expect(items).toHaveLength(2);
-    expect(items.map((i) => i.textContent)).toEqual(['', 'Explore']);
-  });
-
-  it('onClick of whatsNewModal, it should open', async () => {
-    const { container } = render(<Appbar />, {
-      wrapper: MemoryRouter,
-    });
-
-    const whatsnewModal = await findByTestId(container, 'whatsnew-modal');
-    fireEvent.click(whatsnewModal);
-
-    expect(await findByText(container, /WhatsNewModal/i)).toBeInTheDocument();
+    expect(NavBar).toBeInTheDocument();
   });
 });

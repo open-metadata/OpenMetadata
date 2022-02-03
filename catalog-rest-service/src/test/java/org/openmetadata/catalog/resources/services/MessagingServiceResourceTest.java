@@ -61,9 +61,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         MessagingService.class,
         MessagingServiceList.class,
         "services/messagingServices",
-        "",
+        "owner",
         false,
-        false,
+        true,
         false,
         false);
     supportsPatch = false;
@@ -218,15 +218,18 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Test
-  void put_update_as_non_admin_401(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withDescription(null).withIngestionSchedule(null), ADMIN_AUTH_HEADERS);
+  void put_update_as_non_owner_401(TestInfo test) throws IOException {
+    createAndCheckEntity(
+        createRequest(test).withDescription(null).withIngestionSchedule(null).withOwner(USER_OWNER1),
+        ADMIN_AUTH_HEADERS);
 
-    // Update messaging description as non admin and expect exception
+    // Update messaging description as non owner and expect exception
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
             () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Override
@@ -239,6 +242,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         .withSchemaRegistry(SCHEMA_REGISTRY_URL)
         //            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
         .withDescription(description)
+        .withOwner(owner)
         .withIngestionSchedule(null);
   }
 
@@ -246,7 +250,10 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   public void validateCreatedEntity(
       MessagingService service, CreateMessagingService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(service), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(service),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        createRequest.getOwner());
     Schedule expectedIngestion = createRequest.getIngestionSchedule();
     if (expectedIngestion != null) {
       assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
@@ -274,14 +281,14 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
   @Override
   public void validateGetWithDifferentFields(MessagingService service, boolean byName) throws HttpResponseException {
-    // No fields support
-    String fields = "";
+    String fields = "owner";
     service =
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNotNull(
         service.getHref(),
+        service.getOwner(),
         service.getVersion(),
         service.getUpdatedBy(),
         service.getServiceType(),

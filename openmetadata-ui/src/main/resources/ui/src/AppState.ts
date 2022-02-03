@@ -12,7 +12,7 @@
  */
 
 import { action, makeAutoObservable } from 'mobx';
-import { ClientAuth, NewUser } from 'Models';
+import { ClientAuth, NewUser, UserPermissions } from 'Models';
 import { CurrentTourPageType } from './enums/tour.enum';
 import { Role } from './generated/entity/teams/role';
 import {
@@ -33,6 +33,7 @@ class AppState {
   userDetails: User = {} as User;
   userTeams: Array<UserTeams> = [];
   userRoles: Array<Role> = [];
+  userPermissions: UserPermissions = {} as UserPermissions;
 
   inPageSearchText = '';
   explorePageTab = 'tables';
@@ -50,6 +51,7 @@ class AppState {
       updateAuthState: action,
       updateUserRole: action,
       updateUsers: action,
+      updateUserPermissions: action,
     });
   }
 
@@ -73,6 +75,9 @@ class AppState {
   }
   updateAuthState(state: boolean) {
     this.authDisabled = state;
+  }
+  updateUserPermissions(permissions: UserPermissions) {
+    this.userPermissions = permissions;
   }
 }
 

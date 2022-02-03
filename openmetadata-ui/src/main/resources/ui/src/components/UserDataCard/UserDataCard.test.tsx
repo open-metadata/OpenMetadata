@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import UserDataCard from './UserDataCard';
@@ -32,19 +32,7 @@ jest.mock('../../components/common/avatar/Avatar', () => {
   return jest.fn().mockReturnValue(<p data-testid="avatar">Avatar</p>);
 });
 
-jest.mock('../../utils/SvgUtils', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockReturnValue(<p data-testid="svg-icon">SVGIcons</p>),
-    Icons: {
-      TABLE: 'table',
-      TOPIC: 'topic',
-      DASHBOARD: 'dashboard',
-    },
-  };
-});
-
-describe('Test userCard component', () => {
+describe('Test UserDataCard component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <UserDataCard item={mockItem} onClick={mockRemove} />,
@@ -69,37 +57,5 @@ describe('Test userCard component', () => {
     );
 
     expect(await findByTestId(container, 'data-container')).toBeInTheDocument();
-  });
-
-  it('If isActionVisible is passed it should show delete icon', async () => {
-    const { container } = render(
-      <UserDataCard item={mockItem} onClick={mockRemove} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const remove = await findByTestId(container, 'remove');
-
-    expect(remove).toBeInTheDocument();
-
-    fireEvent.click(remove);
-
-    expect(mockRemove).toBeCalled();
-  });
-
-  it('If dataset is provided, it should display accordingly', async () => {
-    const { container } = render(
-      <UserDataCard item={mockItem} onClick={mockRemove} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const svgIcon = await findByTestId(container, 'svg-icon');
-    const datasetLink = await findByTestId(container, 'dataset-link');
-
-    expect(svgIcon).toBeInTheDocument();
-    expect(datasetLink).toBeInTheDocument();
   });
 });

@@ -30,6 +30,10 @@
     "ingestionSchedule": {
       "description": "Schedule for running metadata ingestion jobs",
       "$ref": "../../type/schedule.json"
+    },
+    "owner": {
+      "description": "Owner of this messaging service.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "serviceType", "brokers"]

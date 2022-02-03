@@ -63,6 +63,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "owner": {
+      "description": "Owner of this dashboard service.",
+      "$ref": "../../type/entityReference.json"
+    },
     "dashboardUrl": {
       "description": "Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.",
       "type": "string",

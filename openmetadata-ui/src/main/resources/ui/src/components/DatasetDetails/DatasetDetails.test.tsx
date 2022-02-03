@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getAllByTestId, getByTestId, render } from '@testing-library/react';
+import { findByText, getByTestId, render } from '@testing-library/react';
 import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -90,12 +90,20 @@ jest.mock('../TableProfiler/TableProfiler.component', () => {
   return jest.fn().mockReturnValue(<p>ProfilerTable</p>);
 });
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
 jest.mock('../SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTab</p>);
+});
+
+jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
+  return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
+});
+
+jest.mock('../common/TabsPane/TabsPane', () => {
+  return jest.fn().mockReturnValue(<p>TabsPane</p>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -107,17 +115,17 @@ jest.mock('../../utils/CommonUtils', () => ({
 }));
 
 describe('Test MyDataDetailsPage page', () => {
-  it('Checks if the page has all the proper components rendered', () => {
+  it('Checks if the page has all the proper components rendered', async () => {
     const { container } = render(<DatasetDetails {...DatasetDetailsProps} />, {
       wrapper: MemoryRouter,
     });
-    const followButton = getByTestId(container, 'follow-button');
-    const relatedTables = getByTestId(container, 'related-tables-container');
-    const tabs = getAllByTestId(container, 'tab');
 
-    expect(followButton).toBeInTheDocument();
+    const relatedTables = getByTestId(container, 'related-tables-container');
+    const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
+    const TabsPane = await findByText(container, /TabsPane/i);
+
     expect(relatedTables).toBeInTheDocument();
-    // we have 4 for now => schema, Profiler, Lineage & manage
-    expect(tabs.length).toBe(4);
+    expect(EntityPageInfo).toBeInTheDocument();
+    expect(TabsPane).toBeInTheDocument();
   });
 });

@@ -1522,7 +1522,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     if (description) {
       serviceDetailsData.push({
         key: 'Description',
-        value: <RichTextEditorPreviewer markdown={description} />,
+        value: (
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={false}
+            markdown={description}
+          />
+        ),
       });
     }
 

@@ -58,9 +58,9 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         PipelineService.class,
         PipelineServiceList.class,
         "services/pipelineServices",
-        "",
+        "owner",
         false,
-        false,
+        true,
         false,
         false);
     this.supportsPatch = false;
@@ -198,15 +198,18 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Test
-  void put_update_as_non_admin_401(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withDescription(null).withIngestionSchedule(null), ADMIN_AUTH_HEADERS);
+  void put_update_as_non_owner_401(TestInfo test) throws IOException {
+    createAndCheckEntity(
+        createRequest(test).withDescription(null).withIngestionSchedule(null).withOwner(USER_OWNER1),
+        ADMIN_AUTH_HEADERS);
 
     // Update pipeline description and ingestion service that are null
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
             () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Override
@@ -217,6 +220,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
         .withPipelineUrl(PIPELINE_SERVICE_URL)
         .withDescription(description)
+        .withOwner(owner)
         .withIngestionSchedule(null);
   }
 
@@ -224,7 +228,10 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   public void validateCreatedEntity(
       PipelineService service, CreatePipelineService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders), null);
+        getEntityInterface(service),
+        createRequest.getDescription(),
+        getPrincipal(authHeaders),
+        createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
     Schedule expectedIngestion = createRequest.getIngestionSchedule();
@@ -253,14 +260,14 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
 
   @Override
   public void validateGetWithDifferentFields(PipelineService service, boolean byName) throws HttpResponseException {
-    // No fields support
-    String fields = "";
+    String fields = "owner";
     service =
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNotNull(
         service.getHref(),
+        service.getOwner(),
         service.getVersion(),
         service.getUpdatedBy(),
         service.getServiceType(),

@@ -16,7 +16,8 @@ import AppState from '../AppState';
 import { ROUTES } from '../constants/constants';
 
 export const useAuth = (pathname = '') => {
-  const { authDisabled, userDetails, newUser, authProvider } = AppState;
+  const { authDisabled, userDetails, newUser, authProvider, userPermissions } =
+    AppState;
   const isAuthenticatedRoute =
     pathname !== ROUTES.SIGNUP &&
     pathname !== ROUTES.SIGNIN &&
@@ -37,5 +38,6 @@ export const useAuth = (pathname = '') => {
     isAdminUser: userDetails?.isAdmin,
     isFirstTimeUser: !isEmpty(userDetails) && !isEmpty(newUser),
     isTourRoute,
+    userPermissions,
   };
 };

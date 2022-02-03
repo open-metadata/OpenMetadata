@@ -26,6 +26,10 @@
     "ingestionSchedule": {
       "description": "Schedule for running pipeline ingestion jobs",
       "$ref": "../../type/schedule.json"
+    },
+    "owner": {
+      "description": "Owner of this pipeline service.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "serviceType", "pipelineUrl"]

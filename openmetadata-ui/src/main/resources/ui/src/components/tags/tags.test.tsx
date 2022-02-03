@@ -16,6 +16,9 @@ import React from 'react';
 import Tags from './tags';
 
 const mockCallback = jest.fn();
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
 
 describe('Test tags Component', () => {
   it('Component should render', () => {

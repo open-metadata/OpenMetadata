@@ -844,3 +844,38 @@ body .profiler-graph .recharts-active-dot circle {
   );
   pointer-events: none; /* so the text is still selectable */
 }
+
+.see-more-blur-white {
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 1) 10%,
+    rgba(255, 255, 255, 0) 36%
+  );
+  pointer-events: none; /* so the text is still selectable */
+}
+
+.see-more-blur-body {
+  background: linear-gradient(
+    to top,
+    rgba(248, 249, 250, 1) 10%,
+    rgba(255, 255, 255, 0) 36%
+  );
+  pointer-events: none; /* so the text is still selectable */
+}
+
+.see-more-blur {
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 1) 20%,
+    rgba(255, 255, 255, 0) 42%
+  );
+  pointer-events: none; /* so the text is still selectable */
+}
+.tableBody-row:hover .see-more-blur {
+  background: linear-gradient(
+    to top,
+    rgba(245, 246, 248, 1) 20%,
+    rgba(255, 255, 255, 0) 42%
+  );
+  pointer-events: none; /* so the text is still selectable */
+}

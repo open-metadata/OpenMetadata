@@ -67,7 +67,10 @@ const FeaturesCarousel = ({ data }: Props) => {
         <div className="tw-px-1" key={uniqueId()}>
           <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
           <div className="tw-text-sm tw-mb-3">
-            <RichTextEditorPreviewer markdown={d.description} />
+            <RichTextEditorPreviewer
+              enableSeeMoreVariant={false}
+              markdown={d.description}
+            />
           </div>
           <div>
             {d.path ? (

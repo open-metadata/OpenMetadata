@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.services.dashboard;
 
+import static org.openmetadata.catalog.Entity.helper;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,8 +25,11 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -44,15 +49,19 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -67,6 +76,20 @@ public class DashboardServiceResource {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   private final DashboardServiceRepository dao;
   private final Authorizer authorizer;
+
+  static final String FIELDS = "owner";
+  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+
+  public static ResultList<DashboardService> addHref(UriInfo uriInfo, ResultList<DashboardService> services) {
+    Optional.ofNullable(services.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    return services;
+  }
+
+  public static DashboardService addHref(UriInfo uriInfo, DashboardService service) {
+    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
+    Entity.withHref(uriInfo, service.getOwner());
+    return service;
+  }
 
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardServiceRepository must not be null");
@@ -99,6 +122,11 @@ public class DashboardServiceResource {
   public ResultList<DashboardService> list(
       @Context UriInfo uriInfo,
       @QueryParam("name") String name,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @DefaultValue("10") @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(
               description = "Returns list of dashboard services before this cursor",
@@ -118,12 +146,15 @@ public class DashboardServiceResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    ResultList<DashboardService> services;
     if (before != null) { // Reverse paging
-      return dao.listBefore(uriInfo, null, null, limitParam, before, include);
+      services = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
+    } else {
+      // Forward paging
+      services = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
-    // Forward paging
-    return dao.listAfter(uriInfo, null, null, limitParam, after, include);
+    return addHref(uriInfo, services);
   }
 
   @GET
@@ -145,13 +176,19 @@ public class DashboardServiceResource {
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, null, include);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   @GET
@@ -173,13 +210,19 @@ public class DashboardServiceResource {
       @Context SecurityContext securityContext,
       @PathParam("name") String name,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, name, null, include);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 
   @GET
@@ -251,7 +294,7 @@ public class DashboardServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(create, securityContext);
-    dao.create(uriInfo, service);
+    service = addHref(uriInfo, dao.create(uriInfo, service));
     return Response.created(service.getHref()).entity(service).build();
   }
 
@@ -273,9 +316,20 @@ public class DashboardServiceResource {
   public Response update(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DashboardService service = getService(update, securityContext);
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, FIELDS);
+    EntityReference owner = null;
+    DashboardService service;
+    // Try to find the owner if entity exists
+    try {
+      service = dao.getByName(uriInfo, update.getName(), fields);
+      owner = helper(service).validateOwnerOrNull();
+    } catch (EntityNotFoundException e) {
+      // This is a create request if entity is not found. ignore exception
+    }
+    service = getService(update, securityContext);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, owner);
     PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service, true);
+    addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
@@ -314,6 +368,7 @@ public class DashboardServiceResource {
         .withDashboardUrl(create.getDashboardUrl())
         .withUsername(create.getUsername())
         .withPassword(create.getPassword())
+        .withOwner(create.getOwner())
         .withIngestionSchedule(create.getIngestionSchedule())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

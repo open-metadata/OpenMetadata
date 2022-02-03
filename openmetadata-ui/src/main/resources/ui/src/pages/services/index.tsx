@@ -560,6 +560,7 @@ const ServicesPage = () => {
                             data-testid="service-description">
                             {service.description ? (
                               <RichTextEditorPreviewer
+                                enableSeeMoreVariant={false}
                                 markdown={service.description}
                               />
                             ) : (
