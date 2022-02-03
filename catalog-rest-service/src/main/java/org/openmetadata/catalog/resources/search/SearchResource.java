@@ -256,7 +256,7 @@ public class SearchResource {
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field("topic_name");
+    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field("name");
     highlightTopicName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
     highlightDescription.highlighterType("unified");
@@ -281,7 +281,7 @@ public class SearchResource {
 
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field("dashboard_name");
+    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field("name");
     highlightDashboardName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
     highlightDescription.highlighterType("unified");
