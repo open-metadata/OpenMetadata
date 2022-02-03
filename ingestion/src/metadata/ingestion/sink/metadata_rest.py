@@ -11,7 +11,7 @@
 
 import logging
 import traceback
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -33,10 +33,8 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -388,7 +386,7 @@ class MetadataRestSink(Sink[Entity]):
     def _create_team(self, create_team: CreateTeamRequest) -> Team:
         try:
             team = self.metadata.create_or_update(create_team)
-            self.team_entities[team.name] = str(team.id.__root__)
+            self.team_entities[team.name.__root__] = str(team.id.__root__)
             return team
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -425,9 +423,20 @@ class MetadataRestSink(Sink[Entity]):
                     team_entity = self.metadata.get_by_name(
                         entity=Team, fqdn=str(team.name.__root__)
                     )
+                    if not team_entity:
+                        raise APIError(
+                            error={
+                                "message": "Creating a new team {}".format(
+                                    team.name.__root__
+                                )
+                            }
+                        )
+                    team_ids.append(team_entity.id)
                 except APIError:
                     team_entity = self._create_team(team)
-                team_ids.append(team_entity.id)
+                    team_ids.append(team_entity.id)
+                except Exception as err:
+                    logger.error(err)
         else:
             team_ids = None
 
