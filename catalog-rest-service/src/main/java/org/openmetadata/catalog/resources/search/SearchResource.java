@@ -57,6 +57,7 @@ import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 @Produces(MediaType.APPLICATION_JSON)
 public class SearchResource {
   private final RestHighLevelClient client;
+  private final Integer MAX_AGGREGATE_SIZE = 50;
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
@@ -205,10 +206,10 @@ public class SearchResource {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder
         .query(QueryBuilders.queryStringQuery(query).lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("Tags").field("tags"))
         .from(from)
         .size(size);
@@ -241,11 +242,11 @@ public class SearchResource {
                 .field("column_names")
                 .field("column_descriptions")
                 .lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("Database").field("database"))
         .highlighter(hb)
         .from(from)
@@ -267,11 +268,11 @@ public class SearchResource {
     hb.postTags("</span>");
     searchSourceBuilder
         .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
         .highlighter(hb)
         .from(from)
         .size(size);
@@ -305,11 +306,11 @@ public class SearchResource {
                 .field("chart_names")
                 .field("chart_descriptions")
                 .lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
         .highlighter(hb)
         .from(from)
         .size(size);
@@ -342,11 +343,11 @@ public class SearchResource {
                 .field("task_names")
                 .field("task_descriptions")
                 .lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type"))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category"))
+        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
         .highlighter(hb)
         .from(from)
         .size(size);
