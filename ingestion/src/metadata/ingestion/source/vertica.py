@@ -19,6 +19,7 @@ from sqlalchemy_vertica.base import VerticaDialect
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.utils.sql_queries import VERTICA_GET_COLUMNS, VERTICA_GET_PRIMARY_KEYS
 
 
 @reflection.cache
@@ -32,31 +33,17 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     s = sql.text(
         dedent(
-            """
-        SELECT column_name, data_type, column_default, is_nullable, comment
-        FROM v_catalog.columns col left join v_catalog.comments com on com.object_name=lower(col.table_name) and com.object_type='COLUMN' and col.column_name=com.child_object  
-        WHERE lower(table_name) = '%(table)s'
-        AND %(schema_condition)s
-        UNION ALL
-        SELECT column_name, data_type, '' as column_default, true as is_nullable, ''  as comment
-        FROM v_catalog.view_columns
-        WHERE lower(table_name) = '%(table)s'
-        AND %(schema_condition)s
-    """
-            % {"table": table_name.lower(), "schema_condition": schema_condition}
+            VERTICA_GET_COLUMNS.format(
+                table=table_name.lower(), schema_condition=schema_condition
+            )
         )
     )
 
     spk = sql.text(
         dedent(
-            """
-        SELECT column_name
-        FROM v_catalog.primary_keys
-        WHERE lower(table_name) = '%(table)s'
-        AND constraint_type = 'p'
-        AND %(schema_condition)s
-    """
-            % {"table": table_name.lower(), "schema_condition": schema_condition}
+            VERTICA_GET_PRIMARY_KEYS.format(
+                table=table_name.lower(), schema_condition=schema_condition
+            )
         )
     )
 
