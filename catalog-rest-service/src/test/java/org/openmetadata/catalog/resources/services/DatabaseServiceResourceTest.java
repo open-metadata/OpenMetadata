@@ -14,13 +14,11 @@
 package org.openmetadata.catalog.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
@@ -172,19 +170,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     EntityReference expectedPipeline = updatedService.getAirflowPipelines().get(0);
     assertEquals(airflowPipeline.getId(), expectedPipeline.getId());
     assertEquals(airflowPipeline.getFullyQualifiedName(), expectedPipeline.getName());
-  }
-
-  @Test
-  void put_update_as_non_owner_401(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withDescription(null).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-
-    // Update as non owner should be forbidden
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.MINOR_UPDATE, null));
-    TestUtils.assertResponse(
-        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Override

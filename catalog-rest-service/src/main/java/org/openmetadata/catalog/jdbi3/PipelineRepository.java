@@ -62,7 +62,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   public static String getFQN(Pipeline pipeline) {
-    return (pipeline.getService().getName() + "." + pipeline.getName());
+    return (pipeline != null && pipeline.getService() != null)
+        ? (pipeline.getService().getName() + "." + pipeline.getName())
+        : null;
   }
 
   @Transaction
@@ -168,9 +170,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static class PipelineEntityInterface implements EntityInterface<Pipeline> {
     private final Pipeline entity;
+    private final String fqn;
 
     public PipelineEntityInterface(Pipeline entity) {
       this.entity = entity;
+      this.fqn = PipelineRepository.getFQN(entity);
     }
 
     @Override
@@ -200,7 +204,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
     }
 
     @Override

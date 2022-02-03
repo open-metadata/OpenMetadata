@@ -41,7 +41,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
 
   public static String getFQN(Topic topic) {
-    return (topic.getService().getName() + "." + topic.getName());
+    return (topic != null && topic.getService() != null)
+        ? (topic.getService().getName() + "." + topic.getName())
+        : null;
   }
 
   public TopicRepository(CollectionDAO dao) {
@@ -140,9 +142,11 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public static class TopicEntityInterface implements EntityInterface<Topic> {
     private final Topic entity;
+    private final String fqn;
 
     public TopicEntityInterface(Topic entity) {
       this.entity = entity;
+      this.fqn = TopicRepository.getFQN(entity);
     }
 
     @Override
@@ -172,7 +176,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
     }
 
     @Override

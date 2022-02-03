@@ -354,8 +354,9 @@ public class TopicResource {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException, ParseException {
-
     Topic topic = getTopic(securityContext, create);
+    ;
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(topic));
     PutResponse<Topic> response = dao.createOrUpdate(uriInfo, topic);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

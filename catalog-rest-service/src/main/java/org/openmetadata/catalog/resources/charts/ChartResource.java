@@ -350,8 +350,8 @@ public class ChartResource {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException, ParseException {
-
     Chart chart = getChart(securityContext, create);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(chart));
     PutResponse<Chart> response = dao.createOrUpdate(uriInfo, chart);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

@@ -301,7 +301,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void post_tableWithInvalidDatabase_404(TestInfo test) {
-    CreateTable create = createRequest(test).withDatabase(NON_EXISTENT_ENTITY);
+    EntityReference database = new EntityReference().withId(NON_EXISTENT_ENTITY).withType(Entity.DATABASE);
+    CreateTable create = createRequest(test).withDatabase(database);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
@@ -1400,7 +1401,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
         .withName(name)
-        .withDatabase(DATABASE.getId())
+        .withDatabase(DATABASE_REFERENCE)
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint))
         .withDescription(description)
@@ -1468,15 +1469,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Entity specific validation
     assertEquals(expected.getTableType(), patched.getTableType());
     assertColumns(expected.getColumns(), patched.getColumns());
-    validateDatabase(expected.getDatabase().getId(), patched.getDatabase());
+    validateDatabase(expected.getDatabase(), patched.getDatabase());
     assertEquals(expected.getTableConstraints(), patched.getTableConstraints());
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReference(expected.getFollowers());
   }
 
-  private void validateDatabase(UUID expectedDatabaseId, EntityReference database) {
+  private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {
     TestUtils.validateEntityReference(database);
-    assertEquals(expectedDatabaseId, database.getId());
+    assertEquals(expectedDatabase.getId(), database.getId());
   }
 
   @Override

@@ -315,18 +315,9 @@ public class StorageServiceResource {
   public Response update(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, FIELDS);
-    EntityReference owner = null;
-    StorageService service;
-    // Try to find the owner if entity exists
-    try {
-      service = dao.getByName(uriInfo, update.getName(), fields);
-      owner = helper(service).validateOwnerOrNull();
-    } catch (EntityNotFoundException e) {
-      // This is a create request if entity is not found. ignore exception
-    }
-    service = getService(update, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, owner);
+    StorageService service = getService(update, securityContext);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
+        dao.getOriginalOwner(service));
     PutResponse<StorageService> response = dao.createOrUpdate(uriInfo, service, true);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

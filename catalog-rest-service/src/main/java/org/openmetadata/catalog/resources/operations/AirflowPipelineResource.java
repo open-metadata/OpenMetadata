@@ -388,11 +388,12 @@ public class AirflowPipelineResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline update)
       throws IOException, ParseException {
-    AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
-    PutResponse<AirflowPipeline> response = dao.createOrUpdate(uriInfo, airflowPipeline);
-    deploy(airflowPipeline);
+    AirflowPipeline pipeline = getAirflowPipeline(securityContext, update);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(pipeline));
+    PutResponse<AirflowPipeline> response = dao.createOrUpdate(uriInfo, pipeline);
+    deploy(pipeline);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

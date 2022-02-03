@@ -277,9 +277,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   public static class PolicyEntityInterface implements EntityInterface<Policy> {
     private final Policy entity;
+    private final String fqn;
 
     public PolicyEntityInterface(Policy entity) {
       this.entity = entity;
+      this.fqn = PolicyRepository.getFQN(entity);
     }
 
     @Override
@@ -309,7 +311,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
     }
 
     public List<Object> getRules() {

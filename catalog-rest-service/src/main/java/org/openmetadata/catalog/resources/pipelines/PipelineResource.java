@@ -359,6 +359,7 @@ public class PipelineResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException, ParseException {
     Pipeline pipeline = getPipeline(securityContext, create);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(pipeline));
     PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

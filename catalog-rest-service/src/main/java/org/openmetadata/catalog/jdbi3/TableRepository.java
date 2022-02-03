@@ -127,7 +127,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public static String getFQN(Table table) {
-    return (table.getDatabase().getName() + "." + table.getName());
+    return (table != null && table.getDatabase() != null)
+        ? (table.getDatabase().getName() + "." + table.getName())
+        : null;
   }
 
   @Transaction
@@ -635,9 +637,11 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static class TableEntityInterface implements EntityInterface<Table> {
     private final Table entity;
+    private final String fqn;
 
     public TableEntityInterface(Table entity) {
       this.entity = entity;
+      this.fqn = TableRepository.getFQN(entity);
     }
 
     @Override
@@ -667,7 +671,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
     }
 
     @Override
