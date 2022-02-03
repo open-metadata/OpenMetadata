@@ -10,10 +10,12 @@
 #  limitations under the License.
 
 import json
+import logging
 import os
 import tempfile
 from typing import Optional, Tuple
 
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
@@ -26,6 +28,7 @@ from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 
+logger = logging.getLogger(__name__)
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 _types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
@@ -46,8 +49,14 @@ def get_columns(bq_schema):
             "scale": field.scale,
             "max_length": field.max_length,
             "raw_data_type": str(_get_sqla_column_type(field)),
+            "policy_tags": None,
         }
-
+        if field.policy_tags:
+            col_obj["policy_tags"] = (
+                PolicyTagManagerClient()
+                .get_policy_tag(name=field.policy_tags.names[0])
+                .display_name
+            )
         col_list.append(col_obj)
     return col_list
 
@@ -90,7 +99,7 @@ class BigquerySource(SQLSource):
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
                 del config.options["credentials"]
             else:
-                raise Exception(
+                logger.warning(
                     "Please refer to the BigQuery connector documentation, especially the credentials part "
                     "https://docs.open-metadata.org/connectors/bigquery"
                 )
