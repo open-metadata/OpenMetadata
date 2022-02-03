@@ -112,6 +112,9 @@ public final class JsonUtils {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
 
     //
+    // -----------------------------------------------------------
+    // JSON patch modification 1 - Reorder the operations
+    // -----------------------------------------------------------
     // JsonPatch array operations are not handled correctly by johnzon libraries. Example, the following operation:
     // {"op":"replace","path":"/tags/0/tagFQN","value":"User.BankAccount"}
     // {"op":"replace","path":"/tags/0/labelType","value":"MANUAL"}
@@ -131,6 +134,13 @@ public final class JsonUtils {
     // Reverse sorting the remove operations and sorting all the other operations including "add" by "path" fields
     // before applying the patch as a workaround.
     //
+    // ---------------------------------------------------------------------
+    // JSON patch modification 2 - Ignore operations related to href patch
+    // ---------------------------------------------------------------------
+    // Another important modification to patch operation:
+    // Ignore all the patch operations related to the href path as href path is read only and is auto generated
+    // by removing those operations from patch operation array
+    //
     JsonArray array = patch.toJsonArray();
     List<JsonObject> removeOperations = new ArrayList<>();
     List<JsonObject> otherOperations = new ArrayList<>();
@@ -138,6 +148,10 @@ public final class JsonUtils {
     array.forEach(
         entry -> {
           JsonObject jsonObject = entry.asJsonObject();
+          if (jsonObject.getString("path").endsWith("href")) {
+            // Ignore patch operations related to href path
+            return;
+          }
           if (jsonObject.getString("op").equals("remove")) {
             removeOperations.add(jsonObject);
           } else {

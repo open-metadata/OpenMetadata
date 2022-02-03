@@ -342,18 +342,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     EntityReference team1 =
         new TeamEntityInterface(
                 teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS))
-            .getEntityReference()
-            .withHref(null);
+            .getEntityReference();
     EntityReference team2 =
         new TeamEntityInterface(
                 teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS))
-            .getEntityReference()
-            .withHref(null);
+            .getEntityReference();
     EntityReference team3 =
         new TeamEntityInterface(
                 teamResourceTest.createEntity(teamResourceTest.createRequest(test, 3), ADMIN_AUTH_HEADERS))
-            .getEntityReference()
-            .withHref(null);
+            .getEntityReference();
     List<EntityReference> teams = Arrays.asList(team1, team2);
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
@@ -361,8 +358,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     EntityReference role1 =
         new RoleEntityInterface(
                 roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS))
-            .getEntityReference()
-            .withHref(null);
+            .getEntityReference();
     List<EntityReference> roles1 = Arrays.asList(role1);
 
     //
@@ -398,8 +394,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     EntityReference role2 =
         new RoleEntityInterface(
                 roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS))
-            .getEntityReference()
-            .withHref(null);
+            .getEntityReference();
     List<EntityReference> roles2 = Arrays.asList(role2);
 
     origJson = JsonUtils.pojoToJson(user);
@@ -626,8 +621,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     updatedList.forEach(TestUtils::validateEntityReference);
     expectedList.sort(EntityUtil.compareEntityReference);
     updatedList.sort(EntityUtil.compareEntityReference);
-    updatedList.forEach(t -> t.setHref(null));
-    expectedList.forEach(t -> t.setHref(null));
     assertEquals(expectedList, updatedList);
   }
 
@@ -649,7 +642,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedList = (List<EntityReference>) expected;
       List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEquals(expectedList, actualList);
+      assertEntityReferencesFieldChange(expectedList, actualList);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

@@ -65,6 +65,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   public void validateUsers(List<EntityReference> users) throws IOException {
     if (users != null) {
+      users.sort(EntityUtil.compareEntityReference);
       for (EntityReference user : users) {
         EntityReference ref = daoCollection.userDAO().findEntityReferenceById(user.getId());
         user.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
