@@ -9,9 +9,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
-import org.openmetadata.catalog.selenium.objectRepository.DashboardServicePage;
-import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
-import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.UserPage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.WebDriver;
@@ -26,9 +24,7 @@ import org.testng.Assert;
 public class UsersPageTest {
 
   static WebDriver webDriver;
-  static TagsPage tagsPage;
-  static DatabaseServicePage databaseServicePage;
-  static DashboardServicePage dashboardServicePage;
+  static Common common;
   static UserPage userPage;
   static Actions actions;
   static WebDriverWait wait;
@@ -44,9 +40,7 @@ public class UsersPageTest {
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
-    tagsPage = new TagsPage(webDriver);
-    databaseServicePage = new DatabaseServicePage(webDriver);
-    dashboardServicePage = new DashboardServicePage(webDriver);
+    common = new Common(webDriver);
     userPage = new UserPage(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
@@ -55,9 +49,9 @@ public class UsersPageTest {
   }
 
   public void openUsersPage() throws InterruptedException {
-    Events.click(webDriver, tagsPage.closeWhatsNew()); // Close What's new
-    Events.click(webDriver, tagsPage.headerSettings()); // Setting
-    Events.click(webDriver, userPage.headerSettingsMenu("Users"));
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Users"));
     Thread.sleep(waitTime);
   }
 
@@ -65,7 +59,7 @@ public class UsersPageTest {
   @Order(1)
   public void addAdminCheckCountCheck() throws InterruptedException {
     openUsersPage();
-    Events.click(webDriver, tagsPage.containsText("Cloud_Infra"));
+    Events.click(webDriver, common.containsText("Cloud_Infra"));
     Events.click(webDriver, userPage.selectUser());
     Thread.sleep(2000);
     Events.click(webDriver, userPage.rolesList());
@@ -73,7 +67,7 @@ public class UsersPageTest {
     actions.moveToElement(userPage.closeCheckBoxDropDown(), 100, 200);
     actions.click();
     actions.perform();
-    Events.click(webDriver, tagsPage.descriptionSaveButton());
+    Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(1000);
     Object afterUsersCount = webDriver.findElement(userPage.userFilterCount()).getAttribute("innerHTML");
     Thread.sleep(1000);
@@ -86,7 +80,7 @@ public class UsersPageTest {
   @Order(2)
   public void removeAdminCheckCountCheck() throws InterruptedException {
     openUsersPage();
-    Events.click(webDriver, tagsPage.containsText("Cloud_Infra"));
+    Events.click(webDriver, common.containsText("Cloud_Infra"));
     Events.click(webDriver, userPage.userPageTab(1));
     Events.click(webDriver, userPage.selectUser());
     Events.click(webDriver, userPage.rolesList());
@@ -94,7 +88,7 @@ public class UsersPageTest {
     actions.moveToElement(userPage.closeCheckBoxDropDown(), 100, 200);
     actions.click();
     actions.perform();
-    Events.click(webDriver, tagsPage.descriptionSaveButton());
+    Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(1000);
     Object afterAdminCount = webDriver.findElement(userPage.adminFilterCount()).getAttribute("innerHTML");
     Thread.sleep(1000);

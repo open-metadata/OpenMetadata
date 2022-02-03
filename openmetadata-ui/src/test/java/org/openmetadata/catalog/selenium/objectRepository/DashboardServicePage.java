@@ -12,10 +12,6 @@ public class DashboardServicePage {
 
   By dashboardServiceUrl = By.cssSelector("[data-testid='dashboard-url']");
 
-  public By selectServiceTab(int index) {
-    return By.xpath("(//div[@data-testid='tab'])[" + index + "]");
-  }
-
   public By dashboardServiceUrl() {
     return dashboardServiceUrl;
   }
