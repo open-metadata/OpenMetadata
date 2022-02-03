@@ -388,7 +388,7 @@ class MetadataRestSink(Sink[Entity]):
     def _create_team(self, create_team: CreateTeamRequest) -> Team:
         try:
             team = self.metadata.create_or_update(create_team)
-            self.team_entities[team.name] = str(team.id.__root__)
+            self.team_entities[team.name.__root__] = str(team.id.__root__)
             return team
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -426,6 +426,9 @@ class MetadataRestSink(Sink[Entity]):
                         entity=Team, fqdn=str(team.name.__root__)
                     )
                 except APIError:
+                    team_entity = None
+
+                if team_entity is None:
                     team_entity = self._create_team(team)
                 team_ids.append(team_entity.id)
         else:
