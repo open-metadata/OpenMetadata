@@ -94,7 +94,6 @@ public class UsersPageTest {
     actions.moveToElement(userPage.closeCheckBoxDropDown(), 100, 200);
     actions.click();
     actions.perform();
-    //    Events.click(webDriver, tagsPage.containsText("aaron_johnson0@gmail.com"));
     Events.click(webDriver, tagsPage.descriptionSaveButton());
     Thread.sleep(1000);
     Object afterAdminCount = webDriver.findElement(userPage.adminFilterCount()).getAttribute("innerHTML");
