@@ -27,26 +27,28 @@ public class explore extends TableDetailsPageTest {
   myDataPage myDataPage;
   tagsPage tagsPage;
   servicesPage servicesPage;
-  teamsPage teamsPage;
+  TeamsPage teamsPage;
   ingestionPage ingestionPage;
-  userListPage userListPage;
-  tableDetails tableDetails;
-  explorePage explorePage;
+  UserListPage userListPage;
+  TableDetails tableDetails;
+  ExplorePage explorePage;
+  String webDriverInstance = Property.getInstance().getWebDriver();
+  String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver();
-    explorePage = new explorePage(webDriver);
+    webDriver = new ChromeDriver(options);
+    explorePage = new ExplorePage(webDriver);
     myDataPage = new myDataPage(webDriver);
-    userListPage = new userListPage(webDriver);
+    userListPage = new UserListPage(webDriver);
     ingestionPage = new ingestionPage(webDriver);
-    teamsPage = new teamsPage(webDriver);
+    teamsPage = new TeamsPage(webDriver);
     tagsPage = new tagsPage(webDriver);
-    tableDetails = new tableDetails(webDriver);
+    tableDetails = new TableDetails(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -114,7 +116,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
-  @Order(3)
+  @Order(4)
   public void checkDashboardCount() throws InterruptedException {
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
@@ -140,6 +142,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(5)
   public void checkPipelineCount() throws InterruptedException {
     openExplorePage();
     Thread.sleep(1000);
@@ -167,6 +170,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(6)
   public void checkBasics() throws Exception {
     openExplorePage();
     // Doing add tags first to get Tags checkbox in the left panel
@@ -205,6 +209,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(7)
   public void checkLastUpdatedSort() throws InterruptedException {
     String sendKeys = "Description Added";
     openExplorePage();
@@ -222,6 +227,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(8)
   public void checkRandomTableCount() throws InterruptedException {
     Integer[] check;
     openExplorePage();
@@ -243,6 +249,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(9)
   public void checkRandomTopicCount() throws InterruptedException {
     Integer[] check;
     openExplorePage();
@@ -266,6 +273,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(10)
   public void checkRandomDashboardCount() throws InterruptedException {
     Integer[] check;
     openExplorePage();
@@ -286,6 +294,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(11)
   public void checkRandomPipelineCount() throws InterruptedException {
     Integer[] check;
     openExplorePage();
@@ -308,6 +317,7 @@ public class explore extends TableDetailsPageTest {
   }
 
   @Test
+  @Order(12)
   public void checkSearchBarInvalidValue() throws InterruptedException {
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());

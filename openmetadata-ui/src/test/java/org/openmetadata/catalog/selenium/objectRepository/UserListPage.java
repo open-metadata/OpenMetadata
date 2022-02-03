@@ -4,10 +4,10 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
-public class userListPage {
+public class UserListPage {
   WebDriver webDriver;
 
-  public userListPage(WebDriver webDriver) {
+  public UserListPage(WebDriver webDriver) {
     this.webDriver = webDriver;
   }
 

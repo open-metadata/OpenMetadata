@@ -5,10 +5,10 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
-public class explorePage {
+public class ExplorePage {
   WebDriver webDriver;
 
-  public explorePage(WebDriver webDriver) {
+  public ExplorePage(WebDriver webDriver) {
     this.webDriver = webDriver;
   }
 
@@ -23,31 +23,29 @@ public class explorePage {
   By pipeline = By.xpath("(//button[@data-testid='tab'])[4]");
   By next = By.linkText("Next");
   By pagination = By.xpath("//div[@data-testid=\"pagination-button\"]");
-  By bigQueryCheckbox = By.xpath("//input[@id=\"BigQuery\"]");
-  By serviceName = By.xpath("//div[@class=\"filters-title tw-w-40 tw-truncate custom-checkbox-label\"]");
-  By countService =
-      By.xpath(
-          "//span[@class=\"tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center tw-bg-badge tw-py-0 tw-px-0\"]");
+  By bigQueryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"BigQuery\"]");
+  By serviceName = By.xpath("//div[@data-testid=\"checkbox-label\"]");
+  By countService = By.xpath("(//span[@data-testid=\"filter-count\"])");
   By errorMessage = By.xpath("//p[@data-testid=\"no-search-results\"]");
-  By glueCheckbox = By.xpath("//input[@id=\"Glue\"]");
+  By glueCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Glue\"]");
   By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
   By addTag = By.xpath("//span[@data-testid=\"tags\"]");
   By serviceText = By.xpath("//h6[contains(text(),'Service')]");
   By tierText = By.xpath("//h6[contains(text(),'Tier')]");
   By databaseText = By.xpath("//h6[contains(text(),'Database')]");
   By tagText = By.xpath("//h6[contains(text(),'Tags')]");
-  By lastWeekSortDesc = By.xpath("//i[@class=\"fas fa-sort-amount-up-alt tw-text-base tw-text-primary\"]");
-  By lastWeekSortAesc = By.xpath("//i[@class=\"fas fa-sort-amount-down-alt tw-text-base tw-text-primary\"]");
-  By updatedDescription = By.xpath("(//div[@class=\"content-container\"])[1]");
-  By shopifyCheckbox = By.id("shopify");
-  By tagSpecialCategoryCheckbox = By.id("PersonalData.SpecialCategory");
-  By tierTier3Checkbox = By.id("Tier.Tier3");
+  By lastWeekSortDesc = By.xpath("//i[@data-testid=\"last-updated\"]");
+  By lastWeekSortAesc = By.xpath("//i[@data-testid=\"last-updated\"]");
+  By updatedDescription = By.xpath("(//div[@data-testid=\"description-text\"])[1]");
+  By shopifyCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"shopify\"]");
+  By tagSpecialCategoryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"PersonalData.SpecialCategory\"]");
+  By tierTier3Checkbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Tier.Tier3\"]");
   By selectedCheckbox =
       By.xpath(
           "//span[@class=\"tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center tw-bg-primary tw-text-white tw-border-none tw-py-0 tw-px-0\"]");
-  By Kafka = By.id("Kafka");
-  By superset = By.id("Superset");
-  By airflow = By.id("Airflow");
+  By Kafka = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Kafka\"]");
+  By superset = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Superset\"]");
+  By airflow = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Airflow\"]");
 
   public By explore() {
     return explore;

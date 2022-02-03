@@ -4,10 +4,10 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
-public class teamsPage {
+public class TeamsPage {
   WebDriver webDriver;
 
-  public teamsPage(WebDriver webDriver) {
+  public TeamsPage(WebDriver webDriver) {
     this.webDriver = webDriver;
   }
 

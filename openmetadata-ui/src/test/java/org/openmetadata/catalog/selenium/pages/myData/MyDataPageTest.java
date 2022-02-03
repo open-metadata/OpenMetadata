@@ -48,10 +48,10 @@ public class MyDataPageTest {
   myDataPage myDataPage;
   tagsPage tagsPage;
   servicesPage servicesPage;
-  teamsPage teamsPage;
+  TeamsPage teamsPage;
   ingestionPage ingestionPage;
-  userListPage userListPage;
-  tableDetails tableDetails;
+  UserListPage userListPage;
+  TableDetails tableDetails;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
@@ -61,13 +61,13 @@ public class MyDataPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     myDataPage = new myDataPage(webDriver);
-    userListPage = new userListPage(webDriver);
+    userListPage = new UserListPage(webDriver);
     ingestionPage = new ingestionPage(webDriver);
-    teamsPage = new teamsPage(webDriver);
+    teamsPage = new TeamsPage(webDriver);
     tagsPage = new tagsPage(webDriver);
-    tableDetails = new tableDetails(webDriver);
+    tableDetails = new TableDetails(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -116,10 +116,6 @@ public class MyDataPageTest {
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/services");
     webDriver.navigate().back();
-    /*Events.click(webDriver, myDataPage.getIngestion());
-    url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/ingestion/");
-    webDriver.navigate().back();*/
     Events.click(webDriver, myDataPage.getUsers());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/user-list");
@@ -140,9 +136,10 @@ public class MyDataPageTest {
   }
 
   @Test
+  @Order(4)
   public void checkExplore() {
     String url;
-    explorePage explorePage = new explorePage(webDriver);
+    ExplorePage explorePage = new ExplorePage(webDriver);
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.clickExplore());
     url = webDriver.getCurrentUrl();

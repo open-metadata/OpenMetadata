@@ -5,11 +5,11 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
-public class topicDetails {
+public class TopicDetails {
 
   WebDriver webDriver;
 
-  public topicDetails(WebDriver webDriver) {
+  public TopicDetails(WebDriver webDriver) {
     this.webDriver = webDriver;
   }
 

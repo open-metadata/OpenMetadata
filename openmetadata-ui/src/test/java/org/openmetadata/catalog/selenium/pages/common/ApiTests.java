@@ -12,7 +12,6 @@ public class ApiTests {
 
   @Test
   public void changeServiceDescription() throws JsonParseException {
-    try {
       RestAssured.baseURI = "http://localhost:8585";
       String response =
           given()
@@ -28,16 +27,10 @@ public class ApiTests {
               .response()
               .getBody()
               .asString();
-      System.out.println("Updated Response=" + response);
-
-    } catch (com.google.gson.JsonParseException e) {
-      e.printStackTrace();
-    }
   }
 
   @Test
   public void changeDatabaseDescription() throws JsonParseException {
-    try {
       RestAssured.baseURI = "http://localhost:8585";
       String response =
           given()
@@ -53,11 +46,5 @@ public class ApiTests {
               .response()
               .getBody()
               .asString();
-
-      System.out.println("Updated Response=" + response);
-
-    } catch (com.google.gson.JsonParseException e) {
-      e.printStackTrace();
-    }
   }
 }
