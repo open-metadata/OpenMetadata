@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.storage;
 
-import static org.openmetadata.catalog.Entity.helper;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,14 +50,12 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
@@ -316,8 +312,7 @@ public class StorageServiceResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException, ParseException {
     StorageService service = getService(update, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-        dao.getOriginalOwner(service));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(service));
     PutResponse<StorageService> response = dao.createOrUpdate(uriInfo, service, true);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
