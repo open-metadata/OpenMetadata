@@ -46,6 +46,17 @@ public class Common {
   By serviceUrl = By.cssSelector("[data-testid='url']");
   By servicePort = By.cssSelector("[data-testid='port']");
   By databaseName = By.cssSelector("[data-testid='database']");
+  By addTagCategory = By.cssSelector("[data-testid='add-category']");
+  By addTagButton = By.cssSelector("[data-testid='add-new-tag-button']");
+  By tagCount = By.xpath("//div[@data-testid='tag-conatiner']/div/div");
+  By errorMessage = By.cssSelector("[data-testid='error-message']");
+  By matchesInDescription = By.xpath("(//div[@data-testid='matches-stats'][1])/span[3]");
+  By tagCountSearch = By.xpath("(//div[@data-testid='description-text'][1])/div/p/span");
+  By tagFilterCount = By.xpath("//div[@data-testid='filter-containers-2']/div");
+  By noSearchResult = By.cssSelector("[data-testid='no-search-results']");
+  By resultsCount = By.xpath("//div[@data-testid='search-container']/div");
+  By matchesStats = By.cssSelector("[data-testid='matches-stats']");
+  By editLineageButton = By.cssSelector("[data-testid='edit-lineage']");
 
   public By displayName() {
     return displayName;
@@ -233,5 +244,53 @@ public class Common {
 
   public By databaseName() {
     return databaseName;
+  }
+
+  public By addTagCategory() {
+    return addTagCategory;
+  }
+
+  public By addTagButton() {
+    return addTagButton;
+  }
+
+  public By tagCount() {
+    return tagCount;
+  }
+
+  public By errorMessage() {
+    return errorMessage;
+  }
+
+  public By matchesInDescription() {
+    return matchesInDescription;
+  }
+
+  public By tagCountSearch() {
+    return tagCountSearch;
+  }
+
+  public By tourNavigationArrow(String arrow) {
+    return By.cssSelector("[data-tour-elem='" + arrow + "']");
+  }
+
+  public By tagFilterCount() {
+    return tagFilterCount;
+  }
+
+  public By noSearchResult() {
+    return noSearchResult;
+  }
+
+  public By resultsCount() {
+    return resultsCount;
+  }
+
+  public By matchesStats() {
+    return matchesStats;
+  }
+
+  public By editLineageButton() {
+    return editLineageButton;
   }
 }

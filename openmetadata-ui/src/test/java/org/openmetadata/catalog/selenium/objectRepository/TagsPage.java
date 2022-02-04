@@ -24,7 +24,6 @@ public class TagsPage {
   }
 
   By closeWhatsNew = By.cssSelector("[data-testid='closeWhatsNew']");
-  By addTagCategory = By.cssSelector("[data-testid='add-category']");
   By addTagButton = By.cssSelector("[data-testid='add-new-tag-button']");
   By editTagDescription = By.cssSelector("[data-testid='editTagDescription']");
   By addAssociatedTagButton = By.cssSelector("[data-testid='tags']");
@@ -35,10 +34,6 @@ public class TagsPage {
   By tagUsageCount = By.cssSelector("[data-testid='usage-count']");
   By headerSettingsTags = By.cssSelector("[data-testid='menu-item-Tags']");
   By sortBy = By.cssSelector("[data-testid='sortBy']");
-
-  public By addTagCategory() {
-    return addTagCategory;
-  }
 
   public By addTagButton() {
     return addTagButton;
