@@ -161,7 +161,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
-            print(traceback.print_exc())
+            logger.debug(traceback.print_exc())
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
