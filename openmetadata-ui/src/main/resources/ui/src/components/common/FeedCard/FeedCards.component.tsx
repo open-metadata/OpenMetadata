@@ -78,7 +78,8 @@ const FeedCards: FC<FeedCardsProp> = ({
                 <div
                   className={classNames(
                     'tw-bg-white tw-p-3 tw-pb-1 tw-border tw-border-main tw-rounded-md tw-ml-7'
-                  )}>
+                  )}
+                  data-testid="feedcard">
                   <div>{feed.description}</div>
                 </div>
               </div>
