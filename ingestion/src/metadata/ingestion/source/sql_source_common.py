@@ -53,7 +53,7 @@ def build_sql_source_connection_url(
     if username is not None:
         url += f"{username}"
         if password is not None:
-            url += f":{quote_plus(password)}"
+            url += f":{quote_plus(password.get_secret_value())}"
         url += "@"
     url += f"{host_port}"
     if database:
@@ -106,7 +106,7 @@ class SQLConnectionConfig(ConfigModel):
             host_port=self.host_port,
             scheme=self.scheme,
             username=self.username,
-            password=self.password.get_secret_value(),
+            password=self.password,
             database=self.database,
             options=self.options,
         )
