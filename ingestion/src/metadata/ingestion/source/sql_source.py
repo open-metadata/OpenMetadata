@@ -454,16 +454,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             unique_constraints = []
 
         pk_columns = (
-            pk_constraints["column_constraints"]
-            if len(pk_constraints) > 0 and "column_constraints" in pk_constraints.keys()
+            pk_constraints.get("constrained_columns")
+            if len(pk_constraints) > 0 and pk_constraints.get("constrained_columns")
             else {}
         )
 
-        unique_columns = [
-            constraint["column_names"]
-            for constraint in unique_constraints
-            if "column_names" in constraint.keys()
-        ]
+        unique_columns = []
+        for constraint in unique_constraints:
+            if constraint.get("column_names"):
+                unique_columns.extend(constraint.get("column_names"))
 
         table_columns = []
         columns = inspector.get_columns(table, schema)
