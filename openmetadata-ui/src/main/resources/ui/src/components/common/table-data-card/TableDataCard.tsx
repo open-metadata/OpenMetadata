@@ -131,7 +131,9 @@ const TableDataCard: FunctionComponent<Props> = ({
           </h6>
           {deleted && (
             <>
-              <div className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2">
+              <div
+                className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
+                data-testid="deleted">
                 <i className="fas fa-exclamation-circle tw-mr-1" />
                 Deleted
               </div>

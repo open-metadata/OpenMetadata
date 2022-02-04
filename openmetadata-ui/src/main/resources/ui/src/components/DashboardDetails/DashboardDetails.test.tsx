@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getAllByTestId, getByTestId, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -77,7 +77,7 @@ jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
 });
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -92,6 +92,18 @@ jest.mock('../tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tags</p>);
 });
 
+jest.mock('../EntityLineage/EntityLineage.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityLineage</p>);
+});
+
+jest.mock('../common/TabsPane/TabsPane', () => {
+  return jest.fn().mockReturnValue(<p>TabsPane</p>);
+});
+
+jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
+  return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),
@@ -101,17 +113,17 @@ jest.mock('../../utils/CommonUtils', () => ({
 }));
 
 describe('Test DashboardDetails component', () => {
-  it('Checks if the DashboardDetails component has all the proper components rendered', () => {
+  it('Checks if the DashboardDetails component has all the proper components rendered', async () => {
     const { container } = render(
       <DashboardDetails {...DashboardDetailsProps} />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const followButton = getByTestId(container, 'follow-button');
-    const tabs = getAllByTestId(container, 'tab');
+    const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
+    const TabsPane = await findByText(container, /TabsPane/i);
 
-    expect(followButton).toBeInTheDocument();
-    expect(tabs.length).toBe(2);
+    expect(EntityPageInfo).toBeInTheDocument();
+    expect(TabsPane).toBeInTheDocument();
   });
 });
