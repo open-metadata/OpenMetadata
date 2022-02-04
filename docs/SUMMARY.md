@@ -33,6 +33,7 @@
   * [Tableau](openmetadata/connectors/tableau.md)
   * [Trino](openmetadata/connectors/trino.md)
   * [Vertica](openmetadata/connectors/vertica.md)
+* [FAQ](faq.md)
 
 ## OpenMetadata
 
