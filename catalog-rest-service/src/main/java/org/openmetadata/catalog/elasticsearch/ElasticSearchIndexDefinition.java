@@ -633,7 +633,7 @@ class DashboardESIndex extends ElasticSearchIndex {
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
 class PipelineESIndex extends ElasticSearchIndex {
-  @JsonProperty("pipeine_id")
+  @JsonProperty("pipeline_id")
   String pipelineId;
 
   @JsonProperty("task_names")
@@ -666,9 +666,10 @@ class PipelineESIndex extends ElasticSearchIndex {
         internalBuilder()
             .pipelineId(pipeline.getId().toString())
             .deleted(pipeline.getDeleted())
-            .name(pipeline.getDisplayName())
-            .displayName(description)
-            .description(displayName)
+            .name(
+                displayName) // pipeline names can be unique ids from source, hence use displayName for search indexing
+            .displayName(displayName)
+            .description(description)
             .fqdn(pipeline.getFullyQualifiedName())
             .lastUpdatedTimestamp(updatedTimestamp)
             .taskNames(taskNames)
