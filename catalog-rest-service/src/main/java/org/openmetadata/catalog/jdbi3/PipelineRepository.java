@@ -170,11 +170,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static class PipelineEntityInterface implements EntityInterface<Pipeline> {
     private final Pipeline entity;
-    private final String fqn;
 
     public PipelineEntityInterface(Pipeline entity) {
       this.entity = entity;
-      this.fqn = PipelineRepository.getFQN(entity);
     }
 
     @Override
@@ -204,7 +202,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : PipelineRepository.getFQN(entity);
     }
 
     @Override

@@ -213,11 +213,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static class DatabaseEntityInterface implements EntityInterface<Database> {
     private final Database entity;
-    private final String fqn;
 
     public DatabaseEntityInterface(Database entity) {
       this.entity = entity;
-      this.fqn = DatabaseRepository.getFQN(entity);
     }
 
     @Override
@@ -247,7 +245,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : DatabaseRepository.getFQN(entity);
     }
 
     @Override

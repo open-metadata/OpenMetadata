@@ -203,16 +203,18 @@ class OMetaModelTest(TestCase):
         )
         create_db_entity = self.metadata.create_or_update(data=create_db)
 
+        db_reference = EntityReference(id=create_db_entity.id, name="test-db-ml", type="database")
+
         create_table1 = CreateTableRequest(
             name="test-ml",
-            database=create_db_entity.id,
+            database=db_reference,
             columns=[Column(name="education", dataType=DataType.STRING)],
         )
         table1_entity = self.metadata.create_or_update(data=create_table1)
 
         create_table2 = CreateTableRequest(
             name="another_test-ml",
-            database=create_db_entity.id,
+            database=db_reference,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
         table2_entity = self.metadata.create_or_update(data=create_table2)

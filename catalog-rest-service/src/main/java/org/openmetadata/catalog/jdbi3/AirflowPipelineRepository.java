@@ -132,11 +132,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   public static class AirflowPipelineEntityInterface implements EntityInterface<AirflowPipeline> {
     private final AirflowPipeline entity;
-    private final String fqn;
 
     public AirflowPipelineEntityInterface(AirflowPipeline entity) {
       this.entity = entity;
-      this.fqn = AirflowPipelineRepository.getFQN(entity);
     }
 
     @Override
@@ -166,7 +164,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : AirflowPipelineRepository.getFQN(entity);
     }
 
     @Override

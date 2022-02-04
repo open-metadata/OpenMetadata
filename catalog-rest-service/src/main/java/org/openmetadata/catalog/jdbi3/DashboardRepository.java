@@ -241,11 +241,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public static class DashboardEntityInterface implements EntityInterface<Dashboard> {
     private final Dashboard entity;
-    private final String fqn;
 
     public DashboardEntityInterface(Dashboard entity) {
       this.entity = entity;
-      this.fqn = DashboardRepository.getFQN(entity);
     }
 
     @Override
@@ -275,7 +273,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : DashboardRepository.getFQN(entity);
     }
 
     @Override

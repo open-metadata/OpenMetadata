@@ -246,11 +246,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   public static class MlModelEntityInterface implements EntityInterface<MlModel> {
     private final MlModel entity;
-    private final String fqn;
 
     public MlModelEntityInterface(MlModel entity) {
       this.entity = entity;
-      this.fqn = MlModelRepository.getFQN(entity);
     }
 
     @Override
@@ -280,7 +278,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : MlModelRepository.getFQN(entity);
     }
 
     @Override

@@ -87,9 +87,11 @@ class OMetaLineageTest(TestCase):
 
         cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
 
+        cls.db_reference = EntityReference(id=cls.create_db_entity.id, name="test-db", type="database")
+
         cls.table = CreateTableRequest(
             name="test",
-            database=cls.create_db_entity.id,
+            database=cls.db_reference,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 

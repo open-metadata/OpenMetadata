@@ -85,17 +85,19 @@ class OMetaTableTest(TestCase):
 
         cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
 
+        cls.db_reference = EntityReference(id=cls.create_db_entity.id, name="test-db", type="database")
+
         cls.entity = Table(
             id=uuid.uuid4(),
             name="test",
-            database=EntityReference(id=cls.create_db_entity.id, type="database"),
+            database=cls.db_reference,
             fullyQualifiedName="test-service-table.test-db.test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         cls.create = CreateTableRequest(
             name="test",
-            database=cls.create_db_entity.id,
+            database=cls.db_reference,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -151,7 +153,7 @@ class OMetaTableTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(res.database.id, updated_entity.database)
+        self.assertEqual(res.database.id, updated_entity.database.id)
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 
@@ -310,7 +312,7 @@ class OMetaTableTest(TestCase):
 
         another_table = CreateTableRequest(
             name="another-test",
-            database=self.create_db_entity.id,
+            database=self.db_reference,
             columns=[Column(name="another_id", dataType=DataType.BIGINT)],
         )
         another_res = self.metadata.create_or_update(another_table)

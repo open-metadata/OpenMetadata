@@ -142,11 +142,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public static class TopicEntityInterface implements EntityInterface<Topic> {
     private final Topic entity;
-    private final String fqn;
 
     public TopicEntityInterface(Topic entity) {
       this.entity = entity;
-      this.fqn = TopicRepository.getFQN(entity);
     }
 
     @Override
@@ -176,7 +174,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : TopicRepository.getFQN(entity);
     }
 
     @Override

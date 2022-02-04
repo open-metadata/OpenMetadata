@@ -251,11 +251,9 @@ public class LocationRepository extends EntityRepository<Location> {
 
   public static class LocationEntityInterface implements EntityInterface<Location> {
     private final Location entity;
-    private final String fqn;
 
     public LocationEntityInterface(Location entity) {
       this.entity = entity;
-      this.fqn = LocationRepository.getFQN(entity);
     }
 
     @Override
@@ -285,7 +283,9 @@ public class LocationRepository extends EntityRepository<Location> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : fqn;
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : LocationRepository.getFQN(entity);
     }
 
     @Override
