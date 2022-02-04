@@ -42,11 +42,6 @@ public class MyDataPage {
   By API = By.xpath("//a[@data-testid=\"menu-item-API\"]");
   By Slack = By.xpath("//a[@data-testid=\"menu-item-Slack\"]");
   By userName = By.cssSelector("[data-testid='greeting-text']");
-  By heading = By.className("tw-heading");
-
-  public By heading() {
-    return heading;
-  }
 
   public By closeWhatsNew() {
     return closeWhatsNew;
