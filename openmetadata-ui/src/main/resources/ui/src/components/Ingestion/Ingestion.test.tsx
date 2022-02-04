@@ -21,8 +21,8 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPipeline';
-import { mockIngestionWorkFlow } from '../../pages/IngestionPage/IngestionPage.mock';
 import Ingestion from './Ingestion.component';
+import { mockIngestionWorkFlow } from './Ingestion.mock';
 
 const mockPaging = {
   after: 'after',

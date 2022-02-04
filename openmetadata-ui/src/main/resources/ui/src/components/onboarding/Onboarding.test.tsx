@@ -23,12 +23,4 @@ describe('Test Onboarding Component', () => {
 
     expect(onboarding).toBeInTheDocument();
   });
-
-  it('Logo should render', () => {
-    const { getByTestId } = render(<Onboarding />);
-
-    const logo = getByTestId('logo');
-
-    expect(logo).toBeInTheDocument();
-  });
 });
