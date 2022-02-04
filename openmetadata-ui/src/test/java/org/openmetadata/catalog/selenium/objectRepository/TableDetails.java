@@ -51,6 +51,11 @@ public class TableDetails {
   By columnDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
   By joinedTables = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By joinedColumns = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
+  By sampleDataTable = By.xpath("//table[@data-testid=\"sample-data-table\"]");
+
+  public By getSampleDataTable() {
+    return sampleDataTable;
+  }
 
   public By clickOwnerDropdown() {
     return owner;

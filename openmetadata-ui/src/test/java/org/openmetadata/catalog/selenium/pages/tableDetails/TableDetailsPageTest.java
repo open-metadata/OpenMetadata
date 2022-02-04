@@ -17,6 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
@@ -50,6 +51,7 @@ public class TableDetailsPageTest {
   TopicDetails topicDetails;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  private static final Logger LOG = Logger.getLogger(TableDetails.class.getName());
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -73,26 +75,39 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(1)
-  public void openExplorePage() {
+  void openExplorePage() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
+    if (webDriver.findElement(explorePage.getTableCount()).isDisplayed()) {
+      LOG.info("Passed");
+    } else {
+      Assert.fail();
+    }
   }
 
   @Test
   @Order(2)
-  public void checkTabs() {
+  void checkTabs() {
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), tableName);
     Events.click(webDriver, myDataPage.selectTable());
     Events.click(webDriver, tableDetails.profiler());
+    WebElement profilerColumn = tableDetails.profilerColumn().get(1);
+    Assert.assertTrue(profilerColumn.isDisplayed());
     Events.click(webDriver, tableDetails.lineage());
+    WebElement lineage = tableDetails.lineageNodes().get(1);
+    Assert.assertTrue(lineage.isDisplayed());
     Events.click(webDriver, tableDetails.sampleData());
+    WebElement sampleDataTable = webDriver.findElement(tableDetails.getSampleDataTable());
+    Assert.assertTrue(sampleDataTable.isDisplayed());
     Events.click(webDriver, tableDetails.manage());
+    WebElement ownerDropdown = webDriver.findElement(tableDetails.clickOwnerDropdown());
+    Assert.assertTrue(ownerDropdown.isDisplayed());
   }
 
   @Test
   @Order(3)
-  public void editDescription() {
+  void editDescription() {
     openExplorePage();
     String sendKeys = "Description Added";
     Events.click(webDriver, explorePage.selectTable());
@@ -128,7 +143,6 @@ public class TableDetailsPageTest {
   @Order(5)
   public void addTagsToColumn() {
     openExplorePage();
-    List<WebElement> selectedTag = new ArrayList<>();
     Events.click(webDriver, explorePage.selectTable());
     ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", explorePage.addTag());
     Events.click(webDriver, explorePage.addTag());
@@ -137,13 +151,14 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.selectTag());
     Events.click(webDriver, tableDetails.saveTag());
     ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", explorePage.explore());
-    selectedTag = webDriver.findElements(tableDetails.getSelectedTag());
+    String selectedTag = webDriver.findElement(tableDetails.getSelectedTag()).getText();
     String TagDisplayed = webDriver.findElement(tableDetails.TagName()).getText();
+    Assert.assertEquals(selectedTag, TagDisplayed);
   }
 
   @Test
   @Order(6)
-  public void removeTags() {
+  void removeTags() {
     openExplorePage();
     List<WebElement> tagDisplayed = topicDetails.breadCrumbTag();
     Events.click(webDriver, explorePage.selectTable());
@@ -151,11 +166,17 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
     webDriver.navigate().refresh();
+    List<WebElement> updatedTags = topicDetails.breadCrumbTag();
+    if (updatedTags.contains(tagDisplayed.get(1))) {
+      Assert.fail("Selected Tag is not removed");
+    } else {
+      LOG.info("Passed");
+    }
   }
 
   @Test
   @Order(7)
-  public void checkProfiler() {
+  void checkProfiler() {
     ExplorePage explorePage = new ExplorePage(webDriver);
     TableDetails tableDetails = new TableDetails(webDriver);
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(2));
@@ -188,7 +209,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(9)
-  public void checkLineage() {
+  void checkLineage() {
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.lineage());
@@ -204,7 +225,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(10)
-  public void checkBreadCrumb() throws Exception {
+  void checkBreadCrumb() throws Exception {
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Thread.sleep(1000);
@@ -216,12 +237,14 @@ public class TableDetailsPageTest {
         counter = counter + 1;
         link.click();
         Thread.sleep(1000);
+        Assert.assertTrue(link.isDisplayed());
         webDriver.navigate().back();
         Thread.sleep(1000);
       } catch (StaleElementReferenceException ex) {
         Thread.sleep(2000);
         WebElement breadcrumb_link = webDriver.findElement(By.xpath(xpath));
         breadcrumb_link.click();
+        Assert.assertTrue(breadcrumb_link.isDisplayed());
       }
     }
   }

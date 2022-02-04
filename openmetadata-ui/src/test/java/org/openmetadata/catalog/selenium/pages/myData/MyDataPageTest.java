@@ -93,7 +93,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(2)
-  public void checkOverview() {
+  void checkOverview() {
     MyDataPage myDataPage = new MyDataPage(webDriver);
     String url;
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
@@ -130,16 +130,22 @@ public class MyDataPageTest {
   @Test
   @Order(3)
   public void checkSearchBar() throws InterruptedException {
+    String sendkeys = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     wait.until(ExpectedConditions.elementToBeClickable(myDataPage.getSearchBox())); // Search bar/dim
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), "dim"); // Search bar/dim
+    Events.sendKeys(webDriver, myDataPage.getSearchBox(), sendkeys); // Search bar/dim
     Events.click(webDriver, myDataPage.selectTable());
     Thread.sleep(1000);
+    WebElement tableName =
+        tableDetails
+            .breadCrumb()
+            .get(tableDetails.breadCrumb().size() - 1); // getting the last element as it would match the table name
+    Assert.assertTrue(tableName.getText().contains(sendkeys));
   }
 
   @Test
   @Order(4)
-  public void checkExplore() {
+  void checkExplore() {
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.clickExplore());
@@ -156,7 +162,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(5)
-  public void checkHeaders() {
+  void checkHeaders() {
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.openSettings());
@@ -236,36 +242,31 @@ public class MyDataPageTest {
 
   @Test
   @Order(7)
-  public void checkFollowingTab() throws InterruptedException {
+  void checkFollowingTab() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.getTables());
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
     Events.click(webDriver, myDataPage.selectTable());
-    Thread.sleep(1000);
     String follow = webDriver.findElement(tableDetails.clickFollow()).getText();
     if (follow.equals("Unfollow")) {
       Events.click(webDriver, tableDetails.clickFollow());
-      Thread.sleep(1000);
       Events.click(webDriver, tableDetails.clickFollow());
     } else {
       Events.click(webDriver, tableDetails.clickFollow());
     }
-    Thread.sleep(2000);
     Events.click(webDriver, myDataPage.clickHome());
-    Thread.sleep(1000);
     String tableName = myDataPage.following().toString();
     Assert.assertEquals(tableName, "Started Following " + table);
   }
 
   @Test
   @Order(8)
-  public void checkRecentlyViewed() throws InterruptedException {
+  void checkRecentlyViewed() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
     Events.click(webDriver, myDataPage.selectTable());
     Events.click(webDriver, myDataPage.clickHome());
     webDriver.navigate().refresh();
-    Thread.sleep(1000);
     String table = webDriver.findElement(myDataPage.recentlyViewed()).getText();
     Assert.assertEquals(table, "dim_address");
   }
@@ -298,7 +299,7 @@ public class MyDataPageTest {
     try {
       WebElement spaceSearch = webDriver.findElement(myDataPage.recentSearchWithSpace());
       if (spaceSearch.isDisplayed()) {
-        throw new Exception("Spaces are captured in Recent Search");
+        Assert.fail("Spaces are displayed in recent search terms");
       }
     } catch (TimeoutException exception) {
       LOG.info("Success");

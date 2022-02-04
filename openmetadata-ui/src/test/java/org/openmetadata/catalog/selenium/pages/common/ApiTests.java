@@ -8,10 +8,10 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
-public class ApiTests {
+class ApiTests {
 
   @Test
-  public void changeServiceDescription() throws JsonParseException {
+  void changeServiceDescription() throws JsonParseException {
     RestAssured.baseURI = "http://localhost:8585";
     String response =
         given()
@@ -30,7 +30,7 @@ public class ApiTests {
   }
 
   @Test
-  public void changeDatabaseDescription() throws JsonParseException {
+  void changeDatabaseDescription() throws JsonParseException {
     RestAssured.baseURI = "http://localhost:8585";
     String response =
         given()

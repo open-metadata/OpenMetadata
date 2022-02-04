@@ -17,7 +17,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
-public class Explore {
+class Explore {
   WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Actions actions;
@@ -56,16 +56,20 @@ public class Explore {
 
   @Test
   @Order(1)
-  public void openExplorePage() {
+  void openExplorePage() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
+    if (webDriver.findElement(explorePage.getTableCount()).isDisplayed()) {
+      LOG.info("Passed");
+    } else {
+      Assert.fail();
+    }
   }
 
   @Test
   @Order(2)
-  public void checkTableCount() throws InterruptedException {
+  void checkTableCount() {
     openExplorePage();
-    Thread.sleep(2000);
     WebElement tabCount = webDriver.findElement(explorePage.getTableCount());
     int tableCount = Integer.parseInt(tabCount.getText());
     int getServiceCount = 0;
@@ -89,9 +93,8 @@ public class Explore {
 
   @Test
   @Order(3)
-  public void checkTopicCount() throws InterruptedException {
+  void checkTopicCount() {
     openExplorePage();
-    Thread.sleep(1000);
     Events.click(webDriver, explorePage.topics());
     WebElement topCount = webDriver.findElement(explorePage.getTopicCount());
     int topicCount = Integer.parseInt(topCount.getText());
@@ -116,7 +119,7 @@ public class Explore {
 
   @Test
   @Order(4)
-  public void checkDashboardCount() throws InterruptedException {
+  void checkDashboardCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     WebElement dashCount = webDriver.findElement(explorePage.getDashboardCount());
@@ -142,11 +145,9 @@ public class Explore {
 
   @Test
   @Order(5)
-  public void checkPipelineCount() throws InterruptedException {
+  void checkPipelineCount() {
     openExplorePage();
-    Thread.sleep(1000);
     Events.click(webDriver, explorePage.pipeline());
-    Thread.sleep(1000);
     WebElement pipCount = webDriver.findElement(explorePage.getPipelineCount());
     int pipelineCount = Integer.parseInt(pipCount.getText());
     int getServiceCount = 0;
@@ -170,7 +171,7 @@ public class Explore {
 
   @Test
   @Order(6)
-  public void checkBasics() throws Exception {
+  void checkBasics() throws Exception {
     openExplorePage();
     // Doing add tags first to get Tags checkbox in the left panel
     Events.click(webDriver, explorePage.selectTable());
@@ -210,7 +211,7 @@ public class Explore {
 
   @Test
   @Order(7)
-  public void checkLastUpdatedSort() throws InterruptedException {
+  void checkLastUpdatedSort() throws InterruptedException {
     String sendKeys = "Description Added";
     openExplorePage();
     // Adding description to check last updated sort
@@ -228,7 +229,7 @@ public class Explore {
 
   @Test
   @Order(8)
-  public void checkRandomTableCount() throws InterruptedException {
+  void checkRandomTableCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.bigQueryCheckbox());
     Events.click(webDriver, explorePage.shopifyCheckbox());
@@ -249,12 +250,11 @@ public class Explore {
 
   @Test
   @Order(9)
-  public void checkRandomTopicCount() throws InterruptedException {
+  public void checkRandomTopicCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
     Events.click(webDriver, explorePage.kafka());
-    Thread.sleep(1000);
     List<WebElement> selectedCheckbox = explorePage.selectedCheckbox();
     List<Integer> count = new ArrayList<>();
     for (WebElement e : selectedCheckbox) {
@@ -270,18 +270,18 @@ public class Explore {
 
   @Test
   @Order(10)
-  public void checkRandomDashboardCount() throws InterruptedException {
+  void checkRandomDashboardCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
     Events.click(webDriver, explorePage.superset());
     List<WebElement> selectedCheckbox = explorePage.selectedCheckbox();
     List<Integer> count = new ArrayList<>();
-    check = new Integer[count.size()];
     for (WebElement e : selectedCheckbox) {
       count.add(Integer.parseInt(e.getText()));
     }
     // Checking count to selected checkbox count
+    check = new Integer[count.size()];
     check = count.toArray(check);
     for (int i = 0; i < check.length - 1; i++) {
       Assert.assertEquals(check[i], check[i + 1]);
@@ -290,7 +290,7 @@ public class Explore {
 
   @Test
   @Order(11)
-  public void checkRandomPipelineCount() throws InterruptedException {
+  void checkRandomPipelineCount() throws InterruptedException {
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -310,19 +310,17 @@ public class Explore {
 
   @Test
   @Order(12)
-  public void checkSearchBarInvalidValue() throws InterruptedException {
+  void checkSearchBarInvalidValue() throws InterruptedException {
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), searchCriteria);
     Events.sendEnter(webDriver, myDataPage.getSearchBox());
-    Thread.sleep(1000);
     try {
       WebElement errorMessage = webDriver.findElement(explorePage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "No matching data assets found for " + searchCriteria);
     } catch (Exception e) {
       Assert.fail();
     }
-    Thread.sleep(1000);
   }
 
   @AfterEach
