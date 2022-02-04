@@ -148,12 +148,12 @@ public class TagsPageTest {
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
     Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    Events.click(webDriver, tagsPage.enterAssociatedTagName());
+    Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 1; i++) {
-      Events.sendKeys(webDriver, tagsPage.enterAssociatedTagName(), "P");
-      Events.click(webDriver, tagsPage.tagListItem());
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
+      Events.click(webDriver, common.tagListItem());
     }
-    Events.click(webDriver, tagsPage.saveAssociatedTag());
+    Events.click(webDriver, common.saveAssociatedTag());
   }
 
   @Test
@@ -166,25 +166,25 @@ public class TagsPageTest {
     for (int i = 0; i <= 1; i++) {
       Events.click(webDriver, tagsPage.removeAssociatedTag());
     }
-    Events.click(webDriver, tagsPage.saveAssociatedTag());
+    Events.click(webDriver, common.saveAssociatedTag());
   }
 
   @Test
   @Order(8)
   public void addTagToTableColumn() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
-    Events.click(webDriver, tagsPage.headerExplore());
+    Events.click(webDriver, common.headerItem("explore"));
     Events.click(webDriver, tagsPage.sortBy());
-    Events.click(webDriver, tagsPage.tagListItem());
+    Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, tagsPage.lastTableLink());
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
     Thread.sleep(waitTime);
     Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    Events.click(webDriver, tagsPage.enterAssociatedTagName());
-    Events.sendKeys(webDriver, tagsPage.enterAssociatedTagName(), tagCategoryDisplayName + "." + tagDisplayName);
-    Events.click(webDriver, tagsPage.tagListItem());
-    Events.click(webDriver, tagsPage.saveAssociatedTag());
+    Events.click(webDriver, common.enterAssociatedTagName());
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), tagCategoryDisplayName + "." + tagDisplayName);
+    Events.click(webDriver, common.tagListItem());
+    Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
@@ -207,10 +207,9 @@ public class TagsPageTest {
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
     Events.click(webDriver, tagsPage.tableLink());
-    //    actions.moveToElement(webDriver.findElement(tagsPage.editAssociatedTagButton())).perform();
-    Events.click(webDriver, tagsPage.editAssociatedTagButton());
+    Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
-    Events.click(webDriver, tagsPage.saveAssociatedTag());
+    Events.click(webDriver, common.saveAssociatedTag());
   }
 
   @Test
@@ -221,13 +220,13 @@ public class TagsPageTest {
     Events.click(webDriver, tagsPage.addTagButton());
     Events.sendKeys(webDriver, common.displayName(), "Personals");
     Events.click(webDriver, common.descriptionSaveButton());
-    Events.click(webDriver, tagsPage.headerExplore());
+    Events.click(webDriver, common.headerItem("explore"));
     Events.click(webDriver, tagsPage.tableLink());
-    Events.click(webDriver, tagsPage.editAssociatedTagButton());
-    Events.click(webDriver, tagsPage.enterAssociatedTagName());
-    Events.sendKeys(webDriver, tagsPage.enterAssociatedTagName(), "Personals");
-    Events.click(webDriver, tagsPage.tagListItem());
-    Events.click(webDriver, tagsPage.saveAssociatedTag());
+    Events.click(webDriver, common.editAssociatedTagButton());
+    Events.click(webDriver, common.enterAssociatedTagName());
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "Personals");
+    Events.click(webDriver, common.tagListItem());
+    Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
     Events.click(webDriver, common.containsText("PersonalData"));
@@ -244,8 +243,8 @@ public class TagsPageTest {
     Events.click(webDriver, tagsPage.usageCountElementIndex(2));
     Thread.sleep(2000);
     String beforeFilterCount = webDriver.findElement(tagsPage.tagFilterCount(1)).getAttribute("innerHTML");
-    Events.click(webDriver, tagsPage.entityTabIndex(2));
-    Events.click(webDriver, tagsPage.entityTabIndex(1));
+    Events.click(webDriver, common.entityTabIndex(2));
+    Events.click(webDriver, common.entityTabIndex(1));
     String afterFilterCount = webDriver.findElement(tagsPage.tagFilterCount(1)).getAttribute("innerHTML");
     Assert.assertEquals(afterFilterCount, beforeFilterCount);
   }
@@ -258,9 +257,9 @@ public class TagsPageTest {
     Events.click(webDriver, common.containsText("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(2));
     Events.click(webDriver, tagsPage.tableLink());
-    Events.click(webDriver, tagsPage.editAssociatedTagButton());
+    Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
-    Events.click(webDriver, tagsPage.saveAssociatedTag());
+    Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
     Events.click(webDriver, common.containsText("PersonalData"));
@@ -276,10 +275,10 @@ public class TagsPageTest {
     Events.click(webDriver, common.containsText("PersonalData"));
     actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
     Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    Events.click(webDriver, tagsPage.enterAssociatedTagName());
+    Events.click(webDriver, common.enterAssociatedTagName());
     try {
-      Events.sendKeys(webDriver, tagsPage.enterAssociatedTagName(), "PersonalData.Personal");
-      WebElement sameTag = webDriver.findElement(tagsPage.tagListItem());
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
+      WebElement sameTag = webDriver.findElement(common.tagListItem());
       if (sameTag.isDisplayed()) {
         Assert.fail();
       }
