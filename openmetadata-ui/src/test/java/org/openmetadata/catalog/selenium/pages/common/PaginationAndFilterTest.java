@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
@@ -43,6 +43,7 @@ public class PaginationAndFilterTest {
   private static final Logger LOG = Logger.getLogger(PaginationAndFilterTest.class.getName());
 
   static WebDriver webDriver;
+  static Common common;
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
@@ -57,6 +58,7 @@ public class PaginationAndFilterTest {
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
+    common = new Common(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -66,18 +68,16 @@ public class PaginationAndFilterTest {
   @Test
   @Order(1)
   public void checkFlikerInFilter() throws Exception {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+    Events.click(webDriver, common.selectOverview("tables"));
     for (int i = 0; i <= 5; i++) {
-      Events.click(webDriver, By.xpath("//div[@data-testid='pagination-button']//ul//li[2]")); // Next Page
+      Events.click(webDriver, common.explorePagination(2));
     }
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
+    Events.click(webDriver, common.selectFilterExplore("BigQuery"));
     try {
       WebElement noDataFound =
-          wait.until(
-              ExpectedConditions.presenceOfElementLocated(
-                  By.xpath("//*[contains(text(), 'No matching data assets found')]")));
+          wait.until(ExpectedConditions.presenceOfElementLocated(common.containsText("No matching data assets found")));
       if (noDataFound.isDisplayed()) {
         throw new Exception("Flakiness exists");
       }
@@ -89,15 +89,13 @@ public class PaginationAndFilterTest {
   @Test
   @Order(2)
   public void noDataPresentWithFilter() throws Exception {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Select Filter
+    Events.click(webDriver, common.selectOverview("tables"));
+    Events.click(webDriver, common.selectFilterExplore("BigQuery"));
     try {
       WebElement noDataFound =
-          wait.until(
-              ExpectedConditions.presenceOfElementLocated(
-                  By.xpath("//*[contains(text(), 'No matching data assets found')]")));
+          wait.until(ExpectedConditions.presenceOfElementLocated(common.containsText("No matching data assets found")));
       if (noDataFound.isDisplayed()) {
         throw new Exception("Data not found with filter count more than 0");
       }
@@ -109,14 +107,12 @@ public class PaginationAndFilterTest {
   @Test
   @Order(3)
   public void dataPresentWithFilter() throws Exception {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier3']")); // Select Filter
+    Events.click(webDriver, common.selectOverview("tables"));
+    Events.click(webDriver, common.selectFilterExplore("Tier.Tier3"));
     try {
-
-      WebElement dataFound =
-          wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='search-results']")));
+      WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(common.searchResults()));
       if (dataFound.isDisplayed()) {
         throw new Exception("Data found with filter count 0");
       }
@@ -128,32 +124,32 @@ public class PaginationAndFilterTest {
   @Test
   @Order(4)
   public void leftPanelDisappearsCheck() throws InterruptedException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "zzzz");
-    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    Events.sendKeys(webDriver, common.searchBar(), "zzzz");
+    Events.sendEnter(webDriver, common.searchBar());
     webDriver.navigate().refresh();
-    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']")); // Tables
+    Events.click(webDriver, common.headerItem("explore"));
+    Events.click(webDriver, common.selectFilterExplore("BigQuery"));
   }
 
   @Test
   @Order(5)
   public void filterDisappearsAfterSearchCheck() throws Exception {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='BigQuery']"));
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim");
-    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    Events.click(webDriver, common.headerItem("explore"));
+    Events.click(webDriver, common.selectFilterExplore("BigQuery"));
+    Events.sendKeys(webDriver, common.searchBar(), "dim");
+    Events.sendEnter(webDriver, common.searchBar());
     Thread.sleep(2000);
-    WebElement clearSearchBox = webDriver.findElement(By.cssSelector("[data-testid='searchBox']"));
+    WebElement clearSearchBox = webDriver.findElement(common.searchBar());
     clearSearchBox.sendKeys(Keys.CONTROL + "a");
     clearSearchBox.sendKeys(Keys.DELETE);
-    Events.sendEnter(webDriver, By.cssSelector("[data-testid='searchBox']"));
+    Events.sendEnter(webDriver, common.searchBar());
     try {
-      Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Glue']"));
-      Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='default']"));
+      Events.click(webDriver, common.selectFilterExplore("Glue"));
+      Events.click(webDriver, common.selectFilterExplore("default"));
     } catch (TimeoutException exception) {
       throw new Exception("filters are missing");
     }
@@ -162,31 +158,29 @@ public class PaginationAndFilterTest {
   @Test
   @Order(6)
   public void databaseFilterCountCheck() throws InterruptedException {
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "dim_api_client");
-    Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+    Events.click(webDriver, common.headerItem("explore"));
+    Events.sendKeys(webDriver, common.searchBar(), "dim_api_client");
+    Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
-    Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
-    Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
+    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
+    Events.click(webDriver, common.editAssociatedTagButton());
+    Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 4; i++) {
-      Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
-      Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
+      Events.click(webDriver, common.tagListItem());
     }
-    Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+    Events.click(webDriver, common.saveAssociatedTag());
     webDriver.navigate().back();
     webDriver.navigate().refresh();
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='PII.None']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='shopify']"));
     Thread.sleep(2000);
-    Object filteredResults = webDriver.findElements(By.xpath("//div[@data-testid='search-results']/div")).size();
-    String databaseCount =
-        webDriver
-            .findElement(By.xpath("//div[@data-testid='filter-container-shopify']//span[@data-testid='filter-count']"))
-            .getAttribute("innerHTML");
-    Assert.assertEquals(databaseCount, filteredResults);
+    Events.click(webDriver, common.selectFilterExplore("PII.None"));
+    Events.click(webDriver, common.selectFilterExplore("shopify"));
+    Thread.sleep(2000);
+    Object filteredResults = webDriver.findElements(common.searchResultsList()).size();
+    String databaseCount = webDriver.findElement(common.exploreFilterCount("shopify")).getAttribute("innerHTML");
+    Assert.assertEquals(databaseCount, filteredResults.toString());
   }
 
   @AfterEach

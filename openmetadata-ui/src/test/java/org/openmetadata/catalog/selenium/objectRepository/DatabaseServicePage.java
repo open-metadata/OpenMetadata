@@ -10,37 +10,10 @@ public class DatabaseServicePage {
     this.webDriver = webDriver;
   }
 
-  By serviceUrl = By.cssSelector("[data-testid='url']");
-  By servicePort = By.cssSelector("[data-testid='port']");
-  By databaseName = By.cssSelector("[data-testid='database']");
   By runIngestion = By.cssSelector("[data-testid='run']");
   By editIngestion = By.cssSelector("[data-testid='edit']");
   By deleteIngestion = By.cssSelector("[data-testid='delete']");
   By selectInterval = By.xpath("//select[@id='ingestionType']");
-
-  public By serviceType(String serviceType) {
-    return By.cssSelector("[data-testid='" + serviceType + "']");
-  }
-
-  public By servicePort() {
-    return servicePort;
-  }
-
-  public By serviceUrl() {
-    return serviceUrl;
-  }
-
-  public By databaseName() {
-    return databaseName;
-  }
-
-  public By deleteServiceButton(String serviceName) {
-    return By.cssSelector("[data-testid='delete-service-" + serviceName + "']");
-  }
-
-  public By serviceDetailsTabs(String tab) {
-    return By.cssSelector("[data-testid='tab'][id='" + tab + "']");
-  }
 
   public By runIngestion() {
     return runIngestion;

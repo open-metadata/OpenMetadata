@@ -98,11 +98,11 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.descriptionLinkButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, databaseServicePage.serviceUrl(), "localhost");
-    Events.sendKeys(webDriver, databaseServicePage.servicePort(), "3306");
+    Events.sendKeys(webDriver, common.serviceUrl(), "localhost");
+    Events.sendKeys(webDriver, common.servicePort(), "3306");
     Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
-    Events.sendKeys(webDriver, databaseServicePage.databaseName(), "openmetadata_db");
+    Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.saveServiceButton());
@@ -149,7 +149,7 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
     Events.sendKeys(webDriver, common.serviceUsername(), "1");
     Events.sendKeys(webDriver, common.servicePassword(), "1");
-    Events.sendKeys(webDriver, databaseServicePage.databaseName(), "1");
+    Events.sendKeys(webDriver, common.databaseName(), "1");
     Events.click(webDriver, common.saveConnectionConfig());
   }
 
