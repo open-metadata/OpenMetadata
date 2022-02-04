@@ -34,21 +34,21 @@ python3 --version
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
 1. [Prepare a Python virtual environment](bigquery.md#1.-prepare-a-python-virtual-environment)
-2. [Install the Python module for this connector](bigquery.md#2.-install-the-python-module-for-this-connector)&#x20;
-3. [Create a configuration file using template JSON](bigquery.md#3.-create-a-configuration-file-using-template-json)&#x20;
-4. [Configure service settings](bigquery.md#4.-configure-service-settings)&#x20;
-5. [Enable/disable the data profiler](bigquery.md#5.-enable-disable-the-data-profiler)&#x20;
-6. [Install the data profiler Python module (optional)](bigquery.md#6.-install-the-data-profiler-python-module-optional)&#x20;
-7. [Configure data filters (optional)](bigquery.md#7.-configure-data-filters-optional)&#x20;
-8. [Configure sample data (optional)](bigquery.md#8.-configure-sample-data-optional)&#x20;
-9. [Configure DBT (optional)](bigquery.md#9.-configure-dbt-optional)&#x20;
-10. [Confirm sink settings](bigquery.md#10.-confirm-sink-settings)&#x20;
-11. [Confirm metadata\_server settings](bigquery.md#11.-confirm-metadata\_server-settings)&#x20;
+2. [Install the Python module for this connector](bigquery.md#2.-install-the-python-module-for-this-connector)
+3. [Create a configuration file using template JSON](bigquery.md#3.-create-a-configuration-file-using-template-json)
+4. [Configure service settings](bigquery.md#4.-configure-service-settings)
+5. [Enable/disable the data profiler](bigquery.md#5.-enable-disable-the-data-profiler)
+6. [Install the data profiler Python module (optional)](bigquery.md#6.-install-the-data-profiler-python-module-optional)
+7. [Configure data filters (optional)](bigquery.md#7.-configure-data-filters-optional)
+8. [Configure sample data (optional)](bigquery.md#8.-configure-sample-data-optional)
+9. [Configure DBT (optional)](bigquery.md#9.-configure-dbt-optional)
+10. [Confirm sink settings](bigquery.md#10.-confirm-sink-settings)
+11. [Confirm metadata\_server settings](bigquery.md#11.-confirm-metadata\_server-settings)
 12. [Run ingestion workflow](bigquery.md#12.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
-In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.&#x20;
+In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
@@ -103,6 +103,10 @@ Copy and paste the configuration template below into the `bigquery.json` file yo
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
+
+When adding the details for the credentials path, you can either choose to pass the `credentials file`, or add the `credentials_path`, or use a secure way to pass the credentials path using the environment variables, i.e., `Application Default Credentials` (ADC).
+
+#### 3.1 Using Credentials File or Credentials Path
 
 {% code title="bigquery-creds.json (boilerplate)" %}
 ```javascript
@@ -165,6 +169,16 @@ Note: The `source.config` field in the configuration JSON will include the major
 }
 ```
 {% endcode %}
+
+#### 3.2 Using Application Default Credentials (ADC)
+
+{% code title="env variables" %}
+```
+export GOOGLE_APPLICATION_CREDENTIALS=<path-to-your-credentials-file>
+```
+{% endcode %}
+
+Users can export the path to the credentials file. Using this option, you can export the env in terminal and run BigQuery config without providing `credentials_path`.
 
 ### **4. Configure service settings**
 
