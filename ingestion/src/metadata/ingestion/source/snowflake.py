@@ -12,7 +12,8 @@
 from typing import Optional
 
 from snowflake.sqlalchemy.custom_types import VARIANT
-from snowflake.sqlalchemy.snowdialect import ischema_names
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy.engine import reflection
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -22,6 +23,24 @@ from metadata.utils.column_type_parser import create_sqlalchemy_type
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
+
+
+@reflection.cache
+def get_schema_names(self, connection, **kw):
+    """
+    Get schema names
+
+    Args:
+        connection ():
+        **kw:
+    Returns:
+    """
+    return self._get_table_or_view_names(
+        ["r", "e"], connection, **kw
+    )  # pylint: disable=protected-access
+
+
+SnowflakeDialect.get_schema_names = get_schema_names  # pylint: disable=protected-access
 
 
 class SnowflakeConfig(SQLConnectionConfig):
