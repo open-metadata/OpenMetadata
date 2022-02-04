@@ -45,12 +45,12 @@ def openmetadata_airflow_lineage_example():
     @task(
         inlets={
             "tables": [
-                TableFQDN(fullyQualifiedName="bigquery_gcp.shopify.raw_order"),
-                TableFQDN(fullyQualifiedName="bigquery_gcp.shopify.raw_customer"),
+                "bigquery_gcp.shopify.raw_order",
+                "bigquery_gcp.shopify.raw_customer",
             ],
         },
         outlets={
-            "tables": [TableFQDN(fullyQualifiedName="bigquery_gcp.shopify.fact_order")]
+            "tables": ["bigquery_gcp.shopify.fact_order"]
         },
     )
     def generate_data():
