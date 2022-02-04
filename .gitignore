@@ -42,13 +42,7 @@ logs
 *.iml
 *.ipr
 *.iws
-.idea/encodings.xml
-.idea/libraries
-.idea/inspectionProfiles/Project_Default.xml
-.idea/modules.xml
-.idea/runConfigurations.xml
-.idea/workspace.xml
-.idea/uiDesigner.xml
+.idea/
 # Package Files
 *.jar
 *.war
@@ -82,6 +76,7 @@ ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
 ingestion/requirements.txt
 ingestion/.python-version
+ingestion/venv2/**
 
 # MLFlow
 mlruns/

@@ -51,6 +51,7 @@ import {
   getSeparator,
   getServiceLogo,
   requiredField,
+  restrictFormSubmit,
 } from '../../../utils/CommonUtils';
 import {
   getIngestionTypeList,
@@ -2149,7 +2150,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             }
             steps={steps}
           />
-          <form className="tw-min-w-full" data-testid="form">
+          <form
+            className="tw-min-w-full"
+            data-testid="form"
+            onSubmit={restrictFormSubmit}>
             <div className="tw-px-4 tw-pt-3 tw-mx-auto">
               {getActiveStepFields(activeStepperStep)}
             </div>
