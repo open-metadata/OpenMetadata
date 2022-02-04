@@ -52,6 +52,7 @@ public class MyDataPageTest {
   TableDetails tableDetails;
   DatabaseServicePage databaseService;
   ExplorePage explorePage;
+  Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
@@ -68,6 +69,7 @@ public class MyDataPageTest {
     tagsPage = new TagsPage(webDriver);
     tableDetails = new TableDetails(webDriver);
     explorePage = new ExplorePage(webDriver);
+    common = new Common(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -198,7 +200,7 @@ public class MyDataPageTest {
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/services");
     try {
-      if (webDriver.findElement(databaseService.serviceName()).isDisplayed()) {
+      if (webDriver.findElement(common.serviceName()).isDisplayed()) {
         LOG.info("Database Service is displayed");
       }
     } catch (Exception e) {
