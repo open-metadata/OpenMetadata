@@ -126,13 +126,10 @@ def _get_column_info(
     elif charlen:
         args = (int(charlen),)
 
-    while True:
-        if attype.upper() in self.ischema_names:
-            coltype = self.ischema_names[attype.upper()]
-            break
-        else:
-            coltype = None
-            break
+    if attype.upper() in self.ischema_names:
+        coltype = self.ischema_names[attype.upper()]
+    else:
+        coltype = None
 
     if coltype:
         coltype = coltype(*args, **kwargs)

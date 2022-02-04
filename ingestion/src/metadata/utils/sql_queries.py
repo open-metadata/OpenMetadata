@@ -245,20 +245,20 @@ NEO4J_AMUNDSEN_DASHBOARD_QUERY = textwrap.dedent(
 
 VERTICA_GET_COLUMNS = """
         SELECT column_name, data_type, column_default, is_nullable, comment
-        FROM v_catalog.columns col left join v_catalog.comments com on com.object_name=lower(col.table_name) and com.object_type='COLUMN' and col.column_name=com.child_object  
-        WHERE lower(table_name) = '%(table)s'
-        AND %(schema_condition)s
+        FROM v_catalog.columns col left join v_catalog.comments com on col.table_id=com.object_id and com.object_type='COLUMN' and col.column_name=com.child_object  
+        WHERE lower(table_name) = '{table}'
+        AND {schema_condition}
         UNION ALL
         SELECT column_name, data_type, '' as column_default, true as is_nullable, ''  as comment
         FROM v_catalog.view_columns
-        WHERE lower(table_name) = '%(table)s'
-        AND %(schema_condition)s
+        WHERE lower(table_name) = '{table}'
+        AND {schema_condition}
     """
 
 VERTICA_GET_PRIMARY_KEYS = """
         SELECT column_name
         FROM v_catalog.primary_keys
-        WHERE lower(table_name) = '%(table)s'
+        WHERE lower(table_name) = '{table}'
         AND constraint_type = 'p'
-        AND %(schema_condition)s
+        AND {schema_condition}
     """
