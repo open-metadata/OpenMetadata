@@ -262,12 +262,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     List<Task> newTask =
-            Collections.singletonList(
-                    new Task()
-                            .withName("newTask")
-                            .withDescription("description")
-                            .withDisplayName("displayName")
-                            .withTaskUrl(new URI("http://localhost:0")));
+        Collections.singletonList(
+            new Task()
+                .withName("newTask")
+                .withDescription("description")
+                .withDisplayName("displayName")
+                .withTaskUrl(new URI("http://localhost:0")));
 
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(newTask));
