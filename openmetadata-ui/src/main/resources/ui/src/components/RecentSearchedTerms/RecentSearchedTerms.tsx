@@ -55,8 +55,8 @@ const RecentSearchedTerms: FunctionComponent = () => {
                     className="tw-font-medium"
                     to={getExplorePathWithSearch(item.term)}>
                     <button 
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                      data-testid="recently-searched">
+                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                       data-testid="recently-searched">
                       {item.term.length > 20 ? (
                         <PopOver
                           html={
