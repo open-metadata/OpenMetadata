@@ -431,3 +431,70 @@ The above command will generate the Python related models according to the lates
 #### Why are Schemas named using the term "Database" in the OpenMetadata UI?
 
 We use "schema" and "database" interchangeably. Some database services have databases the same as schema with database/schema -> tables hierarchy. Some have additional hierarchy with database -> schema -> tables.
+
+## Search
+
+#### How does OpenMetadata increase search relevance?
+
+OpenMetadata has a search autocomplete feature backed by /v1/search/suggest API over all Elasticsearch indexes. Also, full search/filter search is supported by /v1/search/query API. In order to increase search relevancy, OpenMetadata gives Name, Descriptions, and a higher weight followed by column names, and descriptions. The search relevancy can be extended by having an offline process to collect the user search terms and what they click on the page and add weight to those.
+
+## Storage
+
+#### Where does OpenMetadata store the MySQL database metadata?
+
+Please check the details on the configured database and user details. Under the db, there’ll be a table\_entity
+
+#### Is retention information added, so that a user looking at a table knows how long the table should be retained?&#x20;
+
+A retention policy can be associated with a table.
+
+## Tags
+
+#### What’s the difference between the tag `personalDataTags` and `piiTags`?
+
+PII and personal data are requirements from diff regulations (mostly US vs EU) and have different definitions. Please refer to [TechGDPR](https://techgdpr.com/blog/difference-between-pii-and-personal-data/).
+
+#### At what levels are tags supported?
+
+Tags are supported for tables and columns; dashboards and charts; topics, and pipelines.
+
+## Usage
+
+#### How is usage calculated for each entity?
+
+Usage is based on the query log analysis. For now, we have support for Redshift, Snowflake, BigQuery as it is easy to retrieve their query logs. We can extend this to other databases as well.&#x20;
+
+## User Access
+
+#### Is there any permission control to access OpenMetadata?&#x20;
+
+Yes. OpenMetadata supports several [security options](install/enable-security/) and provides [Role Based Access Control](https://docs.open-metadata.org/features#role-based-access-control).
+
+OpenMetadata has a simple, pluggable authorizer once you enable security. If you already have a centralized policy store, we can integrate into it.
+
+#### How do I add an admin user, viewer, and editor.
+
+You can add [adminPrincipals](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata-security.yaml#L120) like in this config. You can pass an array for adminPrincipals. These are bootstrapped admins. The name should match the username in the email. Do not add the email ID, but just the username part of the email. Once you have one or two bootstrapped admins, you can go to the users page and click on any user to make them an Admin.
+
+See also, [Role Based Access Control](https://docs.open-metadata.org/features#role-based-access-control)
+
+#### What permissions do adminPrincipals have?
+
+Admin users have site-wide permissions. Regular users can be the owners of datasets or other entities. If they are the owners, they get full access to the entities they own. Teams can own entities as well. So any one in the team can have access to those entities to edit, etc. Other users can suggest description changes, tags, etc.
+
+#### What are the restrictions for a non-admin user?
+
+* If a dataset or table does not have any owners, anybody can update the comments or descriptions, tags, etc.
+* If a dataset has a team ownership, only members of that team can update the description.
+* If a dataset has an individual ownership, only that user can update the entity descriptions.&#x20;
+* Admin or bot users have site-wide privileges and can do updates across the system.
+
+See also, [Role Based Access Control](https://docs.open-metadata.org/features#role-based-access-control)
+
+#### Can a non-admin user create services and ingestions?&#x20;
+
+No, only admins can create services and ingestions.
+
+#### How can I convert my user access to be able to edit in the OpenMetadata sandbox?
+
+Currently, I can only view information. Let us know your username and we can add you to one of the teams, so that you can get edit privileges on data assets. Alternatively, use another Gmail address and login to the Sandbox. When you are signing up, under Select teams choose yourself as a member of all the teams. Once you login, you will get write operations for all the datasets that are in the My Data tab in the initial page.
