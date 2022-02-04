@@ -414,14 +414,14 @@ class MetadataRestSink(Sink[Entity]):
         roles = []
         for role in record.roles.__root__:
             try:
-                role_response = self.api_client.get(f"/roles/{role.id.__root__}")
+                self.api_client.get(f"/roles/{role.id.__root__}")
             except APIError:
                 self._create_role(role)
             roles.append(self.role_entities[role.name])
         teams = []
         for team in record.teams.__root__:
             try:
-                team_response = self.api_client.get(f"/teams/{team.id.__root__}")
+                self.api_client.get(f"/teams/{team.id.__root__}")
             except APIError:
                 self._create_team(team)
             teams.append(self.team_entities[team.name])
