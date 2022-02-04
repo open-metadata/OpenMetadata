@@ -3,6 +3,8 @@ package org.openmetadata.catalog.selenium.objectRepository;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+import java.util.List;
+
 public class Common {
   WebDriver webDriver;
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
@@ -57,6 +59,7 @@ public class Common {
   By resultsCount = By.xpath("//div[@data-testid='search-container']/div");
   By matchesStats = By.cssSelector("[data-testid='matches-stats']");
   By editLineageButton = By.cssSelector("[data-testid='edit-lineage']");
+  By whatsNewModalChangeLogs = By.cssSelector("[data-testid='WhatsNewModalChangeLogs']");
 
   public By displayName() {
     return displayName;
@@ -292,5 +295,17 @@ public class Common {
 
   public By editLineageButton() {
     return editLineageButton;
+  }
+
+  public By whatsNewDotButtons(int index) {
+    return By.xpath("//ul[@class='slick-dots testid-dots-button']//li["+ index +"]");
+  }
+
+  public By whatsNewModalChangeLogs() {
+    return whatsNewModalChangeLogs;
+  }
+
+  public By overviewFilterCount(String entity) {
+    return By.xpath("//div[@data-testid='" + entity + "-summary']//span[@data-testid='filter-count']");
   }
 }
