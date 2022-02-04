@@ -122,8 +122,8 @@
 * [Metadata Ingestion](install/metadata-ingestion/README.md)
   * [Ingest Sample Data](install/metadata-ingestion/ingest-sample-data.md)
   * [Airflow](install/metadata-ingestion/airflow/README.md)
-    * [Run Metadata Ingestion](install/metadata-ingestion/airflow/run-metadata-ingestion.md)
-    * [Configure Airflow Lineage](install/metadata-ingestion/airflow/configure-airflow-lineage.md)
+    * [Run Metadata Ingestion](install/metadata-ingestion/airflow/README.md)
+    * [Configure Airflow Lineage](install/lineage/airflow-lineage.md)
 
 ## Open Source Community
 
