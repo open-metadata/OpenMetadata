@@ -45,13 +45,12 @@ public class MyDataPageTest {
   static WebDriverWait wait;
   static String table = "dim_address";
   Integer waitTime = Property.getInstance().getSleepTime();
-  myDataPage myDataPage;
-  tagsPage tagsPage;
-  servicesPage servicesPage;
+  MyDataPage myDataPage;
+  TagsPage tagsPage;
   TeamsPage teamsPage;
-  ingestionPage ingestionPage;
   UserListPage userListPage;
   TableDetails tableDetails;
+  DatabaseServicePage databaseService;
   ExplorePage explorePage;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
@@ -63,11 +62,10 @@ public class MyDataPageTest {
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
-    myDataPage = new myDataPage(webDriver);
+    myDataPage = new MyDataPage(webDriver);
     userListPage = new UserListPage(webDriver);
-    ingestionPage = new ingestionPage(webDriver);
     teamsPage = new TeamsPage(webDriver);
-    tagsPage = new tagsPage(webDriver);
+    tagsPage = new TagsPage(webDriver);
     tableDetails = new TableDetails(webDriver);
     explorePage = new ExplorePage(webDriver);
     actions = new Actions(webDriver);
@@ -94,7 +92,7 @@ public class MyDataPageTest {
   @Test
   @Order(2)
   public void checkOverview() {
-    myDataPage myDataPage = new myDataPage(webDriver);
+    MyDataPage myDataPage = new MyDataPage(webDriver);
     String url;
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
@@ -156,7 +154,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(5)
-  public void checkHeaders() throws InterruptedException {
+  public void checkHeaders() {
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.openSettings());
@@ -180,7 +178,7 @@ public class MyDataPageTest {
         LOG.info("All users is displayed");
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      Assert.fail();
     }
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.openSettings());
@@ -188,11 +186,11 @@ public class MyDataPageTest {
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/tags");
     try {
-      if (tagsPage.tagCategories().isDisplayed()) {
+      if (webDriver.findElement(tagsPage.addTagButton()).isDisplayed()) {
         LOG.info("Tag categories is displayed");
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      Assert.fail();
     }
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.openSettings());
@@ -200,29 +198,18 @@ public class MyDataPageTest {
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/services");
     try {
-      if (servicesPage.databaseService().isDisplayed()) {
+      if (webDriver.findElement(databaseService.serviceName()).isDisplayed()) {
         LOG.info("Database Service is displayed");
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      Assert.fail();
     }
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.openSettings());
-    Events.click(webDriver, myDataPage.getIngestions());
-    url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/ingestion");
-    try {
-      if (ingestionPage.addIngestion().isDisplayed()) {
-        LOG.info("Ingestion button is displayed");
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
   @Test
   @Order(6)
-  public void checkMyDataTab() throws InterruptedException {
+  public void checkMyDataTab() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.getTables());
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
@@ -253,7 +240,6 @@ public class MyDataPageTest {
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
     Events.click(webDriver, myDataPage.selectTable());
     Thread.sleep(1000);
-    // Events.click(webDriver, By.id("tabledatacard1Title"));
     String follow = webDriver.findElement(tableDetails.clickFollow()).getText();
     if (follow.equals("Unfollow")) {
       Events.click(webDriver, tableDetails.clickFollow());
@@ -284,7 +270,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(8)
-  public void checkRecentlySearched() throws InterruptedException {
+  public void checkRecentlySearched() {
     String searchCriteria = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.getSearchBox(), searchCriteria);
