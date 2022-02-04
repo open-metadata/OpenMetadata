@@ -85,7 +85,7 @@ public class TagsPageTest {
   @Order(2)
   public void addTagCategory() throws InterruptedException {
     openTagsPage();
-    Events.click(webDriver, tagsPage.addTagCategory());
+    Events.click(webDriver, common.addTagCategory());
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
@@ -115,7 +115,7 @@ public class TagsPageTest {
   public void addTag() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
-    Events.click(webDriver, tagsPage.addTagButton());
+    Events.click(webDriver, common.addTagButton());
     Events.sendKeys(webDriver, common.displayName(), tagDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
@@ -217,7 +217,7 @@ public class TagsPageTest {
   public void addTagWithExistingName() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addTagButton());
+    Events.click(webDriver, common.addTagButton());
     Events.sendKeys(webDriver, common.displayName(), "Personals");
     Events.click(webDriver, common.descriptionSaveButton());
     Events.click(webDriver, common.headerItem("explore"));
