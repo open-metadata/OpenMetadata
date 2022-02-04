@@ -338,7 +338,7 @@ public class SearchResource {
     searchSourceBuilder
         .query(
             QueryBuilders.queryStringQuery(query)
-                .field("pipeline_name", 5.0f)
+                .field("name", 5.0f)
                 .field("description")
                 .field("task_names")
                 .field("task_descriptions")
