@@ -505,12 +505,10 @@ class OpenMetadata(
 
     def create_tag_category(self, data):
         resp = self.client.post(f"/tags", data=data.json())
-        print(resp)
         return [TagCategory(**d) for d in resp["children"]]
 
     def create_primary_tag_category(self, category, data):
         resp = self.client.post("/tags/{}".format(category), data=data.json())
-        print(resp)
         return [Tag(**d) for d in resp["children"]]
 
     def health_check(self) -> bool:
