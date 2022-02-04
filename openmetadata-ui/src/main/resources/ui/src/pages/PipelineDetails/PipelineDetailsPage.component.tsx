@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityTags,
@@ -44,7 +45,7 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
   EntityReference,
@@ -58,6 +59,7 @@ import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import {
+  defaultFields,
   getCurrentPipelineTab,
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
@@ -80,7 +82,7 @@ const PipelineDetailsPage = () => {
   );
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
@@ -107,6 +109,7 @@ const PipelineDetailsPage = () => {
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
 
   const [currentVersion, setCurrentVersion] = useState<string>();
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -148,12 +151,30 @@ const PipelineDetailsPage = () => {
     });
   };
 
+  const getLineageData = () => {
+    setIsLineageLoading(true);
+    getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message ?? 'Error while fetching lineage data',
+        });
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
-    getPipelineByFqn(pipelineFQN, ['owner', 'followers', 'tags', 'tasks'])
+    getPipelineByFqn(pipelineFQN, defaultFields)
       .then((res: AxiosResponse) => {
         const {
           id,
+          deleted,
           description,
           followers,
           fullyQualifiedName,
@@ -176,6 +197,7 @@ const PipelineDetailsPage = () => {
         setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
         setServiceType(serviceType);
+        setDeleted(deleted);
         setSlashedPipelineName([
           {
             name: service.name,
@@ -201,10 +223,30 @@ const PipelineDetailsPage = () => {
           serviceType: serviceType,
           timestamp: 0,
         });
+
         setPipelineUrl(pipelineUrl);
         setTasks(tasks);
       })
       .finally(() => setLoading(false));
+  };
+
+  const fetchTabSpecificData = (tabField = '') => {
+    switch (tabField) {
+      case TabSpecificField.LINEAGE: {
+        if (!deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
+
+          break;
+        }
+
+        break;
+      }
+
+      default:
+        break;
+    }
   };
 
   const followPipeline = () => {
@@ -276,6 +318,10 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
@@ -297,16 +343,6 @@ const PipelineDetailsPage = () => {
     return new Promise<void>((resolve, reject) => {
       addLineage(edge)
         .then(() => {
-          getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
-            .then((res: AxiosResponse) => {
-              setEntityLineage(res.data);
-            })
-            .catch(() => {
-              showToast({
-                variant: 'error',
-                body: `Error while getting entity lineage`,
-              });
-            });
           resolve();
         })
         .catch(() => {
@@ -320,37 +356,25 @@ const PipelineDetailsPage = () => {
   };
 
   const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
-      .then(() => {
-        getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
-          .then((res: AxiosResponse) => {
-            setEntityLineage(res.data);
-          })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: `Error while getting entity lineage`,
-            });
-          });
-      })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: `Error while removing edge`,
-        });
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch(() => {
+      showToast({
+        variant: 'error',
+        body: `Error while removing edge`,
       });
+    });
   };
 
   useEffect(() => {
+    fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
+  }, [activeTab]);
+
+  useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
-    setActiveTab(getCurrentPipelineTab(tab));
-    getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
-      .then((res: AxiosResponse) => {
-        setEntityLineage(res.data);
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
   }, [pipelineFQN]);
 
   useEffect(() => {
@@ -359,18 +383,21 @@ const PipelineDetailsPage = () => {
 
   return (
     <>
-      {isLoading || isLineageLoading ? (
+      {isLoading ? (
         <Loader />
       ) : (
         <PipelineDetails
           activeTab={activeTab}
           addLineageHandler={addLineageHandler}
+          deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
+          entityLineageHandler={entityLineageHandler}
           entityName={displayName}
           followPipelineHandler={followPipeline}
           followers={followers}
+          isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

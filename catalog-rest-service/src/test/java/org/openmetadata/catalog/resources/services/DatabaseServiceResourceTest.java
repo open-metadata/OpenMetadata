@@ -18,29 +18,36 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
+import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Map;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
+import org.openmetadata.catalog.api.operations.pipelines.PipelineConfig;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
+import org.openmetadata.catalog.operations.pipelines.DatabaseServiceMetadataPipeline;
+import org.openmetadata.catalog.operations.pipelines.FilterPattern;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.operations.AirflowPipelineResourceTest;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ConnectionArguments;
+import org.openmetadata.catalog.type.ConnectionOptions;
+import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
@@ -50,16 +57,16 @@ import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
-public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService> {
+public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService, CreateDatabaseService> {
   public DatabaseServiceResourceTest() {
     super(
         Entity.DATABASE_SERVICE,
         DatabaseService.class,
         DatabaseServiceList.class,
         "services/databaseServices",
-        "",
+        "owner",
         false,
-        false,
+        true,
         false,
         false);
     this.supportsPatch = false;
@@ -68,218 +75,146 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Test
   void post_validDatabaseService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create database service with different optional fields
-    Map<String, String> authHeaders = adminAuthHeaders();
-    createAndCheckEntity(create(test, 1).withDescription(null), authHeaders);
-    createAndCheckEntity(create(test, 2).withDescription("description"), authHeaders);
-    createAndCheckEntity(create(test, 3).withIngestionSchedule(null), authHeaders);
-  }
-
-  @Test
-  void post_validDatabaseService_as_non_admin_401(TestInfo test) {
-    // Create database service with different optional fields
-    Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
-
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> createAndCheckEntity(create(test, 1).withDescription(null), authHeaders));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
+    createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
+    createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
   }
 
   @Test
   void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
     // No jdbc connection set
-    CreateDatabaseService create = create(test).withJdbc(null);
+    CreateDatabaseService create = createRequest(test).withDatabaseConnection(null);
     HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "jdbc must not be null");
-  }
-
-  @Test
-  void post_invalidIngestionSchedule_4xx(TestInfo test) {
-    // No jdbc connection set
-    CreateDatabaseService create = create(test);
-    Schedule schedule = create.getIngestionSchedule();
-
-    // Invalid format
-    create.withIngestionSchedule(schedule.withRepeatFrequency("INVALID"));
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
-
-    // Duration that contains years, months and seconds are not allowed
-    create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception,
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception,
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception,
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
-  }
-
-  @Test
-  void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
-    Schedule schedule = new Schedule().withStartDate(new Date());
-    schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
-    createAndCheckEntity(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
-
-    schedule.withRepeatFrequency("PT1H49M");
-    createAndCheckEntity(create(test, 2).withIngestionSchedule(schedule), adminAuthHeaders());
-
-    schedule.withRepeatFrequency("P1DT1H49M");
-    createAndCheckEntity(create(test, 3).withIngestionSchedule(schedule), adminAuthHeaders());
-  }
-
-  @Test
-  void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
-    // No jdbc connection set
-    CreateDatabaseService create = create(test);
-    Schedule schedule = create.getIngestionSchedule();
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M")); // Repeat every 0 seconds
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(
-        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must be more than 60 minutes");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M")); // Repeat every 50 minutes 59 seconds
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, adminAuthHeaders()));
-    TestUtils.assertResponse(
-        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " + "be more than 60 minutes");
+        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, "databaseConnection must not be null");
   }
 
   @Test
   void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws IOException {
-    DatabaseService service =
-        createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), adminAuthHeaders());
+    DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = create(test).withDescription("description1");
-    Schedule schedule = update.getIngestionSchedule();
+    CreateDatabaseService update = createRequest(test).withDescription("description1");
+
     ChangeDescription change = getChangeDescription(service.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
-    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
-    service = updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
-
-    // Update ingestion schedule
-    Schedule schedule1 = new Schedule().withStartDate(new Date()).withRepeatFrequency("PT1H");
-    update.withIngestionSchedule(schedule1);
-    change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("ingestionSchedule").withOldValue(schedule).withNewValue(schedule1));
-    updateAndCheckEntity(update, OK, adminAuthHeaders(), UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection()
+            .withDatabase("test")
+            .withHostPort("host:9000")
+            .withPassword("password")
+            .withUsername("username");
+    update.withDatabaseConnection(databaseConnection);
+    service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(databaseConnection, service.getDatabaseConnection());
+    ConnectionArguments connectionArguments =
+        new ConnectionArguments()
+            .withAdditionalProperty("credentials", "/tmp/creds.json")
+            .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
+    ConnectionOptions connectionOptions =
+        new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
+    databaseConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
+    update.withDatabaseConnection(databaseConnection);
+    service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(databaseConnection, service.getDatabaseConnection());
   }
 
   @Test
-  void put_update_as_non_admin_401(TestInfo test) throws IOException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    createAndCheckEntity(create(test).withDescription(null).withIngestionSchedule(null), authHeaders);
+  void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException, ParseException {
+    DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
-    // Update as non admin should be forbidden
+    // Update database description and ingestion service that are null
+    CreateDatabaseService update = createRequest(test).withDescription("description1");
+
+    ChangeDescription change = getChangeDescription(service.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection()
+            .withDatabase("test")
+            .withHostPort("host:9000")
+            .withPassword("password")
+            .withUsername("username");
+    update.withDatabaseConnection(databaseConnection);
+    service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(databaseConnection, service.getDatabaseConnection());
+    ConnectionArguments connectionArguments =
+        new ConnectionArguments()
+            .withAdditionalProperty("credentials", "/tmp/creds.json")
+            .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
+    ConnectionOptions connectionOptions =
+        new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
+    databaseConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
+    update.withDatabaseConnection(databaseConnection);
+    service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(databaseConnection, service.getDatabaseConnection());
+
+    AirflowPipelineResourceTest airflowPipelineResourceTest = new AirflowPipelineResourceTest();
+    CreateAirflowPipeline createAirflowPipeline =
+        airflowPipelineResourceTest.createRequest(test).withService(helper(service).toEntityReference());
+
+    DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
+        new DatabaseServiceMetadataPipeline()
+            .withMarkDeletedTables(true)
+            .withIncludeViews(true)
+            .withSchemaFilterPattern(new FilterPattern().withExcludes(Arrays.asList("information_schema.*", "test.*")))
+            .withTableFilterPattern(new FilterPattern().withIncludes(Arrays.asList("sales.*", "users.*")));
+    PipelineConfig pipelineConfig =
+        new PipelineConfig()
+            .withSchema(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE)
+            .withConfig(databaseServiceMetadataPipeline);
+    createAirflowPipeline.withPipelineConfig(pipelineConfig);
+    AirflowPipeline airflowPipeline =
+        airflowPipelineResourceTest.createEntity(createAirflowPipeline, ADMIN_AUTH_HEADERS);
+    DatabaseService updatedService = getEntity(service.getId(), "airflowPipeline", ADMIN_AUTH_HEADERS);
+    assertEquals(1, updatedService.getAirflowPipelines().size());
+    EntityReference expectedPipeline = updatedService.getAirflowPipelines().get(0);
+    assertEquals(airflowPipeline.getId(), expectedPipeline.getId());
+    assertEquals(airflowPipeline.getFullyQualifiedName(), expectedPipeline.getName());
+  }
+
+  @Test
+  void put_update_as_non_owner_401(TestInfo test) throws IOException {
+    createAndCheckEntity(createRequest(test).withDescription(null).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
+
+    // Update as non owner should be forbidden
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () ->
-                updateAndCheckEntity(
-                    create(test), OK, authHeaders("test@open-metadata.org"), UpdateType.MINOR_UPDATE, null));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "is not admin");
+            () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.MINOR_UPDATE, null));
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
-  @Test
-  void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createEntity(create(test), authHeaders);
-    deleteEntity(databaseService.getId(), authHeaders);
-  }
-
-  @Test
-  void delete_put_DatabaseService_200(TestInfo test) throws IOException {
-    CreateDatabaseService request = create(test).withDescription("");
-    DatabaseService databaseService = createEntity(request, adminAuthHeaders());
-
-    // Delete
-    deleteEntity(databaseService.getId(), adminAuthHeaders());
-
-    ChangeDescription change = getChangeDescription(databaseService.getVersion());
-    change.setFieldsUpdated(
-        Arrays.asList(
-            new FieldChange().withName("deleted").withNewValue(false).withOldValue(true),
-            new FieldChange().withName("description").withNewValue("updatedDescription").withOldValue("")));
-
-    // PUT with updated description
-    updateAndCheckEntity(
-        request.withDescription("updatedDescription"), Response.Status.OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_as_user_401(TestInfo test) throws HttpResponseException {
-    Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createEntity(create(test), authHeaders);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteEntity(databaseService.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-  public CreateDatabaseService create(TestInfo test) {
-    return create(getEntityName(test))
-        .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
-  }
-
-  private CreateDatabaseService create(TestInfo test, int index) {
-    return create(getEntityName(test, index));
-  }
-
-  private CreateDatabaseService create(String entityName) {
+  @Override
+  public CreateDatabaseService createRequest(
+      String name, String description, String displayName, EntityReference owner) {
     return new CreateDatabaseService()
-        .withName(entityName)
+        .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
-        .withJdbc(TestUtils.JDBC_INFO);
+        .withDatabaseConnection(TestUtils.DATABASE_CONNECTION)
+        .withOwner(owner)
+        .withDescription(description);
   }
 
   @Override
-  public Object createRequest(String name, String description, String displayName, EntityReference owner) {
-    return create(name).withDescription(description);
-  }
-
-  @Override
-  public EntityReference getContainer(Object createRequest) throws URISyntaxException {
-    return null; // No container entity
-  }
-
-  @Override
-  public void validateCreatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders) {
-    CreateDatabaseService createRequest = (CreateDatabaseService) request;
+  public void validateCreatedEntity(
+      DatabaseService service, CreateDatabaseService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(service), createRequest.getDescription(), getPrincipal(authHeaders), null);
+        getEntityInterface(service),
+        createRequest.getDescription(),
+        getPrincipal(authHeaders),
+        createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
-    // Validate jdbc
-    assertEquals(createRequest.getJdbc(), service.getJdbc());
-
-    Schedule expectedIngestion = createRequest.getIngestionSchedule();
-    if (expectedIngestion != null) {
-      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
-      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
-    }
+    // Validate Database Connection
+    assertEquals(createRequest.getDatabaseConnection(), service.getDatabaseConnection());
   }
 
   @Override
-  public void validateUpdatedEntity(DatabaseService service, Object request, Map<String, String> authHeaders) {
+  public void validateUpdatedEntity(
+      DatabaseService service, CreateDatabaseService request, Map<String, String> authHeaders) {
     validateCreatedEntity(service, request, authHeaders);
   }
 
@@ -293,20 +228,24 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     return new DatabaseServiceEntityInterface(entity);
   }
 
+  /**
+   * Validate returned fields GET .../databaseServices/{id}?fields="..." or GET
+   * .../databaseServices/name/{fqn}?fields="..."
+   */
   @Override
   public void validateGetWithDifferentFields(DatabaseService service, boolean byName) throws HttpResponseException {
-    // No fields support
-    String fields = "";
+    String fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), null, fields, adminAuthHeaders())
-            : getEntity(service.getId(), fields, adminAuthHeaders());
+            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNotNull(
         service.getHref(),
+        service.getOwner(),
         service.getVersion(),
         service.getUpdatedBy(),
         service.getServiceType(),
-        service.getJdbc(),
+        service.getDatabaseConnection(),
         service.getUpdatedAt());
   }
 

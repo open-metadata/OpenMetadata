@@ -346,8 +346,8 @@ const TeamsPage = () => {
               }}>
               <p
                 className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                title={team.displayName}>
-                {team.displayName}
+                title={team.displayName ?? team.name}>
+                {team.displayName ?? team.name}
               </p>
             </div>
           ))}
@@ -453,6 +453,7 @@ const TeamsPage = () => {
                       className="tw-mb-3 tw--ml-5"
                       data-testid="description-container">
                       <Description
+                        blurWithBodyBG
                         description={currentTeam?.description || ''}
                         entityName={currentTeam?.displayName}
                         isEdit={isEditable}
@@ -478,13 +479,19 @@ const TeamsPage = () => {
                   </>
                 ) : (
                   <ErrorPlaceHolder>
-                    <p className="w-text-lg tw-text-center">No Teams Added.</p>
-                    <p className="w-text-lg tw-text-center">
-                      <button
-                        className="link-text tw-underline"
-                        onClick={() => setIsAddingTeam(true)}>
-                        Click here
-                      </button>
+                    <p className="tw-text-lg tw-text-center">No Teams Added.</p>
+                    <p className="tw-text-lg tw-text-center">
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className={classNames('link-text tw-underline', {
+                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                          })}
+                          onClick={() => setIsAddingTeam(true)}>
+                          Click here
+                        </button>
+                      </NonAdminAction>
                       {' to add new Team'}
                     </p>
                   </ErrorPlaceHolder>

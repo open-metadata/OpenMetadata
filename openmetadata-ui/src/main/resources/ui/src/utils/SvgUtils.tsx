@@ -17,8 +17,13 @@ import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
+import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
+import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
+import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
+import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
@@ -70,8 +75,8 @@ import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
-import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
+import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
@@ -111,6 +116,7 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
+import IconWhatsNew from '../assets/svg/whatsNew.svg';
 
 type Props = {
   alt: string;
@@ -219,6 +225,12 @@ export const Icons = {
   CONTROLMINUS: 'icon-control-minus',
   EDITLINEAGECOLOR: 'icon-edit-lineage-color',
   EDITLINEAGE: 'icon-edit-lineage',
+  CHECKBOX_PRIMARY: 'icon-checkbox-primary',
+  ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
+  ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
+  ANNOUNCEMENT: 'icon-announcement',
+  ANNOUNCEMENT_WHITE: 'icon-announcement-white',
+  CHEVRON_DOWN: 'icon-chevron-down',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -631,9 +643,35 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconEditLineageColor;
 
       break;
+    case Icons.CHECKBOX_PRIMARY:
+      IconComponent = IconCheckboxPrimary;
+
+      break;
+    case Icons.ARROW_DOWN_PRIMARY:
+      IconComponent = IconArrowDownPrimary;
+
+      break;
+    case Icons.ARROW_RIGHT_PRIMARY:
+      IconComponent = IconArrowRightPrimary;
+
+      break;
+    case Icons.ANNOUNCEMENT:
+      IconComponent = IconAnnouncement;
+
+      break;
+    case Icons.ANNOUNCEMENT_WHITE:
+      IconComponent = IconAnnouncementWhite;
+
+      break;
+    case Icons.CHEVRON_DOWN:
+      IconComponent = IconChevronDown;
+
+      break;
 
     default:
       IconComponent = null;
+
+      break;
   }
 
   return IconComponent ? (

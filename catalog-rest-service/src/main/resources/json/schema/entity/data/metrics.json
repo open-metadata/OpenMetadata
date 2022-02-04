@@ -5,7 +5,7 @@
   "description": "This schema defines the Metrics entity. Metrics are measurements computed from data such as `Monthly Active Users`. Some of the metrics that measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.",
   "type": "object",
 
-  "properties" : {
+  "properties": {
     "id": {
       "description": "Unique identifier that identifies this metrics instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -30,15 +30,15 @@
       "description": "Description of metrics instance, what it is, and how to use it.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -58,22 +58,22 @@
       },
       "default": null
     },
-    "service" : {
+    "service": {
       "description": "Link to service where this metrics is hosted in.",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     },
-    "usageSummary" : {
+    "usageSummary": {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },

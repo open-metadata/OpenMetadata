@@ -18,11 +18,13 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
   getCurrentUserId,
+  getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
@@ -30,6 +32,7 @@ import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
@@ -65,9 +68,12 @@ const PipelineDetails = ({
   lineageLeafNodes,
   isNodeLoading,
   version,
+  deleted,
   versionHandler,
   addLineageHandler,
   removeLineageHandler,
+  entityLineageHandler,
+  isLineageLoading,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -123,6 +129,7 @@ const PipelineDetails = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
+      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 3,
     },
@@ -274,6 +281,7 @@ const PipelineDetails = ({
         <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
             isTagEditable
+            deleted={deleted}
             entityName={entityName}
             extraInfo={extraInfo}
             followHandler={followPipeline}
@@ -307,6 +315,7 @@ const PipelineDetails = ({
                         entityName={entityName}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
+                        isReadOnly={deleted}
                         owner={owner}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
@@ -363,16 +372,28 @@ const PipelineDetails = ({
                                     </span>
                                   )}
                                 </div>
-                                <button
-                                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                  onClick={() => handleUpdateTask(task, index)}>
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="10px"
-                                  />
-                                </button>
+                                {!deleted && (
+                                  <NonAdminAction
+                                    html={getHtmlForNonAdminAction(
+                                      Boolean(owner)
+                                    )}
+                                    isOwner={hasEditAccess()}
+                                    permission={Operation.UpdateDescription}
+                                    position="top">
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() =>
+                                        handleUpdateTask(task, index)
+                                      }>
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  </NonAdminAction>
+                                )}
                               </div>
                             </td>
                             <td className="tableBody-cell">{task.taskType}</td>
@@ -387,15 +408,19 @@ const PipelineDetails = ({
                 <div className="tw-h-full">
                   <Entitylineage
                     addLineageHandler={addLineageHandler}
+                    deleted={deleted}
                     entityLineage={entityLineage}
+                    entityLineageHandler={entityLineageHandler}
+                    isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
+                    isOwner={hasEditAccess()}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}
                   />
                 </div>
               )}
-              {activeTab === 3 && (
+              {activeTab === 3 && !deleted && (
                 <div>
                   <ManageTabComponent
                     currentTier={tier?.tagFQN}

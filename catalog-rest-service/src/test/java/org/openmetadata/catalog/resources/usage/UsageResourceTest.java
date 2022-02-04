@@ -18,8 +18,8 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
@@ -69,8 +69,8 @@ public class UsageResourceTest extends CatalogApplicationTest {
     TableResourceTest tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     for (int i = 0; i < TABLE_COUNT; i++) {
-      CreateTable createTable = tableResourceTest.create(test, i);
-      TABLES.add(tableResourceTest.createEntity(createTable, adminAuthHeaders()));
+      CreateTable createTable = tableResourceTest.createRequest(test, i);
+      TABLES.add(tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS));
     }
   }
 
@@ -79,7 +79,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), adminAuthHeaders()));
+            () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(TABLE, NON_EXISTENT_ENTITY));
   }
 
@@ -89,7 +89,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
     HttpResponseException exception =
         assertThrows(
             HttpResponseException.class,
-            () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), adminAuthHeaders()));
+            () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityTypeNotFound(invalidEntityType));
   }
 
@@ -98,7 +98,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
     DailyCount dailyCount = usageReport().withCount(-1); // Negative usage count
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, adminAuthHeaders()));
+            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[count must be greater than or equal to 0]");
   }
 
@@ -107,16 +107,16 @@ public class UsageResourceTest extends CatalogApplicationTest {
     DailyCount usageReport = usageReport().withDate(null); // Negative usage count
     HttpResponseException exception =
         assertThrows(
-            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, adminAuthHeaders()));
+            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS));
     assertResponse(exception, BAD_REQUEST, "[date must not be null]");
   }
 
   @Test
   public void post_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
     TableResourceTest tableResourceTest = new TableResourceTest();
-    Table table = tableResourceTest.createEntity(tableResourceTest.create(test), adminAuthHeaders());
+    Table table = tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
-    reportUsageByNameAndCheck(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, adminAuthHeaders());
+    reportUsageByNameAndCheck(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, ADMIN_AUTH_HEADERS);
   }
 
   @Order(1) // Run this method first before other usage records are created
@@ -152,7 +152,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
         // Report usage
         int weeklyCount = Math.min(day + 1, 7) * usageCount; // Expected cumulative weekly count
         int monthlyCount = Math.min(day + 1, 30) * usageCount; // Expected cumulative monthly count
-        reportUsageAndCheck(TABLE, id, usageReport, weeklyCount, monthlyCount, adminAuthHeaders());
+        reportUsageAndCheck(TABLE, id, usageReport, weeklyCount, monthlyCount, ADMIN_AUTH_HEADERS);
 
         // Database has cumulative count of all the table usage
         databaseDailyCount += usageCount;
@@ -173,18 +173,18 @@ public class UsageResourceTest extends CatalogApplicationTest {
             databaseDailyCount,
             databaseWeeklyCount,
             databaseMonthlyCount,
-            adminAuthHeaders());
+            ADMIN_AUTH_HEADERS);
       }
 
       // Compute daily percentiles now that all table usage have been published for a given date
-      computePercentile(TABLE, date, adminAuthHeaders());
-      computePercentile(Entity.DATABASE, date, adminAuthHeaders());
+      computePercentile(TABLE, date, ADMIN_AUTH_HEADERS);
+      computePercentile(Entity.DATABASE, date, ADMIN_AUTH_HEADERS);
       // TODO check database percentile
 
       // For each day check percentile
       for (int tableIndex = 0; tableIndex < TABLES.size(); tableIndex++) {
         int expectedPercentile = 100 * (tableIndex) / TABLES.size();
-        EntityUsage usage = getUsage(TABLE, TABLES.get(tableIndex).getId(), date, 1, adminAuthHeaders());
+        EntityUsage usage = getUsage(TABLE, TABLES.get(tableIndex).getId(), date, 1, ADMIN_AUTH_HEADERS);
         assertEquals(expectedPercentile, usage.getUsage().get(0).getDailyStats().getPercentileRank());
         assertEquals(expectedPercentile, usage.getUsage().get(0).getWeeklyStats().getPercentileRank());
         assertEquals(expectedPercentile, usage.getUsage().get(0).getMonthlyStats().getPercentileRank());
@@ -195,38 +195,38 @@ public class UsageResourceTest extends CatalogApplicationTest {
     String date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1);
     // Number of days defaults to 1 when unspecified
     UUID tableId = TABLES.get(0).getId();
-    getAndCheckUsage(TABLE, tableId, date, null /*, days unspecified */, 1, adminAuthHeaders());
+    getAndCheckUsage(TABLE, tableId, date, null /*, days unspecified */, 1, ADMIN_AUTH_HEADERS);
 
     // Usage for specified number of days is returned
-    getAndCheckUsage(TABLE, tableId, date, 1, 1, adminAuthHeaders());
-    getAndCheckUsage(TABLE, tableId, date, 5, 5, adminAuthHeaders());
-    getAndCheckUsage(TABLE, tableId, date, 30, 30, adminAuthHeaders());
+    getAndCheckUsage(TABLE, tableId, date, 1, 1, ADMIN_AUTH_HEADERS);
+    getAndCheckUsage(TABLE, tableId, date, 5, 5, ADMIN_AUTH_HEADERS);
+    getAndCheckUsage(TABLE, tableId, date, 30, 30, ADMIN_AUTH_HEADERS);
 
     // Usage for days out of range returned default number of days
     // 0 days is defaulted to 1
-    getAndCheckUsage(TABLE, tableId, date, 0, 1, adminAuthHeaders());
+    getAndCheckUsage(TABLE, tableId, date, 0, 1, ADMIN_AUTH_HEADERS);
     // -1 days is defaulted to 1
-    getAndCheckUsage(TABLE, tableId, date, -1, 1, adminAuthHeaders());
+    getAndCheckUsage(TABLE, tableId, date, -1, 1, ADMIN_AUTH_HEADERS);
     // More than 30 days is defaulted to 30
-    getAndCheckUsage(TABLE, tableId, date, 100, 30, adminAuthHeaders());
+    getAndCheckUsage(TABLE, tableId, date, 100, 30, ADMIN_AUTH_HEADERS);
 
     // Nothing is returned when usage for a date is not available
     // One day beyond the last day of usage published
     date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE);
     // 0 days of usage resulted
-    getAndCheckUsage(TABLE, tableId, date, 1, 0, adminAuthHeaders());
+    getAndCheckUsage(TABLE, tableId, date, 1, 0, ADMIN_AUTH_HEADERS);
     // Only 4 past usage records returned. For the given date there is no usage report.
-    getAndCheckUsage(TABLE, tableId, date, 5, 4, adminAuthHeaders());
+    getAndCheckUsage(TABLE, tableId, date, 5, 4, ADMIN_AUTH_HEADERS);
 
     // Ensure GET .../tables/{id}?fields=usageSummary returns the latest usage
     date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1); // Latest usage report date
-    EntityUsage usage = getUsage(TABLE, tableId, date, null /* days not specified */, adminAuthHeaders());
-    Table table = new TableResourceTest().getEntity(TABLES.get(0).getId(), "usageSummary", adminAuthHeaders());
+    EntityUsage usage = getUsage(TABLE, tableId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
+    Table table = new TableResourceTest().getEntity(TABLES.get(0).getId(), "usageSummary", ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(usage.getUsage().get(0), table.getUsageSummary());
 
     // Ensure GET .../databases/{id}?fields=usageSummary returns the latest usage
-    usage = getUsage(Entity.DATABASE, databaseId, date, null /* days not specified */, adminAuthHeaders());
-    Database database = new DatabaseResourceTest().getEntity(databaseId, "usageSummary", adminAuthHeaders());
+    usage = getUsage(Entity.DATABASE, databaseId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
+    Database database = new DatabaseResourceTest().getEntity(databaseId, "usageSummary", ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(usage.getUsage().get(0), database.getUsageSummary());
   }
 

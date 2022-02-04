@@ -17,10 +17,13 @@ import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
@@ -28,7 +31,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
@@ -59,8 +61,7 @@ public class DefaultAuthorizer implements Authorizer {
     this.userRepository = new UserRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
-    policyEvaluator = PolicyEvaluator.getInstance();
-    policyEvaluator.setPolicyRepository(new PolicyRepository(collectionDAO));
+    this.policyEvaluator = PolicyEvaluator.getInstance();
   }
 
   private void mayBeAddAdminUsers() {
@@ -135,13 +136,18 @@ public class DefaultAuthorizer implements Authorizer {
       AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
     validateAuthenticationContext(ctx);
     try {
+      User user = getUserFromAuthenticationContext(ctx);
+      if (entityReference == null) {
+        // In some cases there is no specific entity being acted upon. Eg: Lineage.
+        return policyEvaluator.hasPermission(user, null, operation);
+      }
+
       Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
       if (owner == null) {
         // Entity does not have an owner.
         return true;
       }
-      User user = getUserFromAuthenticationContext(ctx);
       if (isOwnedByUser(user, owner)) {
         // Entity is owned by the user.
         return true;
@@ -149,6 +155,32 @@ public class DefaultAuthorizer implements Authorizer {
       return policyEvaluator.hasPermission(user, entity, operation);
     } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
+    }
+  }
+
+  @Override
+  public List<MetadataOperation> listPermissions(AuthenticationContext ctx, EntityReference entityReference) {
+    validateAuthenticationContext(ctx);
+
+    if (isAdmin(ctx) || isBot(ctx)) {
+      // Admins and bots have permissions to do all operations.
+      return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+    }
+
+    try {
+      User user = getUserFromAuthenticationContext(ctx);
+      if (entityReference == null) {
+        return policyEvaluator.getAllowedOperations(user, null);
+      }
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      if (owner == null || isOwnedByUser(user, owner)) {
+        // Entity does not have an owner or is owned by the user - allow all operations.
+        return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
+      }
+      return policyEvaluator.getAllowedOperations(user, entity);
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
+      return Collections.emptyList();
     }
   }
 

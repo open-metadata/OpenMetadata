@@ -55,13 +55,10 @@
           "default": null
         }
       },
-      "required": [
-        "id",
-        "name"
-      ]
+      "required": ["id", "name"]
     }
   },
-  "properties" : {
+  "properties": {
     "id": {
       "description": "Unique identifier that identifies a pipeline instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -84,19 +81,19 @@
       "description": "Description of this Pipeline.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
-    "pipelineUrl" : {
+    "pipelineUrl": {
       "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
       "type": "string",
       "format": "uri"
@@ -141,21 +138,21 @@
       "description": "Owner of this pipeline.",
       "$ref": "../../type/entityReference.json"
     },
-    "service" : {
+    "service": {
       "description": "Link to service where this pipeline is hosted in.",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     },
-    "serviceType" : {
+    "serviceType": {
       "description": "Service type where this pipeline is hosted in.",
-      "$ref" : "../services/pipelineService.json#/definitions/pipelineServiceType"
+      "$ref": "../services/pipelineService.json#/definitions/pipelineServiceType"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },

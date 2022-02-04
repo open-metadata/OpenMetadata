@@ -21,7 +21,7 @@ from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -81,6 +81,15 @@ class InvalidEntityException(Exception):
 
 
 class EntityList(Generic[T], BaseModel):
+    """
+    Pydantic Entity list model
+
+    Attributes
+        entities (List): list of entities
+        total (int):
+        after (str):
+    """
+
     entities: List[T]
     total: int
     after: str = None
@@ -129,7 +138,7 @@ class OpenMetadata(
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.api_endpoint,
             api_version=self.config.api_version,
-            auth_header="X-Catalog-Source",
+            auth_header="Authorization",
             auth_token=self._auth_provider.auth_token(),
         )
         self.client = REST(client_config)
@@ -196,7 +205,7 @@ class OpenMetadata(
         if issubclass(entity, Metrics):
             return "/metrics"
 
-        if issubclass(entity, AddLineage):
+        if issubclass(entity, AddLineageRequest):
             return "/lineage"
 
         if issubclass(entity, Report):
@@ -293,7 +302,7 @@ class OpenMetadata(
             [self.class_root, self.api_path, self.get_module_path(entity), file_name]
         )
 
-        class_name = f"Create{entity.__name__}EntityRequest"
+        class_name = f"Create{entity.__name__}Request"
         create_class = getattr(
             __import__(class_path, globals(), locals(), [class_name]), class_name
         )
@@ -304,7 +313,7 @@ class OpenMetadata(
         Inversely, import the Entity type based on the create Entity class
         """
 
-        class_name = create.__name__.replace("Create", "").replace("EntityRequest", "")
+        class_name = create.__name__.replace("Create", "").replace("Request", "")
         file_name = class_name.lower()
 
         class_path = ".".join(
@@ -380,8 +389,11 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"GET {entity.__name__} for {path}. "
-                + f"Error {err.status_code} - {err}"
+                "GET %s for %s." "Error %s - %s",
+                entity.__name__,
+                path,
+                err.status_code,
+                err,
             )
             return None
 
@@ -405,9 +417,10 @@ class OpenMetadata(
                 href=instance.href,
             )
 
-        logger.error(f"Cannot find the Entity {fqdn}")
+        logger.error("Cannot find the Entity %s", fqdn)
         return None
 
+    # pylint: disable=too-many-arguments,dangerous-default-value
     def list_entities(
         self,
         entity: Type[T],
@@ -450,8 +463,7 @@ class OpenMetadata(
 
         if self._use_raw_data:
             return resp
-        else:
-            return EntityVersionHistory(**resp)
+        return EntityVersionHistory(**resp)
 
     def list_services(self, entity: Type[T]) -> List[EntityList[T]]:
         """
@@ -465,6 +477,15 @@ class OpenMetadata(
         return [entity(**p) for p in resp["data"]]
 
     def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
+        """
+        API call to delete an entity from entity ID
+
+        Args
+            entity (T): entity Type
+            entity_id (basic.Uuid): entity ID
+        Returns
+            None
+        """
         self.client.delete(f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}")
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
@@ -473,7 +494,7 @@ class OpenMetadata(
         """
         entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
-        logger.debug("published compute percentile {}".format(resp))
+        logger.debug("published compute percentile %s", resp)
 
     def list_tags_by_category(self, category: str) -> List[Tag]:
         """
@@ -489,4 +510,10 @@ class OpenMetadata(
         return self.client.get("/health-check")["status"] == "healthy"
 
     def close(self):
+        """
+        Closing connection
+
+        Returns
+            None
+        """
         self.client.close()

@@ -110,11 +110,13 @@ database:
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:mysql://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
 
+migrationConfiguration:
+  path: "./bootstrap/sql/mysql"
 
 elasticsearch:
-  host: localhost
-  port: 9200
-  scheme: "http"
+  host: ${ELASTICSEARCH_HOST:-localhost}
+  port: ${ELASTICSEARCH_PORT:-9200}
+  scheme: ${ELASTICSEARCH_SCHEME:-http}
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
@@ -122,21 +124,24 @@ eventHandlerConfiguration:
     - "org.openmetadata.catalog.events.ChangeEventHandler"
 
 airflowConfiguration:
-  apiEndpoint: "http://localhost:8080"
-  username: "admin"
-  password: "admin"
-  metadataApiEndpoint: "http://localhost:8585/api"
+  apiEndpoint: http://${AIRFLOW_HOST:-localhost}:${AIRFLOW_PORT:-8080}
+  username: ${AIRFLOW_USERNAME:-admin}
+  password: ${AIRFLOW_PASSWORD:-admin}
+  metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
   authProvider: "no-auth"
 
 slackEventPublishers:
   - name: "slack events"
-    webhookUrl: "slackIncomingWebhook"
-    openMetadataUrl: "http://localhost:8585"
+    webhookUrl: "slackIncomingWebhook URL"
+    openMetadataUrl: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}
     filters:
       - eventType: "entityCreated"
         entities:
          - "*"
       - eventType: "entityUpdated"
+        entities:
+         - "*"
+      - eventType: "entitySoftDeleted"
         entities:
          - "*"
       - eventType: "entityDeleted"

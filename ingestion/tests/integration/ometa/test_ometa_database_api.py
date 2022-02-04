@@ -15,20 +15,18 @@ OpenMetadata high-level API Database test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -47,14 +45,14 @@ class OMetaDatabaseTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
-    service = CreateDatabaseServiceEntityRequest(
+    service = CreateDatabaseServiceRequest(
         name="test-service-db",
         serviceType=DatabaseServiceType.MySQL,
-        jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+        databaseConnection=DatabaseConnection(hostPort="localhost:1000"),
     )
 
     @classmethod
@@ -71,7 +69,7 @@ class OMetaDatabaseTest(TestCase):
             fullyQualifiedName="test-service-db.test-db",
         )
 
-        cls.create = CreateDatabaseEntityRequest(
+        cls.create = CreateDatabaseRequest(
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
@@ -116,7 +114,7 @@ class OMetaDatabaseTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreateDatabaseEntityRequest(**updated)
+        updated_entity = CreateDatabaseRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 

@@ -10,8 +10,6 @@
 #  limitations under the License.
 
 import logging
-import re
-import textwrap
 import traceback
 import uuid
 from dataclasses import dataclass, field
@@ -21,8 +19,10 @@ from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -34,11 +34,11 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import User
+from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
-from metadata.utils.column_helpers import check_column_complex_type, get_column_type
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_dashboard_service_or_create
 from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -121,16 +121,17 @@ class AmundsenSource(Source[Entity]):
 
     def create_user_entity(self, user):
         try:
-            user_metadata = User(
+            user_metadata = CreateUserRequest(
                 email=user["email"],
-                first_name=user["first_name"],
-                last_name=user["last_name"],
                 name=user["full_name"],
-                team_name=user["team_name"],
-                is_active=user["is_active"],
+                displayName=f"{user['first_name']} {user['last_name']}",
             )
-            self.status.scanned(user_metadata.email)
-            yield user_metadata
+            team_metadata = CreateTeamRequest(name=user["team_name"])
+            self.status.scanned(str(user_metadata.email))
+            yield OMetaUserProfile(
+                user=user_metadata,
+                teams=[team_metadata],
+            )
         except Exception as err:
             logger.error(err)
 
@@ -155,28 +156,10 @@ class AmundsenSource(Source[Entity]):
                 # Amundsen merges the length into type itself. Instead of making changes to our generic type builder
                 # we will do a type match and see if it matches any primitive types and return a type
                 data_type = self.get_type_primitive_type(data_type)
-                (
-                    col_type,
-                    data_type_display,
-                    arr_data_type,
-                    children,
-                ) = check_column_complex_type(
-                    self.status, table["name"], data_type, name
-                )
-
-                col = Column(
-                    name=name,
-                    description=description,
-                    dataType=col_type,
-                    dataTypeDisplay="{}({})".format(col_type, 1)
-                    if data_type_display is None
-                    else f"{data_type_display}",
-                    children=children,
-                    arrayDataType=arr_data_type,
-                    ordinalPosition=row_order,
-                    dataLength=1,
-                )
-                row_order += 1
+                parsed_string = ColumnTypeParser._parse_datatype_string(data_type)
+                parsed_string["name"] = name
+                parsed_string["dataLength"] = 1
+                col = Column(**parsed_string)
                 columns.append(col)
 
             fqn = f"{service_name}.{database.name}.{table['schema']}.{table['name']}"
@@ -274,15 +257,12 @@ class AmundsenSource(Source[Entity]):
             return service
         else:
             service = {
-                "jdbc": {
-                    "connectionUrl": f"jdbc://temp",
-                    "driverClass": "jdbc",
-                },
+                "databaseConnection": {"hostPort": f"localhost"},
                 "name": service_name,
                 "description": "",
                 "serviceType": service_type.capitalize(),
             }
             created_service = metadata.create_or_update(
-                CreateDatabaseServiceEntityRequest(**service)
+                CreateDatabaseServiceRequest(**service)
             )
             return created_service

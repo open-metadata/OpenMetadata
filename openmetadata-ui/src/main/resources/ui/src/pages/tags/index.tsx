@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
 import { EntityTags, FormErrorData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   createTag,
@@ -43,6 +43,7 @@ import {
   CreateTagCategory,
   TagCategoryType,
 } from '../../generated/api/tags/createTagCategory';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -67,6 +68,12 @@ const TagsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
+
+  const getTags = useCallback(() => {
+    return getTaglist(categories).filter(
+      (tag) => editTag?.fullyQualifiedName !== tag
+    );
+  }, [currentCategory, editTag]);
 
   const fetchCategories = () => {
     setIsLoading(true);
@@ -327,6 +334,7 @@ const TagsPage = () => {
                   className="tw-mb-3 tw--ml-5"
                   data-testid="description-container">
                   <Description
+                    blurWithBodyBG
                     description={currentCategory?.description || ''}
                     entityName={currentCategory?.displayName}
                     isEdit={isEditCategory}
@@ -382,6 +390,7 @@ const TagsPage = () => {
                                     )}
                                   </div>
                                   <NonAdminAction
+                                    permission={Operation.UpdateDescription}
                                     position="left"
                                     title={TITLE_FOR_NON_ADMIN_ACTION}>
                                     <button
@@ -428,6 +437,7 @@ const TagsPage = () => {
                                   setEditTag(tag);
                                 }}>
                                 <NonAdminAction
+                                  permission={Operation.UpdateTags}
                                   position="left"
                                   title={TITLE_FOR_NON_ADMIN_ACTION}
                                   trigger="click">
@@ -440,9 +450,7 @@ const TagsPage = () => {
                                         tagFQN: tag,
                                       })) || []
                                     }
-                                    tagList={
-                                      getTaglist(categories) as Array<string>
-                                    }
+                                    tagList={getTags()}
                                     onCancel={() => {
                                       handleTagSelection();
                                     }}

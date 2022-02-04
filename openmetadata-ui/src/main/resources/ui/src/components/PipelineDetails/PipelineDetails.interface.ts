@@ -48,6 +48,8 @@ export interface PipeLineDetailsProp {
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   entityLineage: EntityLineage;
   tasks: Task[];
+  deleted?: boolean;
+  isLineageLoading?: boolean;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
@@ -59,4 +61,5 @@ export interface PipeLineDetailsProp {
   versionHandler: () => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
+  entityLineageHandler: (lineage: EntityLineage) => void;
 }

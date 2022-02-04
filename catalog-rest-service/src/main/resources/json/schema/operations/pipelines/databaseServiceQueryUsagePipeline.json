@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/operations/pipelines/databaseServiceQueryUsagePipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceQueryUsagePipeline",
+  "description": "DatabaseService Query Usage Pipeline Configuration.",
+  "properties": {
+    "queryLogDuration": {
+      "description": "Configuration to tune how far we want to look back in query logs to process usage data.",
+      "type": "integer",
+      "default": "1"
+    },
+    "stageFileLocation": {
+      "description": "Temporary file name to store the query logs before processing. Absolute file path required.",
+      "type": "string",
+      "default": "/tmp/query_log"
+    }
+  }
+}

@@ -21,10 +21,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
@@ -55,7 +52,7 @@ public class ConfigResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = AuthenticationConfiguration.class)))
       })
-  public AuthenticationConfiguration getAuthConfig(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public AuthenticationConfiguration getAuthConfig() {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {
       authenticationConfiguration = catalogApplicationConfig.getAuthenticationConfiguration();
@@ -77,8 +74,7 @@ public class ConfigResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = AuthorizerConfiguration.class)))
       })
-  public AuthorizerConfiguration getAuthorizerConfig(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+  public AuthorizerConfiguration getAuthorizerConfig() {
     AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
     if (catalogApplicationConfig.getAuthorizerConfiguration() != null) {
       authorizerConfiguration = catalogApplicationConfig.getAuthorizerConfiguration();

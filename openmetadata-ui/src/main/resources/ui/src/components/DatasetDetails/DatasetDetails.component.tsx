@@ -79,8 +79,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   lineageLeafNodes,
   isNodeLoading,
   dataModel,
+  deleted,
   addLineageHandler,
   removeLineageHandler,
+  entityLineageHandler,
+  isLineageLoading,
+  isSampleDataLoading,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -189,6 +193,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
+      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 6,
     },
@@ -268,7 +273,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               height={38}
               toolTipPos={{ x: 20, y: -30 }}
             />
-            <span className="tw--ml-6">rows</span>
+            <span className="tw--ml-6">{`${
+              tableProfile[0].rowCount || 0
+            } rows`}</span>
           </div>
         ) : (
           ''
@@ -391,6 +398,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
+          deleted={deleted}
           entityName={entityName}
           extraInfo={extraInfo}
           followHandler={followTable}
@@ -423,6 +431,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     entityName={entityName}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
+                    isReadOnly={deleted}
                     owner={owner}
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
@@ -444,6 +453,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     )}
                     columns={columns}
                     hasEditAccess={hasEditAccess()}
+                    isReadOnly={deleted}
                     joins={tableJoinData.columnJoins as ColumnJoins[]}
                     owner={owner}
                     sampleData={sampleData}
@@ -454,7 +464,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 2 && (
               <div id="sampleDataDetails">
-                <SampleDataTable sampleData={getSampleDataWithType()} />
+                <SampleDataTable
+                  isLoading={isSampleDataLoading}
+                  sampleData={getSampleDataWithType()}
+                />
               </div>
             )}
             {activeTab === 3 && (
@@ -478,8 +491,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 id="lineageDetails">
                 <Entitylineage
                   addLineageHandler={addLineageHandler}
+                  deleted={deleted}
                   entityLineage={entityLineage}
+                  entityLineageHandler={entityLineageHandler}
+                  isLoading={isLineageLoading}
                   isNodeLoading={isNodeLoading}
+                  isOwner={hasEditAccess()}
                   lineageLeafNodes={lineageLeafNodes}
                   loadNodeHandler={loadNodeHandler}
                   removeLineageHandler={removeLineageHandler}
@@ -495,7 +512,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 6 && (
+            {activeTab === 6 && !deleted && (
               <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}

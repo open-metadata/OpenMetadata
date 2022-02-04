@@ -105,8 +105,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public EntityRepository<Webhook>.EntityUpdater getUpdater(Webhook original, Webhook updated, boolean patchOperation) {
-    return new WebhookUpdater(original, updated, patchOperation);
+  public EntityRepository<Webhook>.EntityUpdater getUpdater(Webhook original, Webhook updated, Operation operation) {
+    return new WebhookUpdater(original, updated, operation);
   }
 
   private WebhookPublisher getPublisher(UUID id) {
@@ -163,7 +163,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
   @Transaction
   public boolean delete(String id) {
-    return daoCollection.webhookDAO().delete(UUID.fromString(id)) > 0;
+    return daoCollection.webhookDAO().delete(id) > 0;
   }
 
   public static class WebhookEntityInterface implements EntityInterface<Webhook> {
@@ -429,7 +429,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
           .withLastFailedStatusCode(statusCode)
           .withLastFailedReason(reason)
           .withNextAttempt(timestamp);
-      WebhookUpdater updater = new WebhookUpdater(stored, webhook, false);
+      WebhookUpdater updater = new WebhookUpdater(stored, webhook, Operation.PUT);
       updater.update();
     }
 
@@ -446,7 +446,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     private void awaitShutdown() throws InterruptedException {
       LOG.info("Awaiting shutdown webhook-lifecycle {}", webhook.getName());
-      shutdownLatch.await();
+      shutdownLatch.await(5, TimeUnit.SECONDS);
     }
 
     public void setProcessor(BatchEventProcessor<ChangeEventHolder> processor) {
@@ -478,8 +478,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   public class WebhookUpdater extends EntityUpdater {
-    public WebhookUpdater(Webhook original, Webhook updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public WebhookUpdater(Webhook original, Webhook updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

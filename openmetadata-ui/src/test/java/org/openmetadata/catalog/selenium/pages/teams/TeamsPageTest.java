@@ -47,10 +47,12 @@ public class TeamsPageTest {
   static Actions actions;
   static WebDriverWait wait;
   String teamsFilterCountXpath = "//div[@data-testid='terms-summary']//span[@data-testid='filter-count']";
+  String webDriverInstance = Property.getInstance().getWebDriver();
+  String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
   public void openMetadataWindow() {
-    System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+    System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--no-sandbox");
     options.addArguments("--disable-dev-shm-usage");
@@ -107,8 +109,12 @@ public class TeamsPageTest {
     // Select the created listed team
     Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
     wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
-    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
+    Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString() + "[google](www.google.com)");
     Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+    Events.click(webDriver, By.xpath("//div[@data-testid='description']//a"));
+    Thread.sleep(2000);
+    String currentUrl = webDriver.getCurrentUrl();
+    Assert.assertEquals(currentUrl, "https://www.google.com/?gws_rd=ssl");
   }
 
   @Test

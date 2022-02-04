@@ -4,8 +4,7 @@
   "serviceType": "Glue",
   "description": "Glue service used for table with location",
   "href": "null",
-  "jdbc": {
-    "driverClass" : "jdbc",
-    "connectionUrl" : "jdbc://localhost"
+  "databaseConnection": {
+    "hostPort" : "localhost:8000"
   }
 }

@@ -28,14 +28,24 @@ jest.mock(
       <div data-testid="PageContainer">{children}</div>
 );
 
+jest.mock('../../assets/img/login-bg.jpeg', () => 'login-bg.jpeg');
+
+jest.mock('./LoginCarousel', () =>
+  jest.fn().mockReturnValue(<p>LoginCarousel</p>)
+);
+
 describe('Test SigninPage Component', () => {
   it('Component should render', async () => {
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
     });
     const servicePage = await findByTestId(container, 'signin-page');
+    const bgImg = await findByTestId(container, 'bg-image');
+    const LoginCarousel = await findByText(container, /LoginCarousel/i);
 
     expect(servicePage).toBeInTheDocument();
+    expect(bgImg).toBeInTheDocument();
+    expect(LoginCarousel).toBeInTheDocument();
   });
 
   it('Sign in button should render', async () => {

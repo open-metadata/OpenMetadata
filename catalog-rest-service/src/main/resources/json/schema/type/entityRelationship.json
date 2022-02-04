@@ -1,0 +1,45 @@
+{
+  "$id": "https://open-metadata.org/schema/type/entityRelationship.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityRelationship",
+  "description": "This schema defines the EntityRelationship type used for establishing relationship between two entities. EntityRelationship is used for capturing relationships from one entity to another. For example, a database contains tables.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.EntityRelationship",
+  "properties": {
+    "fromId": {
+      "description": "Unique identifier that identifies the entity from which the relationship originates.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "fromFQN": {
+      "description": "Fully qualified name of the entity from which the relationship originates.",
+      "type": "string"
+    },
+    "fromEntity": {
+      "description": "Type of the entity from which the relationship originates. Examples: `database`, `table`, `metrics` ...",
+      "type": "string"
+    },
+    "toId": {
+      "description": "Unique identifier that identifies the entity towards which the relationship refers to.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "toFQN": {
+      "description": "Fully qualified name of the entity towards which the relationship refers to.",
+      "type": "string"
+    },
+    "toEntity": {
+      "description": "Type of the entity towards which the relationship refers to. Examples: `database`, `table`, `metrics` ...",
+      "type": "string"
+    },
+    "relation": {
+      "description": "Describes relationship between the two entities.",
+      "type": "string"
+    },
+    "deleted": {
+      "description": "`true` indicates the relationship has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["fromEntity", "toEntity", "relation"],
+  "additionalProperties": false
+}

@@ -18,9 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest<T> {
+public abstract class EntityOperationsResourceTest<T, K> extends EntityResourceTest<T, K> {
   public EntityOperationsResourceTest(
-      String entityName,
+      String entityType,
       Class<T> entityClass,
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
@@ -30,7 +30,7 @@ public abstract class EntityOperationsResourceTest<T> extends EntityResourceTest
       boolean supportsTags,
       boolean supportsAuthorizedMetadataOperations) {
     super(
-        entityName,
+        entityType,
         entityClass,
         entityListClass,
         collectionName,

@@ -42,12 +42,7 @@ logs
 *.iml
 *.ipr
 *.iws
-.idea/encodings.xml
-.idea/libraries
-.idea/inspectionProfiles/Project_Default.xml
-.idea/modules.xml
-.idea/runConfigurations.xml
-.idea/workspace.xml
+.idea/
 # Package Files
 *.jar
 *.war
@@ -68,6 +63,7 @@ secrets
 # ts build info and report
 openmetadata-ui/src/main/resources/ui/webpack
 openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
+openmetadata-ui/src/main/resources/ui/src/test
 
 #tests
 .coverage
@@ -80,6 +76,7 @@ ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
 ingestion/requirements.txt
 ingestion/.python-version
+ingestion/venv2/**
 
 # MLFlow
 mlruns/

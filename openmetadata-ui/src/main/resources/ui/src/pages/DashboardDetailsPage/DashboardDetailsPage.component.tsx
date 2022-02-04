@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { AxiosPromise, AxiosResponse } from 'axios';
+import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import {
   EntityTags,
   LeafNodes,
@@ -44,7 +45,7 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -56,6 +57,7 @@ import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
+  defaultFields,
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
@@ -99,13 +101,14 @@ const DashboardDetailsPage = () => {
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
   const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
     id: undefined,
     state: false,
   });
   const [currentVersion, setCurrentVersion] = useState<string>();
+  const [deleted, setDeleted] = useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -184,6 +187,10 @@ const DashboardDetailsPage = () => {
     }
   };
 
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
     getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
@@ -195,77 +202,104 @@ const DashboardDetailsPage = () => {
     });
   };
 
+  const getLineageData = () => {
+    setIsLineageLoading(true);
+    getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message ?? 'Error while fetching lineage data',
+        });
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
-    getDashboardByFqn(dashboardFQN, [
-      'owner',
-      'followers',
-      'tags',
-      'usageSummary',
-      'charts',
-    ]).then((res: AxiosResponse) => {
-      const {
-        id,
-        description,
-        followers,
-        fullyQualifiedName,
-        service,
-        tags,
-        owner,
-        displayName,
-        charts,
-        dashboardUrl,
-        serviceType,
-        version,
-      } = res.data;
-      setDisplayName(displayName);
-      setDashboardDetails(res.data);
-      setCurrentVersion(version);
-      setDashboardId(id);
-      setDescription(description ?? '');
-      setFollowers(followers);
-      setOwner(getOwnerFromId(owner?.id));
-      setTier(getTierTags(tags));
-      setTags(getTagsWithoutTier(tags));
-      setServiceType(serviceType);
-      setSlashedDashboardName([
-        {
-          name: service.name,
-          url: service.name
-            ? getServiceDetailsPath(
-                service.name,
-                serviceType,
-                ServiceCategory.DASHBOARD_SERVICES
-              )
-            : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-        },
-        {
-          name: displayName,
-          url: '',
-          activeTitle: true,
-        },
-      ]);
+    getDashboardByFqn(dashboardFQN, defaultFields)
+      .then((res: AxiosResponse) => {
+        const {
+          id,
+          deleted,
+          description,
+          followers,
+          fullyQualifiedName,
+          service,
+          tags,
+          owner,
+          displayName,
+          charts,
+          dashboardUrl,
+          serviceType,
+          version,
+        } = res.data;
+        setDisplayName(displayName);
+        setDashboardDetails(res.data);
+        setCurrentVersion(version);
+        setDashboardId(id);
+        setDescription(description ?? '');
+        setFollowers(followers);
+        setOwner(getOwnerFromId(owner?.id));
+        setTier(getTierTags(tags));
+        setTags(getTagsWithoutTier(tags));
+        setServiceType(serviceType);
+        setDeleted(deleted);
+        setSlashedDashboardName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.DASHBOARD_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: displayName,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
 
-      addToRecentViewed({
-        entityType: EntityType.DASHBOARD,
-        fqn: fullyQualifiedName,
-        serviceType: serviceType,
-        timestamp: 0,
-      });
-
-      getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
-        .then((res: AxiosResponse) => {
-          setEntityLineage(res.data);
-        })
-        .finally(() => {
-          setIsLineageLoading(false);
+        addToRecentViewed({
+          entityType: EntityType.DASHBOARD,
+          fqn: fullyQualifiedName,
+          serviceType: serviceType,
+          timestamp: 0,
         });
 
-      setDashboardUrl(dashboardUrl);
-      fetchCharts(charts).then((charts) => setCharts(charts));
-      setLoading(false);
-    });
+        setDashboardUrl(dashboardUrl);
+        fetchCharts(charts).then((charts) => setCharts(charts));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const fetchTabSpecificData = (tabField = '') => {
+    switch (tabField) {
+      case TabSpecificField.LINEAGE: {
+        if (!deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
+
+          break;
+        }
+
+        break;
+      }
+
+      default:
+        break;
+    }
   };
 
   const descriptionUpdateHandler = (updatedDashboard: Dashboard) => {
@@ -366,16 +400,6 @@ const DashboardDetailsPage = () => {
     return new Promise<void>((resolve, reject) => {
       addLineage(edge)
         .then(() => {
-          getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
-            .then((res: AxiosResponse) => {
-              setEntityLineage(res.data);
-            })
-            .catch(() => {
-              showToast({
-                variant: 'error',
-                body: `Error while getting entity lineage`,
-              });
-            });
           resolve();
         })
         .catch(() => {
@@ -389,26 +413,22 @@ const DashboardDetailsPage = () => {
   };
 
   const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(data.fromEntity, data.fromId, data.toEntity, data.toId)
-      .then(() => {
-        getLineageByFQN(dashboardFQN, EntityType.DASHBOARD)
-          .then((res: AxiosResponse) => {
-            setEntityLineage(res.data);
-          })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: `Error while getting entity lineage`,
-            });
-          });
-      })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: `Error while removing edge`,
-        });
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch(() => {
+      showToast({
+        variant: 'error',
+        body: `Error while removing edge`,
       });
+    });
   };
+
+  useEffect(() => {
+    fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
+  }, [activeTab]);
 
   useEffect(() => {
     fetchDashboardDetail(dashboardFQN);
@@ -420,7 +440,7 @@ const DashboardDetailsPage = () => {
 
   return (
     <>
-      {isLoading || isLineageLoading ? (
+      {isLoading ? (
         <Loader />
       ) : (
         <DashboardDetails
@@ -432,12 +452,15 @@ const DashboardDetailsPage = () => {
           dashboardDetails={dashboardDetails}
           dashboardTags={tags}
           dashboardUrl={dashboardUrl}
+          deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityLineage={entityLineage}
+          entityLineageHandler={entityLineageHandler}
           entityName={displayName}
           followDashboardHandler={followDashboard}
           followers={followers}
+          isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

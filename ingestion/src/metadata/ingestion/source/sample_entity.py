@@ -18,15 +18,15 @@ from typing import Iterable, List
 
 from faker import Faker
 
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceEntityRequest,
+    CreateDashboardServiceRequest,
 )
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceEntityRequest,
+    CreateMessagingServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Constraint, Table
@@ -144,7 +144,11 @@ class SampleEntitySource(Source[Entity]):
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         for h in range(self.config.no_of_services):
             service = {
-                "jdbc": {"connectionUrl": f"jdbc://localhost", "driverClass": "jdbc"},
+                "databaseConnection": {
+                    "hostPort": f"localhost",
+                    "username": "sample_user",
+                    "password": "sample_password",
+                },
                 "name": self.service_name(),
                 "description": self.description(),
                 "serviceType": self.service_type(),
@@ -153,7 +157,7 @@ class SampleEntitySource(Source[Entity]):
             while True:
                 try:
                     create_service = self.metadata.create_or_update(
-                        CreateDatabaseServiceEntityRequest(**service)
+                        CreateDatabaseServiceRequest(**service)
                     )
                     break
                 except APIError as err:
@@ -235,7 +239,7 @@ class SampleEntitySource(Source[Entity]):
                         "serviceType": "Superset",
                     }
                     create_service = self.metadata.create_or_update(
-                        CreateDashboardServiceEntityRequest(**service)
+                        CreateDashboardServiceRequest(**service)
                     )
                     break
                 except APIError:
@@ -284,7 +288,7 @@ class SampleEntitySource(Source[Entity]):
                 )
                 yield dashboard
 
-    def ingest_topics(self) -> Iterable[CreateTopicEntityRequest]:
+    def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         for h in range(self.config.no_of_services):
             create_service = None
             while True:
@@ -297,7 +301,7 @@ class SampleEntitySource(Source[Entity]):
                         "serviceType": "Kafka",
                     }
                     create_service = self.metadata.create_or_update(
-                        CreateMessagingServiceEntityRequest(**service)
+                        CreateMessagingServiceRequest(**service)
                     )
                     break
                 except APIError:
@@ -307,7 +311,7 @@ class SampleEntitySource(Source[Entity]):
                 "Ingesting service {}/{}".format(h + 1, self.config.no_of_services)
             )
             for j in range(self.config.no_of_topics):
-                topic_entity = CreateTopicEntityRequest(
+                topic_entity = CreateTopicRequest(
                     name=self.table_name(),
                     description=self.description(),
                     partitions=self.chart_ids(),

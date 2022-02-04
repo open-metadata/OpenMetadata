@@ -29,3 +29,18 @@ export enum EntityLineageDirection {
   TOP_BOTTOM = 'TB',
   LEFT_RIGHT = 'LR',
 }
+
+export enum TabSpecificField {
+  SAMPLE_DATA = 'sampleData',
+  TABLE_PROFILE = 'tableProfile',
+  LINEAGE = 'lineage',
+  COLUMNS = 'columns',
+  USAGE_SUMMARY = 'usageSummary',
+  FOLLOWERS = 'followers',
+  JOINS = 'joins',
+  TAGS = 'tags',
+  OWNER = 'owner',
+  DATAMODEL = 'dataModel',
+  CHARTS = 'charts',
+  TASKS = 'tasks',
+}

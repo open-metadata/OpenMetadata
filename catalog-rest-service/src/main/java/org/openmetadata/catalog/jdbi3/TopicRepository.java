@@ -111,8 +111,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public EntityRepository<Topic>.EntityUpdater getUpdater(Topic original, Topic updated, boolean patchOperation) {
-    return new TopicUpdater(original, updated, patchOperation);
+  public EntityRepository<Topic>.EntityUpdater getUpdater(Topic original, Topic updated, Operation operation) {
+    return new TopicUpdater(original, updated, operation);
   }
 
   @Override
@@ -279,8 +279,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public class TopicUpdater extends EntityUpdater {
-    public TopicUpdater(Topic original, Topic updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public TopicUpdater(Topic original, Topic updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override

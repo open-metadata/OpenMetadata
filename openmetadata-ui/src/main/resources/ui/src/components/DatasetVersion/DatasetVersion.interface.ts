@@ -26,6 +26,7 @@ export interface DatasetVersionProp {
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   datasetFQN: string;
   versionList: EntityHistory;
+  deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
 }

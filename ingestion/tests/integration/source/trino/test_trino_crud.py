@@ -23,12 +23,10 @@ import requests
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -83,7 +81,7 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
     print(databases[0])
-    table = CreateTableEntityRequest(
+    table = CreateTableRequest(
         name="test1", columns=columns, database=databases[0].id.__root__
     )
     created_table = client.create_or_update(table)
@@ -97,14 +95,14 @@ def create_delete_table(client: OpenMetadata, databases: List[Database]):
 
 def create_delete_database(client: OpenMetadata, databases: List[Database]):
     data = {
-        "jdbc": {"connectionUrl": "trino://localhost/default", "driverClass": "jdbc"},
+        "databaseConnection": {"hostPort": "localhost:0000"},
         "name": "temp_local_trino",
         "serviceType": "Trino",
         "description": "local trino env",
     }
-    create_trino_service = CreateDatabaseServiceEntityRequest(**data)
+    create_trino_service = CreateDatabaseServiceRequest(**data)
     trino_service = client.create_or_update(create_trino_service)
-    create_database_request = CreateDatabaseEntityRequest(
+    create_database_request = CreateDatabaseRequest(
         name="dwh", service=EntityReference(id=trino_service.id, type="databaseService")
     )
     created_database = client.create_or_update(create_database_request)

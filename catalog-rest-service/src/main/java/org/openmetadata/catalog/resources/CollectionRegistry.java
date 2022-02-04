@@ -33,18 +33,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
 import org.reflections.Reflections;
 
-@Slf4j
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
  * that anchor all the collections as follows: - .../api/v1 Provides information about all the collections in the
  * catalog - .../api/v1/collection-name provides sub collections or resources in that collection
  */
+@Slf4j
 public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
 
@@ -139,6 +140,14 @@ public final class CollectionRegistry {
           LOG.info("Registering test resource {}", object);
           environment.jersey().register(object);
         });
+
+    // All entities from seed data under resources are created as part of createResource calls above.
+    // Initialize relationships from seed data after all resources have been created.
+    try {
+      new EntityRelationshipRepository(jdbi.onDemand(CollectionDAO.class)).initSeedDataFromResources();
+    } catch (Exception ex) {
+      LOG.warn("Failed to register relationships from seed data: {}", ex.getMessage());
+    }
   }
 
   /** Get collection details based on annotations in Resource classes */

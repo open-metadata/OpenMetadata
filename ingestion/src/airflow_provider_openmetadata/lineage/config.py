@@ -23,6 +23,16 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OpenMetadataLineageConfig(ConfigModel):
+    """
+    Base class for OpenMetada lineage config
+
+    Attributes
+        airflow_service_name (str): name of the service
+        api_endpoint (str): the endpoint for the API
+        auth_provider_type (str):
+        secret_key (str):
+    """
+
     airflow_service_name: str = "airflow"
     api_endpoint: str = "http://localhost:8585"
     auth_provider_type: str = "no-auth"

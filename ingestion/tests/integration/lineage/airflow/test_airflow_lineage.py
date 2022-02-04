@@ -14,7 +14,6 @@ Test airflow lineage backend
 """
 
 from datetime import datetime, timedelta
-from textwrap import dedent
 from unittest import TestCase
 
 # The DAG object; we'll need this to instantiate a DAG
@@ -32,20 +31,22 @@ from airflow_provider_openmetadata.lineage.openmetadata import (
     get_properties,
     get_xlets,
 )
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
+from airflow_provider_openmetadata.lineage.utils import (
+    iso_dag_start_date,
+    iso_task_start_end_date,
 )
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -60,10 +61,10 @@ class AirflowLineageTest(TestCase):
 
     assert metadata.health_check()
 
-    service = CreateDatabaseServiceEntityRequest(
+    service = CreateDatabaseServiceRequest(
         name="test-service-table-lineage",
         serviceType=DatabaseServiceType.MySQL,
-        jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+        databaseConnection=DatabaseConnection(hostPort="localhost"),
     )
     service_type = "databaseService"
 
@@ -75,14 +76,14 @@ class AirflowLineageTest(TestCase):
 
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
-        cls.create_db = CreateDatabaseEntityRequest(
+        cls.create_db = CreateDatabaseRequest(
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
 
         cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
 
-        cls.create = CreateTableEntityRequest(
+        cls.create = CreateTableRequest(
             name="lineage-test",
             database=cls.create_db_entity.id,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
@@ -168,6 +169,36 @@ class AirflowLineageTest(TestCase):
             ALLOWED_TASK_KEYS,
         )
         self.assertTrue(set(task3_props.keys()).issubset(ALLOWED_TASK_KEYS))
+
+    def test_times(self):
+        """
+        Check the ISO date extraction for DAG and Tasks instances
+        """
+        dag_props = get_properties(
+            self.dag, SerializedDAG.serialize_dag, ALLOWED_FLOW_KEYS
+        )
+
+        dag_date = iso_dag_start_date(dag_props)
+        self.assertEqual("2021-01-01T00:00:00Z", dag_date)
+
+        # Remove the start_time
+        dag_props.pop("start_date")
+        dag_none_date = iso_dag_start_date(dag_props)
+        self.assertIsNone(dag_none_date)
+
+        # By default we'll get the start_date for the task,
+        # so we can check its value, but the end date
+        # might not come as in this case.
+        # Check that we can have those values as None
+        task1_props = get_properties(
+            self.dag.get_task("task1"),
+            SerializedBaseOperator.serialize_operator,
+            ALLOWED_TASK_KEYS,
+        )
+
+        task_start_date, task_end_date = iso_task_start_end_date(task1_props)
+        self.assertEqual("2021-01-01T00:00:00Z", task_start_date)
+        self.assertIsNone(task_end_date)
 
     def test_lineage(self):
         """

@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""ml flow source module"""
 
 import ast
 import logging
@@ -18,7 +19,7 @@ from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion
 from mlflow.tracking import MlflowClient
 
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureType,
     MlFeature,
@@ -41,26 +42,26 @@ class MlFlowStatus(SourceStatus):
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
-    def scanned(self, model_name: str) -> None:
+    def scanned(self, record: str) -> None:
         """
         Log successful ML Model scans
         """
-        self.success.append(model_name)
-        logger.info(f"ML Model scanned: {model_name}")
+        self.success.append(record)
+        logger.info("ML Model scanned: %s", record)
 
     def failed(self, model_name: str, reason: str) -> None:
         """
         Log failed ML Model scans
         """
         self.failures.append(model_name)
-        logger.error(f"ML Model failed: {model_name} - {reason}")
+        logger.error("ML Model failed: %s - %s", model_name, reason)
 
     def warned(self, model_name: str, reason: str) -> None:
         """
         Log Ml Model with warnings
         """
         self.warnings.append(model_name)
-        logger.warning(f"ML Model warning: {model_name} - {reason}")
+        logger.warning("ML Model warning: %s - %s", model_name, reason)
 
 
 class MlFlowConnectionConfig(ConfigModel):
@@ -72,12 +73,12 @@ class MlFlowConnectionConfig(ConfigModel):
     registry_uri: Optional[str]
 
 
-class MlflowSource(Source[CreateMlModelEntityRequest]):
+class MlflowSource(Source[CreateMlModelRequest]):
     """
     Source implementation to ingest MLFlow data.
 
     We will iterate on the registered ML Models
-    and prepare an iterator of CreateMlModelEntityRequest
+    and prepare an iterator of CreateMlModelRequest
     """
 
     def __init__(self, config: MlFlowConnectionConfig, ctx: WorkflowContext):
@@ -98,7 +99,7 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
         config = MlFlowConnectionConfig.parse_obj(config_dict)
         return cls(config, ctx)
 
-    def next_record(self) -> Iterable[CreateMlModelEntityRequest]:
+    def next_record(self) -> Iterable[CreateMlModelRequest]:
         """
         Fetch all registered models from MlFlow.
 
@@ -125,7 +126,7 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
 
             self.status.scanned(model.name)
 
-            yield CreateMlModelEntityRequest(
+            yield CreateMlModelRequest(
                 name=model.name,
                 description=model.description,
                 algorithm="mlflow",  # Setting this to a constant
@@ -195,6 +196,7 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
                         for feature in features
                     ]
 
+            # pylint: disable=broad-except)
             except Exception as exc:
                 reason = f"Cannot extract properties from RunData {exc}"
                 logging.warning(reason)
@@ -209,4 +211,3 @@ class MlflowSource(Source[CreateMlModelEntityRequest]):
         """
         Don't need to close the client
         """
-        pass

@@ -61,11 +61,13 @@ import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -96,8 +98,13 @@ public class PolicyResource {
     this.authorizer = authorizer;
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
+  @SuppressWarnings("unused") // Method is used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
+    // Set up the PolicyEvaluator, before loading seed data.
+    PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
+    policyEvaluator.setPolicyRepository(dao);
+    // Load any existing rules from database, before loading seed data.
+    policyEvaluator.refreshRules();
     dao.initSeedDataFromResources();
   }
 
@@ -368,9 +375,11 @@ public class PolicyResource {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "policy for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
-    dao.delete(UUID.fromString(id), false);
-    return Response.ok().build();
+  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    DeleteResponse<Policy> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
+    return response.toResponse();
   }
 
   private Policy getPolicy(SecurityContext securityContext, CreatePolicy create) {

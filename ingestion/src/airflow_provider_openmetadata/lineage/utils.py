@@ -13,19 +13,16 @@
 OpenMetadata Airflow Lineage Backend
 """
 
-import ast
 import traceback
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from airflow.configuration import conf
 
 from airflow_provider_openmetadata.lineage.config import OpenMetadataLineageConfig
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
+    CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
@@ -98,13 +95,11 @@ def get_properties(
     :return: properties dict
     """
 
-    props: Dict[str, str] = {
-        key: repr(value) for (key, value) in serializer(obj).items()
-    }
+    props: Dict[str, str] = {key: value for (key, value) in serializer(obj).items()}
 
     for key in obj.get_serialized_fields():
         if key not in props:
-            props[key] = repr(getattr(obj, key))
+            props[key] = getattr(obj, key)
 
     return {key: value for (key, value) in props.items() if key in allowed_keys}
 
@@ -136,6 +131,47 @@ def get_xlets(
     return None
 
 
+# pylint: disable=too-many-arguments
+def iso_dag_start_date(props: Dict[str, Any]) -> Optional[str]:
+    """
+    Given a properties dict, return the start_date
+    as an iso string if start_date is informed
+    :param props: properties dict
+    :return: iso start_date or None
+    """
+
+    # DAG start date comes as `float`
+    if props.get("start_date"):
+        return convert_epoch_to_iso(int(float(props["start_date"])))
+
+    return None
+
+
+def iso_task_start_end_date(
+    props: Dict[str, Any]
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Given the attributes of a Task Instance, return
+    the task start date and task end date as
+    ISO format
+    :param props: task instance attributes
+    :return: task start and end date
+    """
+
+    task_start_date = (
+        convert_epoch_to_iso(int(props["start_date"].timestamp()))
+        if props.get("start_date")
+        else None
+    )
+    task_end_date = (
+        convert_epoch_to_iso(int(props["end_date"].timestamp()))
+        if props.get("end_date")
+        else None
+    )
+
+    return task_start_date, task_end_date
+
+
 def create_pipeline_entity(
     dag_properties: Dict[str, str],
     task_properties: Dict[str, str],
@@ -161,24 +197,14 @@ def create_pipeline_entity(
         f"{pipeline_service_url}/taskinstance/list/"
         + f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={operator.task_id}"
     )
-    dag_start_date = convert_epoch_to_iso(int(float(dag_properties["start_date"])))
+    dag_start_date = iso_dag_start_date(dag_properties)
+    task_start_date, task_end_date = iso_task_start_end_date(task_properties)
 
     downstream_tasks = []
-    if "_downstream_task_ids" in task_properties:
-        downstream_tasks = ast.literal_eval(task_properties["_downstream_task_ids"])
+    if task_properties.get("_downstream_task_ids"):
+        downstream_tasks = task_properties["_downstream_task_ids"]
 
     operator.log.info(f"downstream tasks {downstream_tasks}")
-
-    task_start_date = (
-        task_properties["start_date"].isoformat()
-        if "start_time" in task_properties
-        else None
-    )
-    task_end_date = (
-        task_properties["end_date"].isoformat()
-        if "end_time" in task_properties
-        else None
-    )
 
     task = Task(
         name=task_properties["task_id"],
@@ -189,7 +215,7 @@ def create_pipeline_entity(
         endDate=task_end_date,
         downstreamTasks=downstream_tasks,
     )
-    create_pipeline = CreatePipelineEntityRequest(
+    create_pipeline = CreatePipelineRequest(
         name=dag.dag_id,
         displayName=dag.dag_id,
         description=dag.description,
@@ -202,6 +228,7 @@ def create_pipeline_entity(
     return client.create_or_update(create_pipeline)
 
 
+# pylint: disable=too-many-arguments,too-many-locals
 def parse_lineage_to_openmetadata(
     config: OpenMetadataLineageConfig,
     context: Dict,
@@ -258,7 +285,7 @@ def parse_lineage_to_openmetadata(
         for table in inlets if inlets else []:
             table_entity = client.get_by_name(entity=Table, fqdn=table)
             operator.log.debug(f"from entity {table_entity}")
-            lineage = AddLineage(
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=table_entity.id, type="table"),
                     toEntity=EntityReference(id=pipeline.id, type="pipeline"),
@@ -270,7 +297,7 @@ def parse_lineage_to_openmetadata(
         for table in outlets if outlets else []:
             table_entity = client.get_by_name(entity=Table, fqdn=table)
             operator.log.debug(f"to entity {table_entity}")
-            lineage = AddLineage(
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
                     toEntity=EntityReference(id=table_entity.id, type="table"),
@@ -304,7 +331,7 @@ def get_or_create_pipeline_service(
     )
 
     if airflow_service_entity is None:
-        pipeline_service = CreatePipelineServiceEntityRequest(
+        pipeline_service = CreatePipelineServiceRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
             pipelineUrl=conf.get("webserver", "base_url"),

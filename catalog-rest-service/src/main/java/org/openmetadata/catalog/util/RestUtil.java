@@ -26,6 +26,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.common.utils.CommonUtil;
@@ -37,6 +38,7 @@ public final class RestUtil {
   public static final String ENTITY_UPDATED = "entityUpdated";
   public static final String ENTITY_FIELDS_CHANGED = "entityFieldsChanged";
   public static final String ENTITY_NO_CHANGE = "entityNoChange";
+  public static final String ENTITY_SOFT_DELETED = "entitySoftDeleted";
   public static final String ENTITY_DELETED = "entityDeleted";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
 
@@ -191,6 +193,25 @@ public final class RestUtil {
 
     public Response toResponse() {
       return Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType).entity(entity).build();
+    }
+  }
+
+  public static class DeleteResponse<T> {
+    private T entity;
+    private final String changeType;
+
+    /**
+     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
+     * a new entity
+     */
+    public DeleteResponse(T entity, String changeType) {
+      this.entity = entity;
+      this.changeType = changeType;
+    }
+
+    public Response toResponse() {
+      ResponseBuilder responseBuilder = Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
+      return responseBuilder.entity(entity).build();
     }
   }
 }

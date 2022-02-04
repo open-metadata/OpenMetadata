@@ -34,7 +34,7 @@ class SQLSourceStatus(SourceStatus):
 
     def filter(self, record: str, err: str) -> None:
         self.filtered.append(record)
-        logger.warning(f"Dropped Table {record} due to {err}")
+        logger.warning(f"Filtered Table {record} due to {err}")
 
 
 def build_sql_source_connection_url(

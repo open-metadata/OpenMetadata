@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -25,6 +26,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -142,8 +145,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
-    return new PipelineUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
+    return new PipelineUpdater(original, updated, operation);
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException, ParseException {
@@ -305,8 +308,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
-    public PipelineUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
@@ -324,20 +327,44 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
       // pipeline in each call. Hence, we may create a pipeline and add a single task when one task finishes in a
       // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
+      List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
+      List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
 
-      // The current behavior does not perform a merge but rather overrides the tasks
-      // having the client side request as the full source of truth. We are going to update
-      // the logic of the lineage backend in Airflow to append the tasks accordingly in #2316
+      // Merge the tasks
+      updatedTasks =
+          new ArrayList<>(
+              Stream.concat(origTasks.stream(), updatedTasks.stream())
+                  .collect(Collectors.groupingBy(Task::getName, Collectors.reducing(null, (t1, t2) -> t2)))
+                  .values());
 
-      List<Task> addedList = new ArrayList<>();
-      List<Task> deletedList = new ArrayList<>();
-      recordListChange(
-          "tasks",
-          Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList()),
-          Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList()),
-          addedList,
-          deletedList,
-          EntityUtil.taskMatch);
+      List<Task> added = new ArrayList<>();
+      List<Task> deleted = new ArrayList<>();
+      recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
+
+      // Update the task descriptions
+      for (Task updated : updatedTasks) {
+        Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null || updated == null) { // New task added
+          continue;
+        }
+
+        updateTaskDescription(stored, updated);
+      }
+    }
+
+    private void updateTaskDescription(Task origTask, Task updatedTask) throws JsonProcessingException {
+      if (operation.isPut() && origTask.getDescription() != null && !origTask.getDescription().isEmpty()) {
+        // Update description only when stored is empty to retain user authored descriptions
+        updatedTask.setDescription(origTask.getDescription());
+        return;
+      }
+      // Don't record a change if descriptions are the same
+      if (origTask != null
+          && ((origTask.getDescription() != null && !origTask.getDescription().equals(updatedTask.getDescription()))
+              || updatedTask.getDescription() != null)) {
+        recordChange(
+            "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
+      }
     }
   }
 }

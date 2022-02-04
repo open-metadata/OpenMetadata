@@ -1,0 +1,91 @@
+{
+  "$id": "https://open-metadata.org/schema/api/operations/pipelines/createPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAirflowPipelineRequest",
+  "description": "Pipeline Config is used to setup a Airflow DAG.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies this pipeline instance uniquely.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "displayName": {
+      "description": "Display Name that identifies this pipeline.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the pipeline.",
+      "type": "string"
+    },
+    "pipelineType": {
+      "$ref": "../../../operations/pipelines/airflowPipeline.json#/definitions/pipelineType"
+    },
+    "pipelineConfig": {
+      "$ref": "../../../operations/pipelines/airflowPipeline.json#/definitions/pipelineConfig"
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../../../type/entityReference.json",
+      "default": null
+    },
+    "forceDeploy": {
+      "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "pausePipeline": {
+      "description": "pause the pipeline from running once the deploy is finished successfully.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "concurrency": {
+      "description": "Concurrency of the Pipeline.",
+      "type": "integer",
+      "default": 1
+    },
+    "startDate": {
+      "description": "Start date of the pipeline.",
+      "$ref": "../../../type/basic.json#/definitions/date"
+    },
+    "endDate": {
+      "description": "End Date of the pipeline.",
+      "$ref": "../../../type/basic.json#/definitions/date"
+    },
+    "pipelineTimezone": {
+      "description": "Timezone in which pipeline going to be scheduled.",
+      "type": "string",
+      "default": "UTC"
+    },
+    "retries": {
+      "description": "Retry pipeline in case of failure",
+      "type": "integer",
+      "default": 1
+    },
+    "retryDelay": {
+      "description": "Delay between retries in seconds.",
+      "type": "integer",
+      "default": 300
+    },
+    "pipelineCatchup": {
+      "description": "pipeline catchup for past executions.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string"
+    },
+    "pipelineTimeout": {
+      "description": "Timeout for the pipeline in seconds.",
+      "type": "integer",
+      "default": 60
+    },
+    "service": {
+      "description": "Link to the database service where this database is hosted in.",
+      "$ref": "../../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "service", "startDate", "pipelineConfig"]
+}

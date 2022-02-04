@@ -101,7 +101,7 @@
   }
 
   .tw-modal {
-    @apply tw-z-9999 tw-flex tw-fixed tw-inset-0 tw-bg-transparent tw-justify-center tw-h-screen tw-w-screen tw-items-center tw-antialiased;
+    @apply tw-z-9999 tw-text-grey-body tw-flex tw-fixed tw-inset-0 tw-bg-transparent tw-justify-center tw-h-screen tw-w-screen tw-items-center tw-antialiased;
   }
   .tw-modal-confetti {
     background-size: cover;
@@ -205,7 +205,7 @@
   }
   .tw-notification {
     @apply tw-bg-white tw-transition tw-duration-300 tw-ease-linear tw-relative tw-flex tw-justify-between tw-pointer-events-auto
-     tw-mb-3.5 tw-p-4 tw-w-80 tw-h-auto tw-rounded tw-shadow tw-text-white tw-bg-left-top tw-bg-no-repeat;
+     tw-mb-3.5 tw-p-4 tw-w-96 tw-h-auto tw-rounded tw-shadow tw-text-white tw-bg-left-top tw-bg-no-repeat;
   }
   /* Toaster CSS end */
 
@@ -331,6 +331,10 @@
 
   .column-highlight {
     animation: highlight 3000ms ease-out;
+  }
+
+  .rotate-inverse {
+    transform: rotate(180deg);
   }
 
   @keyframes highlight {

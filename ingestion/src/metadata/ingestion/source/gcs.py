@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""gc source module"""
 
 import logging
 import uuid
@@ -37,16 +38,33 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class GcsSourceConfig(ConfigModel):
+    """GCS source pydantic config module"""
+
     service_name: str
 
 
 class GcsSource(Source[Entity]):
+    """GCS source entity
+
+    Args:
+        config:
+        GcsSourceConfig:
+        metadata_config:
+        ctx:
+    Attributes:
+        config:
+        status:
+        service:
+        gcs:
+    """
+
     config: GcsSourceConfig
     status: SourceStatus
 
     def __init__(
         self, config: GcsSourceConfig, metadata_config: MetadataServerConfig, ctx
     ):
+        super().__init__(ctx)
         self.config = config
         self.status = SourceStatus()
         self.service = get_storage_service_or_create(
@@ -105,8 +123,8 @@ class GcsSource(Source[Entity]):
                     location=location,
                     policy=policy,
                 )
-        except Exception as e:
-            self.status.failure("error", str(e))
+        except Exception as err:  # pylint: disable=broad-except
+            self.status.failure("error", str(err))
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -128,7 +146,7 @@ class GcsSource(Source[Entity]):
         actions: List[Union[LifecycleDeleteAction, LifecycleMoveAction]] = []
 
         if "action" not in rule or "type" not in rule["action"]:
-            return
+            return None
 
         name = policy_name
 
@@ -156,6 +174,7 @@ class GcsSource(Source[Entity]):
 
         return LifecycleRule(
             actions=actions,
-            enabled=True,  # gcs bucket lifecycle policies do not have an enabled field, hence True.
+            # gcs bucket lifecycle policies do not have an enabled field, hence True.
+            enabled=True,
             name=name,
         )

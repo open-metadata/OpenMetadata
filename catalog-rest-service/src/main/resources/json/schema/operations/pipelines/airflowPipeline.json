@@ -1,0 +1,191 @@
+{
+  "$id": "https://open-metadata.org/schema/operations/pipelines/airflowPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AirflowPipeline",
+  "description": "Airflow Pipeline is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
+  "type": "object",
+  "definitions": {
+    "pipelineType": {
+      "description": "Type of Pipeline - metadata, query-usage",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.operations.pipelines.PipelineType",
+      "enum": ["metadata", "queryUsage"]
+    },
+    "pipelineStatus": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.operations.pipelines.PipelineStatus",
+      "description": "This defines the runtime status of Pipeline.",
+      "properties": {
+        "state": {
+          "description": "Pipeline status denotes if its failed or succeeded.",
+          "type": "string"
+        },
+        "startDate": {
+          "description": "startDate of the Pipeline run for this particular execution.",
+          "type": "string"
+        },
+        "endDate": {
+          "description": "endDate of the pipeline run for this particular execution.",
+          "type": "string"
+        }
+      }
+    },
+    "pipelineConfig": {
+      "description": "OpenMetadata Pipeline Config.",
+      "type": "object",
+      "properties": {
+        "config": {
+          "oneOf": [
+            { "$ref": "databaseServiceMetadataPipeline.json" },
+            { "$ref": "databaseServiceQueryUsagePipeline.json" }
+          ]
+        },
+        "schema": {
+          "enum": [
+            "databaseServiceMetadataPipeline",
+            "databaseServiceQueryUsagePipeline"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this pipeline.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this pipeline instance uniquely.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Pipeline.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Pipeline.",
+      "type": "string"
+    },
+    "pipelineType": {
+      "$ref": "#/definitions/pipelineType"
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a Pipeline.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "pipelineConfig": {
+      "$ref": "#/definitions/pipelineConfig"
+    },
+    "forceDeploy": {
+      "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "pausePipeline": {
+      "description": "pause the pipeline from running once the deploy is finished successfully.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "concurrency": {
+      "description": "Concurrency of the Pipeline.",
+      "type": "integer",
+      "default": 1
+    },
+    "startDate": {
+      "description": "Start date of the pipeline.",
+      "$ref": "../../type/basic.json#/definitions/date"
+    },
+    "endDate": {
+      "description": "End Date of the pipeline.",
+      "$ref": "../../type/basic.json#/definitions/date"
+    },
+    "nextExecutionDate": {
+      "description": "Next execution date from the underlying pipeline platform once the pipeline scheduled.",
+      "$ref": "../../type/basic.json#/definitions/date"
+    },
+    "pipelineTimezone": {
+      "description": "Timezone in which pipeline going to be scheduled.",
+      "type": "string",
+      "default": "UTC"
+    },
+    "retries": {
+      "description": "Retry pipeline in case of failure.",
+      "type": "integer",
+      "default": 1
+    },
+    "retryDelay": {
+      "description": "Delay between retries in seconds.",
+      "type": "integer",
+      "default": 300
+    },
+    "pipelineCatchup": {
+      "description": "Run past executions if the start date is in the past.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string"
+    },
+    "pipelineTimeout": {
+      "description": "Timeout for the pipeline in seconds.",
+      "type": "integer",
+      "default": 60
+    },
+    "pipelineStatuses": {
+      "description": "List of executions and status for the Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/pipelineStatus"
+      },
+      "default": null
+    },
+    "service": {
+      "description": "Link to the database service where this database is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "href": {
+      "description": "Link to this pipeline resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "service",
+    "pipelineType",
+    "pipelineConfig",
+    "startDate"
+  ],
+  "additionalProperties": false
+}

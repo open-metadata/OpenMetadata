@@ -44,6 +44,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   tier,
   slashedPipelineName,
   versionList,
+  deleted = false,
   backHandler,
   versionHandler,
 }: PipelineVersionProp) => {
@@ -155,7 +156,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       {
         key: `${currentVersionData.serviceType} Url`,
         value: currentVersionData.pipelineUrl,
-        placeholderText: currentVersionData.name,
+        placeholderText:
+          currentVersionData.displayName ?? currentVersionData.name,
         isLink: true,
         openInNewTab: true,
       },
@@ -219,7 +221,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <div className={classNames('version-data')}>
             <EntityPageInfo
               isVersionSelected
-              entityName={currentVersionData.name ?? ''}
+              deleted={deleted}
+              entityName={
+                currentVersionData.displayName ?? currentVersionData.name ?? ''
+              }
               extraInfo={getExtraInfo()}
               followersList={[]}
               tags={getTags()}

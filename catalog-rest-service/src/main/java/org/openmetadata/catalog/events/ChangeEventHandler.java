@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.events;
 
+import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
+import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
+
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
@@ -92,12 +96,14 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     // Entity was updated by either PUT .../entities or PATCH .../entities
-    if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
+    // Entity was soft deleted by DELETE .../entities/{id} that updated the attribute `deleted` to true
+    if (changeType.equals(RestUtil.ENTITY_UPDATED) || changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
       var entityInterface = Entity.getEntityInterface(entity);
       EntityReference entityReference = Entity.getEntityReference(entity);
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getName();
-      return getChangeEvent(EventType.ENTITY_UPDATED, entityType, entityInterface)
+      EventType eventType = changeType.equals(RestUtil.ENTITY_UPDATED) ? ENTITY_UPDATED : ENTITY_SOFT_DELETED;
+      return getChangeEvent(eventType, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
           .withEntity(entity)
           .withEntityFullyQualifiedName(entityFQN);
@@ -108,9 +114,16 @@ public class ChangeEventHandler implements EventHandler {
       return (ChangeEvent) entity;
     }
 
-    // Entity was deleted by DELETE .../entities/{id}
+    // Entity field was updated by DELETE .../entities/{id}
     if (changeType.equals(RestUtil.ENTITY_DELETED)) {
-      return (ChangeEvent) entity;
+      var entityInterface = Entity.getEntityInterface(entity);
+      EntityReference entityReference = Entity.getEntityReference(entity);
+      String entityType = entityReference.getType();
+      String entityFQN = entityReference.getName();
+      return getChangeEvent(ENTITY_DELETED, entityType, entityInterface)
+          .withPreviousVersion(entityInterface.getVersion())
+          .withEntity(entity)
+          .withEntityFullyQualifiedName(entityFQN);
     }
     return null;
   }
@@ -137,5 +150,7 @@ public class ChangeEventHandler implements EventHandler {
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
-  public void close() {}
+  public void close() {
+    /* Nothing to do */
+  }
 }

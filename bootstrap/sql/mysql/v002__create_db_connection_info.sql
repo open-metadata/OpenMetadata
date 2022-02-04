@@ -1,5 +1,5 @@
 -- DBT models are no longer a separate entity
-DROP TABLE dbt_model_entity;
+DROP TABLE IF EXISTS dbt_model_entity;
 DELETE FROM entity_relationship WHERE fromEntity='dbtmodel' OR toEntity='dbtmodel';
 
 --

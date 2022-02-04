@@ -285,7 +285,7 @@ class DatabaseCommon(Database):
             elif self.is_text(data_type):
                 logical_type = SupportedDataType.TEXT
             else:
-                logger.info(f"  {name} ({data_type}) not supported.")
+                logger.info(f"  {name} ({repr(data_type)}) not supported.")
                 continue
             self.columns.append(
                 Column(

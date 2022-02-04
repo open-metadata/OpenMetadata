@@ -88,6 +88,10 @@ OpenMetadata has the following high-level core entities and relationships:
 [report.md](report.md)
 {% endcontent-ref %}
 
+{% content-ref url="role.md" %}
+[role.md](role.md)
+{% endcontent-ref %}
+
 {% content-ref url="rule.md" %}
 [rule.md](rule.md)
 {% endcontent-ref %}
@@ -126,4 +130,8 @@ OpenMetadata has the following high-level core entities and relationships:
 
 {% content-ref url="user.md" %}
 [user.md](user.md)
+{% endcontent-ref %}
+
+{% content-ref url="webhook.md" %}
+[webhook.md](webhook.md)
 {% endcontent-ref %}

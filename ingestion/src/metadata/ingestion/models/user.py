@@ -8,45 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from typing import List, Optional
 
-import copy
-import json
-from typing import Any, Dict, List, Optional
+from pydantic.main import BaseModel
 
-from metadata.ingestion.models.json_serializable import JsonSerializable
-
-UNQUOTED_SUFFIX = ":UNQUOTED"
-
-
-class MetadataOrg(JsonSerializable):
-    """
-    Catalog Org Model
-    """
-
-    def __init__(self, name: str, documentation: str = "") -> None:
-        """ """
-        self.name = name
-        self.documentation = documentation
+from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 
 
-class MetadataTeam(JsonSerializable):
-    """
-    Catalog Team Model
-    """
-
-    def __init__(self, name: str, description: str = "") -> None:
-        """ """
-        self.name = name.replace(" ", "_")
-        self.display_name = name
-        self.description = description
-
-
-class MetadataRole(JsonSerializable):
-    """
-    Catalog Role
-    """
-
-    def __init__(self, name: str, documentation: str = ""):
-        """ """
-        self.name = name
-        self.documentation = documentation
+class OMetaUserProfile(BaseModel):
+    user: CreateUserRequest
+    teams: Optional[List[CreateTeamRequest]] = None
+    roles: Optional[List[CreateRoleRequest]] = None

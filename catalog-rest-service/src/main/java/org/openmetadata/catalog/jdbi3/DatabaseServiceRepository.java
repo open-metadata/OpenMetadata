@@ -13,22 +13,27 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
-  public static final String COLLECTION_PATH = "v1/services/databaseServices";
+  private static final Fields UPDATE_FIELDS = new Fields(DatabaseServiceResource.FIELD_LIST, "owner");
 
   public DatabaseServiceRepository(CollectionDAO dao) {
     super(
@@ -38,15 +43,39 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao.dbServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
   @Override
-  public DatabaseService setFields(DatabaseService entity, Fields fields) {
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+    entity.setAirflowPipelines(fields.contains("airflowPipeline") ? getAirflowPipelines(entity) : null);
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
+  }
+
+  private List<EntityReference> getAirflowPipelines(DatabaseService databaseService) throws IOException {
+    if (databaseService == null) {
+      return null;
+    }
+    String databaseServiceId = databaseService.getId().toString();
+    List<String> airflowPipelineIds =
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                databaseServiceId,
+                Entity.DATABASE_SERVICE,
+                Relationship.CONTAINS.ordinal(),
+                Entity.AIRFLOW_PIPELINE,
+                toBoolean(toInclude(databaseService)));
+    List<EntityReference> airflowPipelines = new ArrayList<>();
+    for (String airflowPipelineId : airflowPipelineIds) {
+      airflowPipelines.add(
+          daoCollection.airflowPipelineDAO().findEntityReferenceById(UUID.fromString(airflowPipelineId)));
+    }
+    return airflowPipelines;
   }
 
   @Override
@@ -60,24 +89,34 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void prepare(DatabaseService entity) {
-    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
+  public void prepare(DatabaseService entity) throws IOException, ParseException {
+    // Check if owner is valid and set the relationship
+    entity.setOwner(helper(entity).validateOwnerOrNull());
   }
 
   @Override
   public void storeEntity(DatabaseService service, boolean update) throws IOException {
-    service.withHref(null);
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
     store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(DatabaseService entity) {
-    /* Nothing to do */
+    // Add owner relationship
+    setOwner(entity, entity.getOwner());
   }
 
   @Override
-  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
-    return new DatabaseServiceUpdater(original, updated, patchOperation);
+  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, Operation operation) {
+    return new DatabaseServiceUpdater(original, updated, operation);
   }
 
   public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
@@ -100,6 +139,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
     }
 
     @Override
@@ -180,6 +224,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
+
+    @Override
     public void setDeleted(boolean flag) {
       entity.setDeleted(flag);
     }
@@ -191,24 +240,19 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   public class DatabaseServiceUpdater extends EntityUpdater {
-    public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
+    public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateJdbc();
-      recordChange(
-          "ingestionSchedule",
-          original.getEntity().getIngestionSchedule(),
-          updated.getEntity().getIngestionSchedule(),
-          true);
+      updateDatabaseConnectionConfig();
     }
 
-    private void updateJdbc() throws JsonProcessingException {
-      JdbcInfo origJdbc = original.getEntity().getJdbc();
-      JdbcInfo updatedJdbc = updated.getEntity().getJdbc();
-      recordChange("jdbc", origJdbc, updatedJdbc, true);
+    private void updateDatabaseConnectionConfig() throws JsonProcessingException {
+      DatabaseConnection origConn = original.getEntity().getDatabaseConnection();
+      DatabaseConnection updatedConn = updated.getEntity().getDatabaseConnection();
+      recordChange("databaseConnection", origConn, updatedConn, true);
     }
   }
 }

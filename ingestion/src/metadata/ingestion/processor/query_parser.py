@@ -8,10 +8,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Query parser implementation
+"""
 
 import datetime
 import logging
-import traceback
 from typing import Optional
 
 from sql_metadata import Parser
@@ -24,6 +26,10 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class QueryParserProcessorConfig(ConfigModel):
+    """
+    Query parser pydantic configuration model
+    """
+
     filter: Optional[str] = None
 
 
@@ -31,6 +37,20 @@ logger = logging.getLogger(__name__)
 
 
 class QueryParserProcessor(Processor):
+    """
+    Extension of the `Processor` class
+
+    Args:
+        ctx (WorkflowContext):
+        config (QueryParserProcessorConfig):
+        metadata_config (MetadataServerConfig):
+
+    Attributes:
+        config (QueryParserProcessorConfig):
+        metadata_config (MetadataServerConfig):
+        status (ProcessorStatus):
+    """
+
     config: QueryParserProcessorConfig
     status: ProcessorStatus
 
@@ -69,11 +89,11 @@ class QueryParserProcessor(Processor):
                 date=start_date.strftime("%Y-%m-%d"),
                 service_name=record.service_name,
             )
+        # pylint: disable=broad-except
         except Exception as err:
             logger.debug(record.sql)
             logger.error(err)
             query_parser_data = None
-            pass
 
         return query_parser_data
 

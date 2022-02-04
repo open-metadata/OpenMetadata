@@ -21,27 +21,25 @@ from typing import Any, Dict, Iterable, List, Union
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
+from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.basic import Href
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.access_control_policies import (
-    AccessControlPoliciesConfig,
-    AccessControlPoliciesSource,
-)
 from metadata.utils.helpers import (
     get_dashboard_service_or_create,
     get_database_service_or_create,
@@ -264,13 +262,6 @@ class SampleDataSource(Source[Entity]):
         self.models = json.load(
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
-        policies_config = AccessControlPoliciesConfig(
-            policies_file=self.config.sample_data_folder
-            + "/policies/access_control.json"
-        )
-        self.policies_source = AccessControlPoliciesSource(
-            policies_config, metadata_config, ctx
-        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -279,7 +270,7 @@ class SampleDataSource(Source[Entity]):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        self.policies_source.prepare()
+        pass
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.ingest_locations()
@@ -292,7 +283,6 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_lineage()
         yield from self.ingest_users()
         yield from self.ingest_mlmodels()
-        yield from self.policies_source.next_record()
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
@@ -351,12 +341,12 @@ class SampleDataSource(Source[Entity]):
             self.status.scanned("table", table_metadata.name.__root__)
             yield table_and_db
 
-    def ingest_topics(self) -> Iterable[CreateTopicEntityRequest]:
+    def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         for topic in self.topics["topics"]:
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = CreateTopicEntityRequest(**topic)
+            create_topic = CreateTopicRequest(**topic)
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
@@ -408,16 +398,16 @@ class SampleDataSource(Source[Entity]):
             )
             yield pipeline_ev
 
-    def ingest_lineage(self) -> Iterable[AddLineage]:
+    def ingest_lineage(self) -> Iterable[AddLineageRequest]:
         for edge in self.lineage:
             from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
             to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
-            lineage = AddLineage(
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
             yield lineage
 
-    def ingest_mlmodels(self) -> Iterable[CreateMlModelEntityRequest]:
+    def ingest_mlmodels(self) -> Iterable[CreateMlModelRequest]:
         """
         Convert sample model data into a Model Entity
         to feed the metastore
@@ -436,7 +426,7 @@ class SampleDataSource(Source[Entity]):
 
             dashboard_id = str(dashboard.id.__root__)
 
-            model_ev = CreateMlModelEntityRequest(
+            model_ev = CreateMlModelRequest(
                 name=model["name"],
                 displayName=model["displayName"],
                 description=model["description"],
@@ -445,23 +435,20 @@ class SampleDataSource(Source[Entity]):
             )
             yield model_ev
 
-    def ingest_users(self) -> Iterable[User]:
+    def ingest_users(self) -> Iterable[OMetaUserProfile]:
         try:
             for user in self.users["users"]:
                 teams = [
-                    EntityReference(
-                        id=uuid.uuid4(),
+                    CreateTeamRequest(
                         name=user["teams"],
-                        type="team",
+                        displayName=user["teams"],
                         description=f"This is {user['teams']} description.",
                     )
                 ]
                 roles = (
                     [
-                        EntityReference(
-                            id=uuid.uuid4(),
+                        CreateRoleRequest(
                             name=role,
-                            type="role",
                             description=f"This is {role} description.",
                         )
                         for role in user["roles"]
@@ -469,16 +456,13 @@ class SampleDataSource(Source[Entity]):
                     if "roles" in user
                     else []
                 )
-                user_metadata = User(
-                    id=uuid.uuid4(),
+                user_metadata = CreateUserRequest(
                     name=user["name"],
                     displayName=user["displayName"],
                     email=user["email"],
-                    teams=teams,
-                    roles=roles,
-                    href=Href(__root__="http://localhost"),
                 )
-                yield user_metadata
+
+                yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
         except Exception as err:
             logger.error(err)
 

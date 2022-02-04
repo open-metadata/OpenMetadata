@@ -14,6 +14,7 @@
 import {
   findAllByTestId,
   findByTestId,
+  findByText,
   fireEvent,
   render,
 } from '@testing-library/react';
@@ -78,21 +79,22 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock(
-  '../../components/containers/PageContainer',
+  '../../components/containers/PageLayout',
   () =>
-    ({
-      children,
-      leftPanelContent,
-    }: {
-      children: ReactNode;
-      leftPanelContent: ReactNode;
-    }) =>
+    ({ children, leftPanel }: { children: ReactNode; leftPanel: ReactNode }) =>
       (
-        <div data-testid="PageContainer">
-          <div data-testid="left-panel-content">{leftPanelContent}</div>
+        <div data-testid="PageLayout">
+          <div data-testid="left-panel-content">{leftPanel}</div>
           {children}
         </div>
       )
+);
+
+jest.mock(
+  '../../components/containers/PageContainerV1',
+  () =>
+    ({ children }: { children: ReactNode }) =>
+      <div data-testid="PageContainerV1">{children}</div>
 );
 
 jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
@@ -121,6 +123,10 @@ jest.mock('../../components/Modals/FormModal', () => {
   return jest.fn().mockReturnValue(<p data-testid="form-modal">FormModal</p>);
 });
 
+jest.mock('../../components/common/description/Description', () => {
+  return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
+});
+
 jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
   return jest
     .fn()
@@ -135,7 +141,7 @@ describe('Test TagsPage page', () => {
     const tagsComponent = await findByTestId(container, 'tags-container');
     const pageContainerComponent = await findByTestId(
       container,
-      'PageContainer'
+      'PageContainerV1'
     );
     const leftPanelContent = await findByTestId(
       container,
@@ -202,10 +208,10 @@ describe('Test TagsPage page', () => {
       container,
       'description-container'
     );
-    const addDescription = await findByTestId(container, 'add-description');
+    const description = await findByText(container, /DescriptionComponent/i);
 
     expect(descriptionContainer).toBeInTheDocument();
-    expect(addDescription).toBeInTheDocument();
+    expect(description).toBeInTheDocument();
   });
 
   it('Table with respective header should be render', async () => {
