@@ -27,6 +27,7 @@ const CheckBoxDropDownList = ({
     <>
       <button
         className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0"
+        data-testid="close-dropdown"
         onClick={() => setIsOpen && setIsOpen(false)}
       />
       <div
@@ -53,6 +54,7 @@ const CheckBoxDropDownList = ({
                 />
                 <p
                   className="tw-inline-block tw-truncate tw-w-52 tw-align-middle"
+                  data-testid={item.name as string}
                   title={item.name as string}>
                   {item.name}
                 </p>

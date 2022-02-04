@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React from 'react';
 import { Table } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -25,7 +26,7 @@ type Props = {
   owner?: Table['owner'];
   hasEditAccess?: boolean;
   blurWithBodyBG?: boolean;
-  removeBlurOnScroll?: boolean;
+  removeBlur?: boolean;
   description: string;
   isEdit?: boolean;
   onDescriptionEdit?: () => void;
@@ -45,29 +46,35 @@ const Description = ({
   onDescriptionUpdate,
   isReadOnly = false,
   blurWithBodyBG = false,
-  removeBlurOnScroll = false,
+  removeBlur = false,
   entityName,
 }: Props) => {
   return (
     <div className="schema-description tw-relative">
       <div className="tw-px-3 tw-py-1 tw-flex">
         <div className="tw-relative">
-          {!removeBlurOnScroll && description.length > 800 && (
+          {/* {!removeBlur && description.length > 800 && (
             <div
               className={classNames(
                 'tw-absolute tw-inset-0 tw-z-10',
                 blurWithBodyBG ? 'on-scroll-blur-body' : 'on-scroll-blur-white'
               )}
             />
-          )}
+          )} */}
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-max-h-40 tw-min-h-12 tw-relative tw-py-2.5"
+            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-2.5"
             data-testid="description"
             id="center">
             {description?.trim() ? (
               <RichTextEditorPreviewer
+                blurClasses={
+                  blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
+                }
                 className="tw-p-2"
+                enableSeeMoreVariant={!removeBlur}
                 markdown={description}
+                maxHtClass="tw-max-h-36"
+                maxLen={800}
               />
             ) : (
               <span className="tw-no-description tw-p-2">
@@ -94,6 +101,7 @@ const Description = ({
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}
+              permission={Operation.UpdateDescription}
               position="right">
               <button
                 className="focus:tw-outline-none"

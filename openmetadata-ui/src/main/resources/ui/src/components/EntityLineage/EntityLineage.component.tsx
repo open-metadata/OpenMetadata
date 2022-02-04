@@ -38,12 +38,14 @@ import ReactFlow, {
 } from 'react-flow-renderer';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import {
   Edge as EntityEdge,
   EntityLineage,
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import {
   dragHandle,
@@ -60,6 +62,7 @@ import {
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -88,6 +91,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineageHandler,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
+  const { userPermissions, isAuthDisabled } = useAuth();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
   const [reactFlowInstance, setReactFlowInstance] = useState<OnLoadParams>();
@@ -659,41 +663,54 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
                   fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
                   {!deleted && (
-                    <ControlButton
-                      className={classNames(
-                        'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
-                        {
-                          'tw-bg-primary': isEditMode,
-                          'tw-bg-primary-hover-lite': !isEditMode,
-                        }
-                      )}
-                      onClick={() => {
-                        setEditMode((pre) => !pre && !deleted);
-                        setSelectedNode({} as SelectedNode);
-                        setIsDrawerOpen(false);
-                        setNewAddedNode({} as FlowElement);
-                      }}>
-                      {loading ? (
-                        <Loader size="small" type="white" />
-                      ) : status === 'success' ? (
-                        <i
-                          aria-hidden="true"
-                          className="fa fa-check tw-text-white"
-                        />
-                      ) : (
-                        <SVGIcons
-                          alt="icon-edit-lineag"
-                          className="tw--mt-1"
-                          data-testid="edit-lineage"
-                          icon={
-                            !isEditMode
-                              ? 'icon-edit-lineage-color'
-                              : 'icon-edit-lineage'
+                    <NonAdminAction
+                      html={
+                        <>
+                          <p>You do not have permission to edit the lineage</p>
+                        </>
+                      }
+                      permission={Operation.UpdateLineage}>
+                      <ControlButton
+                        className={classNames(
+                          'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
+                          {
+                            'tw-bg-primary': isEditMode,
+                            'tw-bg-primary-hover-lite': !isEditMode,
+                          },
+                          {
+                            'tw-opacity-40':
+                              !userPermissions[Operation.UpdateLineage] &&
+                              !isAuthDisabled,
                           }
-                          width="14"
-                        />
-                      )}
-                    </ControlButton>
+                        )}
+                        onClick={() => {
+                          setEditMode((pre) => !pre && !deleted);
+                          setSelectedNode({} as SelectedNode);
+                          setIsDrawerOpen(false);
+                          setNewAddedNode({} as FlowElement);
+                        }}>
+                        {loading ? (
+                          <Loader size="small" type="white" />
+                        ) : status === 'success' ? (
+                          <i
+                            aria-hidden="true"
+                            className="fa fa-check tw-text-white"
+                          />
+                        ) : (
+                          <SVGIcons
+                            alt="icon-edit-lineag"
+                            className="tw--mt-1"
+                            data-testid="edit-lineage"
+                            icon={
+                              !isEditMode
+                                ? 'icon-edit-lineage-color'
+                                : 'icon-edit-lineage'
+                            }
+                            width="14"
+                          />
+                        )}
+                      </ControlButton>
+                    </NonAdminAction>
                   )}
                 </CustomControls>
                 {isEditMode ? (

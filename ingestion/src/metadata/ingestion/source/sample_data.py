@@ -441,6 +441,7 @@ class SampleDataSource(Source[Entity]):
                 teams = [
                     CreateTeamRequest(
                         name=user["teams"],
+                        displayName=user["teams"],
                         description=f"This is {user['teams']} description.",
                     )
                 ]

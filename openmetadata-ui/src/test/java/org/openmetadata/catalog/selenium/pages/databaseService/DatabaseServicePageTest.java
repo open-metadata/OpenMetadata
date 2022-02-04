@@ -24,8 +24,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
-import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -39,7 +39,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 public class DatabaseServicePageTest {
 
   static WebDriver webDriver;
-  static TagsPage tagsPage;
+  static Common common;
   static DatabaseServicePage databaseServicePage;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
@@ -56,7 +56,7 @@ public class DatabaseServicePageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     webDriver = new ChromeDriver(options);
-    tagsPage = new TagsPage(webDriver);
+    common = new Common(webDriver);
     databaseServicePage = new DatabaseServicePage(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
@@ -67,10 +67,10 @@ public class DatabaseServicePageTest {
   @Test
   @Order(1)
   public void openDatabaseServicePage() throws InterruptedException {
-    Events.click(webDriver, tagsPage.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Thread.sleep(waitTime);
-    Events.click(webDriver, tagsPage.headerSettings()); // Setting
-    Events.click(webDriver, databaseServicePage.headerSettingsServices()); // Setting/Services
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
     Thread.sleep(waitTime);
   }
 
@@ -78,34 +78,34 @@ public class DatabaseServicePageTest {
   @Order(2)
   public void addDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
-    List<WebElement> webElementList = webDriver.findElements(databaseServicePage.addServiceButton());
+    List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
     if (webElementList.isEmpty()) {
-      Events.click(webDriver, databaseServicePage.noServicesAddServiceButton());
+      Events.click(webDriver, common.noServicesAddServiceButton());
     } else {
-      Events.click(webDriver, databaseServicePage.addServiceButton());
+      Events.click(webDriver, common.addServiceButton());
     }
-    Events.click(webDriver, databaseServicePage.serviceType("MySQL"));
-    Events.click(webDriver, databaseServicePage.nextButton());
-    Events.sendKeys(webDriver, databaseServicePage.serviceName(), serviceName);
-    Events.click(webDriver, tagsPage.descriptionBoldButton());
-    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, tagsPage.addDescriptionString());
-    Events.sendEnter(webDriver, tagsPage.addDescriptionString());
-    Events.click(webDriver, tagsPage.descriptionItalicButton());
-    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, tagsPage.addDescriptionString());
-    Events.sendEnter(webDriver, tagsPage.addDescriptionString());
-    Events.click(webDriver, tagsPage.descriptionLinkButton());
-    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, databaseServicePage.nextButton());
+    Events.click(webDriver, common.serviceType("MySQL"));
+    Events.click(webDriver, common.nextButton());
+    Events.sendKeys(webDriver, common.serviceName(), serviceName);
+    Events.click(webDriver, common.descriptionBoldButton());
+    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.addDescriptionString());
+    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.click(webDriver, common.descriptionItalicButton());
+    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.addDescriptionString());
+    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.click(webDriver, common.descriptionLinkButton());
+    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, databaseServicePage.serviceUrl(), "localhost");
     Events.sendKeys(webDriver, databaseServicePage.servicePort(), "3306");
-    Events.sendKeys(webDriver, databaseServicePage.serviceUsername(), "openmetadata_user");
-    Events.sendKeys(webDriver, databaseServicePage.servicePassword(), "openmetadata_password");
+    Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
+    Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
     Events.sendKeys(webDriver, databaseServicePage.databaseName(), "openmetadata_db");
-    Events.click(webDriver, databaseServicePage.nextButton());
-    Events.click(webDriver, databaseServicePage.nextButton());
-    Events.click(webDriver, databaseServicePage.saveServiceButton());
+    Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.saveServiceButton());
   }
 
   @Test
@@ -113,11 +113,11 @@ public class DatabaseServicePageTest {
   public void checkDatabaseServiceDetails() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, tagsPage.containsText(serviceName));
-    Events.click(webDriver, tagsPage.editTagCategoryDescription());
-    Events.click(webDriver, tagsPage.addDescriptionString());
-    Events.sendKeys(webDriver, tagsPage.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, tagsPage.editDescriptionSaveButton());
+    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, common.editTagCategoryDescription());
+    Events.click(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
   @Test
@@ -125,19 +125,19 @@ public class DatabaseServicePageTest {
   public void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, tagsPage.containsText("Demo1"));
-    Events.click(webDriver, databaseServicePage.serviceDetailsTabs("ingestions"));
+    Events.click(webDriver, common.containsText("Demo1"));
+    Events.click(webDriver, common.serviceDetailsTabs("ingestions"));
     Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
 
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
-    Events.click(webDriver, databaseServicePage.nextButton());
+    Events.click(webDriver, common.nextButton());
     Events.click(webDriver, databaseServicePage.selectInterval());
     Events.click(webDriver, databaseServicePage.ingestionInterval("day"));
-    Events.click(webDriver, databaseServicePage.nextButton());
-    Events.click(webDriver, databaseServicePage.saveServiceButton());
+    Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.saveServiceButton());
 
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion
-    Events.click(webDriver, databaseServicePage.saveEditedService());
+    Events.click(webDriver, common.saveEditedService());
   }
 
   @Test
@@ -145,12 +145,12 @@ public class DatabaseServicePageTest {
   public void checkConnectionConfigTab() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, tagsPage.containsText(serviceName));
-    Events.click(webDriver, databaseServicePage.serviceDetailsTabs("connectionConfig"));
-    Events.sendKeys(webDriver, databaseServicePage.serviceUsername(), "1");
-    Events.sendKeys(webDriver, databaseServicePage.servicePassword(), "1");
+    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
+    Events.sendKeys(webDriver, common.serviceUsername(), "1");
+    Events.sendKeys(webDriver, common.servicePassword(), "1");
     Events.sendKeys(webDriver, databaseServicePage.databaseName(), "1");
-    Events.click(webDriver, databaseServicePage.saveConnectionConfig());
+    Events.click(webDriver, common.saveConnectionConfig());
   }
 
   @Test
@@ -158,8 +158,8 @@ public class DatabaseServicePageTest {
   public void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, databaseServicePage.deleteServiceButton(serviceName));
-    Events.click(webDriver, databaseServicePage.saveEditedService());
+    Events.click(webDriver, common.deleteServiceButton(serviceName));
+    Events.click(webDriver, common.saveEditedService());
   }
 
   @AfterEach

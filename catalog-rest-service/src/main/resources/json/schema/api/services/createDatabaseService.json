@@ -21,6 +21,10 @@
     },
     "databaseConnection": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseConnection"
+    },
+    "owner": {
+      "description": "Owner of this database service.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "serviceType", "databaseConnection"]
