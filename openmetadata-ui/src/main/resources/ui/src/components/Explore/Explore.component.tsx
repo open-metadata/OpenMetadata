@@ -343,6 +343,7 @@ const Explore: React.FC<ExploreProps> = ({
                 className={classNames(
                   'fas fa-sort-amount-down-alt tw-text-base tw-text-primary'
                 )}
+                data-testid="last-updated"
               />
             </button>
           ) : (
@@ -351,6 +352,7 @@ const Explore: React.FC<ExploreProps> = ({
                 className={classNames(
                   'fas fa-sort-amount-up-alt tw-text-base tw-text-primary'
                 )}
+                data-testid="last-updated"
               />
             </button>
           )}
