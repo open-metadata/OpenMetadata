@@ -23,6 +23,7 @@ from sqlalchemy_bigquery._types import (
     _get_transitive_schema_fields,
 )
 
+from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -57,6 +58,7 @@ def get_columns(bq_schema):
                 .get_policy_tag(name=field.policy_tags.names[0])
                 .display_name
             )
+
         col_list.append(col_obj)
     return col_list
 
@@ -71,6 +73,8 @@ class BigQueryConfig(SQLConnectionConfig):
     project_id: Optional[str] = None
     duration: int = 1
     service_type = "BigQuery"
+    enable_policy_tags: bool = False
+    tag_category_name: str = "BigqueryPolicyTags"
 
     def get_connection_url(self):
         if self.project_id:
@@ -82,6 +86,20 @@ class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
         self.temp_credentials = None
+
+    #  and "policy_tags" in column and column["policy_tags"]
+    def prepare(self):
+        try:
+            if self.config.enable_policy_tags:
+                self.metadata.create_tag_category(
+                    TagCategory(
+                        name=self.config.tag_category_name,
+                        description="",
+                        categoryType="Classification",
+                    )
+                )
+        except Exception as err:
+            logger.error(err)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
