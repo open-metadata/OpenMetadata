@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import static org.openmetadata.catalog.Entity.helper;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,7 +59,6 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
@@ -322,7 +319,7 @@ public class TableResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
     Table table = getTable(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, helper(table).validateOwnerOrNull());
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(table));
     PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -559,6 +556,6 @@ public class TableResource {
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withOwner(create.getOwner())
         .withUpdatedAt(System.currentTimeMillis())
-        .withDatabase(new EntityReference().withId(create.getDatabase()).withType(Entity.DATABASE));
+        .withDatabase(create.getDatabase());
   }
 }

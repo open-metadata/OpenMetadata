@@ -278,7 +278,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : MlModelRepository.getFQN(entity);
     }
 
     @Override

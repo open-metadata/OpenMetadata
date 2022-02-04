@@ -360,6 +360,7 @@ public class DashboardResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException, ParseException {
     Dashboard dashboard = getDashboard(securityContext, create);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(dashboard));
     PutResponse<Dashboard> response = dao.createOrUpdate(uriInfo, dashboard);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

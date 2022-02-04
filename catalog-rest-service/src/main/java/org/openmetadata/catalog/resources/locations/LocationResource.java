@@ -371,7 +371,7 @@ public class LocationResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException, ParseException {
     Location location = getLocation(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(location));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(location));
     PutResponse<Location> response = dao.createOrUpdate(uriInfo, validateNewLocation(location));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

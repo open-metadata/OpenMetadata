@@ -58,7 +58,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   public static String getFQN(Dashboard dashboard) {
-    return (dashboard.getService().getName() + "." + dashboard.getName());
+    return (dashboard != null && dashboard.getService() != null)
+        ? (dashboard.getService().getName() + "." + dashboard.getName())
+        : null;
   }
 
   @Override
@@ -271,7 +273,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : DashboardRepository.getFQN(entity);
     }
 
     @Override

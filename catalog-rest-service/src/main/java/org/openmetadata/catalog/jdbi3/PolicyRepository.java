@@ -309,7 +309,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : PolicyRepository.getFQN(entity);
     }
 
     public List<Object> getRules() {
