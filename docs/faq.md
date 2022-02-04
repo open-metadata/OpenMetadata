@@ -365,3 +365,69 @@ The issue is with Java 17. Try using Maven 3.5.4 or 3.8.2 with Java 11.
 #### Does OpenMetadata support model and features catalogs as well?
 
 OpenMetadata support MLModels. Please check here for [MLFLow support](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/mlflow.py). OpenMetadata has APIs to support the [MLModel](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/mlmodel.json) entity. You can ingest the metadata from your own custom service using our framework.
+
+#### How do I ingest from DBT?
+
+We support DBT models for different [connectors](https://docs.open-metadata.org/connectors). Configuring DBT inside [config](https://docs.open-metadata.org/connectors/mysql#9.-configure-dbt-optional) by adding “dbt\_manifest\_file” and “dbt\_catalog\_file” will allow the user to ingest dbt models.
+
+#### What information does OpenMetadata store for ML Model?
+
+Regarding the attributes of the Entity, we are trying to see the ML work from a Data Platform perspective. Tools such as MLFlow capture the ML process metadata from an experimentation perspective, and when talking about hosting and serving the model, that is still seen in isolation. In this representation from the MLModel, we are then trying to give information such as:
+
+* Model algorithm
+* Dashboard where we can see the performance metrics evolution
+* MLFeatures: inputs to train the model
+* MLStore where the model info can be found (e.g. S3 or a docker image)
+* Server: URI where we serve the model
+* MLHyperParameters
+
+#### Are MLFeatures like the fields of a table or can they be as a table as well?
+
+MLFeatures can have extended properties to have them linked to their sources MlFeatureSource. For example, a feature called “Profile” can be a PCA analysis on top of multiple columns of a couple of tables. The MlFeatureSource is the property that led us to link through lineage the MLModel to a specific table.
+
+We made a division between MLFeature and MLSource, as usually MLFeatures have specific algorithms, aggregations or processing that can be quite specific and not always linked to a single table source. This way we can achieve an end-to-end definition on what sources are being used and how. We are currently working so that if you specify an EntityReference in a MlFeatureSource, then the lineage will be created automatically. For more information, please refer to the [ML Model Entity](https://docs.open-metadata.org/open-source-community/developer/entities/ml-model-entity).
+
+## Policy
+
+#### Where can I find information on Policy entities?
+
+Please refer to the [Policy Schema](https://docs.open-metadata.org/openmetadata/schemas/entities/policy) and [Policy API](https://sandbox.open-metadata.org/docs#tag/policies).
+
+## Query
+
+#### Will it be possible to query the metadata store using graph-like queries (Cypher)?
+
+Access to the metadata store is through APIs only. This ensures that applications don’t depend on internal implementation details.
+
+## Sample Data
+
+#### Can I tweak the ingestor config file to enable/disable or increase/decrease the sample data size?&#x20;
+
+You can use the following query parameter to override the changes in sample data:
+
+```
+select * from {}.{} where ROWNUM <= 50
+```
+
+In order to disable sample data, send the following in config. By default, generating sample data is set to "true".
+
+```
+"generate_sample_data": "false"
+```
+
+## Schema
+
+#### What is the approach for triggering and updating Python codegen of schemas?
+
+Use the following command.
+
+```bash
+datamodel-codegen --input ../catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output src/metadata/generated
+
+```
+
+The above command will generate the Python related models according to the latest changes under JSON Schema
+
+#### Why are Schemas named using the term "Database" in the OpenMetadata UI?
+
+We use "schema" and "database" interchangeably. Some database services have databases the same as schema with database/schema -> tables hierarchy. Some have additional hierarchy with database -> schema -> tables.
