@@ -13,8 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
+
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -24,9 +27,10 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
+  private static final Fields UPDATE_FIELDS = new Fields(PipelineServiceResource.FIELD_LIST, "owner");
+
   public PipelineServiceRepository(CollectionDAO dao) {
     super(
         PipelineServiceResource.COLLECTION_PATH,
@@ -35,14 +39,15 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao.pipelineServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
   @Override
-  public PipelineService setFields(PipelineService entity, Fields fields) {
+  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -57,22 +62,30 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void prepare(PipelineService entity) {
+  public void prepare(PipelineService entity) throws IOException, ParseException {
+    // Check if owner is valid and set the relationship
+    entity.setOwner(helper(entity).validateOwnerOrNull());
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
   public void storeEntity(PipelineService service, boolean update) throws IOException {
-    if (update) {
-      daoCollection.pipelineServiceDAO().update(service.getId(), JsonUtils.pojoToJson(service));
-    } else {
-      daoCollection.pipelineServiceDAO().insert(service);
-    }
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
+    store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(PipelineService entity) {
-    /* Nothing to do */
+    // Add owner relationship
+    setOwner(entity, entity.getOwner());
   }
 
   @Override
@@ -133,6 +146,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
+    }
+
+    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
@@ -177,6 +195,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
     }
 
     @Override

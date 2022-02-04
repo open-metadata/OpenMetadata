@@ -359,7 +359,7 @@ public class DatabaseResource {
   @Operation(
       summary = "Create or update database",
       tags = "databases",
-      description = "Create a database, it it does not exist or update an existing database.",
+      description = "Create a database, if it does not exist or update an existing database.",
       responses = {
         @ApiResponse(
             responseCode = "200",

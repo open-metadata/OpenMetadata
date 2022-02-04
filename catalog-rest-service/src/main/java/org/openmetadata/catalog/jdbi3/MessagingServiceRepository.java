@@ -13,9 +13,12 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.helper;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +32,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
+  private static final Fields UPDATE_FIELDS = new Fields(MessagingServiceResource.FIELD_LIST, "owner");
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(
@@ -38,14 +42,15 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         dao.messagingServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
+        UPDATE_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
   @Override
-  public MessagingService setFields(MessagingService entity, Fields fields) {
+  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
+    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }
 
@@ -60,19 +65,31 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void prepare(MessagingService entity) {
+  public void prepare(MessagingService entity) throws IOException, ParseException {
+    // Check if owner is valid and set the relationship
+    entity.setOwner(helper(entity).validateOwnerOrNull());
+
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
   public void storeEntity(MessagingService service, boolean update) throws IOException {
-    service.withHref(null);
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = service.getOwner();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    service.withOwner(null).withHref(null);
+
     store(service.getId(), service, update);
+
+    // Restore the relationships
+    service.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(MessagingService entity) {
-    /* Nothing to do */
+    // Add owner relationship
+    setOwner(entity, entity.getOwner());
   }
 
   @Override
@@ -133,6 +150,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
+    }
+
+    @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
     }
@@ -177,6 +199,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
     }
 
     @Override

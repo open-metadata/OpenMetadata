@@ -38,11 +38,14 @@ import ReactFlow, {
 } from 'react-flow-renderer';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import {
   Edge as EntityEdge,
   EntityLineage,
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
+import { withLoader } from '../../hoc/withLoader';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import {
   dragHandle,
@@ -59,6 +62,7 @@ import {
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -85,8 +89,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  isOwner,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
+  const { userPermissions, isAuthDisabled, isAdminUser } = useAuth();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
   const [reactFlowInstance, setReactFlowInstance] = useState<OnLoadParams>();
@@ -127,7 +133,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   const getNodeClass = (node: FlowElement) => {
     return `${
-      node.id.includes(lineageData.entity.id) && !isEditMode
+      node.id.includes(lineageData.entity?.id) && !isEditMode
         ? 'leaf-node core'
         : 'leaf-node'
     }`;
@@ -302,12 +308,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     let sourceNode = lineageData.nodes?.find((n) => source?.includes(n.id));
 
     if (isUndefined(targetNode)) {
-      targetNode = target?.includes(lineageData.entity.id)
+      targetNode = target?.includes(lineageData.entity?.id)
         ? lineageData.entity
         : selectedEntity;
     }
     if (isUndefined(sourceNode)) {
-      sourceNode = source?.includes(lineageData.entity.id)
+      sourceNode = source?.includes(lineageData.entity?.id)
         ? lineageData.entity
         : selectedEntity;
     }
@@ -343,7 +349,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 : lineageData.nodes,
               downstreamEdges:
                 !isUndefined(downstreamNode) ||
-                sourceNode?.id === lineageData.entity.id
+                sourceNode?.id === lineageData.entity?.id
                   ? [
                       ...(lineageData.downstreamEdges as EntityEdge[]),
                       {
@@ -354,7 +360,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   : lineageData.downstreamEdges,
               upstreamEdges:
                 isUndefined(downstreamNode) &&
-                sourceNode?.id !== lineageData.entity.id
+                sourceNode?.id !== lineageData.entity?.id
                   ? [
                       ...(lineageData.upstreamEdges as EntityEdge[]),
                       {
@@ -658,41 +664,57 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
                   fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
                   {!deleted && (
-                    <ControlButton
-                      className={classNames(
-                        'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
-                        {
-                          'tw-bg-primary': isEditMode,
-                          'tw-bg-primary-hover-lite': !isEditMode,
-                        }
-                      )}
-                      onClick={() => {
-                        setEditMode((pre) => !pre && !deleted);
-                        setSelectedNode({} as SelectedNode);
-                        setIsDrawerOpen(false);
-                        setNewAddedNode({} as FlowElement);
-                      }}>
-                      {loading ? (
-                        <Loader size="small" type="white" />
-                      ) : status === 'success' ? (
-                        <i
-                          aria-hidden="true"
-                          className="fa fa-check tw-text-white"
-                        />
-                      ) : (
-                        <SVGIcons
-                          alt="icon-edit-lineag"
-                          className="tw--mt-1"
-                          data-testid="edit-lineage"
-                          icon={
-                            !isEditMode
-                              ? 'icon-edit-lineage-color'
-                              : 'icon-edit-lineage'
+                    <NonAdminAction
+                      html={
+                        <>
+                          <p>You do not have permission to edit the lineage</p>
+                        </>
+                      }
+                      isOwner={isOwner}
+                      permission={Operation.UpdateLineage}>
+                      <ControlButton
+                        className={classNames(
+                          'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
+                          {
+                            'tw-bg-primary': isEditMode,
+                            'tw-bg-primary-hover-lite': !isEditMode,
+                          },
+                          {
+                            'tw-opacity-40':
+                              !userPermissions[Operation.UpdateLineage] &&
+                              !isAuthDisabled &&
+                              !isAdminUser &&
+                              !isOwner,
                           }
-                          width="14"
-                        />
-                      )}
-                    </ControlButton>
+                        )}
+                        onClick={() => {
+                          setEditMode((pre) => !pre && !deleted);
+                          setSelectedNode({} as SelectedNode);
+                          setIsDrawerOpen(false);
+                          setNewAddedNode({} as FlowElement);
+                        }}>
+                        {loading ? (
+                          <Loader size="small" type="white" />
+                        ) : status === 'success' ? (
+                          <i
+                            aria-hidden="true"
+                            className="fa fa-check tw-text-white"
+                          />
+                        ) : (
+                          <SVGIcons
+                            alt="icon-edit-lineag"
+                            className="tw--mt-1"
+                            data-testid="edit-lineage"
+                            icon={
+                              !isEditMode
+                                ? 'icon-edit-lineage-color'
+                                : 'icon-edit-lineage'
+                            }
+                            width="14"
+                          />
+                        )}
+                      </ControlButton>
+                    </NonAdminAction>
                   )}
                 </CustomControls>
                 {isEditMode ? (
@@ -707,7 +729,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             :
           </div>
           <EntityInfoDrawer
-            isMainNode={selectedNode.name === entityLineage.entity.name}
+            isMainNode={selectedNode.name === lineageData.entity?.name}
             selectedNode={selectedNode}
             show={isDrawerOpen && !isEditMode}
             onCancel={closeDrawer}
@@ -749,4 +771,4 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   );
 };
 
-export default Entitylineage;
+export default withLoader<EntityLineageProp>(Entitylineage);

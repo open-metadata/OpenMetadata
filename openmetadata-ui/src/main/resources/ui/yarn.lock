@@ -1007,10 +1007,10 @@
     scroll-smooth "^1.1.0"
     scrollparent "^2.0.1"
 
-"@deuex-solutions/redoc@2.0.0-rc.31":
-  version "2.0.0-rc.31"
-  resolved "https://registry.yarnpkg.com/@deuex-solutions/redoc/-/redoc-2.0.0-rc.31.tgz#2a56efc022635a6323a037782ca18dedfff52dbb"
-  integrity sha512-O1M7hUwQJv42Q107A0wW/dP34nallcY+Cl8T97Q+HtbDpMF5h52Z0eatRHBHn4SB4OR38AVncC7Uj+JEWin5ig==
+"@deuex-solutions/redoc@2.0.0-rc.32":
+  version "2.0.0-rc.32"
+  resolved "https://registry.yarnpkg.com/@deuex-solutions/redoc/-/redoc-2.0.0-rc.32.tgz#95d3a635d98cb12659930a518fd63ab4892cd52d"
+  integrity sha512-CfUBNAD/ONTEqD0J8WTlgM8qxBF4MnFT5kzKX6uX+VWrZURtHprnYNXQmH/W828GZlxxE2QJdPCwcz5Behcu1A==
   dependencies:
     ajv "^6.4.0"
     ajv-errors "^1.0.0"

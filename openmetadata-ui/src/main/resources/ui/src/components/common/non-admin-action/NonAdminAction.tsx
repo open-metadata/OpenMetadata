@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { UserPermissions } from 'Models';
 import React from 'react';
+import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../../hooks/authHooks';
 import PopOver from '../popover/PopOver';
 
@@ -23,6 +25,7 @@ type Props = {
   isOwner?: boolean;
   html?: React.ReactElement;
   trigger?: 'mouseenter' | 'focus' | 'click' | 'manual';
+  permission?: Operation;
 };
 
 const NonAdminAction = ({
@@ -33,8 +36,9 @@ const NonAdminAction = ({
   isOwner = false,
   html,
   trigger = 'mouseenter',
+  permission,
 }: Props) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAuthDisabled, isAdminUser, userPermissions } = useAuth();
 
   const handleCapturedEvent = (
     e: React.KeyboardEvent | React.MouseEvent
@@ -45,7 +49,10 @@ const NonAdminAction = ({
 
   return (
     <span className={className}>
-      {isAdminUser || isOwner || isAuthDisabled ? (
+      {isAdminUser ||
+      isOwner ||
+      isAuthDisabled ||
+      userPermissions[permission as keyof UserPermissions] ? (
         <span>{children}</span>
       ) : (
         <PopOver

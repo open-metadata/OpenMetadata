@@ -484,4 +484,13 @@ declare module 'Models' {
     env?: string;
     pipelineUrl?: string;
   };
+
+  export interface UserPermissions {
+    UpdateOwner: boolean;
+    UpdateDescription: boolean;
+    SuggestDescription: boolean;
+    UpdateLineage: boolean;
+    SuggestTags: boolean;
+    UpdateTags: boolean;
+  }
 }

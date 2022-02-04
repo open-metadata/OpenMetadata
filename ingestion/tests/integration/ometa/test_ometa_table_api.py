@@ -16,14 +16,12 @@ import uuid
 from datetime import datetime
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -61,11 +59,11 @@ class OMetaTableTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
-    service = CreateDatabaseServiceEntityRequest(
+    service = CreateDatabaseServiceRequest(
         name="test-service-table",
         serviceType=DatabaseServiceType.MySQL,
         databaseConnection=DatabaseConnection(hostPort="localhost:0000"),
@@ -80,7 +78,7 @@ class OMetaTableTest(TestCase):
 
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
-        cls.create_db = CreateDatabaseEntityRequest(
+        cls.create_db = CreateDatabaseRequest(
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
@@ -95,7 +93,7 @@ class OMetaTableTest(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
-        cls.create = CreateTableEntityRequest(
+        cls.create = CreateTableRequest(
             name="test",
             database=cls.create_db_entity.id,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
@@ -148,7 +146,7 @@ class OMetaTableTest(TestCase):
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = CreateTableEntityRequest(**updated)
+        updated_entity = CreateTableRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
 
@@ -310,7 +308,7 @@ class OMetaTableTest(TestCase):
             entity=Table, fqdn=self.entity.fullyQualifiedName
         )
 
-        another_table = CreateTableEntityRequest(
+        another_table = CreateTableRequest(
             name="another-test",
             database=self.create_db_entity.id,
             columns=[Column(name="another_id", dataType=DataType.BIGINT)],

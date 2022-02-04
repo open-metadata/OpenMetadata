@@ -47,6 +47,7 @@ def get_columns(bq_schema):
             "max_length": field.max_length,
             "raw_data_type": str(_get_sqla_column_type(field)),
         }
+
         col_list.append(col_obj)
     return col_list
 
@@ -71,6 +72,7 @@ class BigQueryConfig(SQLConnectionConfig):
 class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
+        self.temp_credentials = None
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -81,12 +83,11 @@ class BigquerySource(SQLSource):
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
                     "credentials_path"
                 ]
-            elif config.options.get("credentials", None):
-                cred_path = create_credential_temp_file(
-                    config.options.get("credentials")
+            elif config.options.get("credentials"):
+                cls.temp_credentials = cls.create_credential_temp_file(
+                    credentials=config.options.get("credentials")
                 )
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
-                config.options["credentials_path"] = cred_path
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
                 del config.options["credentials"]
             else:
                 raise Exception(
@@ -95,10 +96,12 @@ class BigquerySource(SQLSource):
                 )
         return cls(config, metadata_config, ctx)
 
-    def close(self):
-        super().close()
-        if self.config.options.get("credentials_path"):
-            os.unlink(self.config.options["credentials_path"])
+    @staticmethod
+    def create_credential_temp_file(credentials: dict) -> str:
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
+            cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
+            fp.write(cred_json.encode())
+            return fp.name
 
     def standardize_schema_table_names(
         self, schema: str, table: str
@@ -113,9 +116,7 @@ class BigquerySource(SQLSource):
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
 
-
-def create_credential_temp_file(credentials: dict) -> str:
-    with tempfile.NamedTemporaryFile(delete=False) as fp:
-        cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        fp.write(cred_json.encode())
-        return fp.name
+    def close(self):
+        super().close()
+        if self.temp_credentials:
+            os.unlink(self.temp_credentials)

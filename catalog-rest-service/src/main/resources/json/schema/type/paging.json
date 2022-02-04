@@ -16,7 +16,7 @@
     },
     "total": {
       "description": "Total number of entries available to page through.",
-      "type" : "integer"
+      "type": "integer"
     }
   },
   "required": ["total"],

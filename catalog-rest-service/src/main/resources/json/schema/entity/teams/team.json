@@ -5,8 +5,8 @@
   "description": "This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.",
   "type": "object",
 
-  "definitions" : {
-    "teamName" : {
+  "definitions": {
+    "teamName": {
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
       "type": "string",
       "minLength": 1,
@@ -14,7 +14,7 @@
     }
   },
 
-  "properties" : {
+  "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
@@ -29,15 +29,15 @@
       "description": "Description of the team.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -49,25 +49,25 @@
       "description": "Team profile information.",
       "$ref": "../../type/profile.json"
     },
-    "users" : {
+    "users": {
       "description": "Users that are part of the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
       "default": null
     },
-    "owns" : {
+    "owns": {
       "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
-      "default" : false
+      "default": false
     }
   },
-  "required" : ["id", "name", "href"],
+  "required": ["id", "name", "href"],
   "additionalProperties": false
 }

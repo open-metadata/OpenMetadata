@@ -1,10 +1,10 @@
 {
   "$id": "https://open-metadata.org/schema/api/operations/pipelines/createPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Airflow Pipeline Entity Request",
+  "title": "CreateAirflowPipelineRequest",
   "description": "Pipeline Config is used to setup a Airflow DAG.",
   "type": "object",
-  "properties" : {
+  "properties": {
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
       "type": "string",
@@ -82,9 +82,9 @@
       "type": "integer",
       "default": 60
     },
-    "service" : {
+    "service": {
       "description": "Link to the database service where this database is hosted in.",
-      "$ref" : "../../../type/entityReference.json"
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "required": ["name", "service", "startDate", "pipelineConfig"]

@@ -20,7 +20,7 @@ import {
   RecentlyViewedData,
 } from 'Models';
 import { utc } from 'moment';
-import React from 'react';
+import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
@@ -29,6 +29,7 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
   EntityReference as UserTeams,
@@ -237,6 +238,18 @@ export const addToRecentSearched = (searchTerm: string): void => {
   }
 };
 
+export const removeRecentSearchTerm = (searchTerm: string) => {
+  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_SEARCHED
+  ) as RecentlySearched;
+  if (recentlySearch?.data) {
+    const arrData = recentlySearch.data.filter(
+      (item) => item.term !== searchTerm
+    );
+    setRecentlySearchedData(arrData);
+  }
+};
+
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   const entityData = { ...eData, timestamp: Date.now() };
   let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
@@ -366,4 +379,22 @@ export const isValidUrl = (href: string) => {
   );
 
   return href.match(regex);
+};
+
+export const getFields = (defaultFields: string, tabSpecificField: string) => {
+  if (!tabSpecificField) {
+    return defaultFields;
+  }
+  if (!defaultFields) {
+    return tabSpecificField;
+  }
+  if (tabSpecificField === TabSpecificField.LINEAGE) {
+    return defaultFields;
+  }
+
+  return `${defaultFields}, ${tabSpecificField}`;
+};
+
+export const restrictFormSubmit = (e: FormEvent) => {
+  e.preventDefault();
 };

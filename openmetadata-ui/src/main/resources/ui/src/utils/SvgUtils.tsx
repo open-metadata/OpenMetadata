@@ -76,6 +76,7 @@ import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
+import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
@@ -229,6 +230,7 @@ export const Icons = {
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_WHITE: 'icon-announcement-white',
+  CHEVRON_DOWN: 'icon-chevron-down',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -659,6 +661,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ANNOUNCEMENT_WHITE:
       IconComponent = IconAnnouncementWhite;
+
+      break;
+    case Icons.CHEVRON_DOWN:
+      IconComponent = IconChevronDown;
 
       break;
 

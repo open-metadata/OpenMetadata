@@ -15,10 +15,7 @@
     "tagCategoryType": {
       "description": "Type of tag category.",
       "type": "string",
-      "enum": [
-        "Descriptive",
-        "Classification"
-      ],
+      "enum": ["Descriptive", "Classification"],
       "javaEnums": [
         {
           "name": "Descriptive",
@@ -34,7 +31,7 @@
       "javaType": "org.openmetadata.catalog.type.Tag",
       "properties": {
         "name": {
-          "description" : "Name of the tag.",
+          "description": "Name of the tag.",
           "$ref": "#/definitions/tagName"
         },
         "fullyQualifiedName": {
@@ -45,15 +42,15 @@
           "description": "Unique name of the tag category.",
           "type": "string"
         },
-        "version" : {
+        "version": {
           "description": "Metadata version of the entity.",
           "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
         },
-        "updatedAt" : {
+        "updatedAt": {
           "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
-        "updatedBy" : {
+        "updatedBy": {
           "description": "User who made the update.",
           "type": "string"
         },
@@ -70,9 +67,9 @@
           "type": "boolean",
           "default": false
         },
-        "deleted" : {
+        "deleted": {
           "description": "When `true` indicates the entity has been soft deleted.",
-          "type" : "boolean",
+          "type": "boolean",
           "default": false
         },
         "associatedTags": {
@@ -90,10 +87,7 @@
           }
         }
       },
-      "required": [
-        "name",
-        "description"
-      ],
+      "required": ["name", "description"],
       "additionalProperties": false
     }
   },
@@ -109,15 +103,15 @@
       "description": "Description of the tag category.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -140,19 +134,15 @@
       }
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "name",
-    "description",
-    "categoryType"
-  ],
+  "required": ["name", "description", "categoryType"],
   "additionalProperties": false
 }

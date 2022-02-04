@@ -62,7 +62,10 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       </div>
       <div className="description-text" data-testid="description-text">
         {description.trim() ? (
-          <RichTextEditorPreviewer markdown={description} />
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={false}
+            markdown={description}
+          />
         ) : (
           <span className="tw-no-description">No description added</span>
         )}

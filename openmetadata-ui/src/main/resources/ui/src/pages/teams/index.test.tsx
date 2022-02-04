@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+} from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import TeamsPage from './index';
 
@@ -25,17 +30,17 @@ const mockTeamsData = [
   },
   {
     description: '',
-    displayName: 'Cloud Infra',
-    href: 'href1',
-    id: 'id1',
-    name: 'Cloud_Infra',
+    displayName: 'Cloud Infra 2',
+    href: 'href2',
+    id: 'id2',
+    name: 'Cloud_Infra 2',
   },
   {
     description: '',
-    displayName: 'Cloud Infra',
-    href: 'href1',
-    id: 'id1',
-    name: 'Cloud_Infra',
+    displayName: 'Cloud Infra 3',
+    href: 'href3',
+    id: 'id3',
+    name: 'Cloud_Infra 3',
   },
 ];
 
@@ -86,7 +91,9 @@ jest.mock('../../axiosAPIs/teamsAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockDataTeamByName })),
   getTeams: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockTeamsData })),
+    .mockImplementation(() =>
+      Promise.resolve({ data: { data: mockTeamsData } })
+    ),
   patchTeamDetail: jest.fn(),
 }));
 
@@ -102,18 +109,19 @@ jest.mock('../../components/Modals/FormModal', () => {
 });
 
 jest.mock(
-  '../../components/containers/PageContainer',
+  '../../components/containers/PageContainerV1',
   () =>
-    ({
-      children,
-      leftPanelContent,
-    }: {
-      children: ReactNode;
-      leftPanelContent: ReactNode;
-    }) =>
+    ({ children }: { children: ReactNode }) =>
+      <div data-testid="PageContainer">{children}</div>
+);
+
+jest.mock(
+  '../../components/containers/PageLayout',
+  () =>
+    ({ children, leftPanel }: { children: ReactNode; leftPanel: ReactNode }) =>
       (
-        <div data-testid="PageContainer">
-          <div data-testid="left-panel-content">{leftPanelContent}</div>
+        <div data-testid="page-layout">
+          <div data-testid="left-panel-content">{leftPanel}</div>
           {children}
         </div>
       )
@@ -150,6 +158,10 @@ jest.mock(
 
 jest.mock('./UserCard', () => {
   return jest.fn().mockReturnValue(<div>UserCard</div>);
+});
+
+jest.mock('../../components/common/description/Description', () => {
+  return jest.fn().mockReturnValue(<div>Description</div>);
 });
 
 describe('Test Teams page', () => {
@@ -220,12 +232,9 @@ describe('Test Teams page', () => {
       container,
       'description-container'
     );
-
-    const description = await findByTestId(container, 'description');
-    const addDescription = await findByTestId(container, 'add-description');
+    const description = await findByText(container, /Description/i);
 
     expect(descriptionContainer).toBeInTheDocument();
-    expect(addDescription).toBeInTheDocument();
     expect(description).toBeInTheDocument();
   });
 

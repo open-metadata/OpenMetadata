@@ -23,9 +23,7 @@
           "maximum": 100
         }
       },
-      "required": [
-        "count"
-      ],
+      "required": ["count"],
       "additionalProperties": false
     }
   },
@@ -47,9 +45,6 @@
       "$ref": "basic.json#/definitions/date"
     }
   },
-  "required": [
-    "dailyStats",
-    "date"
-  ],
+  "required": ["dailyStats", "date"],
   "additionalProperties": false
 }

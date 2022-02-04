@@ -18,6 +18,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
@@ -72,6 +73,7 @@ const PipelineDetails = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
+  isLineageLoading,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -376,6 +378,7 @@ const PipelineDetails = ({
                                       Boolean(owner)
                                     )}
                                     isOwner={hasEditAccess()}
+                                    permission={Operation.UpdateDescription}
                                     position="top">
                                     <button
                                       className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
@@ -408,7 +411,9 @@ const PipelineDetails = ({
                     deleted={deleted}
                     entityLineage={entityLineage}
                     entityLineageHandler={entityLineageHandler}
+                    isLoading={isLineageLoading}
                     isNodeLoading={isNodeLoading}
+                    isOwner={hasEditAccess()}
                     lineageLeafNodes={lineageLeafNodes}
                     loadNodeHandler={loadNodeHandler}
                     removeLineageHandler={removeLineageHandler}

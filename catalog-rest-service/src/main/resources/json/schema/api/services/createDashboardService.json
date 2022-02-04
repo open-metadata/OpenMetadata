@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/api/services/createDashboardService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Dashboard service entity request",
+  "title": "CreateDashboardServiceRequest",
   "description": "Create Dashboard service entity request",
   "type": "object",
   "properties": {
@@ -23,22 +23,22 @@
       "type": "string",
       "format": "uri"
     },
-    "username" : {
+    "username": {
       "description": "Username to log-into Dashboard Service",
       "type": "string"
     },
-    "password" : {
+    "password": {
       "description": "Password to log-into Dashboard Service",
       "type": "string"
     },
     "ingestionSchedule": {
       "description": "Schedule for running metadata ingestion jobs",
       "$ref": "../../type/schedule.json"
+    },
+    "owner": {
+      "description": "Owner of this dashboard service.",
+      "$ref": "../../type/entityReference.json"
     }
   },
-  "required": [
-    "name",
-    "serviceType",
-    "dashboardUrl"
-  ]
+  "required": ["name", "serviceType", "dashboardUrl"]
 }

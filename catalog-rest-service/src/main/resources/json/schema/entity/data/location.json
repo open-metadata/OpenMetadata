@@ -16,12 +16,7 @@
       "javaType": "org.openmetadata.catalog.type.LocationType",
       "description": "This schema defines the type used for describing different types of Location.",
       "type": "string",
-      "enum": [
-        "Bucket",
-        "Prefix",
-        "Database",
-        "Table"
-      ],
+      "enum": ["Bucket", "Prefix", "Database", "Table"],
       "javaEnums": [
         {
           "name": "Bucket"
@@ -59,15 +54,15 @@
       "description": "Description of a location.",
       "type": "string"
     },
-    "version" : {
+    "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
-    "updatedAt" : {
+    "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "updatedBy" : {
+    "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
     },
@@ -95,27 +90,24 @@
       },
       "default": null
     },
-    "service" : {
+    "service": {
       "description": "Link to the database cluster/service where this database is hosted in.",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     },
-    "serviceType" : {
+    "serviceType": {
       "description": "Service type where this storage location is hosted in.",
-      "$ref" : "../../type/storage.json#/definitions/storageServiceType"
+      "$ref": "../../type/storage.json#/definitions/storageServiceType"
     },
     "changeDescription": {
-      "description" : "Change that lead to this version of the entity.",
+      "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "deleted" : {
+    "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
-      "type" : "boolean",
+      "type": "boolean",
       "default": false
     }
   },
-  "required": [
-    "name",
-    "service"
-  ],
+  "required": ["name", "service"],
   "additionalProperties": false
 }

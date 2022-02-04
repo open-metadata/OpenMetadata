@@ -8,7 +8,7 @@ from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type
 
@@ -26,13 +26,13 @@ class OMetaLineageMixin(Generic[T]):
 
     client: REST
 
-    def add_lineage(self, data: AddLineage) -> Dict[str, Any]:
+    def add_lineage(self, data: AddLineageRequest) -> Dict[str, Any]:
         """
         Add lineage relationship between two entities and returns
         the entity information of the origin node
         """
         try:
-            self.client.put(self.get_suffix(AddLineage), data=data.json())
+            self.client.put(self.get_suffix(AddLineageRequest), data=data.json())
         except APIError as err:
             logger.error(
                 "Error %s trying to PUT lineage for %s", err.status_code, data.json()
@@ -105,7 +105,7 @@ class OMetaLineageMixin(Generic[T]):
 
         try:
             res = self.client.get(
-                f"{self.get_suffix(AddLineage)}/{entity_name}/{path}{search}"
+                f"{self.get_suffix(AddLineageRequest)}/{entity_name}/{path}{search}"
             )
             return res
         except APIError as err:

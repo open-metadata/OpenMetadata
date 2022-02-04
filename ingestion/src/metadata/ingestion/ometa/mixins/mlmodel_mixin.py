@@ -6,8 +6,8 @@ To be used by OpenMetadata class
 import logging
 from typing import Any, Dict, Optional
 
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
     MlHyperParameter,
@@ -51,7 +51,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         # Iterate on the references to add lineage
         for entity_ref in refs:
             self.add_lineage(
-                AddLineage(
+                AddLineageRequest(
                     description="MlModel uses FeatureSource",
                     edge=EntitiesEdge(
                         fromEntity=self.get_entity_reference(
@@ -69,7 +69,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
     @staticmethod
     def get_mlmodel_sklearn(
         name: str, model, description: Optional[str] = None
-    ) -> CreateMlModelEntityRequest:
+    ) -> CreateMlModelRequest:
         """
         Get an MlModel Entity instance from a scikit-learn model.
 
@@ -77,7 +77,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         :param name: MlModel name
         :param model: sklearn estimator
         :param description: MlModel description
-        :return: OpenMetadata CreateMlModelEntityRequest Entity
+        :return: OpenMetadata CreateMlModelRequest Entity
         """
         try:
             # pylint: disable=import-outside-toplevel
@@ -95,7 +95,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         if not isinstance(model, BaseEstimator):
             raise ValueError("Input model is not an instance of sklearn BaseEstimator")
 
-        return CreateMlModelEntityRequest(
+        return CreateMlModelRequest(
             name=name,
             description=description,
             algorithm=model.__class__.__name__,

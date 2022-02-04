@@ -51,6 +51,7 @@ import {
   getSeparator,
   getServiceLogo,
   requiredField,
+  restrictFormSubmit,
 } from '../../../utils/CommonUtils';
 import {
   getIngestionTypeList,
@@ -1522,7 +1523,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     if (description) {
       serviceDetailsData.push({
         key: 'Description',
-        value: <RichTextEditorPreviewer markdown={description} />,
+        value: (
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={false}
+            markdown={description}
+          />
+        ),
       });
     }
 
@@ -1624,6 +1630,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         'tw-border-primary': service === selectService,
                       }
                     )}
+                    data-testid={service}
                     key={service}
                     onClick={() => handleServiceClick(service)}>
                     <div className="tw-flex tw-items-center">
@@ -2143,7 +2150,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             }
             steps={steps}
           />
-          <form className="tw-min-w-full" data-testid="form">
+          <form
+            className="tw-min-w-full"
+            data-testid="form"
+            onSubmit={restrictFormSubmit}>
             <div className="tw-px-4 tw-pt-3 tw-mx-auto">
               {getActiveStepFields(activeStepperStep)}
             </div>

@@ -19,12 +19,12 @@
         "UpdateLineage"
       ],
       "javaEnums": [
-        {"name":"SuggestDescription"},
-        {"name":"SuggestTags"},
-        {"name":"UpdateDescription"},
-        {"name":"UpdateOwner"},
-        {"name":"UpdateTags"},
-        {"name":"UpdateLineage"}
+        { "name": "SuggestDescription" },
+        { "name": "SuggestTags" },
+        { "name": "UpdateDescription" },
+        { "name": "UpdateOwner" },
+        { "name": "UpdateTags" },
+        { "name": "UpdateLineage" }
       ]
     }
   },
@@ -69,8 +69,6 @@
       "default": true
     }
   },
-  "required": [
-    "name"
-  ],
+  "required": ["name"],
   "additionalProperties": false
 }

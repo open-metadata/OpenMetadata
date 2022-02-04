@@ -14,13 +14,13 @@
 /* eslint-disable @typescript-eslint/camelcase */
 
 import {
-  findAllByTestId,
+  findAllByText,
   findByTestId,
   findByText,
   render,
 } from '@testing-library/react';
 import { SearchResponse } from 'Models';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { User } from '../../generated/entity/teams/user';
 import { formatDataResponse } from '../../utils/APIUtils';
@@ -234,9 +234,50 @@ jest.mock('../../components/recently-viewed/RecentlyViewed', () => {
   return jest.fn().mockReturnValue(<p>RecentlyViewed</p>);
 });
 
-jest.mock('../MyDataHeader/MyDataHeader.component', () => {
-  return jest.fn().mockReturnValue(<p>MyDataHeader</p>);
+jest.mock('../dropdown/DropDownList', () => {
+  return jest.fn().mockReturnValue(<p>DropDownList</p>);
 });
+
+jest.mock('../common/FeedCard/FeedCards.component', () => {
+  return jest.fn().mockReturnValue(<p>FeedCards</p>);
+});
+
+jest.mock('../MyAssetStats/MyAssetStats.component', () => {
+  return jest.fn().mockReturnValue(<p>MyAssetStats</p>);
+});
+
+jest.mock('../EntityList/EntityList', () => {
+  return jest.fn().mockReturnValue(<p>EntityList</p>);
+});
+
+jest.mock('../RecentSearchedTerms/RecentSearchedTerms', () => {
+  return jest.fn().mockReturnValue(<p>RecentSearchedTerms</p>);
+});
+
+jest.mock(
+  '../containers/PageLayout',
+  () =>
+    ({
+      children,
+      leftPanel,
+      rightPanel,
+    }: {
+      children: ReactNode;
+      rightPanel: ReactNode;
+      leftPanel: ReactNode;
+    }) =>
+      (
+        <div data-testid="PageLayout">
+          <div data-testid="left-panel-content">{leftPanel}</div>
+          <div data-testid="right-panel-content">{rightPanel}</div>
+          {children}
+        </div>
+      )
+);
+
+jest.mock('../../utils/EntityVersionUtils', () => ({
+  getFeedSummary: jest.fn().mockImplementation(() => <p>EntityVersionUtils</p>),
+}));
 
 jest.mock('../../utils/ServiceUtils', () => ({
   getAllServices: jest
@@ -278,16 +319,19 @@ describe('Test MyData page', () => {
         wrapper: MemoryRouter,
       }
     );
-    const pageContainer = await findByTestId(container, 'fluid-container');
-    const searchData = await findByTestId(container, 'search-data');
-    const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, 'tab');
-    const myDataHeader = await findByText(container, /MyDataHeader/i);
+    const pageLayout = await findByTestId(container, 'PageLayout');
+    const leftPanel = await findByTestId(container, 'left-panel-content');
+    const rightPanel = await findByTestId(container, 'right-panel-content');
+    const recentSearchedTerms = await findByText(
+      container,
+      /RecentSearchedTerms/i
+    );
+    const entityList = await findAllByText(container, /EntityList/i);
 
-    expect(pageContainer).toBeInTheDocument();
-    expect(searchData).toBeInTheDocument();
-    expect(wrappedContent).toBeInTheDocument();
-    expect(myDataHeader).toBeInTheDocument();
-    expect(tabs.length).toBe(3);
+    expect(pageLayout).toBeInTheDocument();
+    expect(leftPanel).toBeInTheDocument();
+    expect(rightPanel).toBeInTheDocument();
+    expect(recentSearchedTerms).toBeInTheDocument();
+    expect(entityList.length).toBe(2);
   });
 });
