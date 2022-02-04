@@ -137,11 +137,7 @@ class MetadataRestSink(Sink[Entity]):
                 ),
             )
             db = self.metadata.create_or_update(db_request)
-            db_ref = EntityReference(
-                id=db.id,
-                name=db.name.__root__,
-                type="database"
-            )
+            db_ref = EntityReference(id=db.id, name=db.name.__root__, type="database")
             if db_and_table.table.description is not None:
                 db_and_table.table.description = db_and_table.table.description.strip()
 
