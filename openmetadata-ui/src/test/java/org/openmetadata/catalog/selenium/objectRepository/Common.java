@@ -57,6 +57,7 @@ public class Common {
   By resultsCount = By.xpath("//div[@data-testid='search-container']/div");
   By matchesStats = By.cssSelector("[data-testid='matches-stats']");
   By editLineageButton = By.cssSelector("[data-testid='edit-lineage']");
+  By whatsNewModalChangeLogs = By.cssSelector("[data-testid='WhatsNewModalChangeLogs']");
 
   public By displayName() {
     return displayName;
@@ -292,5 +293,17 @@ public class Common {
 
   public By editLineageButton() {
     return editLineageButton;
+  }
+
+  public By whatsNewDotButtons(int index) {
+    return By.xpath("//ul[@class='slick-dots testid-dots-button']//li[" + index + "]");
+  }
+
+  public By whatsNewModalChangeLogs() {
+    return whatsNewModalChangeLogs;
+  }
+
+  public By overviewFilterCount(String entity) {
+    return By.xpath("//div[@data-testid='" + entity + "-summary']//span[@data-testid='filter-count']");
   }
 }
