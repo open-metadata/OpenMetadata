@@ -346,8 +346,8 @@ const TeamsPage = () => {
               }}>
               <p
                 className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                title={team.displayName}>
-                {team.displayName}
+                title={team.displayName ?? team.name}>
+                {team.displayName ?? team.name}
               </p>
             </div>
           ))}

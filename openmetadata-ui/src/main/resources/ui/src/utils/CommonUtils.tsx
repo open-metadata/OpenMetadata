@@ -20,7 +20,7 @@ import {
   RecentlyViewedData,
 } from 'Models';
 import { utc } from 'moment';
-import React from 'react';
+import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import {
@@ -238,6 +238,18 @@ export const addToRecentSearched = (searchTerm: string): void => {
   }
 };
 
+export const removeRecentSearchTerm = (searchTerm: string) => {
+  const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_SEARCHED
+  ) as RecentlySearched;
+  if (recentlySearch?.data) {
+    const arrData = recentlySearch.data.filter(
+      (item) => item.term !== searchTerm
+    );
+    setRecentlySearchedData(arrData);
+  }
+};
+
 export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   const entityData = { ...eData, timestamp: Date.now() };
   let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
@@ -381,4 +393,8 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
   }
 
   return `${defaultFields}, ${tabSpecificField}`;
+};
+
+export const restrictFormSubmit = (e: FormEvent) => {
+  e.preventDefault();
 };
