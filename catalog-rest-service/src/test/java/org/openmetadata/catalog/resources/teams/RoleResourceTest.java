@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import javax.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -57,26 +59,37 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Test
-  void setAndQueryDefaultRole(TestInfo test) throws IOException {
+  void get_queryDefaultRole(TestInfo test) throws IOException {
+    Role defaultRole = createRolesAndSetDefault(test, 7);
+    ResultList<Role> rolesResponse = listEntities(Map.of("default", "true"), ADMIN_AUTH_HEADERS);
+    assertEquals(1, rolesResponse.getData().size());
+    assertEquals(defaultRole.getId(), rolesResponse.getData().get(0).getId());
+  }
+
+  /**
+   * Creates the given number of roles and sets one of them as the default role.
+   *
+   * @return the default role
+   */
+  public Role createRolesAndSetDefault(TestInfo test, @Positive int numberOfRoles) throws IOException {
     // Create a set of roles.
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < numberOfRoles; i++) {
       CreateRole create = createRequest(test, i + 1);
       createAndCheckRole(create, ADMIN_AUTH_HEADERS);
     }
 
     // Set one of the roles as default.
     Role role =
-        getEntityByName(getEntityName(test, 2), Collections.emptyMap(), RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        getEntityByName(
+            getEntityName(test, new Random().nextInt(numberOfRoles)),
+            Collections.emptyMap(),
+            RoleResource.FIELDS,
+            ADMIN_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(role);
     role.setDefault(true);
     ChangeDescription change = getChangeDescription(role.getVersion());
     change.getFieldsUpdated().add(new FieldChange().withName("default").withOldValue(false).withNewValue(true));
-    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Query default roles.
-    ResultList<Role> roles = listEntities(Map.of("default", "true"), ADMIN_AUTH_HEADERS);
-    assertEquals(1, roles.getData().size());
-    assertEquals(role.getId(), roles.getData().get(0).getId());
+    return patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
