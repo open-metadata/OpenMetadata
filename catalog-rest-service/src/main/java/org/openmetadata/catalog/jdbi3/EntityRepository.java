@@ -200,7 +200,7 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#storeRelationships(Table) for an example implementation
    */
-  public abstract void storeRelationships(T entity);
+  public abstract void storeRelationships(T entity) throws IOException;
 
   /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
