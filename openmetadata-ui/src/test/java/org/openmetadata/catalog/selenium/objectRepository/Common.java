@@ -32,6 +32,32 @@ public class Common {
   By saveServiceButton = By.cssSelector("[data-testid='deploy-button']");
   By saveEditedService = By.cssSelector("[data-testid='save-button']");
   By saveConnectionConfig = By.cssSelector("[data-testid='saveManageTab']");
+  By searchResults = By.cssSelector("[data-testid='search-results']");
+  By searchBar = By.cssSelector("[data-testid='searchBox']");
+  By searchSuggestion = By.cssSelector("[data-testid='data-name']");
+  By editAssociatedTagButton = By.xpath("//div[@data-testid='tag-conatiner']//span");
+  By enterAssociatedTagName = By.cssSelector("[data-testid='associatedTagName']");
+  By tagListItem = By.cssSelector("[data-testid='list-item']");
+  By saveAssociatedTag = By.cssSelector("[data-testid='saveAssociatedTag']");
+  By searchResultsList = By.xpath("//div[@data-testid='search-results']/div");
+  By ownerDropdown = By.cssSelector("[data-testid='owner-dropdown']");
+  By ownerSearchBox = By.cssSelector("[data-testid='searchInputText']");
+  By closeErrorMessage = By.cssSelector("[data-testid='dismiss']");
+  By serviceUrl = By.cssSelector("[data-testid='url']");
+  By servicePort = By.cssSelector("[data-testid='port']");
+  By databaseName = By.cssSelector("[data-testid='database']");
+  By addTagCategory = By.cssSelector("[data-testid='add-category']");
+  By addTagButton = By.cssSelector("[data-testid='add-new-tag-button']");
+  By tagCount = By.xpath("//div[@data-testid='tag-conatiner']/div/div");
+  By errorMessage = By.cssSelector("[data-testid='error-message']");
+  By matchesInDescription = By.xpath("(//div[@data-testid='matches-stats'][1])/span[3]");
+  By tagCountSearch = By.xpath("(//div[@data-testid='description-text'][1])/div/p/span");
+  By tagFilterCount = By.xpath("//div[@data-testid='filter-containers-2']/div");
+  By noSearchResult = By.cssSelector("[data-testid='no-search-results']");
+  By resultsCount = By.xpath("//div[@data-testid='search-container']/div");
+  By matchesStats = By.cssSelector("[data-testid='matches-stats']");
+  By editLineageButton = By.cssSelector("[data-testid='edit-lineage']");
+  By whatsNewModalChangeLogs = By.cssSelector("[data-testid='WhatsNewModalChangeLogs']");
 
   public By displayName() {
     return displayName;
@@ -135,5 +161,149 @@ public class Common {
 
   public By headerSettingsMenu(String menuItem) {
     return By.cssSelector("[data-testid='menu-item-" + menuItem + "']");
+  }
+
+  public By selectOverview(String overview) {
+    return By.cssSelector("[data-testid='" + overview + "']");
+  }
+
+  public By explorePagination(int index) {
+    return By.xpath("//div[@data-testid='pagination-button']//ul//li[" + index + "]");
+  }
+
+  public By selectFilterExplore(String filter) {
+    return By.cssSelector("[data-testid='checkbox'][id='" + filter + "']");
+  }
+
+  public By searchResults() {
+    return searchResults;
+  }
+
+  public By searchBar() {
+    return searchBar;
+  }
+
+  public By headerItem(String item) {
+    return By.cssSelector("[data-testid='appbar-item'][id='" + item + "']");
+  }
+
+  public By searchSuggestion() {
+    return searchSuggestion;
+  }
+
+  public By editAssociatedTagButton() {
+    return editAssociatedTagButton;
+  }
+
+  public By enterAssociatedTagName() {
+    return enterAssociatedTagName;
+  }
+
+  public By tagListItem() {
+    return tagListItem;
+  }
+
+  public By saveAssociatedTag() {
+    return saveAssociatedTag;
+  }
+
+  public By searchResultsList() {
+    return searchResultsList;
+  }
+
+  public By exploreFilterCount(String filter) {
+    return By.xpath("//div[@data-testid='filter-container-" + filter + "']//span[@data-testid='filter-count']");
+  }
+
+  public By entityTabIndex(int index) {
+    return By.xpath("(//button[@data-testid='tab'])" + "[" + index + "]");
+  }
+
+  public By selectSuggestionSearch(String result) {
+    return By.cssSelector("[data-testid='data-name'][id='" + result + "']");
+  }
+
+  public By ownerDropdown() {
+    return ownerDropdown;
+  }
+
+  public By ownerSearchBox() {
+    return ownerSearchBox;
+  }
+
+  public By closeErrorMessage() {
+    return closeErrorMessage;
+  }
+
+  public By serviceUrl() {
+    return serviceUrl;
+  }
+
+  public By servicePort() {
+    return servicePort;
+  }
+
+  public By databaseName() {
+    return databaseName;
+  }
+
+  public By addTagCategory() {
+    return addTagCategory;
+  }
+
+  public By addTagButton() {
+    return addTagButton;
+  }
+
+  public By tagCount() {
+    return tagCount;
+  }
+
+  public By errorMessage() {
+    return errorMessage;
+  }
+
+  public By matchesInDescription() {
+    return matchesInDescription;
+  }
+
+  public By tagCountSearch() {
+    return tagCountSearch;
+  }
+
+  public By tourNavigationArrow(String arrow) {
+    return By.cssSelector("[data-tour-elem='" + arrow + "']");
+  }
+
+  public By tagFilterCount() {
+    return tagFilterCount;
+  }
+
+  public By noSearchResult() {
+    return noSearchResult;
+  }
+
+  public By resultsCount() {
+    return resultsCount;
+  }
+
+  public By matchesStats() {
+    return matchesStats;
+  }
+
+  public By editLineageButton() {
+    return editLineageButton;
+  }
+
+  public By whatsNewDotButtons(int index) {
+    return By.xpath("//ul[@class='slick-dots testid-dots-button']//li[" + index + "]");
+  }
+
+  public By whatsNewModalChangeLogs() {
+    return whatsNewModalChangeLogs;
+  }
+
+  public By overviewFilterCount(String entity) {
+    return By.xpath("//div[@data-testid='" + entity + "-summary']//span[@data-testid='filter-count']");
   }
 }

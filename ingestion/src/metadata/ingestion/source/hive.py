@@ -27,7 +27,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
-    for (col_name, col_type, _comment) in rows:
+    for (col_name, col_type, comment) in rows:
         if col_name == "# Partition Information":
             break
         col_raw_type = col_type
@@ -44,6 +44,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             {
                 "name": col_name,
                 "type": coltype,
+                "comment": comment,
                 "nullable": True,
                 "default": None,
                 "raw_data_type": col_raw_type

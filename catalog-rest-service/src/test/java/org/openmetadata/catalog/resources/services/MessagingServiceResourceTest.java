@@ -14,13 +14,11 @@
 package org.openmetadata.catalog.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 
 import java.io.IOException;
 import java.net.URI;
@@ -215,21 +213,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                 .withNewValue(updatedSchemaRegistry));
 
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-  }
-
-  @Test
-  void put_update_as_non_owner_401(TestInfo test) throws IOException {
-    createAndCheckEntity(
-        createRequest(test).withDescription(null).withIngestionSchedule(null).withOwner(USER_OWNER1),
-        ADMIN_AUTH_HEADERS);
-
-    // Update messaging description as non owner and expect exception
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(
-        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Override

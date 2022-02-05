@@ -13,12 +13,8 @@
 
 package org.openmetadata.catalog.resources.services;
 
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
@@ -37,7 +33,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
@@ -68,19 +63,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // TODO add more tests for different fields
-  }
-
-  @Test
-  void put_update_as_non_owner_401(TestInfo test) throws IOException {
-    createAndCheckEntity(createRequest(test).withDescription(null).withOwner(USER_OWNER1), ADMIN_AUTH_HEADERS);
-
-    // Update storage description and ingestion service as non owner should be forbidden
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> updateAndCheckEntity(createRequest(test), OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
-    TestUtils.assertResponse(
-        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Override

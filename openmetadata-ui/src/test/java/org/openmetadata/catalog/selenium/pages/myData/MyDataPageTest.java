@@ -23,16 +23,15 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
+import org.openmetadata.catalog.selenium.objectRepository.*;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 @Order(1)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -44,8 +43,16 @@ public class MyDataPageTest {
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
-  static String table = "dim_product_variant";
+  static String table = "dim_address";
   Integer waitTime = Property.getInstance().getSleepTime();
+  MyDataPage myDataPage;
+  TagsPage tagsPage;
+  TeamsPage teamsPage;
+  UserListPage userListPage;
+  TableDetails tableDetails;
+  DatabaseServicePage databaseService;
+  ExplorePage explorePage;
+  Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
@@ -56,6 +63,13 @@ public class MyDataPageTest {
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
+    myDataPage = new MyDataPage(webDriver);
+    userListPage = new UserListPage(webDriver);
+    teamsPage = new TeamsPage(webDriver);
+    tagsPage = new TagsPage(webDriver);
+    tableDetails = new TableDetails(webDriver);
+    explorePage = new ExplorePage(webDriver);
+    common = new Common(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -65,147 +79,227 @@ public class MyDataPageTest {
   @Test
   @Order(1)
   public void checkWhatsNew() {
-    Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")); // What's new page 2
-    Events.click(webDriver, By.cssSelector("[data-testid='WhatsNewModalChangeLogs']")); // Change Logs
-    Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.openWhatsNew());
+    Events.click(webDriver, myDataPage.page2());
+    Events.click(webDriver, myDataPage.changeLog());
+    try {
+      WebElement version = webDriver.findElement(myDataPage.getVersion());
+      Assert.assertTrue(version.isDisplayed());
+    } catch (Exception e) {
+      Assert.fail();
+    }
   }
 
   @Test
   @Order(2)
-  public void checkOverview() throws InterruptedException {
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
+  void checkOverview() {
+    MyDataPage myDataPage = new MyDataPage(webDriver);
+    String url;
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.getTables());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/explore/tables/");
     webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='topics']")); // Topics
+    Events.click(webDriver, myDataPage.getTopics());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/explore/topics/");
     webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='dashboards']")); // Dashboard
+    Events.click(webDriver, myDataPage.getDashboard());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/explore/dashboards/");
     webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='pipelines']")); // Pipeline
+    Events.click(webDriver, myDataPage.getPipelines());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/explore/pipelines/");
     webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='service']")); // Services
+    Events.click(webDriver, myDataPage.getServices());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/services");
     webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='ingestion']")); // Services
+    Events.click(webDriver, myDataPage.getUsers());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/user-list");
     webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='user']")); // Users
-    webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='terms']")); // Teams
+    Events.click(webDriver, myDataPage.getTeams());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/teams");
   }
 
   @Test
   @Order(3)
   public void checkSearchBar() throws InterruptedException {
-    checkWhatsNew();
-    wait.until(
-        ExpectedConditions.elementToBeClickable(
-            webDriver.findElement(By.cssSelector("[id='searchBox']")))); // Search bar/dim
-    Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), "dim"); // Search bar/dim
-    Thread.sleep(waitTime);
-    Events.click(webDriver, By.cssSelector("[data-testid='data-name']")); // Search bar/dim
+    String sendkeys = "dim";
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    wait.until(ExpectedConditions.elementToBeClickable(myDataPage.getSearchBox())); // Search bar/dim
+    Events.sendKeys(webDriver, myDataPage.getSearchBox(), sendkeys); // Search bar/dim
+    Events.click(webDriver, myDataPage.selectTable());
+    Thread.sleep(1000);
+    WebElement tableName =
+        tableDetails
+            .breadCrumb()
+            .get(tableDetails.breadCrumb().size() - 1); // getting the last element as it would match the table name
+    Assert.assertTrue(tableName.getText().contains(sendkeys));
   }
 
   @Test
   @Order(4)
-  public void checkHeaders() {
-    checkWhatsNew();
-    ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-    Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
-    webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
-    webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
-    webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
-    Events.click(webDriver, By.cssSelector("[data-testid='whatsnew-modal']")); // What's New
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Docs']"));
-    webDriver.switchTo().window(tabs.get(0));
-
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-API']"));
-    webDriver.navigate().back();
-
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Slack']"));
-    webDriver.switchTo().window(tabs.get(0));
+  void checkExplore() {
+    String url;
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.clickExplore());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/explore/tables");
+    try {
+      if (webDriver.findElement(explorePage.tables()).isDisplayed()) {
+        LOG.info("Tables is displayed");
+      }
+    } catch (Exception e) {
+      Assert.fail();
+    }
   }
 
   @Test
   @Order(5)
-  public void checkMyDataTab() {
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), table);
-    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
-    Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[5]")); // Manage
-    Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
-    Events.click(webDriver, By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]"));
-    Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
-    Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
-    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
-    webDriver.navigate().refresh();
-    Events.click(webDriver, By.cssSelector("[data-testid='My data-" + table + "']"));
+  void checkHeaders() {
+    String url;
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.openSettings());
+    Events.click(webDriver, myDataPage.getTeams());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/teams");
+    try {
+      if (teamsPage.heading().isDisplayed()) {
+        LOG.info("Teams Heading is displayed");
+      }
+    } catch (Exception e) {
+      Assert.fail();
+    }
     webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='my-data']")); // My Data
-    Events.click(webDriver, By.xpath("//button[@data-testid='table-link']"));
+    Events.click(webDriver, myDataPage.openSettings());
+    Events.click(webDriver, myDataPage.getUsers());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/user-list");
+    try {
+      if (userListPage.allUsers().isDisplayed()) {
+        LOG.info("All users is displayed");
+      }
+    } catch (Exception e) {
+      Assert.fail();
+    }
+    webDriver.navigate().back();
+    Events.click(webDriver, myDataPage.openSettings());
+    Events.click(webDriver, myDataPage.getTags());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/tags");
+    try {
+      if (webDriver.findElement(tagsPage.addTagButton()).isDisplayed()) {
+        LOG.info("Tag categories is displayed");
+      }
+    } catch (Exception e) {
+      Assert.fail();
+    }
+    webDriver.navigate().back();
+    Events.click(webDriver, myDataPage.openSettings());
+    Events.click(webDriver, myDataPage.getServices());
+    url = webDriver.getCurrentUrl();
+    Assert.assertEquals(url, "http://localhost:8585/services");
+    try {
+      if (webDriver.findElement(common.serviceName()).isDisplayed()) {
+        LOG.info("Database Service is displayed");
+      }
+    } catch (Exception e) {
+      Assert.fail();
+    }
+    webDriver.navigate().back();
   }
 
   @Test
   @Order(6)
-  public void checkFollowingTab() {
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), table);
-    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifydim_product_variant']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+  public void checkMyDataTab() {
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.getTables());
+    Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
+    Events.click(webDriver, myDataPage.selectTable());
+    Events.click(webDriver, tableDetails.manage());
+    Events.click(webDriver, tableDetails.clickOwnerDropdown()); // Owner
+    Events.click(webDriver, tableDetails.clickUsers());
+    Events.click(webDriver, tableDetails.selectUser());
+    Events.click(webDriver, tableDetails.saveManage());
+    Events.click(webDriver, myDataPage.clickHome());
     webDriver.navigate().refresh();
-    Events.click(webDriver, By.xpath("//div[@data-testid='Following data-" + table + "']/div/a/button"));
-    webDriver.navigate().back();
-    Events.click(webDriver, By.cssSelector("[data-testid='following-data']")); // Following
-    Events.click(webDriver, By.xpath("//button[@data-testid='table-link']"));
+    try {
+      WebElement tableName = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(table)));
+      if (tableName.isDisplayed()) {
+        Assert.assertEquals(tableName.getText(), "dim_address");
+        webDriver.findElement(By.linkText(table)).click();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
   @Order(7)
-  public void checkRecentlyViewed() {
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
-    Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), "fact_line_item");
-    Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id='bigquery_gcpshopifyfact_line_item']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
+  void checkFollowingTab() {
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.getTables());
+    Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
+    Events.click(webDriver, myDataPage.selectTable());
+    String follow = webDriver.findElement(tableDetails.clickFollow()).getText();
+    if (follow.equals("Unfollow")) {
+      Events.click(webDriver, tableDetails.clickFollow());
+      Events.click(webDriver, tableDetails.clickFollow());
+    } else {
+      Events.click(webDriver, tableDetails.clickFollow());
+    }
+    Events.click(webDriver, myDataPage.clickHome());
+    String tableName = myDataPage.following().toString();
+    Assert.assertEquals(tableName, "Started Following " + table);
+  }
+
+  @Test
+  @Order(8)
+  void checkRecentlyViewed() {
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
+    Events.click(webDriver, myDataPage.selectTable());
+    Events.click(webDriver, myDataPage.clickHome());
     webDriver.navigate().refresh();
-    Events.click(webDriver, By.cssSelector("[data-testid='Recently Viewed-fact_line_item']"));
+    String table = webDriver.findElement(myDataPage.recentlyViewed()).getText();
+    Assert.assertEquals(table, "dim_address");
   }
 
   @Test
   @Order(8)
   public void checkRecentlySearched() {
-    checkWhatsNew();
-    Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), "dim"); // Search bar/dim
-    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='Recently-Search-dim']"));
+    String searchCriteria = "dim";
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.sendKeys(webDriver, myDataPage.getSearchBox(), searchCriteria);
+    Events.sendEnter(webDriver, myDataPage.getSearchBox());
+    Events.click(webDriver, myDataPage.clickHome());
+    try {
+      WebElement recentSearch = webDriver.findElement(myDataPage.recentSearch());
+      if (recentSearch.isDisplayed()) {
+        Assert.assertEquals(recentSearch.getText(), searchCriteria);
+      }
+    } catch (Exception e) {
+      Assert.fail();
+    }
   }
 
   @Test
   @Order(9)
   public void checkRecentSearchWithSpaces() throws Exception {
-    checkWhatsNew();
-    Events.sendKeys(webDriver, By.cssSelector("[id='searchBox']"), " "); // Search bar/Empty Space " "
-    Events.sendEnter(webDriver, By.cssSelector("[id='searchBox']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='image']"));
-    Thread.sleep(2000);
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.sendKeys(webDriver, myDataPage.getSearchBox(), " ");
+    Events.sendEnter(webDriver, myDataPage.getSearchBox());
+    Events.click(webDriver, myDataPage.clickHome());
     try {
-      WebElement spaceSearch =
-          wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='Recently-Search- ']")));
+      WebElement spaceSearch = webDriver.findElement(myDataPage.recentSearchWithSpace());
       if (spaceSearch.isDisplayed()) {
-        throw new Exception("Spaces are captured in Recent Search");
+        Assert.fail("Spaces are displayed in recent search terms");
       }
     } catch (TimeoutException exception) {
       LOG.info("Success");
@@ -214,11 +308,30 @@ public class MyDataPageTest {
 
   @Test
   @Order(10)
+  public void checkHelp() throws InterruptedException {
+    ArrayList<String> tabs = new ArrayList<String>(webDriver.getWindowHandles());
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.help());
+    Events.click(webDriver, myDataPage.docs());
+    webDriver.switchTo().window(tabs.get(0));
+    Events.click(webDriver, myDataPage.help());
+    Events.click(webDriver, myDataPage.api());
+    webDriver.navigate().back();
+    webDriver.switchTo().window(tabs.get(0));
+    Events.click(webDriver, myDataPage.help());
+    Thread.sleep(1000);
+    Events.click(webDriver, myDataPage.slack());
+    Thread.sleep(1000);
+    webDriver.switchTo().window(tabs.get(0));
+  }
+
+  @Test
+  @Order(11)
   public void checkLogout() {
-    checkWhatsNew();
-    Events.click(webDriver, By.cssSelector("[data-testid='dropdown-profile']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='greeting-text']"));
-    Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Logout']"));
+    Events.click(webDriver, myDataPage.closeWhatsNew());
+    Events.click(webDriver, myDataPage.profile());
+    Events.click(webDriver, myDataPage.userName());
+    Events.click(webDriver, myDataPage.logout());
   }
 
   @AfterEach

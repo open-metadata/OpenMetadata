@@ -298,7 +298,7 @@ public class MlModelResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException, ParseException {
     MlModel mlModel = getMlModel(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(mlModel));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(mlModel));
     PutResponse<MlModel> response = dao.createOrUpdate(uriInfo, mlModel);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

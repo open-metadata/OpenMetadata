@@ -360,6 +360,7 @@ public class PolicyResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException, ParseException {
     Policy policy = getPolicy(securityContext, create);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(policy));
     PutResponse<Policy> response = dao.createOrUpdate(uriInfo, policy);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

@@ -52,7 +52,9 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   public static String getFQN(Chart chart) {
-    return (chart.getService().getName() + "." + chart.getName());
+    return (chart != null && chart.getService() != null)
+        ? (chart.getService().getName() + "." + chart.getName())
+        : null;
   }
 
   @Override
@@ -158,7 +160,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : ChartRepository.getFQN(entity);
     }
 
     @Override

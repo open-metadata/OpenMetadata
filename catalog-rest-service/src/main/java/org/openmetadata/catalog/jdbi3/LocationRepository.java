@@ -156,7 +156,9 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   public static String getFQN(Location location) {
-    return (location.getService().getName() + "." + location.getName());
+    return (location != null && location.getService() != null)
+        ? (location.getService().getName() + "." + location.getName())
+        : null;
   }
 
   @Transaction
@@ -281,7 +283,9 @@ public class LocationRepository extends EntityRepository<Location> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : LocationRepository.getFQN(entity);
     }
 
     @Override

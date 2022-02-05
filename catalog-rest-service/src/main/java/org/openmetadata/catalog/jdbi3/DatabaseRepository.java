@@ -58,7 +58,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public static String getFQN(Database database) {
-    return (database.getService().getName() + "." + database.getName());
+    return (database != null && database.getService() != null)
+        ? (database.getService().getName() + "." + database.getName())
+        : null;
   }
 
   @Transaction
@@ -243,7 +245,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : DatabaseRepository.getFQN(entity);
     }
 
     @Override

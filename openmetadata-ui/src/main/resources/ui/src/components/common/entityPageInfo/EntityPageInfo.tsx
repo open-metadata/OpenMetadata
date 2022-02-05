@@ -274,7 +274,9 @@ const EntityPageInfo = ({
           </span>
         ))}
       </div>
-      <div className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group">
+      <div
+        className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
+        data-testid="breadcrumb-tags">
         {(!isEditable || !isTagEditable || deleted) && (
           <>
             {(tags.length > 0 || !isEmpty(tier)) && (

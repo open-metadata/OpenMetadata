@@ -18,33 +18,22 @@ import org.openqa.selenium.WebDriver;
 
 public class TagsPage {
   WebDriver webDriver;
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
 
   public TagsPage(WebDriver webDriver) {
     this.webDriver = webDriver;
   }
 
   By closeWhatsNew = By.cssSelector("[data-testid='closeWhatsNew']");
-  By addTagCategory = By.cssSelector("[data-testid='add-category']");
   By addTagButton = By.cssSelector("[data-testid='add-new-tag-button']");
   By editTagDescription = By.cssSelector("[data-testid='editTagDescription']");
   By addAssociatedTagButton = By.cssSelector("[data-testid='tags']");
-  By enterAssociatedTagName = By.cssSelector("[data-testid='associatedTagName']");
-  By tagListItem = By.cssSelector("[data-testid='list-item']");
-  By saveAssociatedTag = By.cssSelector("[data-testid='saveAssociatedTag']");
   By removeAssociatedTag = By.cssSelector("[data-testid='remove']");
   By tables = By.cssSelector("[data-testid='tables']");
   By tableLink = By.xpath("//button[@data-testid='table-link']");
   By lastTableLink = By.xpath("//button[@data-testid='table-link'][last()]");
   By tagUsageCount = By.cssSelector("[data-testid='usage-count']");
-  By editAssociatedTagButton = By.xpath("//div[@data-testid='tag-conatiner']//span");
   By headerSettingsTags = By.cssSelector("[data-testid='menu-item-Tags']");
-  By headerExplore = By.cssSelector("[data-testid='appbar-item'][id='explore']");
   By sortBy = By.cssSelector("[data-testid='sortBy']");
-
-  public By addTagCategory() {
-    return addTagCategory;
-  }
 
   public By addTagButton() {
     return addTagButton;
@@ -56,18 +45,6 @@ public class TagsPage {
 
   public By addAssociatedTagButton() {
     return addAssociatedTagButton;
-  }
-
-  public By enterAssociatedTagName() {
-    return enterAssociatedTagName;
-  }
-
-  public By tagListItem() {
-    return tagListItem;
-  }
-
-  public By saveAssociatedTag() {
-    return saveAssociatedTag;
   }
 
   public By removeAssociatedTag() {
@@ -98,10 +75,6 @@ public class TagsPage {
     return tagUsageCount;
   }
 
-  public By editAssociatedTagButton() {
-    return editAssociatedTagButton;
-  }
-
   public By usageCountElementIndex(int index) {
     return By.xpath("(//a[@data-testid='usage-count'])[" + index + "]");
   }
@@ -122,12 +95,8 @@ public class TagsPage {
     return By.xpath("(//button[@data-testid='tab'])[" + index + "]//span[@data-testid='filter-count']");
   }
 
-  public By entityTabIndex(int index) {
-    return By.xpath("(//button[@data-testid='tab'])" + "[" + index + "]");
-  }
-
-  public By headerExplore() {
-    return headerExplore;
+  public By headerItem(String item) {
+    return By.cssSelector("[data-testid='appbar-item'][id='" + item + "']");
   }
 
   public By sortBy() {

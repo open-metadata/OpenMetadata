@@ -99,6 +99,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
@@ -191,6 +192,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   public static List<EntityReference> CHART_REFERENCES;
 
   public static Database DATABASE;
+  public static EntityReference DATABASE_REFERENCE;
 
   public static List<Column> COLUMNS;
 
@@ -362,6 +364,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
 
     COLUMNS =
         Arrays.asList(
@@ -816,6 +819,27 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     request = createRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
+  }
+
+  @Test
+  void put_entityUpdate_as_non_owner_4xx(TestInfo test) throws IOException {
+    if (!supportsOwner) {
+      return; // Entity doesn't support ownership
+    }
+
+    // Create an entity with owner
+    K request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Update description and remove owner as non-owner
+    // Expect to throw an exception since only owner or admin can update resource
+    K updateRequest = createRequest(getEntityName(test), "newdescription", "displayName", null);
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> updateAndCheckEntity(updateRequest, OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
+    TestUtils.assertResponse(
+        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Test

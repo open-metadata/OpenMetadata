@@ -370,6 +370,7 @@ public class DatabaseResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException, ParseException {
     Database database = getDatabase(securityContext, create);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(database));
     PutResponse<Database> response = dao.createOrUpdate(uriInfo, database);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

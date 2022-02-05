@@ -53,7 +53,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   }
 
   public static String getFQN(AirflowPipeline airflowPipeline) {
-    return (airflowPipeline.getService().getName() + "." + airflowPipeline.getName());
+    return (airflowPipeline != null && airflowPipeline.getService() != null)
+        ? (airflowPipeline.getService().getName() + "." + airflowPipeline.getName())
+        : null;
   }
 
   @Transaction
@@ -162,7 +164,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
+      return entity.getFullyQualifiedName() != null
+          ? entity.getFullyQualifiedName()
+          : AirflowPipelineRepository.getFQN(entity);
     }
 
     @Override

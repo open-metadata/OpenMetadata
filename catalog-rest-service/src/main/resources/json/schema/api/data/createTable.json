@@ -38,7 +38,7 @@
     },
     "database": {
       "description": "Database corresponding to this table",
-      "$ref": "../../type/basic.json#/definitions/uuid",
+      "$ref": "../../type/entityReference.json",
       "default": null
     },
     "tags": {

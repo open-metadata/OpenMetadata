@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.storage;
 
-import static org.openmetadata.catalog.Entity.helper;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,14 +50,12 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
@@ -315,18 +311,8 @@ public class StorageServiceResource {
   public Response update(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, FIELDS);
-    EntityReference owner = null;
-    StorageService service;
-    // Try to find the owner if entity exists
-    try {
-      service = dao.getByName(uriInfo, update.getName(), fields);
-      owner = helper(service).validateOwnerOrNull();
-    } catch (EntityNotFoundException e) {
-      // This is a create request if entity is not found. ignore exception
-    }
-    service = getService(update, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, owner);
+    StorageService service = getService(update, securityContext);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(service));
     PutResponse<StorageService> response = dao.createOrUpdate(uriInfo, service, true);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

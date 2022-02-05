@@ -30,6 +30,7 @@ import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -557,6 +558,23 @@ public abstract class EntityRepository<T> {
     } else {
       dao.insert(entity);
     }
+  }
+
+  public final EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
+    final String FIELDS = "owner";
+    final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, FIELDS);
+    EntityReference owner = null;
+    // Try to find the owner if entity exists
+    try {
+      String fqn = getFullyQualifiedName(entity);
+      entity = getByName(null, fqn, fields);
+      owner = helper(entity).validateOwnerOrNull();
+    } catch (EntityNotFoundException e) {
+      // If entity is not found, we can return null for owner and ignore
+      // this exception
+    }
+    return owner;
   }
 
   protected EntityReference getOwner(T entity) throws IOException, ParseException {
