@@ -126,7 +126,7 @@ test = {
     "isort",
     "pre-commit",
     "pylint",
-    "pytest==6.2.5",
+    "pytest==7.0.0",
     "pytest-cov",
     "faker",
     "coverage",
