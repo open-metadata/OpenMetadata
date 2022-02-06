@@ -21,6 +21,8 @@ import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
@@ -30,113 +32,60 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 
 public class CatalogApplicationConfig extends Configuration {
-  @Valid
-  @NotNull
   @JsonProperty("database")
+  @NotNull
+  @Valid
+  @Getter
+  @Setter
   private DataSourceFactory dataSourceFactory;
 
   @JsonProperty("swagger")
+  @Getter
+  @Setter
   private SwaggerBundleConfiguration swaggerBundleConfig;
 
   @JsonProperty("authorizerConfiguration")
+  @Getter
+  @Setter
   private AuthorizerConfiguration authorizerConfiguration;
 
   @JsonProperty("authenticationConfiguration")
+  @Getter
+  @Setter
   private AuthenticationConfiguration authenticationConfiguration;
 
   @JsonProperty("elasticsearch")
+  @Getter
+  @Setter
   private ElasticSearchConfiguration elasticSearchConfiguration;
 
   @JsonProperty("eventHandlerConfiguration")
+  @Getter
+  @Setter
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @NotNull
   @JsonProperty("airflowConfiguration")
+  @Getter
+  @Setter
   private AirflowConfiguration airflowConfiguration;
 
   @JsonProperty("slackEventPublishers")
+  @Getter
+  @Setter
   private List<SlackPublisherConfiguration> slackEventPublishers;
 
-  @NotNull
   @JsonProperty("migrationConfiguration")
+  @NotNull
+  @Getter
+  @Setter
   private MigrationConfiguration migrationConfiguration;
 
-  public DataSourceFactory getDataSourceFactory() {
-    return dataSourceFactory;
-  }
-
-  public SwaggerBundleConfiguration getSwaggerBundleConfig() {
-    return swaggerBundleConfig;
-  }
-
-  public AuthorizerConfiguration getAuthorizerConfiguration() {
-    return authorizerConfiguration;
-  }
-
-  public void setAuthorizerConfiguration(AuthorizerConfiguration authorizerConfiguration) {
-    this.authorizerConfiguration = authorizerConfiguration;
-  }
-
-  public AuthenticationConfiguration getAuthenticationConfiguration() {
-    return authenticationConfiguration;
-  }
-
-  public void setAuthenticationConfiguration(AuthenticationConfiguration authenticationConfiguration) {
-    this.authenticationConfiguration = authenticationConfiguration;
-  }
-
-  public ElasticSearchConfiguration getElasticSearchConfiguration() {
-    return elasticSearchConfiguration;
-  }
-
-  public void setElasticSearchConfiguration(ElasticSearchConfiguration elasticSearchConfiguration) {
-    this.elasticSearchConfiguration = elasticSearchConfiguration;
-  }
-
-  public EventHandlerConfiguration getEventHandlerConfiguration() {
-    return eventHandlerConfiguration;
-  }
-
-  public void setEventHandlerConfiguration(EventHandlerConfiguration eventHandlerConfiguration) {
-    this.eventHandlerConfiguration = eventHandlerConfiguration;
-  }
-
-  public AirflowConfiguration getAirflowConfiguration() {
-    return airflowConfiguration;
-  }
-
-  public void setAirflowConfiguration(AirflowConfiguration airflowConfiguration) {
-    this.airflowConfiguration = airflowConfiguration;
-  }
-
-  public List<SlackPublisherConfiguration> getSlackEventPublishers() {
-    return slackEventPublishers;
-  }
-
-  public MigrationConfiguration getMigrationConfiguration() {
-    return migrationConfiguration;
-  }
-
-  public void setMigrationConfiguration(MigrationConfiguration migrationConfiguration) {
-    this.migrationConfiguration = migrationConfiguration;
-  }
-
-  public void setSlackEventPublishers(List<SlackPublisherConfiguration> slackEventPublishers) {
-    this.slackEventPublishers = slackEventPublishers;
-  }
-
-  @Valid
-  @NotNull
   @JsonProperty("health")
+  @NotNull
+  @Valid
+  @Getter
+  @Setter
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
-
-  public HealthConfiguration getHealthConfiguration() {
-    return healthConfiguration;
-  }
-
-  public void setHealthConfiguration(final HealthConfiguration healthConfiguration) {
-    this.healthConfiguration = healthConfiguration;
-  }
 
   @Override
   public String toString() {

@@ -15,57 +15,15 @@ package org.openmetadata.catalog.security;
 
 import java.util.Set;
 import javax.validation.constraints.NotEmpty;
+import lombok.Getter;
+import lombok.Setter;
 
 public class AuthorizerConfiguration {
-  @NotEmpty private String className;
-
-  @NotEmpty private String containerRequestFilter;
-
-  @NotEmpty private Set<String> adminPrincipals;
-
-  @NotEmpty private Set<String> botPrincipals;
-
-  @NotEmpty private String principalDomain;
-
-  public String getClassName() {
-    return className;
-  }
-
-  public void setClassName(String className) {
-    this.className = className;
-  }
-
-  public String getContainerRequestFilter() {
-    return containerRequestFilter;
-  }
-
-  public void setContainerRequestFilter(String containerRequestFilter) {
-    this.containerRequestFilter = containerRequestFilter;
-  }
-
-  public Set<String> getAdminPrincipals() {
-    return adminPrincipals;
-  }
-
-  public void setAdminPrincipals(Set<String> adminPrincipals) {
-    this.adminPrincipals = adminPrincipals;
-  }
-
-  public Set<String> getBotPrincipals() {
-    return botPrincipals;
-  }
-
-  public void setBotPrincipals(Set<String> botPrincipals) {
-    this.botPrincipals = botPrincipals;
-  }
-
-  public String getPrincipalDomain() {
-    return principalDomain;
-  }
-
-  public void setPrincipalDomain(String principalDomain) {
-    this.principalDomain = principalDomain;
-  }
+  @NotEmpty @Getter @Setter private String className;
+  @NotEmpty @Getter @Setter private String containerRequestFilter;
+  @NotEmpty @Getter @Setter private Set<String> adminPrincipals;
+  @NotEmpty @Getter @Setter private Set<String> botPrincipals;
+  @NotEmpty @Getter @Setter private String principalDomain;
 
   @Override
   public String toString() {
