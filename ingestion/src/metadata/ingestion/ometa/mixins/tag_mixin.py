@@ -22,7 +22,7 @@ class OMetaTagMixin:
     To be inherited by OpenMetadata
     """
 
-    def get_list_tag_categories(
+    def list_tag_categories(
         self, entity: Type[T], fields: Optional[List[str]] = None
     ) -> Optional[List[T]]:
         """Get list of TagCategory pydantic model
@@ -40,7 +40,7 @@ class OMetaTagMixin:
             logger.error(f"GET {entity.__name__}. Error {err.status_code} - {err}")
             return None
 
-    def post_create_tag_category(self, tag_category_body: TagCategory):
+    def create_tag_category(self, tag_category_body: TagCategory):
         """Method to create new tag category
         Args:
             tag_category_body (TagCategory): body of the request
@@ -49,10 +49,10 @@ class OMetaTagMixin:
         resp = self.client.post(path=path, data=tag_category_body.json())
         logger.info(f"Created tag category: {resp}")
 
-    def get_tag_category(
+    def tag_category(
         self, entity: Type[T], category_name: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
-        """Get list of tag categories
+        """Get tag categories
 
         Args:
             entity: entity class model
@@ -62,7 +62,7 @@ class OMetaTagMixin:
         path = f"{category_name}"
         return self._get(entity=entity, path=path, fields=fields)
 
-    def put_update_tag_category(
+    def update_tag_category(
         self, category_name: str, tag_category_body: TagCategory
     ) -> None:
         """Method to update a tag category
@@ -74,7 +74,7 @@ class OMetaTagMixin:
         resp = self.client.put(path=path, data=tag_category_body.json())
         logger.info(f"Updated tag category: {resp}")
 
-    def post_create_primary_tag(
+    def create_primary_tag(
         self, category_name: str, primary_tag_body: Tag
     ) -> None:
         """Method to create a primary tag within a category
@@ -86,7 +86,7 @@ class OMetaTagMixin:
         resp = self.client.post(path=path, data=primary_tag_body.json())
         logger.info(f"Create primary tag in category {category_name}: {resp}")
 
-    def get_primary_tag(
+    def primary_tag(
         self,
         entity: Type[T],
         category_name: str,
@@ -104,7 +104,7 @@ class OMetaTagMixin:
         path = f"{category_name}/{primary_tag_fqn}"
         return self._get(entity=entity, path=path, fields=fields)
 
-    def put_update_primary_tag(
+    def update_primary_tag(
         self,
         category_name: str,
         primary_tag_fqn: str,
@@ -122,7 +122,7 @@ class OMetaTagMixin:
         resp = self.client.put(path=path, data=primary_tag_body.json())
         logger.info(f"Updated primary tag: {resp}")
 
-    def post_create_secondary_tag(
+    def create_secondary_tag(
         self, category_name: str, primary_tag_fqn: str, secondary_tag_body: Tag
     ) -> None:
         """Method to create a secondary tag under a primary tag
@@ -139,7 +139,7 @@ class OMetaTagMixin:
         )
 
     # pylint: disable=too-many-arguments
-    def get_secondary_tag(
+    def secondary_tag(
         self,
         entity: Type[T],
         category_name: str,
@@ -159,8 +159,7 @@ class OMetaTagMixin:
         path = f"{category_name}/{primary_tag_fqn}/{secondary_tag_fqn}"
         return self._get(entity=entity, path=path, fields=fields)
 
-    # pylint: disable=too-many-arguments
-    def put_update_secondary_tag(
+    def update_secondary_tag(
         self,
         category_name: str,
         primary_tag_fqn: str,
