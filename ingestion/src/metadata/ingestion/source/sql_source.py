@@ -32,11 +32,14 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import (
@@ -158,6 +161,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.print_exc())
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
@@ -558,6 +562,27 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 "dataType"
                             ]
                         col_dict = Column(**parsed_string)
+                        try:
+                            if "policy_tags" in column and column["policy_tags"]:
+                                self.metadata.create_primary_tag_category(
+                                    category=self.config.tag_category_name,
+                                    data=Tag(
+                                        name=column["policy_tags"], description=""
+                                    ),
+                                )
+                        except APIError:
+                            if column["policy_tags"]:
+                                col_dict.tags = [
+                                    TagLabel(
+                                        tagFQN=f"{self.config.tag_category_name}.{column['policy_tags']}",
+                                        labelType="Automated",
+                                        state="Suggested",
+                                    )
+                                ]
+                        except Exception as err:
+                            logger.error(traceback.print_exc())
+                            logger.error(err)
+
                         om_column = col_dict
                 except Exception as err:
                     logger.debug(traceback.print_exc())
