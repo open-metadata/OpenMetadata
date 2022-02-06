@@ -74,9 +74,7 @@ class OMetaTagMixin:
         resp = self.client.put(path=path, data=tag_category_body.json())
         logger.info(f"Updated tag category: {resp}")
 
-    def create_primary_tag(
-        self, category_name: str, primary_tag_body: Tag
-    ) -> None:
+    def create_primary_tag(self, category_name: str, primary_tag_body: Tag) -> None:
         """Method to create a primary tag within a category
         Args:
             category_name (str): tag category name
