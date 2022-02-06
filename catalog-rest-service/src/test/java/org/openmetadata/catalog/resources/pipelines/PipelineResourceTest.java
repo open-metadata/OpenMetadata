@@ -27,11 +27,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -245,7 +248,32 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl(new URI("http://localhost:0"));
     tasks.add(taskEmptyDesc);
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
-    updateAndCheckEntity(request.withTasks(tasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Create new request with all the Tasks
+    List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
+    updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void put_PipelineTasksOverride_200(TestInfo test) throws IOException, URISyntaxException {
+    // A PUT operation with a new Task should override the current tasks in the Pipeline
+    // This change will always be minor, both with deletes/adds
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
+    Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    List<Task> newTask =
+        Collections.singletonList(
+            new Task()
+                .withName("newTask")
+                .withDescription("description")
+                .withDisplayName("displayName")
+                .withTaskUrl(new URI("http://localhost:0")));
+
+    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(newTask));
+    change.getFieldsDeleted().add(new FieldChange().withName("tasks").withOldValue(TASKS));
+
+    updateAndCheckEntity(request.withTasks(newTask), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -261,8 +289,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     tasks.add(taskEmptyDesc);
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+
+    // Create new request with all the Tasks
+    List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
+    pipeline.setTasks(updatedTasks);
     pipeline.setDescription("newDescription");
-    pipeline.setTasks(tasks);
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // add a description to an existing task
@@ -274,7 +305,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     change
         .getFieldsAdded()
         .add(new FieldChange().withName("tasks.taskEmpty.description").withNewValue("taskDescription"));
-    pipeline.setTasks(newTasks);
+
+    List<Task> updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    pipeline.setTasks(updatedNewTasks);
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // update the descriptions of pipeline and task
@@ -293,7 +326,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("description").withOldValue("newDescription").withNewValue("newDescription2"));
-    pipeline.setTasks(newTasks);
+
+    updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    pipeline.setTasks(updatedNewTasks);
     pipeline.setDescription("newDescription2");
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -313,7 +348,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     change
         .getFieldsDeleted()
         .add(new FieldChange().withName("description").withOldValue("newDescription2").withNewValue(null));
-    pipeline.setTasks(newTasks);
+
+    updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    pipeline.setTasks(updatedNewTasks);
     pipeline.setDescription(null);
     patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }

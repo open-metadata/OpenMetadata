@@ -26,8 +26,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -328,18 +326,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
-      // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
-      // pipeline in each call. Hence, we may create a pipeline and add a single task when one task finishes in a
-      // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
+      // While the Airflow lineage only gets executed for one Task at a time, we will consider the
+      // client Task information as the source of truth. This means that at each update, we will
+      // expect to receive all the tasks known until that point.
+
+      // The lineage backend will take care of controlling new & deleted tasks, while passing to the
+      // API the full list of Tasks to consider for a given Pipeline. Having a single point of control
+      // of the Tasks and their status, simplifies the logic on how to add/delete tasks.
+
+      // The API will only take care of marking tasks as added/updated/deleted based on the original
+      // and incoming changes.
+
       List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
       List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
-
-      // Merge the tasks
-      updatedTasks =
-          new ArrayList<>(
-              Stream.concat(origTasks.stream(), updatedTasks.stream())
-                  .collect(Collectors.groupingBy(Task::getName, Collectors.reducing(null, (t1, t2) -> t2)))
-                  .values());
 
       List<Task> added = new ArrayList<>();
       List<Task> deleted = new ArrayList<>();
