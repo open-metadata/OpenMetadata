@@ -10,10 +10,12 @@
 #  limitations under the License.
 
 import json
+import logging
 import os
 import tempfile
 from typing import Optional, Tuple
 
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
@@ -21,11 +23,13 @@ from sqlalchemy_bigquery._types import (
     _get_transitive_schema_fields,
 )
 
+from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 
+logger = logging.getLogger(__name__)
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 _types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
@@ -46,7 +50,14 @@ def get_columns(bq_schema):
             "scale": field.scale,
             "max_length": field.max_length,
             "raw_data_type": str(_get_sqla_column_type(field)),
+            "policy_tags": None,
         }
+        if field.policy_tags:
+            col_obj["policy_tags"] = (
+                PolicyTagManagerClient()
+                .get_policy_tag(name=field.policy_tags.names[0])
+                .display_name
+            )
 
         col_list.append(col_obj)
     return col_list
@@ -62,6 +73,8 @@ class BigQueryConfig(SQLConnectionConfig):
     project_id: Optional[str] = None
     duration: int = 1
     service_type = "BigQuery"
+    enable_policy_tags: bool = False
+    tag_category_name: str = "BigqueryPolicyTags"
 
     def get_connection_url(self):
         if self.project_id:
@@ -73,6 +86,20 @@ class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
         self.temp_credentials = None
+
+    #  and "policy_tags" in column and column["policy_tags"]
+    def prepare(self):
+        try:
+            if self.config.enable_policy_tags:
+                self.metadata.create_tag_category(
+                    TagCategory(
+                        name=self.config.tag_category_name,
+                        description="",
+                        categoryType="Classification",
+                    )
+                )
+        except Exception as err:
+            logger.error(err)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -90,7 +117,7 @@ class BigquerySource(SQLSource):
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
                 del config.options["credentials"]
             else:
-                raise Exception(
+                logger.warning(
                     "Please refer to the BigQuery connector documentation, especially the credentials part "
                     "https://docs.open-metadata.org/connectors/bigquery"
                 )
