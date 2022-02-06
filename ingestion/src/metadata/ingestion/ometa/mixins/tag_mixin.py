@@ -37,12 +37,7 @@ class OMetaTagMixin:
             resp = self.client.get(f"{self.get_suffix(entity)}/{fields_str}")
             return [entity(**tag_cat) for tag_cat in resp.get("data")]
         except APIError as err:
-            logger.error(
-                "GET %s for %s." "Error %s - %s",
-                entity.__name__,
-                err.status_code,
-                err,
-            )
+            logger.error(f"GET {entity.__name__}. Error {err.status_code} - {err}")
             return None
 
     def post_create_tag_category(self, tag_category_body: TagCategory):
