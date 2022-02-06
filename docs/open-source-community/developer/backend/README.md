@@ -18,6 +18,10 @@ We use Java for developing OpenMetadata backend server. Following are the key te
 [code-generation.md](code-generation.md)
 {% endcontent-ref %}
 
+{% content-ref url="env-setup.md" %}
+[env-setup.md](env-setup.md)
+{% endcontent-ref %}
+
 {% content-ref url="debugging.md" %}
 [debugging.md](debugging.md)
 {% endcontent-ref %}
