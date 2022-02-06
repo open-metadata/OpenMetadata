@@ -49,6 +49,7 @@ from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
@@ -96,7 +97,7 @@ class EntityList(Generic[T], BaseModel):
 
 
 class OpenMetadata(
-    OMetaMlModelMixin, OMetaTableMixin, OMetaVersionMixin, Generic[T, C]
+    OMetaMlModelMixin, OMetaTableMixin, OMetaVersionMixin, OMetaTagMixin, Generic[T, C]
 ):
     """
     Generic interface to the OpenMetadata API
@@ -211,7 +212,7 @@ class OpenMetadata(
         if issubclass(entity, Report):
             return "/reports"
 
-        if issubclass(entity, Tag):
+        if issubclass(entity, (Tag, TagCategory)):
             return "/tags"
 
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
