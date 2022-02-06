@@ -66,19 +66,19 @@ class OMetaTagMixinGet(TestCase):
         server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
         self.metadata = OpenMetadata(server_config)
 
-    def test_tag_category(self):
+    def test_get_tag_category(self):
         """Test GET primary tag"""
 
-        tag_category = self.metadata.tag_category(
+        tag_category = self.metadata.get_tag_category(
             entity=TagCategory, category_name=CATEGORY_NAME
         )
 
         self.assertEqual(tag_category.name.__root__, CATEGORY_NAME)
 
-    def test_primary_tag(self):
+    def test_get_primary_tag(self):
         """Test GET tag by category"""
 
-        primary_tag = self.metadata.primary_tag(
+        primary_tag = self.metadata.get_primary_tag(
             entity=Tag,
             category_name=CATEGORY_NAME,
             primary_tag_fqn=PRIMARY_TAG_NAME,
@@ -86,10 +86,10 @@ class OMetaTagMixinGet(TestCase):
 
         self.assertEqual(primary_tag.name.__root__, PRIMARY_TAG_NAME)
 
-    def test_secondary_tag(self):
+    def test_get_secondary_tag(self):
         """Test GET secondary"""
 
-        secondary_tag = self.metadata.secondary_tag(
+        secondary_tag = self.metadata.get_secondary_tag(
             entity=Tag,
             category_name=CATEGORY_NAME,
             primary_tag_fqn=PRIMARY_TAG_NAME,

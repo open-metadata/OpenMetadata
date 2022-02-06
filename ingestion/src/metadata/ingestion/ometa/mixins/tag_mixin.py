@@ -49,7 +49,7 @@ class OMetaTagMixin:
         resp = self.client.post(path=path, data=tag_category_body.json())
         logger.info(f"Created tag category: {resp}")
 
-    def tag_category(
+    def get_tag_category(
         self, entity: Type[T], category_name: str, fields: Optional[List[str]] = None
     ) -> Optional[T]:
         """Get tag categories
@@ -86,7 +86,7 @@ class OMetaTagMixin:
         resp = self.client.post(path=path, data=primary_tag_body.json())
         logger.info(f"Create primary tag in category {category_name}: {resp}")
 
-    def primary_tag(
+    def get_primary_tag(
         self,
         entity: Type[T],
         category_name: str,
@@ -139,7 +139,7 @@ class OMetaTagMixin:
         )
 
     # pylint: disable=too-many-arguments
-    def secondary_tag(
+    def get_secondary_tag(
         self,
         entity: Type[T],
         category_name: str,
