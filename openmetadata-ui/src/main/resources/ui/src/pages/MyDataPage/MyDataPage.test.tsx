@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
+import { ReactNode } from 'react-markdown';
 import MyDataPageComponent from './MyDataPage.component';
 
 jest.mock('../../components/MyData/MyData.component', () => {
@@ -36,6 +37,16 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
   ),
 }));
 
+jest.mock('../../axiosAPIs/airflowPipelineAPI', () => ({
+  getAirflowPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+}));
+
 jest.mock('../../utils/ServiceUtils', () => ({
   getAllServices: jest.fn().mockImplementation(() => Promise.resolve(['test'])),
   getEntityCountByService: jest.fn().mockReturnValue({
@@ -46,11 +57,41 @@ jest.mock('../../utils/ServiceUtils', () => ({
   }),
 }));
 
+const mockAuth = {
+  isAuthDisabled: true,
+};
+
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn(() => mockAuth),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({
+    pathname: 'pathname',
+  }),
+}));
+
+jest.mock('../../utils/APIUtils', () => ({
+  formatDataResponse: jest.fn(),
+}));
+
+jest.mock('../../components/containers/PageContainerV1', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }: { children: ReactNode }) => (
+      <div data-testid="PageContainerV1">{children}</div>
+    ));
+});
+
+jest.mock('../../components/MyData/MyData.component', () => {
+  return jest.fn().mockImplementation(() => <p>MyData.component</p>);
+});
+
 describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);
 
-    const myData = await findByTestId(container, 'my-data-component');
+    const myData = await findByText(container, /MyData.component/i);
 
     expect(myData).toBeInTheDocument();
   });
