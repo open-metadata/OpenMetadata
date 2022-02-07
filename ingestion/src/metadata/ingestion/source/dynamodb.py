@@ -29,6 +29,7 @@ class DynamoDBSourceConfig(AWSClientConfigModel):
     service_name: str
     endpoint_url: str
     host_port: str = ""
+    db_name = "DynamoDB"
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -74,7 +75,7 @@ class DynamodbSource(Source[Entity]):
             tables = list(self.dynamodb.tables.all())
             for table in tables:
                 database_entity = Database(
-                    name="Dynamo_Database",
+                    name=self.config.db_name,
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
 
