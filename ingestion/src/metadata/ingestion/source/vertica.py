@@ -19,7 +19,11 @@ from sqlalchemy_vertica.base import VerticaDialect
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-from metadata.utils.sql_queries import VERTICA_GET_COLUMNS, VERTICA_GET_PRIMARY_KEYS
+from metadata.utils.sql_queries import (
+    VERTICA_GET_COLUMNS,
+    VERTICA_GET_PRIMARY_KEYS,
+    VERTICA_VIEW_DEFINITION,
+)
 
 
 @reflection.cache
@@ -168,8 +172,33 @@ def _get_column_info(
     return column_info
 
 
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    if schema is not None:
+        schema_condition = "lower(table_schema) = '%(schema)s'" % {
+            "schema": schema.lower()
+        }
+    else:
+        schema_condition = "1"
+
+    s = sql.text(
+        dedent(
+            VERTICA_VIEW_DEFINITION.format(
+                view_name=view_name.lower(), schema_condition=schema_condition
+            )
+        )
+    )
+    rows = [row for row in connection.execute(s)]
+    if len(rows) >= 1:
+        return rows[0][0]
+    return None
+
+
 VerticaDialect.get_columns = get_columns  # pylint: disable=protected-access
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
+VerticaDialect.get_view_definition = (
+    get_view_definition  # pylint: disable=protected-access
+)
 
 
 class VerticaConfig(SQLConnectionConfig):
