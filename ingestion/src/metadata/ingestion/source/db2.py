@@ -9,17 +9,21 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from sqlalchemy.engine import reflection
 from ibm_db_sa.base import DB2Dialect
+from sqlalchemy.engine import reflection
+
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
+
 @reflection.cache
 def get_pk_constraint(self, bind, table_name, schema=None, **kw):
-    return {'constrained_columns': [], 'name': 'undefined'}
+    return {"constrained_columns": [], "name": "undefined"}
 
-DB2Dialect.get_pk_constraint= get_pk_constraint
+
+DB2Dialect.get_pk_constraint = get_pk_constraint
+
 
 class Db2Config(SQLConnectionConfig):
     host_port = "localhost:50000"
