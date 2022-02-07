@@ -1,4 +1,10 @@
-# Troubleshooting Metadata Ingestion
+# Troubleshooting Connectors
+
+## Contents
+
+* [Ensure that your connector version and OpenMetadata version match](troubleshooting-connectors.md#ensure-that-your-connector-version-and-openmetadata-version-match)
+* [ERROR: No matching distribution found for openmetadata-ingestion](troubleshooting-connectors.md#error-no-matching-distribution-found-for-openmetadata-ingestion)
+* [ERROR: Failed building wheel for cryptography](troubleshooting-connectors.md#error-failed-building-wheel-for-cryptography)
 
 ## Ensure that your connector version and OpenMetadata version  match
 
@@ -40,4 +46,19 @@ ERROR: No matching distribution found for openmetadata-ingestion...
 ```
 
 Please ensure that your Python version is 3.8.0 or above.
+
+## **ERROR: Failed building wheel for cryptography**
+
+When attempting to install connector Python packages, you might encounter the following error. The error might include a mention of a Rust compiler.
+
+```
+Failed to build cryptography
+ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
+```
+
+This error usually occurs due to an older version of pip. Try upgrading pip as follows.
+
+```
+pip3 install --upgrade pip setuptools
+```
 
