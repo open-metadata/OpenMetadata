@@ -7,8 +7,9 @@
     * For an easy install of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
     ```
-    docker-compose -f docker/local-metadata/docker-compose-dev.yml up
+    docker compose -f docker/local-metadata/docker-compose-dev.yml up
     ```
+    * See notes for linux users [here](build-code-run-tests.md#linux-install-notes)
 *   Bootstrap MySQL with tables
 
     1. Create a distribution as explained [here](build-code-run-tests.md#create-a-distribution-packaging)
@@ -26,7 +27,6 @@
     ```
     python3 -m venv venv
     source venv/bin/activate
-    pip install -r ingestion/requirements.txt
     make install_dev generate
     cd ingestion
     pip install -e '.[sample-data, elasticsearch]'
@@ -69,34 +69,6 @@ Add a new Run/Debug configuration like the below screenshot.
 
 ![Intellij Runtime Configuration](<../../.gitbook/assets/Intellij-Runtime Config.png>)
 
-## Add missing dependency
-
-Right-click on catalog-rest-service
-
-![](../../.gitbook/assets/image-1-.png)
-
-Click on "Open Module Settings"
-
-![](../../.gitbook/assets/image-2-.png)
-
-Go to "Dependencies"
-
-![](../../.gitbook/assets/image-3-.png)
-
-Click “+” at the bottom of the dialog box and click "Add"
-
-![](../../.gitbook/assets/image-4-.png)
-
-Click on Library
-
-![](../../.gitbook/assets/image-5-.png)
-
-In that list look for "jersey-client:2.25.1"
-
-![](../../.gitbook/assets/image-6-.png)
-
-Select it and click "OK". Now run/debug the application.
-
 ## Troubleshooting
 
 * If you see blank page at http://localhost:8585 , please check the logs at `logs/openmetadata.log`. You might be encountering one of the following errors:
@@ -105,6 +77,13 @@ Select it and click "OK". Now run/debug the application.
     * If ElasticSearch logs show `high disk watermark [90%] exceeded`, try changing Preferences -> Resources -> Disk Image Size to at least 16GB
   * `Public Key Retrieval is not allowed` - verify that the JDBC connect URL in `conf/openmetadata.yaml` is configured with the parameter `allowPublicKeyRetrieval=true`
   * Browser console shows javascript errors, try doing a [clean build](build-code-run-tests.md#building). Some npm packages may not have been built properly.
+
+## Linux Install Notes
+
+If you are installing docker for the first time on linux you may run into [a known issue](https://github.com/docker/compose-cli/issues/1820) with `docker compose`.
+To get around this follow [the workaround here](https://github.com/docker/compose-cli/issues/1820#issuecomment-864764001) issue to ensure that docker-compose v2 is installed as a plugin under `$HOME/.docker/cli-plugins`
+
+Also be sure to follow the [docker post install steps](https://docs.docker.com/engine/install/linux-postinstall/) so that you can run docker without `sudo`.
 
 ## Coding Style
 
