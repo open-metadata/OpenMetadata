@@ -22,7 +22,7 @@ from google.cloud import logging
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.bigquery import BigQueryConfig
+from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.utils.helpers import get_start_and_end
 
@@ -40,16 +40,14 @@ class BigqueryUsageSource(Source[TableQuery]):
         self.project_id = self.config.project_id
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.status = SQLSourceStatus()
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
-            "credentials_path"
-        ]
+
         if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
             if config.options.get("credentials_path"):
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
                     "credentials_path"
                 ]
             elif config.options.get("credentials"):
-                self.temp_credentials = self.create_credential_temp_file(
+                self.temp_credentials = BigquerySource.create_credential_temp_file(
                     credentials=config.options.get("credentials")
                 )
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.temp_credentials
