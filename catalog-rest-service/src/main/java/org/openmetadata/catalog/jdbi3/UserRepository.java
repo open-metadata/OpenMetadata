@@ -25,12 +25,9 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -141,15 +138,11 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
-    // Populate default roles.
-    Set<UUID> roleIdsSet =
-        daoCollection.roleDAO().getDefaultRolesIds().stream().map(UUID::fromString).collect(Collectors.toSet());
-    if (roleIds != null) {
-      roleIdsSet.addAll(new HashSet<>(roleIds));
+    if (roleIds == null) {
+      return Collections.emptyList(); // Return an empty roles list
     }
-
     List<EntityReference> validatedRoles = new ArrayList<>();
-    for (UUID roleId : roleIdsSet) {
+    for (UUID roleId : roleIds) {
       validatedRoles.add(daoCollection.roleDAO().findEntityReferenceById(roleId));
     }
     return validatedRoles;
@@ -202,6 +195,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private void assignTeams(User user, List<EntityReference> teams) {
+    // Query - add team to the user
     teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
     for (EntityReference team : teams) {
       daoCollection
