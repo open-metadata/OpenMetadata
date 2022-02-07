@@ -344,7 +344,7 @@ const EntityTable = ({
                   return (
                     <td
                       className={classNames(
-                        'tableBody-cell tw-group tw-relative'
+                        'tableBody-cell tw-group tw-relative tw-align-baseline'
                       )}
                       key={index}
                       {...cell.getCellProps()}>
