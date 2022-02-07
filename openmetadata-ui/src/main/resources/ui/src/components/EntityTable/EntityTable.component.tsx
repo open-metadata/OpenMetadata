@@ -353,7 +353,7 @@ const EntityTable = ({
                           {...row.getToggleRowExpandedProps({})}
                           className="tw-mr-2 tw-cursor-pointer"
                           style={{
-                            marginLeft: `${row.depth * 25}px`,
+                            marginLeft: `${row.depth * 35}px`,
                           }}>
                           {row.isExpanded ? (
                             <i className="fas fa-caret-down" />
@@ -614,7 +614,7 @@ const EntityTable = ({
                             <span
                               style={{
                                 paddingLeft: `${
-                                  row.canExpand ? '0px' : `${row.depth * 25}px`
+                                  row.canExpand ? '0px' : `${row.depth * 35}px`
                                 }`,
                               }}>
                               {getConstraintIcon(row.original.constraint)}

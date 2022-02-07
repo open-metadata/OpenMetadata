@@ -23,10 +23,10 @@ import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
+import Avatar from '../common/avatar/Avatar';
 import PopOver from '../common/popover/PopOver';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
-import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import { NavBarProps } from './NavBar.interface';
 
 const NavBar = ({
@@ -37,6 +37,7 @@ const NavBar = ({
   isFeatureModalOpen,
   isTourRoute = false,
   pathname,
+  username,
   isSearchBoxOpen,
   handleSearchBoxOpen,
   handleFeatureModal,
@@ -86,7 +87,7 @@ const NavBar = ({
             />
             <input
               autoComplete="off"
-              className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs"
+              className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs tw-ml-4"
               data-testid="searchBox"
               id="searchBox"
               placeholder="Search for Table, Topics, Dashboards and Pipeline"
@@ -190,14 +191,7 @@ const NavBar = ({
                         />
                       </div>
                     ) : (
-                      <IconDefaultUserProfile
-                        className="tw--mr-2"
-                        style={{
-                          height: '22px',
-                          width: '22px',
-                          borderRadius: '50%',
-                        }}
-                      />
+                      <Avatar name={username} width="30" />
                     )}
                   </PopOver>
                 </>

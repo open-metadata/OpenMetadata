@@ -455,7 +455,7 @@ export const getInfoElements = (data: ExtraInfo) => {
               {data.key === 'Owner' ? (
                 <span
                   className={classNames(
-                    'tw-mr-1 tw-inline-block tw-truncate tw-align-text-bottom',
+                    'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
                     { 'tw-w-52': (displayVal as string).length > 32 }
                   )}
                   title={displayVal as string}>

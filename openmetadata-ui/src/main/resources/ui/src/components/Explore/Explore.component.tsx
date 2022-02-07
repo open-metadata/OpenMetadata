@@ -61,7 +61,6 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
-import SVGIcons from '../../utils/SvgUtils';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
 
@@ -317,7 +316,7 @@ const Explore: React.FC<ExploreProps> = ({
           <span className="tw-mr-2">Sort by:</span>
           <span className="tw-relative">
             <Button
-              className="tw-underline"
+              className="hover:tw-no-underline focus:tw-no-underline"
               data-testid="sortBy"
               size="custom"
               theme="primary"
@@ -427,15 +426,6 @@ const Explore: React.FC<ExploreProps> = ({
                   onClick={() => {
                     onTabChange(tabDetail.tab);
                   }}>
-                  <SVGIcons
-                    alt="icon"
-                    className="tw-h-4 tw-w-4 tw-mr-2"
-                    icon={
-                      tabDetail.tab === currentTab
-                        ? tabDetail.selectedIcon
-                        : tabDetail.icon
-                    }
-                  />
                   {tabDetail.label}
                   <span className="tw-pl-2">
                     {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}

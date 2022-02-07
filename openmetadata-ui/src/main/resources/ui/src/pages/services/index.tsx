@@ -376,7 +376,7 @@ const ServicesPage = () => {
 
               {getCountBadge(
                 servicesCount[tab.name],
-                '',
+                'tw-self-center',
                 tab.name === serviceName
               )}
             </div>

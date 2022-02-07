@@ -54,7 +54,7 @@ const SchemaTab: FunctionComponent<Props> = ({
           <Searchbar
             placeholder="Find in table..."
             searchValue={searchText}
-            typingInterval={1500}
+            typingInterval={500}
             onSearch={handleSearchAction}
           />
         </div>

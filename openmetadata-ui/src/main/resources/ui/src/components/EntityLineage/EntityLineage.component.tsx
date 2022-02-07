@@ -624,7 +624,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   return (
     <Fragment>
       {!deleted ? (
-        <div className="tw-relative tw-h-full tw--mx-4 tw--mt-4">
+        <div
+          className={classNames(
+            'tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4'
+          )}>
           <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
             <ReactFlowProvider>
               <ReactFlow
@@ -660,7 +663,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 onNodeMouseLeave={onNodeMouseLeave}
                 onNodeMouseMove={onNodeMouseMove}>
                 <CustomControls
-                  className="tw-absolute tw-top-1 tw-right-1 tw-bottom-full tw-ml-4 tw-mt-4"
+                  className="tw-absolute tw-top-1 tw-right-3 tw-bottom-full tw-ml-4 tw-mt-4"
                   fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
                   {!deleted && (
                     <NonAdminAction
