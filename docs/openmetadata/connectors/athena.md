@@ -34,21 +34,21 @@ python3 --version
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
 1. [Prepare a Python virtual environment](athena.md#1.-prepare-a-python-virtual-environment)
-2. [Install the Python module for this connector](athena.md#2.-install-the-python-module-for-this-connector)&#x20;
-3. [Create a configuration file using template JSON](athena.md#3.-create-a-configuration-file-using-template-json)&#x20;
-4. [Configure service settings](athena.md#4.-configure-service-settings)&#x20;
-5. [Enable/disable the data profiler](athena.md#5.-enable-disable-the-data-profiler)&#x20;
-6. [Install the data profiler Python module (optional)](athena.md#6.-install-the-data-profiler-python-module-optional)&#x20;
-7. [Configure data filters (optional)](athena.md#7.-configure-data-filters-optional)&#x20;
-8. [Configure sample data (optional)](athena.md#8.-configure-sample-data-optional)&#x20;
-9. [Configure DBT (optional)](athena.md#9.-configure-dbt-optional)&#x20;
-10. [Confirm sink settings](athena.md#10.-confirm-sink-settings)&#x20;
-11. [Confirm metadata\_server settings](athena.md#11.-confirm-metadata\_server-settings)&#x20;
+2. [Install the Python module for this connector](athena.md#2.-install-the-python-module-for-this-connector)
+3. [Create a configuration file using template JSON](athena.md#3.-create-a-configuration-file-using-template-json)
+4. [Configure service settings](athena.md#4.-configure-service-settings)
+5. [Enable/disable the data profiler](athena.md#5.-enable-disable-the-data-profiler)
+6. [Install the data profiler Python module (optional)](athena.md#6.-install-the-data-profiler-python-module-optional)
+7. [Configure data filters (optional)](athena.md#7.-configure-data-filters-optional)
+8. [Configure sample data (optional)](athena.md#8.-configure-sample-data-optional)
+9. [Configure DBT (optional)](athena.md#9.-configure-dbt-optional)
+10. [Confirm sink settings](athena.md#10.-confirm-sink-settings)
+11. [Confirm metadata\_server settings](athena.md#11.-confirm-metadata\_server-settings)
 12. [Run ingestion workflow](athena.md#12.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
-In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.&#x20;
+In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
@@ -91,7 +91,7 @@ pip3 install --upgrade pip setuptools
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the Athena connector.
 
 ```javascript
-pip3 install 'openmetadata-ingestion[athena]'
+pip3 install --upgrade 'openmetadata-ingestion[athena]'
 ```
 
 ### **3. Create a configuration file using template JSON**

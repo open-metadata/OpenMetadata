@@ -28,7 +28,7 @@ To check what version of Docker you have, please use the following command.
 docker --version
 ```
 
-If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).  You also need the latest `docker-compose` installed, please visit [Install Docker Compose](https://docs.docker.com/compose/install/).
+If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/). You also need the latest `docker-compose` installed, please visit [Install Docker Compose](https://docs.docker.com/compose/install/).
 
 {% hint style="warning" %}
 Note: You must **allocate at least 4GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
@@ -226,9 +226,7 @@ sudo apt install python3-pip  python3-venv
 
 Follow the [OSX instructions](run-openmetadata.md#1.-create-a-directory-for-openmetadata)
 
-
-
-## Upgrade OpenMetadata
+## Upgrade OpenMetadata (Local Deployment)
 
 If you would like to upgrade your OpenMetadata deployment installed following the procedure above, this procedure will guide you through the upgrade process.
 
@@ -278,9 +276,9 @@ ERROR: No matching distribution found for openmetadata-ingestion[docker]==
 
 The error messages are expected. This is the accepted means of checking available versions for a Python module using `pip`.
 
-The output provides a complete list of available versions and enables you to determine whether there are release versions later than the version you currently have installed. Release versions have the form `x.x.x`. Examples of release versions in the above output include, `0.2.0`, `0.4.2`, and `0.5.0`.&#x20;
+The output provides a complete list of available versions and enables you to determine whether there are release versions later than the version you currently have installed. Release versions have the form `x.x.x`. Examples of release versions in the above output include, `0.2.0`, `0.4.2`, and `0.5.0`.
 
-From this output you can also find patch releases (e.g., `0.4.2.1`), release candidates (`0.5.0rc1`), and development releases (e.g., `0.7.0.dev4`).&#x20;
+From this output you can also find patch releases (e.g., `0.4.2.1`), release candidates (`0.5.0rc1`), and development releases (e.g., `0.7.0.dev4`).
 
 ### 4. Stop your currently running deployment
 

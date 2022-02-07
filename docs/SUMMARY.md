@@ -7,6 +7,7 @@
 * [Tutorials](tutorials/README.md)
   * [Tutorial: Data Discovery with OpenMetadata](tutorials/tutorial-data-discovery-with-openmetadata.md)
 * [Connectors](install/metadata-ingestion/connectors/README.md)
+  * [Troubleshooting Metadata Ingestion](connectors/troubleshooting-metadata-ingestion.md)
   * [Athena](openmetadata/connectors/athena.md)
   * [BigQuery](openmetadata/connectors/bigquery.md)
   * [BigQuery Usage](openmetadata/connectors/bigquery-usage.md)
