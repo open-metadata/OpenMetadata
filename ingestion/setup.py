@@ -76,6 +76,7 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
     "glue": {"boto3~=1.19.12"},
+    "dynamodb": {"boto3~=1.19.12"},
     "hive": {
         "pyhive~=0.6.3",
         "thrift~=0.13.0",

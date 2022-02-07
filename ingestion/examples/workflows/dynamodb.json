@@ -1,0 +1,25 @@
+{
+    "source": {
+      "type": "dynamodb",
+      "config": {
+        "aws_access_key_id": "aws_access_key_id",
+        "aws_secret_access_key": "aws_secret_access_key",
+        "service_name": "DynamoDB",
+        "region_name": "us-east-2",
+        "endpoint_url": "dynamodb.us-east-2.amazonaws.com",
+        "db_name":"custom_database_name"
+      }
+    },
+    "sink": {
+      "type": "metadata-rest",
+      "config": {}
+    },
+    "metadata_server": {
+      "type": "metadata-server",
+      "config": {
+        "api_endpoint": "http://localhost:8585/api",
+        "auth_provider_type": "no-auth"
+      }
+    }
+  }
+    

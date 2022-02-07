@@ -67,3 +67,11 @@ class AWSClient:
                 service_name=service_name, endpoint_url=self.config.endpoint_url
             )
         return session.client(service_name=service_name)
+
+    def get_resource(self, service_name: str) -> Any:
+        session = self._get_session()
+        if self.config.endpoint_url is not None:
+            return session.resource(
+                service_name=service_name, endpoint_url=self.config.endpoint_url
+            )
+        return session.resource(service_name=service_name)
