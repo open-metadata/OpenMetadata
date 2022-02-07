@@ -4,10 +4,10 @@
       "config": {
         "aws_access_key_id": "aws_access_key_id",
         "aws_secret_access_key": "aws_secret_access_key",
-        "service_name": "unique_name_to_identify_database_and_table_metadata",
-        "region_name": "",
-        "endpoint_url": "",
-        "db_name":"unique_name_to_identify_database_in_dynamodb"
+        "service_name": "DynamoDB",
+        "region_name": "us-east-2",
+        "endpoint_url": "dynamodb.us-east-2.amazonaws.com",
+        "db_name":"custom_database_name"
       }
     },
     "sink": {
