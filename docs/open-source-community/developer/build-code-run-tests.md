@@ -8,7 +8,7 @@
     * For an easy install of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
     ```
-    docker-compose -f docker/local-metadata/docker-compose-dev.yml up
+    docker compose -f docker/local-metadata/docker-compose-dev.yml up
     ```
 *   Bootstrap MySQL with tables
 
