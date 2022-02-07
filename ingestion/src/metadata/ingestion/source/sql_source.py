@@ -564,14 +564,17 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             ]
                         col_dict = Column(**parsed_string)
                         try:
-                            if self.config.enable_policy_tags:
-                                if "policy_tags" in column and column["policy_tags"]:
-                                    self.metadata.create_primary_tag_category(
-                                        category=self.config.tag_category_name,
-                                        data=Tag(
-                                            name=column["policy_tags"], description=""
-                                        ),
-                                    )
+                            if (
+                                self.config.enable_policy_tags
+                                and "policy_tags" in column
+                                and column["policy_tags"]
+                            ):
+                                self.metadata.create_primary_tag_category(
+                                    category=self.config.tag_category_name,
+                                    data=Tag(
+                                        name=column["policy_tags"], description=""
+                                    ),
+                                )
                         except APIError:
                             if column["policy_tags"] and self.config.enable_policy_tags:
                                 col_dict.tags = [
