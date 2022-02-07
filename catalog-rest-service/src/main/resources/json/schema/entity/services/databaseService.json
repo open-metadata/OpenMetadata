@@ -23,7 +23,8 @@
         "Vertica",
         "Glue",
         "MariaDB",
-        "Druid"
+        "Druid",
+        "Db2"
       ],
       "javaEnums": [
         {
@@ -70,6 +71,9 @@
         },
         {
           "name": "Druid"
+        },
+        {
+          "name": "Db2"
         }
       ]
     },
