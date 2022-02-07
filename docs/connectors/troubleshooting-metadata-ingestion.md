@@ -30,3 +30,14 @@ See [Upgrade OpenMetadata](../install/upgrade-openmetadata.md) to upgrade produc
 
 See [Upgrade OpenMetadata (Local Deployment)](https://docs.open-metadata.org/install/run-openmetadata#upgrade-openmetadata) to upgrade a test version of OpenMetadata deployed following the instructions in Run OpenMetadata.
 
+## ERROR: No matching distribution found for openmetadata-ingestion
+
+If you receive the following errors when installing connectors:&#x20;
+
+```
+ERROR: Could not find a version that satisfies the requirement openmetadata-ingestion....
+ERROR: No matching distribution found for openmetadata-ingestion...
+```
+
+Please ensure that your Python version is 3.8.0 or above.
+
