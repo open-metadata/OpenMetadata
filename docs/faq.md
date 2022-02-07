@@ -64,7 +64,7 @@ PUT is specifically made for ingestion. For example, if there is a table comment
 
 #### How do I deploy OpenMetadata in an AWS EC2 instance?&#x20;
 
-We have Helm charts to deploy on AWS. If you have a Kubernetes cluster, follow the [Run in Kubernetes guide](install/run-in-kubernetes.md).&#x20;
+We have Helm charts to deploy on AWS. If you have a Kubernetes cluster, follow the [Run in Kubernetes guide](install/kubernetes/run-in-kubernetes.md).&#x20;
 
 You can set up Docker ce and install OpenMetadata via docker-compose or install it as a standalone instance on EC2. If you want to run OpenMetadata on EC2, follow the [Run in Production](install/run-in-production.md) guide. The minimum requirement is 2 GiB RAM.
 
