@@ -262,3 +262,10 @@ VERTICA_GET_PRIMARY_KEYS = """
         AND constraint_type = 'p'
         AND {schema_condition}
     """
+
+VERTICA_VIEW_DEFINITION = """
+      SELECT VIEW_DEFINITION
+      FROM V_CATALOG.VIEWS
+      WHERE table_name='{view_name}'
+      AND {schema_condition}
+"""
