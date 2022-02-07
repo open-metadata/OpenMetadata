@@ -30,7 +30,7 @@ describe('Test FilterContainer Component', () => {
       />
     );
 
-    expect(getByTestId(container, 'filter-container')).toBeInTheDocument();
+    expect(getByTestId(container, 'filter-container-test')).toBeInTheDocument();
   });
 
   it('onClick of checkbox callback function should call', () => {
