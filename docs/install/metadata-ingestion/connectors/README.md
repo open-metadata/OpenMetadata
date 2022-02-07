@@ -45,4 +45,4 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 **ML Services**
 
-* [MlFlow](../../../connectors/mlflow.md)
+* [MLflow](../../../connectors/mlflow.md)
