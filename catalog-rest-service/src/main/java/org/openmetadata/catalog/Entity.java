@@ -211,7 +211,6 @@ public final class Entity {
   }
 
   public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {
-    @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) CLASS_ENTITY_REPOSITORY_MAP.get(clazz);
     if (entityRepository == null) {
       throw new UnhandledServerException(
