@@ -43,6 +43,22 @@ class BigqueryUsageSource(Source[TableQuery]):
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
             "credentials_path"
         ]
+        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            if config.options.get("credentials_path"):
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
+                    "credentials_path"
+                ]
+            elif config.options.get("credentials"):
+                self.temp_credentials = self.create_credential_temp_file(
+                    credentials=config.options.get("credentials")
+                )
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.temp_credentials
+                del config.options["credentials"]
+            else:
+                logger.warning(
+                    "Please refer to the BigQuery connector documentation, especially the credentials part "
+                    "https://docs.open-metadata.org/connectors/bigquery"
+                )
 
     def get_connection_url(self):
         if self.project_id:
