@@ -35,6 +35,7 @@ class BigqueryUsageSource(Source[TableQuery]):
 
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
+        self.temp_credentials = None
 
         self.config = config
         self.project_id = self.config.project_id
@@ -55,7 +56,7 @@ class BigqueryUsageSource(Source[TableQuery]):
             else:
                 logger.warning(
                     "Please refer to the BigQuery connector documentation, especially the credentials part "
-                    "https://docs.open-metadata.org/connectors/bigquery"
+                    "https://docs.open-metadata.org/connectors/bigquery-usage"
                 )
 
     def get_connection_url(self):
