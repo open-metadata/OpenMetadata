@@ -46,7 +46,9 @@ class DynamodbSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service = get_database_service_or_create(
-            config, metadata_config, self.config.service_name
+            config=config,
+            metadata_config=metadata_config,
+            service_name=self.config.service_name,
         )
         self.dynamodb = AWSClient(self.config).get_resource("dynamodb")
 

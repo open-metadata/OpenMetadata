@@ -72,7 +72,9 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
     ):
         super().__init__(ctx)
         self.config = config
-        self.service = get_database_service_or_create(config, metadata_config)
+        self.service = get_database_service_or_create(
+            config=config, metadata_config=metadata_config
+        )
         self.status = SalesforceSourceStatus()
         self.sf = Salesforce(
             username=self.config.username,

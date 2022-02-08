@@ -68,8 +68,11 @@ class GcsSource(Source[Entity]):
         self.config = config
         self.status = SourceStatus()
         self.service = get_storage_service_or_create(
-            {"name": self.config.service_name, "serviceType": StorageServiceType.GCS},
-            metadata_config,
+            service_json={
+                "name": self.config.service_name,
+                "serviceType": StorageServiceType.GCS,
+            },
+            metadata_config=metadata_config,
         )
         self.gcs = storage.Client()
 
