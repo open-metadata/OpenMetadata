@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
-import React from 'react';
-import Onboarding from './Onboarding';
+package org.openmetadata.catalog.fernet;
 
-describe('Test Onboarding Component', () => {
-  it('Component should render', () => {
-    const { getByTestId } = render(<Onboarding />);
+import javax.validation.constraints.NotEmpty;
 
-    const onboarding = getByTestId('onboarding');
+public class FernetConfiguration {
 
-    expect(onboarding).toBeInTheDocument();
-  });
-});
+  @NotEmpty private String fernetKey;
+
+  public String getFernetKey() {
+    return fernetKey;
+  }
+
+  public void setFernetKey(String fernetKey) {
+    this.fernetKey = fernetKey;
+  }
+}

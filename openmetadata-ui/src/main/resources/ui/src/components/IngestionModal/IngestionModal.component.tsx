@@ -295,7 +295,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   </label>
                   <input
                     className="tw-form-inputs tw-px-3 tw-py-1"
-                    data-testid="include-filter-pattern"
+                    data-testid="table-include-filter-pattern"
                     id="tableIncludeFilterPattern"
                     name="tableIncludeFilterPattern"
                     placeholder="Include filter patterns comma seperated"
@@ -314,7 +314,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
                   </label>
                   <input
                     className="tw-form-inputs tw-px-3 tw-py-1"
-                    data-testid="exclude-filter-pattern"
+                    data-testid="table-exclude-filter-pattern"
                     id="tableExcludeFilterPattern"
                     name="tableExcludeFilterPattern"
                     placeholder="Exclude filter patterns comma seperated"

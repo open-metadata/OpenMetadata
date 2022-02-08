@@ -43,6 +43,7 @@ describe('Test TableDataCard Component', () => {
         fullyQualifiedName="testFQN"
         indexType="testIndex"
         name="test card"
+        tags={[]}
       />,
       { wrapper: MemoryRouter }
     );
@@ -51,17 +52,19 @@ describe('Test TableDataCard Component', () => {
     expect(tableDataCard).toBeInTheDocument();
   });
 
-  it('Link should have proper path', () => {
+  it('Component should render for deleted', () => {
     const { getByTestId } = render(
       <TableDataCard
+        deleted
         fullyQualifiedName="testFQN"
         indexType="testIndex"
         name="test card"
+        tags={[]}
       />,
       { wrapper: MemoryRouter }
     );
-    const link = getByTestId('table-link');
+    const deleted = getByTestId('deleted');
 
-    expect(link).toHaveAttribute('href', `/EntityLink`);
+    expect(deleted).toBeInTheDocument();
   });
 });

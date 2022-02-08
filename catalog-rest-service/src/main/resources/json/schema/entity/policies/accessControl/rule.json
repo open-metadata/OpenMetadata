@@ -16,7 +16,8 @@
         "UpdateDescription",
         "UpdateOwner",
         "UpdateTags",
-        "UpdateLineage"
+        "UpdateLineage",
+        "DecryptTokens"
       ],
       "javaEnums": [
         { "name": "SuggestDescription" },
@@ -24,7 +25,8 @@
         { "name": "UpdateDescription" },
         { "name": "UpdateOwner" },
         { "name": "UpdateTags" },
-        { "name": "UpdateLineage" }
+        { "name": "UpdateLineage" },
+        { "name": "DecryptTokens" }
       ]
     }
   },

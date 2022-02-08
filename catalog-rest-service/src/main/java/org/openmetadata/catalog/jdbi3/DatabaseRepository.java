@@ -193,7 +193,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       return daoCollection.dbServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE, Entity.DATABASE_SERVICE));
   }
 
   @Transaction

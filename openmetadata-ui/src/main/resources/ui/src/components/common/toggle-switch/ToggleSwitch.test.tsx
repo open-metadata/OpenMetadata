@@ -35,11 +35,11 @@ describe('Test Toggle Switch Component', () => {
       'toggle-checkbox'
     )) as HTMLInputElement;
 
-    expect(toggleSwitchElement.checked).toBe(false);
-
-    fireEvent.change(toggleSwitchElement, { target: { checked: true } });
-
     expect(toggleSwitchElement.checked).toBe(true);
+
+    fireEvent.change(toggleSwitchElement, { target: { checked: false } });
+
+    expect(toggleSwitchElement.checked).toBe(false);
   });
 
   it('Renders the Toggle switch in the enabled state if the state is sent to it', async () => {

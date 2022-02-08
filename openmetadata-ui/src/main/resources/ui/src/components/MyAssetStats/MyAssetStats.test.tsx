@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getByTestId, getByText, render } from '@testing-library/react';
+import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import MyAssetStats from './MyAssetStats.component';
@@ -34,31 +34,9 @@ describe('Test MyDataHeader Component', () => {
       }
     );
 
-    const myDataHeader = getByTestId(container, 'data-header-container');
+    const myDataHeader = getByTestId(container, 'data-summary-container');
 
     expect(myDataHeader).toBeInTheDocument();
-  });
-
-  it('Should have main title', () => {
-    const { container } = render(
-      <MyAssetStats
-        countServices={193}
-        entityCounts={{
-          tableCount: 40,
-          topicCount: 13,
-          dashboardCount: 10,
-          pipelineCount: 3,
-        }}
-        ingestionCount={0}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const mainTitle = getByTestId(container, 'main-title');
-
-    expect(mainTitle).toBeInTheDocument();
   });
 
   it('Should have 7 data summary details', () => {
@@ -80,31 +58,7 @@ describe('Test MyDataHeader Component', () => {
 
     const dataSummary = getByTestId(container, 'data-summary-container');
 
-    expect(dataSummary.childElementCount).toBe(7);
-  });
-
-  it('Should display same count as provided by props', () => {
-    const { container } = render(
-      <MyAssetStats
-        countServices={4}
-        entityCounts={{
-          tableCount: 40,
-          topicCount: 13,
-          dashboardCount: 10,
-          pipelineCount: 3,
-        }}
-        ingestionCount={0}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    expect(getByText(container, /40 tables/i)).toBeInTheDocument();
-    expect(getByText(container, /13 topics/i)).toBeInTheDocument();
-    expect(getByText(container, /10 dashboards/i)).toBeInTheDocument();
-    expect(getByText(container, /3 pipelines/i)).toBeInTheDocument();
-    expect(getByText(container, /4 services/i)).toBeInTheDocument();
+    expect(dataSummary.childElementCount).toBe(8);
   });
 
   it('OnClick it should redirect to respective page', () => {
@@ -131,12 +85,12 @@ describe('Test MyDataHeader Component', () => {
     const user = getByTestId(container, 'user');
     const terms = getByTestId(container, 'terms');
 
-    expect(tables).toHaveAttribute('href', '/explore/tables');
-    expect(topics).toHaveAttribute('href', '/explore/topics');
-    expect(dashboards).toHaveAttribute('href', '/explore/dashboards');
-    expect(pipelines).toHaveAttribute('href', '/explore/pipelines');
+    expect(tables).toHaveAttribute('href', '/explore/tables/');
+    expect(topics).toHaveAttribute('href', '/explore/topics/');
+    expect(dashboards).toHaveAttribute('href', '/explore/dashboards/');
+    expect(pipelines).toHaveAttribute('href', '/explore/pipelines/');
     expect(service).toHaveAttribute('href', '/services');
-    expect(user).toHaveAttribute('href', '/teams');
+    expect(user).toHaveAttribute('href', '/user-list');
     expect(terms).toHaveAttribute('href', '/teams');
   });
 });

@@ -45,7 +45,7 @@ describe('Test Popover Component', () => {
     expect(popover).toBeInTheDocument();
   });
 
-  it('Onclick popover should display title', () => {
+  it('Onclick popover should display title', async () => {
     const { container } = render(
       <PopOver position="bottom" title="test popover" trigger="click">
         <span>Hello World</span>
@@ -60,11 +60,11 @@ describe('Test Popover Component', () => {
       })
     );
 
-    expect(screen.getByText(/test popover/i)).toBeInTheDocument();
+    expect(await screen.findByText(/test popover/i)).toBeInTheDocument();
   });
 
-  it('Onclick popover should display html', () => {
-    const html = <p>test popover</p>;
+  it('Onclick popover should display html', async () => {
+    const html = <span>test popover</span>;
     const { container } = render(
       <PopOver html={html} position="bottom" trigger="click">
         <span>Hello World</span>
@@ -79,6 +79,6 @@ describe('Test Popover Component', () => {
       })
     );
 
-    expect(screen.getByText(/test popover/i)).toBeInTheDocument();
+    expect(await screen.findByText(/test popover/i)).toBeInTheDocument();
   });
 });

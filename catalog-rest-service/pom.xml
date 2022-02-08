@@ -23,6 +23,10 @@
 
   <dependencies>
     <dependency>
+      <groupId>com.macasaet.fernet</groupId>
+      <artifactId>fernet-java8</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.openmetadata</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>

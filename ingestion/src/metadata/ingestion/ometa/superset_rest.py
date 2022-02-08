@@ -45,6 +45,7 @@ class SupersetConfig(ConfigModel):
     service_type: str = "Superset"
     provider: str = "db"
     options: dict = {}
+    db_service_name: Optional[str] = None
 
 
 class SupersetAuthenticationProvider(AuthenticationProvider):
@@ -91,7 +92,7 @@ class SupersetAPIClient:
         client_config = ClientConfig(
             base_url=config.url,
             api_version="api/v1",
-            auth_token=f"Bearer {self._auth_provider.auth_token()}",
+            auth_token=f"{self._auth_provider.auth_token()}",
             auth_header="Authorization",
             allow_redirects=True,
         )
@@ -147,6 +148,10 @@ class SupersetAPIClient:
         response = self.client.get(
             f"/chart?q=(page:{current_page},page_size:{page_size})"
         )
+        return response
+
+    def fetch_charts_with_id(self, chart_id):
+        response = self.client.get(f"/chart/{chart_id}")
         return response
 
     def fetch_datasource(self, datasource_id: str):

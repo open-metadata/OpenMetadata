@@ -170,7 +170,8 @@ public class LocationRepository extends EntityRepository<Location> {
     if (entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
       return daoCollection.storageServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.LOCATION));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.LOCATION, STORAGE_SERVICE));
   }
 
   @Override
@@ -231,7 +232,7 @@ public class LocationRepository extends EntityRepository<Location> {
       return daoCollection.storageServiceDAO().findEntityReferenceById(service.getId());
     }
     throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.LOCATION));
+        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.LOCATION, STORAGE_SERVICE));
   }
 
   public void setService(Location location, EntityReference service) throws IOException {

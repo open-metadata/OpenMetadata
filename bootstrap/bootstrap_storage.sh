@@ -53,7 +53,7 @@ execute() {
 
 printUsage() {
     cat <<-EOF
-USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection]
+USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate]
    create           : Creates the tables. The target database should be empty
    migrate          : Migrates the database to the latest version or creates the tables if the database is empty. Use "info" to see the current version and the pending migrations
    info             : Shows the list of migrations applied and the pending migration waiting to be applied on the target database
@@ -67,6 +67,7 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-
    repair           : Repairs the DATABASE_CHANGE_LOG table which is used to track all the migrations on the target database
                       This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target database
    check-connection : Checks if a connection can be successfully obtained for the target database
+   rotate           : Rotate the Fernet Key defined in $FERNET_KEY
 EOF
 }
 
@@ -80,7 +81,7 @@ fi
 opt="$1"
 
 case "${opt}" in
-create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create )
+create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate)
     execute "${opt}"
     ;;
 drop-create )
@@ -91,6 +92,9 @@ drop-create-all )
     ;;
 migrate-all )
     execute "migrate" && execute "es-migrate"
+    ;;
+rotate )
+    execute "rotate"
     ;;
 *)
     printUsage

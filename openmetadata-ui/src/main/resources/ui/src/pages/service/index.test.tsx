@@ -15,7 +15,6 @@ import {
   findAllByTestId,
   findByTestId,
   findByText,
-  fireEvent,
   queryByText,
   render,
 } from '@testing-library/react';
@@ -65,6 +64,21 @@ const mockDatabase = {
   },
 };
 
+jest.mock('../../axiosAPIs/airflowPipelineAPI', () => ({
+  getAirflowPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+        paging: { total: 0 },
+      },
+    })
+  ),
+  deleteAirflowPipelineById: jest.fn(),
+  addAirflowPipeline: jest.fn(),
+  triggerAirflowPipelineById: jest.fn(),
+  updateAirflowPipeline: jest.fn(),
+}));
+
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
   getServiceByFQN: jest
     .fn()
@@ -87,9 +101,10 @@ jest.mock(
 );
 
 jest.mock('../../utils/ServiceUtils', () => ({
-  getFrequencyTime: jest.fn().mockReturnValue('FrequencyTime'),
+  getIsIngestionEnable: jest.fn().mockReturnValue(true),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
+  isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock(
@@ -98,6 +113,14 @@ jest.mock(
     return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
   }
 );
+
+jest.mock('../../components/common/description/Description', () => {
+  return jest.fn().mockReturnValue(<div>Description_component</div>);
+});
+
+jest.mock('../../components/common/TabsPane/TabsPane', () => {
+  return jest.fn().mockReturnValue(<div>TabsPane_component</div>);
+});
 
 jest.mock(
   '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -119,14 +142,14 @@ describe('Test ServicePage Component', () => {
       container,
       'description-container'
     );
-    const descriptionData = await findByTestId(container, 'description-data');
-    const descriptionEdit = await findByTestId(container, 'description-edit');
+    const description = await findByText(container, /Description_component/i);
+    const tabPane = await findByText(container, /TabsPane_component/i);
 
     expect(servicePage).toBeInTheDocument();
     expect(titleBreadcrumb).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
-    expect(descriptionData).toBeInTheDocument();
-    expect(descriptionEdit).toBeInTheDocument();
+    expect(description).toBeInTheDocument();
+    expect(tabPane).toBeInTheDocument();
   });
 
   it('Table should be visible if data is available', async () => {
@@ -148,19 +171,5 @@ describe('Test ServicePage Component', () => {
     const column = await findAllByTestId(container, 'column');
 
     expect(column.length).toBe(1);
-  });
-
-  it('on click of edit description icon ModalWithMarkdownEditor should open', async () => {
-    const { container } = render(<ServicePage />, {
-      wrapper: MemoryRouter,
-    });
-
-    const editIcon = await findByTestId(container, 'description-edit');
-
-    fireEvent.click(editIcon);
-
-    expect(
-      await findByText(container, /ModalWithMarkdownEditor/i)
-    ).toBeInTheDocument();
   });
 });

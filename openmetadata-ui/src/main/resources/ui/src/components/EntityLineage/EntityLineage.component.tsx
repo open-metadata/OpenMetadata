@@ -89,7 +89,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
-  isOwner,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
   const { userPermissions, isAuthDisabled, isAdminUser } = useAuth();
@@ -670,7 +669,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                           <p>You do not have permission to edit the lineage</p>
                         </>
                       }
-                      isOwner={isOwner}
                       permission={Operation.UpdateLineage}>
                       <ControlButton
                         className={classNames(
@@ -683,8 +681,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                             'tw-opacity-40':
                               !userPermissions[Operation.UpdateLineage] &&
                               !isAuthDisabled &&
-                              !isAdminUser &&
-                              !isOwner,
+                              !isAdminUser,
                           }
                         )}
                         onClick={() => {

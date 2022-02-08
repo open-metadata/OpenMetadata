@@ -140,7 +140,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   private static final Map<String, EntityResourceTest<?, ?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
   private final String entityType;
-  private final Class<T> entityClass;
+  protected final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
@@ -1829,6 +1829,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     assertEquals(expected.size(), actual.size());
     for (int i = 0; i < expected.size(); i++) {
       validate.accept(expected.get(i), actual.get(i));
+    }
+  }
+
+  protected void assertEntityReferencesFieldChange(
+      List<EntityReference> expectedList, List<EntityReference> actualList) {
+    for (EntityReference expected : expectedList) {
+      EntityReference actual =
+          actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);
+      assertNotNull(actual, "Expected entity " + expected.getId() + " not found");
     }
   }
 
