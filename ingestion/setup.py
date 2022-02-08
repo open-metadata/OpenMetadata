@@ -105,7 +105,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
-    "tableau": {"tableau-api-lib==0.1.22"},
+    "tableau": {"tableau-api-lib==0.1.29"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
     "airflow": {"apache-airflow >= 1.10.2"},
@@ -113,7 +113,7 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
     "sklearn": {"scikit-learn==1.0.2"},
-    "db2":{"ibm-db-sa==0.3.7"},
+    "db2": {"ibm-db-sa==0.3.7"},
 }
 dev = {
     "boto3==1.20.14",
