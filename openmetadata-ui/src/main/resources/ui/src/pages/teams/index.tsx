@@ -33,6 +33,7 @@ import NonAdminAction from '../../components/common/non-admin-action/NonAdminAct
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
+import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import {
   ERROR404,
@@ -41,6 +42,7 @@ import {
 } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
 import {
+  EntityReference,
   EntityReference as UserTeams,
   User,
 } from '../../generated/entity/teams/user';
@@ -65,6 +67,10 @@ const TeamsPage = () => {
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
   const [errorData, setErrorData] = useState<FormErrorData>();
+  const [deletingUser, setDeletingUser] = useState<{
+    user: EntityReference | undefined;
+    state: boolean;
+  }>({ user: undefined, state: false });
 
   const showToast = useToastContext();
 
@@ -171,6 +177,13 @@ const TeamsPage = () => {
     setIsAddingUsers(false);
   };
 
+  const deleteUserHandler = (id: string) => {
+    const user = [...(currentTeam?.users as Array<UserTeams>)].find(
+      (u) => u.id === id
+    );
+    setDeletingUser({ user, state: true });
+  };
+
   const deleteUser = (id: string) => {
     const users = [...(currentTeam?.users as Array<UserTeams>)];
     const newUsers = users.filter((user) => {
@@ -181,11 +194,21 @@ const TeamsPage = () => {
       users: newUsers,
     };
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
-    patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
-      if (res.data) {
-        fetchCurrentTeam(res.data.name, true);
-      }
-    });
+    patchTeamDetail(currentTeam?.id, jsonPatch)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchCurrentTeam(res.data.name, true);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.message ?? 'Error while removing user',
+        });
+      })
+      .finally(() => {
+        setDeletingUser({ user: undefined, state: false });
+      });
   };
 
   const getActiveTabClass = (tab: number) => {
@@ -260,10 +283,11 @@ const TeamsPage = () => {
 
             return (
               <UserCard
+                isActionVisible
                 isIconVisible
                 item={User}
                 key={index}
-                onRemove={deleteUser}
+                onRemove={deleteUserHandler}
               />
             );
           })}
@@ -510,6 +534,22 @@ const TeamsPage = () => {
                     onCancel={() => setIsAddingTeam(false)}
                     onChange={(data) => onNewDataChange(data as Team)}
                     onSave={(data) => createNewTeam(data as Team)}
+                  />
+                )}
+                {deletingUser.state && (
+                  <ConfirmationModal
+                    bodyText={`Are you sure want to remove ${
+                      deletingUser.user?.displayName ?? deletingUser.user?.name
+                    }?`}
+                    cancelText="Cancel"
+                    confirmText="Confirm"
+                    header="Removing user"
+                    onCancel={() =>
+                      setDeletingUser({ user: undefined, state: false })
+                    }
+                    onConfirm={() => {
+                      deleteUser(deletingUser.user?.id as string);
+                    }}
                   />
                 )}
               </div>
