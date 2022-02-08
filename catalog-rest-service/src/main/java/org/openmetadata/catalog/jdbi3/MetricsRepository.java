@@ -118,7 +118,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));
   }
 
   static class MetricsEntityInterface implements EntityInterface<Metrics> {

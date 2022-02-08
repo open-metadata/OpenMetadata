@@ -113,7 +113,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
       return daoCollection.dashboardServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DASHBOARD));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DASHBOARD, Entity.DASHBOARD_SERVICE));
   }
 
   public void setService(Dashboard dashboard, EntityReference service) {

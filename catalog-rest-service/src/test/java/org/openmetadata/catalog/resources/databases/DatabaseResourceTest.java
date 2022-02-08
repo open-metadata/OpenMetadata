@@ -34,6 +34,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
@@ -61,6 +62,18 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
+  }
+
+  @Test
+  void post_databaseWithInvalidServiceType_4xx(TestInfo test) {
+    // Create a database with entity reference to databaseServiceType having invalid serviceType
+    CreateDatabase create = createRequest(test);
+    EntityReference invalidService = new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("invalid");
+    create.withService(invalidService);
+    TestUtils.assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidServiceEntity("invalid", Entity.DATABASE, Entity.DATABASE_SERVICE));
   }
 
   @Test
