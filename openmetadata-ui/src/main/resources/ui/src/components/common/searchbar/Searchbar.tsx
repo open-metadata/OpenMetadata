@@ -36,6 +36,7 @@ const Searchbar = ({
   removeMargin = false,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
+  const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   // const typingTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -75,7 +76,7 @@ const Searchbar = ({
         <SVGIcons
           alt="icon-search"
           className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-top-2 tw-left-2 tw-text-center tw-pointer-events-none"
-          icon="icon-searchv1"
+          icon={searchIcon}
         />
         <input
           className="tw-form-inputs tw-relative tw-px-3 tw-py-1 tw-pl-8"
@@ -83,7 +84,9 @@ const Searchbar = ({
           placeholder={placeholder}
           type="text"
           value={userSearch}
+          onBlur={() => setSearchIcon('icon-searchv1')}
           onChange={handleChange}
+          onFocus={() => setSearchIcon('icon-searchv1color')}
         />
       </div>
     </div>
