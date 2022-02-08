@@ -134,3 +134,8 @@ class BigqueryUsageSource(Source[TableQuery]):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def close(self):
+        super().close()
+        if self.temp_credentials:
+            os.unlink(self.temp_credentials)
