@@ -2,10 +2,11 @@
   "source": {
     "type": "superset",
     "config": {
-      "url": "http://localhost:8088",
+      "url": "http://localhost:8080",
       "username": "admin",
       "password": "admin",
-      "service_name": "local_superset"
+      "service_name": "local_superset",
+      "db_service_name": "aws_redshift"
     }
   },
   "sink": {

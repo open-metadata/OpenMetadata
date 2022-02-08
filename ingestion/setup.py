@@ -76,6 +76,7 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
     "glue": {"boto3~=1.19.12"},
+    "dynamodb": {"boto3~=1.19.12"},
     "hive": {
         "pyhive~=0.6.3",
         "thrift~=0.13.0",
@@ -112,6 +113,7 @@ plugins: Dict[str, Set[str]] = {
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
     "sklearn": {"scikit-learn==1.0.2"},
+    "db2":{"ibm-db-sa==0.3.7"},
 }
 dev = {
     "boto3==1.20.14",

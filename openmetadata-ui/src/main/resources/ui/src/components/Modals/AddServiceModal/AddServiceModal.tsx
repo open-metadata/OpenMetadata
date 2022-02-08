@@ -793,6 +793,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           </label>
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="username"
             id="username"
             name="username"
             placeholder="username"
@@ -807,6 +808,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           </label>
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="password"
             id="password"
             name="password"
             placeholder="password"
@@ -832,7 +834,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           />
         </Field>
 
-        <div>
+        <div data-testid="connection-options">
           <div className="tw-flex tw-items-center tw-mt-6">
             <p className="w-form-label tw-mr-3">Connection Options</p>
             <Button
@@ -899,7 +901,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             </div>
           ))}
         </div>
-        <div>
+        <div data-testid="connection-arguments">
           <div className="tw-flex tw-items-center tw-mt-6">
             <p className="w-form-label tw-mr-3">Connection Arguments</p>
             <Button
@@ -1621,7 +1623,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         return (
           <Fragment>
             <div className="tw-flex tw-justify-center">
-              <div className="tw-grid tw-grid-cols-3 tw-grid-flow-row tw-gap-5 tw-mt-4">
+              <div
+                className="tw-grid tw-grid-cols-3 tw-grid-flow-row tw-gap-5 tw-mt-4"
+                data-testid="selectService">
                 {serviceType.map((service) => (
                   <div
                     className={classNames(
@@ -1703,7 +1707,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           <div className="tw-pt-3">
             {ingestionTypeList && ingestionTypeList.length > 0 ? (
               ingestionTypeList.map((type, id) => (
-                <div className="tw-border tw-rounded-md tw-mb-5" key={id}>
+                <div
+                  className="tw-border tw-rounded-md tw-mb-5"
+                  data-testid="ingestion-details-container"
+                  key={id}>
                   <div
                     className={classNames(
                       'tw-flex tw-justify-between tw-items-center tw-p-2',
@@ -1761,7 +1768,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                           </label>
                           <input
                             className="tw-form-inputs tw-px-3 tw-py-1"
-                            data-testid="include-filter-pattern"
+                            data-testid="table-include-filter-pattern"
                             id="tableIncludeFilterPattern"
                             name="tableIncludeFilterPattern"
                             placeholder="Include filter patterns comma seperated"
@@ -1785,7 +1792,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                           </label>
                           <input
                             className="tw-form-inputs tw-px-3 tw-py-1"
-                            data-testid="exclude-filter-pattern"
+                            data-testid="table-exclude-filter-pattern"
                             id="tableExcludeFilterPattern"
                             name="tableExcludeFilterPattern"
                             placeholder="Exclude filter patterns comma seperated"
@@ -1902,7 +1909,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                               'toggle-switch',
                               type.ingestSampleData ? 'open' : null
                             )}
-                            data-testid="data-profiler"
+                            data-testid="sample-data-ingestion"
                             onClick={() => {
                               const newFormValues = [...ingestionTypeList];
                               newFormValues[id].ingestSampleData =

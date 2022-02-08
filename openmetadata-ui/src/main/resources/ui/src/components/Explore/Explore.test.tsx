@@ -19,11 +19,14 @@ import { mockResponse } from './exlore.mock';
 import Explore from './Explore.component';
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
+  useLocation: jest
+    .fn()
+    .mockImplementation(() => ({ search: '', pathname: '/explore' })),
 }));
 
 jest.mock('../../utils/FilterUtils', () => ({
   getFilterString: jest.fn().mockImplementation(() => 'user.address'),
+  getFilterCount: jest.fn().mockImplementation(() => 10),
 }));
 
 jest.mock('../../components/searched-data/SearchedData', () => {
@@ -35,6 +38,27 @@ jest.mock('../../components/searched-data/SearchedData', () => {
       </div>
     ));
 });
+
+jest.mock(
+  '../containers/PageLayout',
+  () =>
+    ({
+      children,
+      leftPanel,
+      rightPanel,
+    }: {
+      children: React.ReactNode;
+      rightPanel: React.ReactNode;
+      leftPanel: React.ReactNode;
+    }) =>
+      (
+        <div data-testid="PageLayout">
+          <div data-testid="left-panel-content">{leftPanel}</div>
+          <div data-testid="right-panel-content">{rightPanel}</div>
+          {children}
+        </div>
+      )
+);
 
 const mockFunction = jest.fn();
 
@@ -79,7 +103,7 @@ describe('Test Explore component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const pageContainer = await findByTestId(container, 'fluid-container');
+    const pageContainer = await findByTestId(container, 'PageLayout');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
     const tabs = await findAllByTestId(container, 'tab');

@@ -569,7 +569,9 @@ const ServicesPage = () => {
                           </div>
                         </div>
                         <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                          <div className="tw-flex tw-justify-end">
+                          <div
+                            className="tw-flex tw-justify-end"
+                            data-testid="delete-icon-container">
                             <NonAdminAction
                               position="top"
                               title={TITLE_FOR_NON_ADMIN_ACTION}>

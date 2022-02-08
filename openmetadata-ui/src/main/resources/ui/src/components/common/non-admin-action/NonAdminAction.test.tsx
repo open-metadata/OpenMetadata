@@ -18,6 +18,9 @@ import NonAdminAction from './NonAdminAction';
 const mockAuth = {
   isAdminUser: true,
   isAuthDisabled: true,
+  userPermissions: {
+    UpdateOwner: true,
+  },
 };
 
 jest.mock('../../../hooks/authHooks', () => ({
@@ -48,6 +51,7 @@ describe('Test AddUsersModal component', () => {
   it('Should restrict user if criteria does not match', async () => {
     mockAuth.isAdminUser = false;
     mockAuth.isAuthDisabled = false;
+    mockAuth.userPermissions.UpdateOwner = false;
 
     const { container } = render(
       <NonAdminAction title="test popup" trigger="click">

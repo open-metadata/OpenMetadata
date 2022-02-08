@@ -16,9 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -37,8 +35,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
@@ -191,34 +187,6 @@ public class RoleRepository extends EntityRepository<Role> {
             Relationship.CONTAINS.ordinal());
   }
 
-  public ResultList<Role> getDefaultRolesResultList(Fields fields)
-      throws GeneralSecurityException, UnsupportedEncodingException {
-    List<Role> roles = getDefaultRoles(fields);
-    return new ResultList<>(roles, null, null, roles.size());
-  }
-
-  private List<Role> getDefaultRoles(Fields fields) {
-    List<Role> roles =
-        daoCollection.roleDAO().getDefaultRoles().stream()
-            .map(
-                json -> {
-                  try {
-                    return setFields(JsonUtils.readValue(json, Role.class), fields);
-                  } catch (IOException e) {
-                    LOG.warn("Could not parse Role from json {}", json);
-                  }
-                  return null;
-                })
-            .collect(Collectors.toList());
-    if (roles.size() > 1) {
-      LOG.warn(
-          "{} roles {}, are registered as default. There SHOULD be only one role marked as default.",
-          roles.size(),
-          roles.stream().map(Role::getName).collect(Collectors.toList()));
-    }
-    return roles;
-  }
-
   @Override
   public EntityUpdater getUpdater(Role original, Role updated, Operation operation) {
     return new RoleUpdater(original, updated, operation);
@@ -339,11 +307,6 @@ public class RoleRepository extends EntityRepository<Role> {
   public class RoleUpdater extends EntityUpdater {
     public RoleUpdater(Role original, Role updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      recordChange("default", original.getEntity().getDefault(), updated.getEntity().getDefault());
     }
   }
 }

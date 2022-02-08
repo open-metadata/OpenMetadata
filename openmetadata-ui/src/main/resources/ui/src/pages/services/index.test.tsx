@@ -80,6 +80,7 @@ const mockDatabaseService = {
         },
       },
     ],
+    paging: { total: 2 },
   },
 };
 
@@ -96,6 +97,7 @@ const mockMessagingService = {
         serviceType: 'Kafka',
       },
     ],
+    paging: { total: 1 },
   },
 };
 
@@ -113,6 +115,7 @@ const mockDashboardService = {
         username: 'admin',
       },
     ],
+    paging: { total: 1 },
   },
 };
 
@@ -129,6 +132,7 @@ const mockPipelineService = {
         href: 'http://localhost:8585/api/v1/services/pipelineServices/7576944e-2921-4c15-9edc-b9bada93338a',
       },
     ],
+    paging: { total: 1 },
   },
 };
 
@@ -167,7 +171,7 @@ jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div>{children}</div>
+      <span>{children}</span>
     ));
 });
 
@@ -189,10 +193,6 @@ describe('Test Service page', () => {
     expect(services).toBeInTheDocument();
     expect(tabs.length).toBe(mockServiceDetails.data.length);
     expect(dataContainer).toBeInTheDocument();
-
-    expect(dataContainer.childElementCount).toBe(
-      mockDatabaseService.data.data.length
-    );
   });
 
   it('On page load database service should be active tab with corresponding data', async () => {
@@ -200,11 +200,13 @@ describe('Test Service page', () => {
       wrapper: MemoryRouter,
     });
     const tabs = await findAllByTestId(container, 'tab');
-    const serviceNames = await findAllByTestId(container, 'service-name');
+    const serviceNames = await findByTestId(container, 'service-name');
+    const dataContainer = await findByTestId(container, 'data-container');
 
-    expect(tabs[0]).toHaveClass('active');
-    expect(serviceNames.map((s) => s.textContent)).toEqual(
-      mockDatabaseService.data.data.map((d) => d.name)
+    expect(tabs[0]).toHaveClass('activeCategory');
+    expect(serviceNames).toBeInTheDocument();
+    expect(dataContainer.childElementCount).toBe(
+      mockDatabaseService.data.data.length
     );
   });
 
@@ -214,15 +216,15 @@ describe('Test Service page', () => {
     });
     let tabs = await findAllByTestId(container, 'tab');
 
-    expect(tabs[0]).toHaveClass('active');
+    expect(tabs[0]).toHaveClass('activeCategory');
 
     fireEvent.click(tabs[1]);
     tabs = await findAllByTestId(container, 'tab');
-    const serviceNames = await findAllByTestId(container, 'service-name');
+    const dataContainer = await findByTestId(container, 'data-container');
 
-    expect(tabs[1]).toHaveClass('active');
-    expect(serviceNames.map((s) => s.textContent)).toEqual(
-      mockMessagingService.data.data.map((d) => d.name)
+    expect(tabs[1]).toHaveClass('activeCategory');
+    expect(dataContainer.childElementCount).toBe(
+      mockMessagingService.data.data.length
     );
   });
 
@@ -238,45 +240,30 @@ describe('Test Service page', () => {
     ).toBeInTheDocument();
   });
 
-  it('OnClick of edit service, AddServiceModal should open', async () => {
-    const { container } = render(<ServicesPage />, {
-      wrapper: MemoryRouter,
-    });
-    const editService = await findAllByTestId(container, 'edit-service');
-    fireEvent.click(editService[0]);
-
-    expect(
-      await findByTestId(container, 'add-service-modal')
-    ).toBeInTheDocument();
-  });
-
   it('Card details should be display properly', async () => {
     const { container } = render(<ServicesPage />, {
       wrapper: MemoryRouter,
     });
-    const serviceName = await findAllByTestId(container, 'service-name');
+    const serviceName = await findByTestId(container, 'service-name');
+    const tabs = await findAllByTestId(container, 'tab');
+
     const serviceDescription = await findAllByTestId(
       container,
       'service-description'
     );
-    const additionalField = await findAllByTestId(
-      container,
-      'additional-field'
-    );
-    const ingestion = await findAllByTestId(container, 'service-ingestion');
     const type = await findAllByTestId(container, 'service-type');
-    const edit = await findAllByTestId(container, 'edit-service');
-    const deleteIcon = await findAllByTestId(container, 'delete-service');
+    const deleteIcon = await findAllByTestId(
+      container,
+      'delete-icon-container'
+    );
     const icon = await findAllByTestId(container, 'service-icon');
 
-    expect(serviceName.length).toBe(mockDatabaseService.data.data.length);
+    expect(tabs[0]).toHaveClass('activeCategory');
+    expect(tabs[0].innerText).toBe(serviceName.innerText);
     expect(serviceDescription.length).toBe(
       mockDatabaseService.data.data.length
     );
-    expect(additionalField.length).toBe(mockDatabaseService.data.data.length);
-    expect(ingestion.length).toBe(mockDatabaseService.data.data.length);
     expect(type.length).toBe(mockDatabaseService.data.data.length);
-    expect(edit.length).toBe(mockDatabaseService.data.data.length);
     expect(deleteIcon.length).toBe(mockDatabaseService.data.data.length);
     expect(icon.length).toBe(mockDatabaseService.data.data.length);
   });

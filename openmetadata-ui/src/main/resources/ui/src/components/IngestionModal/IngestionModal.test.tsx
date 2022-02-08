@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
 import IngestionModal from './IngestionModal.component';
 
 const mockFunction = jest.fn();
@@ -77,8 +78,9 @@ describe('Test Ingestion modal component', () => {
         addIngestion={mockFunction}
         header="Add Ingestion"
         ingestionList={[]}
-        ingestionTypes={[]}
-        serviceList={mockServiceList}
+        ingestionTypes={['metadata', 'queryUsage'] as PipelineType[]}
+        service="bigquery_gcp"
+        serviceList={[]}
         onCancel={mockFunction}
       />,
       {
@@ -90,108 +92,67 @@ describe('Test Ingestion modal component', () => {
     const nextButton = await findByTestId(container, 'next-button');
     const previousButton = await findByTestId(container, 'previous-button');
 
-    fireEvent.click(nextButton);
-
-    expect(
-      await findByText(container, /Ingestion Name is required/i)
-    ).toBeInTheDocument();
-
     const name = await findByTestId(container, 'name');
-    fireEvent.change(name, {
-      target: { value: 'mockName' },
-    });
 
     expect(name).toBeInTheDocument();
-    expect(name).toHaveValue('mockName');
-
-    const service = await findByTestId(container, 'select-service');
-    fireEvent.change(service, {
-      target: { value: 'Redshift$$aws_redshift' },
-    });
-
-    expect(service).toBeInTheDocument();
-    expect(service).toHaveValue('Redshift$$aws_redshift');
+    expect(name).toHaveValue('bigquery_gcp_metadata'); // service name + 1st value of ingestionType
 
     const ingestionType = await findByTestId(container, 'ingestion-type');
-    fireEvent.change(ingestionType, {
-      target: { value: 'redshift' },
-    });
 
     expect(ingestionType).toBeInTheDocument();
-    expect(ingestionType).toHaveValue('redshift');
+    expect(ingestionType).toHaveValue('metadata'); // 1st value of ingestionType
 
-    fireEvent.click(nextButton);
-
-    // Step 2
-    fireEvent.click(nextButton);
-
-    expect(
-      await findByText(container, /Username is required/i)
-    ).toBeInTheDocument();
-    expect(
-      await findByText(container, /Password is required/i)
-    ).toBeInTheDocument();
-    expect(
-      await findByText(container, /Host is required/i)
-    ).toBeInTheDocument();
-    expect(
-      await findByText(container, /Database is required/i)
-    ).toBeInTheDocument();
-    expect(previousButton).not.toHaveClass('tw-invisible');
-
-    const userName = await findByTestId(container, 'user-name');
-    fireEvent.change(userName, {
-      target: { value: 'test' },
-    });
-
-    expect(userName).toBeInTheDocument();
-    expect(userName).toHaveValue('test');
-
-    const password = await findByTestId(container, 'password');
-    fireEvent.change(password, {
-      target: { value: 'password' },
-    });
-
-    expect(password).toBeInTheDocument();
-    expect(password).toHaveValue('password');
-
-    const host = await findByTestId(container, 'host');
-    fireEvent.change(host, {
-      target: { value: 'host' },
-    });
-
-    expect(host).toBeInTheDocument();
-    expect(host).toHaveValue('host');
-
-    const database = await findByTestId(container, 'database');
-    fireEvent.change(database, {
-      target: { value: 'database' },
-    });
-
-    expect(database).toBeInTheDocument();
-    expect(database).toHaveValue('database');
-
-    const includeFilterPattern = await findByTestId(
+    const tableIncludeFilterPattern = await findByTestId(
       container,
-      'include-filter-pattern'
+      'table-include-filter-pattern'
     );
-    fireEvent.change(includeFilterPattern, {
-      target: { value: 'include_pattern' },
+    fireEvent.change(tableIncludeFilterPattern, {
+      target: { value: 'table-include-filter-pattern' },
     });
 
-    expect(includeFilterPattern).toBeInTheDocument();
-    expect(includeFilterPattern).toHaveValue('include_pattern');
+    expect(tableIncludeFilterPattern).toBeInTheDocument();
+    expect(tableIncludeFilterPattern).toHaveValue(
+      'table-include-filter-pattern'
+    );
 
-    const excludeFilterPattern = await findByTestId(
+    const tableExcludeFilterPattern = await findByTestId(
       container,
-      'exclude-filter-pattern'
+      'table-exclude-filter-pattern'
     );
-    fireEvent.change(excludeFilterPattern, {
-      target: { value: 'exclude_pattern' },
+    fireEvent.change(tableExcludeFilterPattern, {
+      target: { value: 'table-exclude-filter-pattern' },
     });
 
-    expect(excludeFilterPattern).toBeInTheDocument();
-    expect(excludeFilterPattern).toHaveValue('exclude_pattern');
+    expect(tableExcludeFilterPattern).toBeInTheDocument();
+    expect(tableExcludeFilterPattern).toHaveValue(
+      'table-exclude-filter-pattern'
+    );
+
+    const schemaIncludeFilterPattern = await findByTestId(
+      container,
+      'schema-include-filter-pattern'
+    );
+    fireEvent.change(schemaIncludeFilterPattern, {
+      target: { value: 'schema-include-filter-pattern' },
+    });
+
+    expect(schemaIncludeFilterPattern).toBeInTheDocument();
+    expect(schemaIncludeFilterPattern).toHaveValue(
+      'schema-include-filter-pattern'
+    );
+
+    const schemaExcludeFilterPattern = await findByTestId(
+      container,
+      'schema-exclude-filter-pattern'
+    );
+    fireEvent.change(schemaExcludeFilterPattern, {
+      target: { value: 'schema-exclude-filter-pattern' },
+    });
+
+    expect(schemaExcludeFilterPattern).toBeInTheDocument();
+    expect(schemaExcludeFilterPattern).toHaveValue(
+      'schema-exclude-filter-pattern'
+    );
 
     const includeViews = await findByTestId(container, 'include-views');
     fireEvent.click(includeViews);
@@ -205,9 +166,20 @@ describe('Test Ingestion modal component', () => {
     expect(dataProfiler).toBeInTheDocument();
     expect(dataProfiler).toHaveClass('open');
 
+    const ingestSampleData = await findByTestId(
+      container,
+      'ingest-sample-data'
+    );
+    fireEvent.click(ingestSampleData);
+
+    expect(ingestSampleData).toBeInTheDocument();
+    expect(ingestSampleData).not.toHaveClass('open');
+
     fireEvent.click(nextButton);
 
-    // Step 3
+    // Step 2
+    expect(previousButton).toBeInTheDocument();
+
     const scheduleInterval = await findByTestId(container, 'schedule-interval');
 
     expect(scheduleInterval).toBeInTheDocument();

@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  fireEvent,
-  render,
-} from '@testing-library/react';
+import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import DatabaseDetails from './';
@@ -175,6 +170,10 @@ jest.mock(
   }
 );
 
+jest.mock('../../components/common/TabsPane/TabsPane', () => {
+  return jest.fn().mockReturnValue(<div>TabsPane</div>);
+});
+
 jest.mock('../../utils/TagsUtils', () => ({
   getTableTags: jest.fn().mockReturnValue([
     {
@@ -194,6 +193,10 @@ jest.mock(
   })
 );
 
+jest.mock('../../components/common/description/Description', () => {
+  return jest.fn().mockReturnValue(<p>Description</p>);
+});
+
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
     const { container } = render(<DatabaseDetails />, {
@@ -202,26 +205,15 @@ describe('Test DatabaseDetails page', () => {
 
     const pageContainer = await findByTestId(container, 'page-container');
     const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
-    const tableCount = await findByTestId(container, 'table-count');
     const descriptionContainer = await findByTestId(
       container,
       'description-container'
     );
-    const descriptionEditButton = await findByTestId(
-      container,
-      'description-edit-button'
-    );
-    const descriptionData = await findByTestId(container, 'description-data');
     const databaseTable = await findByTestId(container, 'database-tables');
-
-    const count = tableCount.textContent ? parseInt(tableCount.textContent) : 0;
 
     expect(pageContainer).toBeInTheDocument();
     expect(titleBreadcrumb).toBeInTheDocument();
-    expect(count).toEqual(mockTableData.paging.total);
     expect(descriptionContainer).toBeInTheDocument();
-    expect(descriptionEditButton).toBeInTheDocument();
-    expect(descriptionData).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
   });
 
@@ -249,19 +241,5 @@ describe('Test DatabaseDetails page', () => {
     expect(headerUsage).toBeInTheDocument();
     expect(headerTags).toBeInTheDocument();
     expect(tableColumn).toBeInTheDocument();
-  });
-
-  it('on click of edit description icon ModalWithMarkdownEditor should open', async () => {
-    const { container } = render(<DatabaseDetails />, {
-      wrapper: MemoryRouter,
-    });
-
-    const editIcon = await findByTestId(container, 'description-edit-button');
-
-    fireEvent.click(editIcon);
-
-    expect(
-      await findByText(container, /ModalWithMarkdownEditor/i)
-    ).toBeInTheDocument();
   });
 });
