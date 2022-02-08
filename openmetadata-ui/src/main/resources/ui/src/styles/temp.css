@@ -707,6 +707,9 @@ body .list-option.rdw-option-active {
   text-decoration: line-through;
   width: fit-content;
 }
+.diff-description {
+  color: #008376;
+}
 
 /* status style */
 .tw-bg-status-success {

@@ -126,7 +126,14 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                     </span>
                   ) : null}
                 </p>
-                <div className="tw-text-xs tw-font-normal tw-break-all">
+                <div
+                  className={classNames(
+                    'tw-text-xs tw-font-normal tw-break-all',
+                    {
+                      'diff-description':
+                        toString(currV?.version) === currentVersion,
+                    }
+                  )}>
                   {getSummary(currV?.changeDescription)}
                 </div>
                 <p className="tw-text-xs tw-italic">
