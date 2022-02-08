@@ -324,83 +324,91 @@ const PipelineDetails = ({
                     </div>
                   </div>
                   <div className="tw-table-responsive tw-my-6">
-                    <table className="tw-w-full" data-testid="schema-table">
-                      <thead>
-                        <tr className="tableHead-row">
-                          <th className="tableHead-cell">Task Name</th>
-                          <th className="tableHead-cell">Description</th>
-                          <th className="tableHead-cell">Task Type</th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {tasks.map((task, index) => (
-                          <tr
-                            className={classNames(
-                              'tableBody-row',
-                              !isEven(index + 1) ? 'odd-row' : null
-                            )}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <Link
-                                target="_blank"
-                                to={{ pathname: task.taskUrl }}>
-                                <span className="tw-flex">
-                                  <span className="tw-mr-1">
-                                    {task.displayName}
-                                  </span>
-                                  <SVGIcons
-                                    alt="external-link"
-                                    className="tw-align-middle"
-                                    icon="external-link"
-                                    width="12px"
-                                  />
-                                </span>
-                              </Link>
-                            </td>
-                            <td className="tw-group tableBody-cell tw-relative">
-                              <div
-                                className="tw-cursor-pointer tw-flex"
-                                data-testid="description">
-                                <div>
-                                  {task.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={task.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description added
+                    {tasks ? (
+                      <table className="tw-w-full" data-testid="schema-table">
+                        <thead>
+                          <tr className="tableHead-row">
+                            <th className="tableHead-cell">Task Name</th>
+                            <th className="tableHead-cell">Description</th>
+                            <th className="tableHead-cell">Task Type</th>
+                          </tr>
+                        </thead>
+                        <tbody className="tableBody">
+                          {tasks?.map((task, index) => (
+                            <tr
+                              className={classNames(
+                                'tableBody-row',
+                                !isEven(index + 1) ? 'odd-row' : null
+                              )}
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <Link
+                                  target="_blank"
+                                  to={{ pathname: task.taskUrl }}>
+                                  <span className="tw-flex">
+                                    <span className="tw-mr-1">
+                                      {task.displayName}
                                     </span>
+                                    <SVGIcons
+                                      alt="external-link"
+                                      className="tw-align-middle"
+                                      icon="external-link"
+                                      width="12px"
+                                    />
+                                  </span>
+                                </Link>
+                              </td>
+                              <td className="tw-group tableBody-cell tw-relative">
+                                <div
+                                  className="tw-cursor-pointer tw-flex"
+                                  data-testid="description">
+                                  <div>
+                                    {task.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={task.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description added
+                                      </span>
+                                    )}
+                                  </div>
+                                  {!deleted && (
+                                    <NonAdminAction
+                                      html={getHtmlForNonAdminAction(
+                                        Boolean(owner)
+                                      )}
+                                      isOwner={hasEditAccess()}
+                                      permission={Operation.UpdateDescription}
+                                      position="top">
+                                      <button
+                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                        onClick={() =>
+                                          handleUpdateTask(task, index)
+                                        }>
+                                        <SVGIcons
+                                          alt="edit"
+                                          icon="icon-edit"
+                                          title="Edit"
+                                          width="10px"
+                                        />
+                                      </button>
+                                    </NonAdminAction>
                                   )}
                                 </div>
-                                {!deleted && (
-                                  <NonAdminAction
-                                    html={getHtmlForNonAdminAction(
-                                      Boolean(owner)
-                                    )}
-                                    isOwner={hasEditAccess()}
-                                    permission={Operation.UpdateDescription}
-                                    position="top">
-                                    <button
-                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                      onClick={() =>
-                                        handleUpdateTask(task, index)
-                                      }>
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  </NonAdminAction>
-                                )}
-                              </div>
-                            </td>
-                            <td className="tableBody-cell">{task.taskType}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              </td>
+                              <td className="tableBody-cell">
+                                {task.taskType}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+                        <span>No task data is available</span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
