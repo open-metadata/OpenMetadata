@@ -13,7 +13,7 @@ description: >-
   * [Keyword Search](features.md#keyword-search)
   * [Discover Data Through Association](features.md#discover-data-through-association)
   * [Advanced Search](features.md#advanced-search)
-* [Activity Feeds](features.md#change-activity-feeds)
+* [Activity Feeds](features.md#activity-feeds)
 * [Event Notification via Webhooks and Slack Integration](features.md#event-notification-via-webhooks-and-slack-integration)
 * [Add Descriptive Metadata](features.md#add-descriptive-metadata)
 * [Complex Data Types](features.md#complex-data-types)
