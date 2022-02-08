@@ -504,14 +504,6 @@ class OpenMetadata(
         resp = self.client.get(f"{self.get_suffix(Tag)}/{category}")
         return [Tag(**d) for d in resp["children"]]
 
-    def create_tag_category(self, data):
-        resp = self.client.post(f"/tags", data=data.json())
-        return [TagCategory(**d) for d in resp["children"]]
-
-    def create_primary_tag_category(self, category, data):
-        resp = self.client.post("/tags/{}".format(category), data=data.json())
-        return [Tag(**d) for d in resp["children"]]
-
     def health_check(self) -> bool:
         """
         Run endpoint health-check. Return `true` if OK
