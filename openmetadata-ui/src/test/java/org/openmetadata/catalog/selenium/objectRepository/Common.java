@@ -1,7 +1,9 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import java.util.List;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 public class Common {
   WebDriver webDriver;
@@ -21,7 +23,7 @@ public class Common {
   By editDescriptionSaveButton = By.cssSelector("[data-testid='save']");
   By closeWhatsNew = By.cssSelector("[data-testid='closeWhatsNew']");
   By headerSettings = By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']");
-
+  By explore = By.xpath("[data-testid='appbar-item'][id='explore']");
   By headerSettingsServices = By.cssSelector("[data-testid='menu-item-Services']");
   By addServiceButton = By.cssSelector("[data-testid='add-service-button']");
   By noServicesAddServiceButton = By.cssSelector("[data-testid='add-new-user-button']");
@@ -58,6 +60,70 @@ public class Common {
   By matchesStats = By.cssSelector("[data-testid='matches-stats']");
   By editLineageButton = By.cssSelector("[data-testid='edit-lineage']");
   By whatsNewModalChangeLogs = By.cssSelector("[data-testid='WhatsNewModalChangeLogs']");
+  By tableCount = By.xpath("(//span[@data-testid='filter-count'])[1]");
+  By removeAssociatedTag = By.xpath("//span[@data-testid=\"remove\"]");
+  By breadCrumb = By.xpath("//li[@data-testid=\"breadcrumb-link\"]");
+  By descriptionContainer = By.xpath("//div[@data-testid='description']/div/p");
+  By manage = By.xpath("//button[@data-testid='tab'][contains(text(),'Manage')]");
+  By selectTier = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
+  By difference = By.xpath("//span[@class='diff-added']");
+  By searchBox = By.xpath("//input[@data-testid=\"searchBox\"]");
+  By follow = By.cssSelector("button[data-testid='follow-button']");
+  By users = By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]");
+  By selectUser = By.xpath("//div[@data-testid=\"list-item\"]");
+  By saveManage = By.cssSelector("[data-testid='saveManageTab']");
+  By editDescriptionButton = By.xpath("//button[@data-testid= 'edit-description']");
+  By editDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
+  By version = By.xpath("//button[@data-testid=\"version-button\"]");
+  By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
+
+  public By version() {
+    return version;
+  }
+
+  public List<WebElement> versionRadioButton() {
+    return webDriver.findElements(versionRadioButton);
+  }
+
+  public By editDescriptionButton() {
+    return editDescriptionButton;
+  }
+
+  public By editDescriptionBox() {
+    return editDescriptionBox;
+  }
+
+  public By saveManage() {
+    return saveManage;
+  }
+
+  public By selectUser() {
+    return selectUser;
+  }
+
+  public By clickUsers() {
+    return users;
+  }
+
+  public By clickFollow() {
+    return follow;
+  }
+
+  public By difference() {
+    return difference;
+  }
+
+  public By selectTier1() {
+    return selectTier;
+  }
+
+  public By manage() {
+    return manage;
+  }
+
+  public By descriptionContainer() {
+    return descriptionContainer;
+  }
 
   public By displayName() {
     return displayName;
@@ -305,5 +371,25 @@ public class Common {
 
   public By overviewFilterCount(String entity) {
     return By.xpath("//div[@data-testid='" + entity + "-summary']//span[@data-testid='filter-count']");
+  }
+
+  public By explore() {
+    return explore;
+  }
+
+  public By getTableCount() {
+    return tableCount;
+  }
+
+  public By removeAssociatedTag() {
+    return removeAssociatedTag;
+  }
+
+  public List<WebElement> breadCrumb() {
+    return webDriver.findElements(breadCrumb);
+  }
+
+  public By getSearchBox() {
+    return searchBox;
   }
 }

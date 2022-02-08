@@ -13,14 +13,15 @@ public class TopicDetails {
     this.webDriver = webDriver;
   }
 
-  By addTag = By.xpath("(//div[@class=\"tw-flex tw-flex-wrap\"])");
+  By addTag = By.xpath("//div[@data-testid=\"tag-conatiner\"]");
   By selectTag = By.xpath("(//div[@data-testid=\"list-item\"])[2]");
   By selectedTag =
       By.xpath("//span[@class=\"tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1\"]");
-  By breadCrumbTags = By.xpath("//span[@class=\"tw-no-underline hover:tw-no-underline tw-px-1\"]");
+  By breadCrumbTags = By.xpath("//span[@data-testid=\"tags\"]");
   By editDescriptionButton = By.xpath("//button[@data-testid=\"edit-description\"]");
   By config = By.xpath("(//button[@data-testid = \"tab\"])[2]");
   By manage = By.xpath("(//button[@data-testid = \"tab\"])[3]");
+  By topicName = By.linkText("orders");
 
   public By addTag() {
     return addTag;
@@ -34,8 +35,8 @@ public class TopicDetails {
     return webDriver.findElements(selectedTag);
   }
 
-  public List<WebElement> breadCrumbTag() {
-    return webDriver.findElements(breadCrumbTags);
+  public By breadCrumbTag() {
+    return breadCrumbTags;
   }
 
   public By editDescriptionButton() {
@@ -48,5 +49,9 @@ public class TopicDetails {
 
   public By manage() {
     return manage;
+  }
+
+  public By topicName() {
+    return topicName;
   }
 }
