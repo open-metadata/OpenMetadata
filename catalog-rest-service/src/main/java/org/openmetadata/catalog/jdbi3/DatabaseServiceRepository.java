@@ -14,26 +14,35 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
+import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   private static final Fields UPDATE_FIELDS = new Fields(DatabaseServiceResource.FIELD_LIST, "owner");
+  private final Fernet fernet;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
     super(
@@ -47,6 +56,24 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         false,
         true,
         false);
+    fernet = Fernet.getInstance();
+  }
+
+  public void rotate() throws GeneralSecurityException, IOException, ParseException {
+    if (!fernet.isKeyDefined()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.fernetKeyNotDefined());
+    }
+    List<String> jsons = dao.listAfter(null, Integer.MAX_VALUE, "", Include.ALL);
+    for (String json : jsons) {
+      DatabaseService databaseService = JsonUtils.readValue(json, DatabaseService.class);
+      DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
+      if (databaseConnection != null && databaseConnection.getPassword() != null) {
+        String password = decryptIfTokenized(databaseConnection.getPassword());
+        String tokenized = fernet.encrypt(password);
+        databaseConnection.setPassword(tokenized);
+        storeEntity(databaseService, true);
+      }
+    }
   }
 
   @Override
@@ -89,9 +116,17 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void prepare(DatabaseService entity) throws IOException, ParseException {
+  public void prepare(DatabaseService databaseService) throws IOException, ParseException {
     // Check if owner is valid and set the relationship
-    entity.setOwner(helper(entity).validateOwnerOrNull());
+    databaseService.setOwner(helper(databaseService).validateOwnerOrNull());
+    DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
+    if (fernet.isKeyDefined()
+        && databaseConnection != null
+        && databaseConnection.getPassword() != null
+        && !isTokenized(databaseConnection.getPassword())) {
+      String tokenized = fernet.encrypt(databaseConnection.getPassword());
+      databaseConnection.setPassword(tokenized);
+    }
   }
 
   @Override
@@ -252,6 +287,14 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     private void updateDatabaseConnectionConfig() throws JsonProcessingException {
       DatabaseConnection origConn = original.getEntity().getDatabaseConnection();
       DatabaseConnection updatedConn = updated.getEntity().getDatabaseConnection();
+      if (origConn != null
+          && updatedConn != null
+          && Objects.equals(
+              Fernet.decryptIfTokenized(origConn.getPassword()),
+              Fernet.decryptIfTokenized(updatedConn.getPassword()))) {
+        // Password in clear didn't change. The tokenized changed because it's time-dependent.
+        updatedConn.setPassword(origConn.getPassword());
+      }
       recordChange("databaseConnection", origConn, updatedConn, true);
     }
   }

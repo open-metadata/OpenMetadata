@@ -82,10 +82,10 @@ public class AirflowRESTClient {
     throw new AirflowException("Failed to get access_token. Please check AirflowConfiguration username, password");
   }
 
-  public String deploy(AirflowPipeline airflowPipeline, CatalogApplicationConfig config) {
+  public String deploy(AirflowPipeline airflowPipeline, CatalogApplicationConfig config, Boolean decrypt) {
     try {
       IngestionAirflowPipeline pipeline =
-          AirflowUtils.toIngestionPipeline(airflowPipeline, config.getAirflowConfiguration());
+          AirflowUtils.toIngestionPipeline(airflowPipeline, config.getAirflowConfiguration(), decrypt);
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
       String pipelinePayload = JsonUtils.pojoToJson(pipeline);

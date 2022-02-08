@@ -52,6 +52,7 @@ import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.migration.Migration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.resources.CollectionRegistry;
@@ -94,6 +95,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     if (LOG.isDebugEnabled()) {
       jdbi.setSqlLogger(sqlLogger);
     }
+
+    // Configure the Fernet instance
+    Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());

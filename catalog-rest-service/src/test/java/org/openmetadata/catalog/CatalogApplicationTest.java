@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.EmbeddedMySqlSupport;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
@@ -35,6 +36,8 @@ public abstract class CatalogApplicationTest {
   public static final DropwizardAppExtension<CatalogApplicationConfig> APP;
   private static final Client client;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
+  public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
+  public static final String FERNET_KEY_2 = "0cDdxg2rlodhcsjtmuFsOOvWpRRTW9ZJ";
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
@@ -44,6 +47,7 @@ public abstract class CatalogApplicationTest {
     client.property(ClientProperties.CONNECT_TIMEOUT, 0);
     client.property(ClientProperties.READ_TIMEOUT, 0);
     client.property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
+    Fernet.getInstance().setFernetKey(FERNET_KEY_1);
   }
 
   public static WebTarget getResource(String collection) {

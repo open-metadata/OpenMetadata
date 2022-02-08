@@ -15,6 +15,7 @@ package org.openmetadata.catalog.airflow;
 
 import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -60,15 +61,16 @@ public final class AirflowUtils {
 
   private AirflowUtils() {}
 
-  public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(AirflowPipeline airflowPipeline)
-      throws IOException, ParseException {
+  public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(
+      AirflowPipeline airflowPipeline, Boolean decrypt) throws IOException, ParseException {
     DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     PipelineConfig pipelineConfig = airflowPipeline.getPipelineConfig();
     Map<String, Object> dbConfig = new HashMap<>();
     dbConfig.put(INGESTION_HOST_PORT, databaseConnection.getHostPort());
     dbConfig.put(INGESTION_USERNAME, databaseConnection.getUsername());
-    dbConfig.put(INGESTION_PASSWORD, databaseConnection.getPassword());
+    String password = decrypt ? decryptIfTokenized(databaseConnection.getPassword()) : databaseConnection.getPassword();
+    dbConfig.put(INGESTION_PASSWORD, password);
     dbConfig.put(INGESTION_DATABASE, databaseConnection.getDatabase());
     dbConfig.put(INGESTION_SERVICE_NAME, databaseService.getName());
     if (databaseConnection.getConnectionOptions() != null
@@ -125,18 +127,20 @@ public final class AirflowUtils {
   }
 
   public static OpenMetadataIngestionConfig buildDatabaseIngestion(
-      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration) throws IOException, ParseException {
+      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration, Boolean decrypt)
+      throws IOException, ParseException {
     return OpenMetadataIngestionConfig.builder()
-        .source(makeOpenMetadataDatasourceComponent(airflowPipeline))
+        .source(makeOpenMetadataDatasourceComponent(airflowPipeline, decrypt))
         .sink(makeOpenMetadataSinkComponent(airflowPipeline))
         .metadataServer(makeOpenMetadataConfigComponent(airflowConfiguration))
         .build();
   }
 
   public static IngestionAirflowPipeline toIngestionPipeline(
-      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration) throws IOException, ParseException {
+      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration, Boolean decrypt)
+      throws IOException, ParseException {
     Map<String, Object> taskParams = new HashMap<>();
-    taskParams.put("workflow_config", buildDatabaseIngestion(airflowPipeline, airflowConfiguration));
+    taskParams.put("workflow_config", buildDatabaseIngestion(airflowPipeline, airflowConfiguration, decrypt));
     IngestionTaskConfig taskConfig = IngestionTaskConfig.builder().opKwargs(taskParams).build();
     OpenMetadataIngestionTask task =
         OpenMetadataIngestionTask.builder().name(airflowPipeline.getName()).config(taskConfig).build();
