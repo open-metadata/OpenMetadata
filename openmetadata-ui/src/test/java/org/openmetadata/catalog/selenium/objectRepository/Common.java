@@ -1,10 +1,9 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import java.util.List;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-
-import java.util.List;
 
 public class Common {
   WebDriver webDriver;
@@ -110,20 +109,22 @@ public class Common {
     return follow;
   }
 
-  public By difference(){
+  public By difference() {
     return difference;
   }
 
-  public By selectTier1(){
+  public By selectTier1() {
     return selectTier;
   }
-  public By manage(){
+
+  public By manage() {
     return manage;
   }
 
-  public By descriptionContainer(){
+  public By descriptionContainer() {
     return descriptionContainer;
   }
+
   public By displayName() {
     return displayName;
   }
@@ -372,15 +373,16 @@ public class Common {
     return By.xpath("//div[@data-testid='" + entity + "-summary']//span[@data-testid='filter-count']");
   }
 
-  public By explore(){
+  public By explore() {
     return explore;
   }
+
   public By getTableCount() {
     return tableCount;
   }
 
-  public By removeAssociatedTag(){
-    return  removeAssociatedTag;
+  public By removeAssociatedTag() {
+    return removeAssociatedTag;
   }
 
   public List<WebElement> breadCrumb() {

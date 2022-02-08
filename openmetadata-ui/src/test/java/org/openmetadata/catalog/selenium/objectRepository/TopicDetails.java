@@ -51,7 +51,7 @@ public class TopicDetails {
     return manage;
   }
 
-  public By topicName(){
+  public By topicName() {
     return topicName;
   }
 }

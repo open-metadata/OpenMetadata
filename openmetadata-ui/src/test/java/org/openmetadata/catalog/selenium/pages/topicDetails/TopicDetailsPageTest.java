@@ -18,7 +18,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
-
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
@@ -27,7 +26,6 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -53,7 +51,6 @@ public class TopicDetailsPageTest {
   String xpath = "//li[@data-testid='breadcrumb-link'][" + counter + "]";
   String description = "Test@1234";
   String updatedDescription = "Updated Description";
-  
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -75,7 +72,7 @@ public class TopicDetailsPageTest {
   @Test
   @Order(1)
   void openExplorePage() throws InterruptedException {
-    Events.click(webDriver,common.closeWhatsNew());
+    Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     Thread.sleep(3000);
     if (webDriver.findElement(common.getTableCount()).isDisplayed()) {
@@ -136,14 +133,15 @@ public class TopicDetailsPageTest {
     Thread.sleep(waitTime);
     for (int j = 0; j < TagDisplayed.size(); j++) {
       Assert.assertEquals(TagDisplayed.get(j).getText(), selectedTag[j]);
-  }}
+    }
+  }
 
   @Test
   @Order(5)
   void removeTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver,explorePage.topics());
+    Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTag());
     Events.click(webDriver, topicDetails.addTag());
@@ -163,7 +161,7 @@ public class TopicDetailsPageTest {
   void editDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver,explorePage.topics());
+    Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
@@ -177,19 +175,19 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
-    Assert.assertEquals(checkDescription,updatedDescription);
+    Assert.assertEquals(checkDescription, updatedDescription);
   }
 
   @Test
   @Order(7)
   public void checkManage() throws InterruptedException {
     openExplorePage();
-    Events.click(webDriver,explorePage.topics());
+    Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
-    Events.click(webDriver,  common.clickUsers());
+    Events.click(webDriver, common.clickUsers());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
     Events.click(webDriver, common.saveManage());
@@ -200,7 +198,7 @@ public class TopicDetailsPageTest {
   void checkBreadCrumb() throws Exception {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver,explorePage.topics());
+    Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
@@ -216,20 +214,19 @@ public class TopicDetailsPageTest {
     }
   }
 
-
   @Test
   @Order(9)
   public void checkVersion() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    int counter=1;
-    Events.click(webDriver,explorePage.topics());
+    int counter = 1;
+    Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.version());
     List<WebElement> versionRadioButton = common.versionRadioButton();
     for (WebElement e : versionRadioButton) {
-      counter = counter +1;
-      if(counter == versionRadioButton.size()){
+      counter = counter + 1;
+      if (counter == versionRadioButton.size()) {
         break;
       }
       e.click();
