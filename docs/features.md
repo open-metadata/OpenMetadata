@@ -13,7 +13,7 @@ description: >-
   * [Keyword Search](features.md#keyword-search)
   * [Discover Data Through Association](features.md#discover-data-through-association)
   * [Advanced Search](features.md#advanced-search)
-* [Change Activity Feeds](features.md#change-activity-feeds)
+* [Activity Feeds](features.md#change-activity-feeds)
 * [Event Notification via Webhooks and Slack Integration](features.md#event-notification-via-webhooks-and-slack-integration)
 * [Add Descriptive Metadata](features.md#add-descriptive-metadata)
 * [Complex Data Types](features.md#complex-data-types)
@@ -61,7 +61,7 @@ Find assets matching strict criteria on metadata properties and Boolean operator
 
 ![](.gitbook/assets/complex-queries.gif)
 
-### Change Activity Feeds
+### Activity Feeds
 
 The OpenMetadata home screen features a change activity feed that enables you view a summary of data change events. This feed shows all changes to data sorted with the most recent changes at the top. The entities in the activity feed are clickable including tables, dashboards, team names, etc. There are activity feeds for:
 
