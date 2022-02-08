@@ -377,11 +377,7 @@ public class DatabaseServiceResource {
 
   private DatabaseService decryptOrNullify(SecurityContext securityContext, DatabaseService databaseService) {
     try {
-      SecurityUtil.checkAdminRoleOrPermissions(
-          authorizer,
-          securityContext,
-          dao.getEntityInterface(databaseService).getEntityReference(),
-          MetadataOperation.DecryptTokens);
+      SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.DecryptTokens);
     } catch (AuthorizationException e) {
       return databaseService.withDatabaseConnection(null);
     }
