@@ -13,15 +13,227 @@
  */
 
 /**
+ * This schema defines the Policy entity. A Policy defines lifecycle or access control that
+ * needs to be applied across different Data Entities.
+ */
+export interface Policy {
+  /**
+   * Change that led to this version of the Policy.
+   */
+  changeDescription?: PolicyChangeDescription;
+  /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
+   * A short description of the Policy, comprehensible to regular users.
+   */
+  description?: string;
+  /**
+   * Title for this Policy.
+   */
+  displayName?: string;
+  /**
+   * Is the policy enabled.
+   */
+  enabled?: boolean;
+  /**
+   * Name that uniquely identifies a Policy.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to the resource corresponding to this entity.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies this Policy.
+   */
+  id: string;
+  location?: LocationClass;
+  /**
+   * Name that uniquely identifies this Policy.
+   */
+  name: string;
+  /**
+   * Owner of this Policy.
+   */
+  owner?: LocationClass;
+  policyType: PolicyType;
+  /**
+   * Link to a well documented definition of this Policy.
+   */
+  policyUrl?: string;
+  rules?: Rule[];
+  /**
+   * Last update time corresponding to the new version of the Policy in Unix epoch time
+   * milliseconds.
+   */
+  updatedAt?: number;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
+   * Metadata version of the Policy.
+   */
+  version?: number;
+}
+
+/**
+ * Change that led to this version of the Policy.
+ *
+ * Description of the change.
+ */
+export interface PolicyChangeDescription {
+  /**
+   * Names of fields added during the version changes.
+   */
+  fieldsAdded?: PurpleFieldChange[];
+  /**
+   * Fields deleted during the version changes with old value before deleted.
+   */
+  fieldsDeleted?: PurpleFieldChange[];
+  /**
+   * Fields modified during the version changes with old and new values.
+   */
+  fieldsUpdated?: PurpleFieldChange[];
+  /**
+   * When a change did not result in change, this could be same as the current version.
+   */
+  previousVersion?: number;
+}
+
+export interface PurpleFieldChange {
+  /**
+   * Name of the entity field that changed.
+   */
+  name?: string;
+  /**
+   * New value of the field. Note that this is a JSON string and use the corresponding field
+   * type to deserialize it.
+   */
+  newValue?: any;
+  /**
+   * Previous value of the field. Note that this is a JSON string and use the corresponding
+   * field type to deserialize it.
+   */
+  oldValue?: any;
+}
+
+/**
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Owner of this Policy.
+ */
+export interface LocationClass {
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance. For entities such as tables, databases where the name is not
+   * unique, fullyQualifiedName is returned in this field.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
+}
+
+/**
+ * This schema defines the type used for describing different types of policies.
+ */
+export enum PolicyType {
+  AccessControl = 'AccessControl',
+  Lifecycle = 'Lifecycle',
+}
+
+/**
+ * A set of rules associated with the Policy.
+ *
+ * Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user
+ * (subject) and entity (object) attributes are evaluated with logical AND.
+ *
+ * Describes an entity Lifecycle Rule used within a Policy.
+ */
+export interface Rule {
+  /**
+   * Allow or Deny operation on the entity.
+   */
+  allow?: boolean;
+  /**
+   * Is the rule enabled.
+   */
+  enabled?: boolean;
+  /**
+   * Entity tag that the rule should match on.
+   */
+  entityTagAttr?: string;
+  /**
+   * Entity type that the rule should match on.
+   */
+  entityTypeAttr?: string;
+  /**
+   * Name for this Rule.
+   *
+   * Name that identifies this Rule.
+   */
+  name?: string;
+  /**
+   * Operation on the entity.
+   */
+  operation?: Operation;
+  /**
+   * Priority of this rule among all rules across all policies.
+   */
+  priority?: number;
+  /**
+   * Role of the user that the rule should match on.
+   */
+  userRoleAttr?: string;
+  /**
+   * A set of actions to take on the entities.
+   */
+  actions?: LifecycleEAction[];
+  prefixFilter?: string;
+  regexFilter?: string;
+  tagsFilter?: string[];
+}
+
+/**
+ * An action to delete or expire the entity.
+ *
  * An action to move the entity to a different location. For eg: Move from Standard storage
  * tier to Archive storage tier.
  */
-export interface MoveAction {
+export interface LifecycleEAction {
   /**
+   * Number of days after creation of the entity that the deletion should be triggered.
+   *
    * Number of days after creation of the entity that the move should be triggered.
    */
   daysAfterCreation?: number;
   /**
+   * Number of days after last modification of the entity that the deletion should be
+   * triggered.
+   *
    * Number of days after last modification of the entity that the move should be triggered.
    */
   daysAfterModification?: number;
@@ -59,7 +271,7 @@ export interface Location {
   /**
    * Change that lead to this version of the entity.
    */
-  changeDescription?: ChangeDescription;
+  changeDescription?: LocationChangeDescription;
   /**
    * When `true` indicates the entity has been soft deleted.
    */
@@ -76,7 +288,7 @@ export interface Location {
   /**
    * Followers of this location.
    */
-  followers?: EntityReference[];
+  followers?: OwnerElement[];
   /**
    * Fully qualified name of a location in the form `serviceName.locationName`.
    */
@@ -97,11 +309,11 @@ export interface Location {
   /**
    * Owner of this location.
    */
-  owner?: EntityReference;
+  owner?: OwnerElement;
   /**
    * Link to the database cluster/service where this database is hosted in.
    */
-  service: EntityReference;
+  service: OwnerElement;
   /**
    * Service type where this storage location is hosted in.
    */
@@ -130,26 +342,26 @@ export interface Location {
  *
  * Description of the change.
  */
-export interface ChangeDescription {
+export interface LocationChangeDescription {
   /**
    * Names of fields added during the version changes.
    */
-  fieldsAdded?: FieldChange[];
+  fieldsAdded?: FluffyFieldChange[];
   /**
    * Fields deleted during the version changes with old value before deleted.
    */
-  fieldsDeleted?: FieldChange[];
+  fieldsDeleted?: FluffyFieldChange[];
   /**
    * Fields modified during the version changes with old and new values.
    */
-  fieldsUpdated?: FieldChange[];
+  fieldsUpdated?: FluffyFieldChange[];
   /**
    * When a change did not result in change, this could be same as the current version.
    */
   previousVersion?: number;
 }
 
-export interface FieldChange {
+export interface FluffyFieldChange {
   /**
    * Name of the entity field that changed.
    */
@@ -180,7 +392,7 @@ export interface FieldChange {
  *
  * Owner of this storage service.
  */
-export interface EntityReference {
+export interface OwnerElement {
   /**
    * Optional description of entity.
    */
@@ -291,9 +503,15 @@ export enum State {
  *
  * Name of the field of an entity.
  *
- * Link to the entity resource.
+ * Link to the resource corresponding to this entity.
  *
  * URI that points to a resource.
+ *
+ * Unique identifier that identifies this Policy.
+ *
+ * Unique id used to identify an entity.
+ *
+ * Link to the entity resource.
  *
  * Link to this location resource.
  *
@@ -303,11 +521,13 @@ export enum State {
  *
  * Unique identifier that identifies an entity instance.
  *
- * Unique id used to identify an entity.
- *
  * Unique identifier of this location instance.
  *
  * Unique identifier of this storage service instance.
+ *
+ * Prefix path of the entity.
+ *
+ * Regex that matches the entity.
  *
  * Type of storage class offered by S3.
  *
@@ -343,7 +563,7 @@ export interface StorageService {
   /**
    * Change that lead to this version of the entity.
    */
-  changeDescription?: ChangeDescription;
+  changeDescription?: LocationChangeDescription;
   /**
    * When `true` indicates the entity has been soft deleted.
    */
@@ -371,7 +591,7 @@ export interface StorageService {
   /**
    * Owner of this storage service.
    */
-  owner?: EntityReference;
+  owner?: OwnerElement;
   /**
    * Type of storage service such as S3, GCS, HDFS...
    */
@@ -389,4 +609,19 @@ export interface StorageService {
    * Metadata version of the entity.
    */
   version?: number;
+}
+
+/**
+ * Operation on the entity.
+ *
+ * This schema defines all possible operations on metadata of data entities.
+ */
+export enum Operation {
+  DecryptTokens = 'DecryptTokens',
+  SuggestDescription = 'SuggestDescription',
+  SuggestTags = 'SuggestTags',
+  UpdateDescription = 'UpdateDescription',
+  UpdateLineage = 'UpdateLineage',
+  UpdateOwner = 'UpdateOwner',
+  UpdateTags = 'UpdateTags',
 }

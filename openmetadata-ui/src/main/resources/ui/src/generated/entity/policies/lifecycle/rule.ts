@@ -13,15 +13,43 @@
  */
 
 /**
+ * Describes an entity Lifecycle Rule used within a Policy.
+ */
+export interface Rule {
+  /**
+   * A set of actions to take on the entities.
+   */
+  actions: LifecycleEAction[];
+  /**
+   * Is the rule enabled.
+   */
+  enabled?: boolean;
+  /**
+   * Name that identifies this Rule.
+   */
+  name?: string;
+  prefixFilter?: string;
+  regexFilter?: string;
+  tagsFilter?: string[];
+}
+
+/**
+ * An action to delete or expire the entity.
+ *
  * An action to move the entity to a different location. For eg: Move from Standard storage
  * tier to Archive storage tier.
  */
-export interface MoveAction {
+export interface LifecycleEAction {
   /**
+   * Number of days after creation of the entity that the deletion should be triggered.
+   *
    * Number of days after creation of the entity that the move should be triggered.
    */
   daysAfterCreation?: number;
   /**
+   * Number of days after last modification of the entity that the deletion should be
+   * triggered.
+   *
    * Number of days after last modification of the entity that the move should be triggered.
    */
   daysAfterModification?: number;
@@ -308,6 +336,10 @@ export enum State {
  * Unique identifier of this location instance.
  *
  * Unique identifier of this storage service instance.
+ *
+ * Prefix path of the entity.
+ *
+ * Regex that matches the entity.
  *
  * Type of storage class offered by S3.
  *

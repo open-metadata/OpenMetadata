@@ -13,7 +13,7 @@
  */
 
 /**
- * Role entity
+ * Request for creating a Role entity
  */
 export interface CreateRole {
   /**

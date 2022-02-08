@@ -30,6 +30,10 @@ export interface TagCategory {
     any[] | boolean | TagClass | number | number | null | string
   >;
   /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
+  /**
    * Description of the tag category.
    */
   description: string;
@@ -125,6 +129,10 @@ export interface TagClass {
   children?: Array<
     any[] | boolean | TagClass | number | number | null | string
   >;
+  /**
+   * When `true` indicates the entity has been soft deleted.
+   */
+  deleted?: boolean;
   /**
    * If the tag is deprecated.
    */
