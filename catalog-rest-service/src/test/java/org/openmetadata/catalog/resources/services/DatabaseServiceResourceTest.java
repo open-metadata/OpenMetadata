@@ -17,6 +17,7 @@ import static java.util.Arrays.asList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -52,6 +53,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ConnectionArguments;
 import org.openmetadata.catalog.type.ConnectionOptions;
 import org.openmetadata.catalog.type.DatabaseConnection;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
@@ -214,9 +216,33 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     Fernet.getInstance().setFernetKey(FERNET_KEY_2 + "," + FERNET_KEY_1);
     DataSourceFactory dataSourceFactory = APP.getConfiguration().getDataSourceFactory();
     TablesInitializer.rotate(dataSourceFactory);
+    Fernet.getInstance().setFernetKey(FERNET_KEY_2);
     for (DatabaseService service : services) {
-      DatabaseService rotated = getEntity(service.getId(), TEST_AUTH_HEADERS);
-      validatePassword(FERNET_KEY_2, databaseConnection.getPassword(), rotated.getDatabaseConnection().getPassword());
+      DatabaseService rotated = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
+      assertEquals(databaseConnection, rotated.getDatabaseConnection());
+    }
+  }
+
+  @Test
+  void fernet_removeDatabaseConnection(TestInfo test) throws IOException {
+    DatabaseConnection databaseConnection =
+        new DatabaseConnection()
+            .withDatabase("test")
+            .withHostPort("host:9000")
+            .withPassword("password")
+            .withUsername("username");
+    DatabaseService service =
+        createAndCheckEntity(createRequest(test).withDatabaseConnection(databaseConnection), ADMIN_AUTH_HEADERS);
+    CreateDatabaseService update = createRequest(test).withDescription("description1");
+    updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    update.withDescription("description2");
+    updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    EntityHistory history = getVersionList(service.getId(), TEST_AUTH_HEADERS);
+    for (Object version : history.getVersions()) {
+      DatabaseService databaseService = JsonUtils.readValue((String) version, entityClass);
+      assertNull(databaseService.getDatabaseConnection());
+      databaseService = getVersion(databaseService.getId(), databaseService.getVersion(), TEST_AUTH_HEADERS);
+      assertNull(databaseService.getDatabaseConnection());
     }
   }
 

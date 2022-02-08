@@ -140,7 +140,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   private static final Map<String, EntityResourceTest<?, ?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
   private final String entityType;
-  private final Class<T> entityClass;
+  protected final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;

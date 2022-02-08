@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -64,6 +65,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -155,7 +157,7 @@ public class DatabaseServiceResource {
     } else {
       dbServices = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
-    return addHref(uriInfo, decrypt(securityContext, dbServices));
+    return addHref(uriInfo, decryptOrNullify(securityContext, dbServices));
   }
 
   @GET
@@ -189,7 +191,7 @@ public class DatabaseServiceResource {
           Include include)
       throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, decrypt(securityContext, dao.get(uriInfo, id, fields, include)));
+    return addHref(uriInfo, decryptOrNullify(securityContext, dao.get(uriInfo, id, fields, include)));
   }
 
   @GET
@@ -223,7 +225,7 @@ public class DatabaseServiceResource {
           Include include)
       throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, decrypt(securityContext, dao.getByName(uriInfo, name, fields, include)));
+    return addHref(uriInfo, decryptOrNullify(securityContext, dao.getByName(uriInfo, name, fields, include)));
   }
 
   @GET
@@ -243,7 +245,21 @@ public class DatabaseServiceResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    return dao.listVersions(id);
+    EntityHistory entityHistory = dao.listVersions(id);
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    DatabaseService databaseService = JsonUtils.readValue((String) json, DatabaseService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, databaseService));
+                  } catch (IOException e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -272,7 +288,7 @@ public class DatabaseServiceResource {
           @PathParam("version")
           String version)
       throws IOException, ParseException {
-    return dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, dao.getVersion(id, version));
   }
 
   @POST
@@ -295,7 +311,7 @@ public class DatabaseServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(create, securityContext);
-    service = addHref(uriInfo, decrypt(securityContext, dao.create(uriInfo, service)));
+    service = addHref(uriInfo, decryptOrNullify(securityContext, dao.create(uriInfo, service)));
     return Response.created(service.getHref()).entity(service).build();
   }
 
@@ -320,7 +336,7 @@ public class DatabaseServiceResource {
     DatabaseService service = getService(update, securityContext);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(service));
     PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, decrypt(securityContext, response.getEntity()));
+    addHref(uriInfo, decryptOrNullify(securityContext, response.getEntity()));
     return response.toResponse();
   }
 
@@ -347,19 +363,19 @@ public class DatabaseServiceResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<DatabaseService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    decrypt(securityContext, response.getEntity());
+    decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
 
-  private ResultList<DatabaseService> decrypt(
+  private ResultList<DatabaseService> decryptOrNullify(
       SecurityContext securityContext, ResultList<DatabaseService> databaseServices) {
     Optional.ofNullable(databaseServices.getData())
         .orElse(Collections.emptyList())
-        .forEach(databaseService -> decrypt(securityContext, databaseService));
+        .forEach(databaseService -> decryptOrNullify(securityContext, databaseService));
     return databaseServices;
   }
 
-  private DatabaseService decrypt(SecurityContext securityContext, DatabaseService databaseService) {
+  private DatabaseService decryptOrNullify(SecurityContext securityContext, DatabaseService databaseService) {
     try {
       SecurityUtil.checkAdminRoleOrPermissions(
           authorizer,
@@ -367,7 +383,7 @@ public class DatabaseServiceResource {
           dao.getEntityInterface(databaseService).getEntityReference(),
           MetadataOperation.DecryptTokens);
     } catch (AuthorizationException e) {
-      return databaseService;
+      return databaseService.withDatabaseConnection(null);
     }
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     if (databaseConnection != null
