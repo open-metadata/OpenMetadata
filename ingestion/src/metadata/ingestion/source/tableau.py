@@ -92,7 +92,9 @@ class TableauSource(Source[Entity]):
         }
         if self.config.username and self.config.password:
             tableau_server_config[self.config.env]["username"] = self.config.username
-            tableau_server_config[self.config.env]["password"] = self.config.password
+            tableau_server_config[self.config.env][
+                "password"
+            ] = self.config.password.get_secret_value()
         elif (
             self.config.personal_access_token_name
             and self.config.personal_access_token_secret
