@@ -26,11 +26,11 @@ export interface Rule {
    */
   enabled?: boolean;
   /**
-   * Entity tag that the rule should match on
+   * Entity tag that the rule should match on.
    */
   entityTagAttr?: string;
   /**
-   * Entity type that the rule should match on
+   * Entity type that the rule should match on.
    */
   entityTypeAttr?: string;
   /**
@@ -42,11 +42,11 @@ export interface Rule {
    */
   operation?: Operation;
   /**
-   * Priority of this rule among other rules in this policy.
+   * Priority of this rule among all rules across all policies.
    */
   priority?: number;
   /**
-   * Role of the user that the rule should match on
+   * Role of the user that the rule should match on.
    */
   userRoleAttr?: string;
 }
@@ -54,9 +54,10 @@ export interface Rule {
 /**
  * Operation on the entity.
  *
- * This schema defines all possible operations on metadata of data entities
+ * This schema defines all possible operations on metadata of data entities.
  */
 export enum Operation {
+  DecryptTokens = 'DecryptTokens',
   SuggestDescription = 'SuggestDescription',
   SuggestTags = 'SuggestTags',
   UpdateDescription = 'UpdateDescription',

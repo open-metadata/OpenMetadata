@@ -13,7 +13,7 @@
  */
 
 /**
- * This schema defines the Role entity. A Role has access to zero or more data assets
+ * This schema defines the Role entity. A Role has access to zero or more data assets.
  */
 export interface Role {
   /**

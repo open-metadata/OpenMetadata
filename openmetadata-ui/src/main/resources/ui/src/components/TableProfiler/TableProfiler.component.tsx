@@ -57,7 +57,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
       data,
       min: data?.length ? data[0].min ?? 0 : 0,
       max: data?.length ? data[0].max ?? 0 : 0,
-      median: data?.length ? data[0].median ?? 0 : 0,
     };
   });
 
@@ -75,7 +74,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
               <th className="tableHead-cell">Null Ratio (%)</th>
               <th className="tableHead-cell">Min</th>
               <th className="tableHead-cell">Max</th>
-              <th className="tableHead-cell">Median</th>
               <th className="tableHead-cell">Standard Deviation</th>
             </tr>
           </thead>
@@ -148,7 +146,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                     </td>
                     <td className="tw-relative tableBody-cell">{col.min}</td>
                     <td className="tw-relative tableBody-cell">{col.max}</td>
-                    <td className="tw-relative tableBody-cell">{col.median}</td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <TableProfilerGraph
                         data={
@@ -193,9 +190,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                           </td>
                           <td className="tw-relative tableBody-cell">
                             {colData.max ?? 0}
-                          </td>
-                          <td className="tw-relative tableBody-cell">
-                            {colData.median ?? 0}
                           </td>
                           <td className="tw-relative tableBody-cell">
                             {colData.stddev ?? 0}

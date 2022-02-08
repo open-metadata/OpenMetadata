@@ -87,6 +87,10 @@ export interface Mlmodel {
    */
   tags?: TagLabel[];
   /**
+   * For supervised ML Models, the value to estimate.
+   */
+  target?: string;
+  /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
    */

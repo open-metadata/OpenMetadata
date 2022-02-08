@@ -13,15 +13,163 @@
  */
 
 /**
+ * Create Policy Entity Request
+ */
+export interface CreatePolicy {
+  /**
+   * A short description of the Policy, comprehensible to regular users.
+   */
+  description?: string;
+  /**
+   * Title for this Policy.
+   */
+  displayName?: string;
+  /**
+   * Is the policy enabled.
+   */
+  enabled?: boolean;
+  /**
+   * UUID of Location where this policy is applied
+   */
+  location?: string;
+  /**
+   * Name that identifies this Policy.
+   */
+  name: string;
+  /**
+   * Owner of this Policy.
+   */
+  owner?: EntityReference;
+  policyType: PolicyType;
+  /**
+   * Link to a well documented definition of this Policy.
+   */
+  policyUrl?: string;
+  rules?: Rule[];
+}
+
+/**
+ * Owner of this Policy.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Followers of this location.
+ *
+ * Owner of this location.
+ *
+ * Link to the database cluster/service where this database is hosted in.
+ *
+ * Owner of this storage service.
+ */
+export interface EntityReference {
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance. For entities such as tables, databases where the name is not
+   * unique, fullyQualifiedName is returned in this field.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
+}
+
+/**
+ * This schema defines the type used for describing different types of policies.
+ */
+export enum PolicyType {
+  AccessControl = 'AccessControl',
+  Lifecycle = 'Lifecycle',
+}
+
+/**
+ * A set of rules associated with the Policy.
+ *
+ * Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user
+ * (subject) and entity (object) attributes are evaluated with logical AND.
+ *
+ * Describes an entity Lifecycle Rule used within a Policy.
+ */
+export interface Rule {
+  /**
+   * Allow or Deny operation on the entity.
+   */
+  allow?: boolean;
+  /**
+   * Is the rule enabled.
+   */
+  enabled?: boolean;
+  /**
+   * Entity tag that the rule should match on.
+   */
+  entityTagAttr?: string;
+  /**
+   * Entity type that the rule should match on.
+   */
+  entityTypeAttr?: string;
+  /**
+   * Name for this Rule.
+   *
+   * Name that identifies this Rule.
+   */
+  name?: string;
+  /**
+   * Operation on the entity.
+   */
+  operation?: Operation;
+  /**
+   * Priority of this rule among all rules across all policies.
+   */
+  priority?: number;
+  /**
+   * Role of the user that the rule should match on.
+   */
+  userRoleAttr?: string;
+  /**
+   * A set of actions to take on the entities.
+   */
+  actions?: LifecycleEAction[];
+  prefixFilter?: string;
+  regexFilter?: string;
+  tagsFilter?: string[];
+}
+
+/**
+ * An action to delete or expire the entity.
+ *
  * An action to move the entity to a different location. For eg: Move from Standard storage
  * tier to Archive storage tier.
  */
-export interface MoveAction {
+export interface LifecycleEAction {
   /**
+   * Number of days after creation of the entity that the deletion should be triggered.
+   *
    * Number of days after creation of the entity that the move should be triggered.
    */
   daysAfterCreation?: number;
   /**
+   * Number of days after last modification of the entity that the deletion should be
+   * triggered.
+   *
    * Number of days after last modification of the entity that the move should be triggered.
    */
   daysAfterModification?: number;
@@ -167,49 +315,6 @@ export interface FieldChange {
 }
 
 /**
- * Followers of this location.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Owner of this location.
- *
- * Link to the database cluster/service where this database is hosted in.
- *
- * Owner of this storage service.
- */
-export interface EntityReference {
-  /**
-   * Optional description of entity.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this entity.
-   */
-  displayName?: string;
-  /**
-   * Link to the entity resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier that identifies an entity instance.
-   */
-  id: string;
-  /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
-   */
-  name?: string;
-  /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-   * `dashboardService`...
-   */
-  type: string;
-}
-
-/**
  * This schema defines the type used for describing different types of Location.
  */
 export enum LocationType {
@@ -287,9 +392,15 @@ export enum State {
  *
  * Type of storage class for the storage service.
  *
- * Name of the entity field that changed.
+ * UUID of Location where this policy is applied
  *
- * Name of the field of an entity.
+ * Unique id used to identify an entity.
+ *
+ * Unique identifier that identifies an entity instance.
+ *
+ * Unique identifier of this location instance.
+ *
+ * Unique identifier of this storage service instance.
  *
  * Link to the entity resource.
  *
@@ -301,13 +412,13 @@ export enum State {
  *
  * Link to the resource corresponding to this storage service.
  *
- * Unique identifier that identifies an entity instance.
+ * Name of the entity field that changed.
  *
- * Unique id used to identify an entity.
+ * Name of the field of an entity.
  *
- * Unique identifier of this location instance.
+ * Prefix path of the entity.
  *
- * Unique identifier of this storage service instance.
+ * Regex that matches the entity.
  *
  * Type of storage class offered by S3.
  *
@@ -389,4 +500,19 @@ export interface StorageService {
    * Metadata version of the entity.
    */
   version?: number;
+}
+
+/**
+ * Operation on the entity.
+ *
+ * This schema defines all possible operations on metadata of data entities.
+ */
+export enum Operation {
+  DecryptTokens = 'DecryptTokens',
+  SuggestDescription = 'SuggestDescription',
+  SuggestTags = 'SuggestTags',
+  UpdateDescription = 'UpdateDescription',
+  UpdateLineage = 'UpdateLineage',
+  UpdateOwner = 'UpdateOwner',
+  UpdateTags = 'UpdateTags',
 }

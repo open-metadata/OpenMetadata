@@ -62,6 +62,10 @@ export interface CreateMlModel {
    * Tags for this ML Model
    */
   tags?: TagLabel[];
+  /**
+   * For supervised ML Models, the value to estimate.
+   */
+  target?: string;
 }
 
 /**
