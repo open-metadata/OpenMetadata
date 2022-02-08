@@ -272,8 +272,10 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
-    // Validate Database Connection
-    assertEquals(createRequest.getDatabaseConnection(), service.getDatabaseConnection());
+    // Validate Database Connection if available. We nullify when not admin or bot
+    if (service.getDatabaseConnection() != null) {
+      assertEquals(createRequest.getDatabaseConnection(), service.getDatabaseConnection());
+    }
   }
 
   @Override
