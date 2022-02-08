@@ -181,8 +181,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
     // Patch and update the topic
     Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
-    topic.setHref(null);
-    topic.getOwner().withHref(null);
     String origJson = JsonUtils.pojoToJson(topic);
 
     topic

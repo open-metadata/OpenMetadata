@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -49,13 +50,16 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
 public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
@@ -154,6 +158,29 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
+  @Test
+  void patch_deleteUserFromTeam_200(TestInfo test) throws IOException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    final int totalUsers = 20;
+    ArrayList<UUID> users = new ArrayList<>();
+    for (int i = 0; i < totalUsers; i++) {
+      User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
+      users.add(user.getId());
+    }
+    CreateTeam create =
+        createRequest(getEntityName(test), "description", "displayName", null).withProfile(PROFILE).withUsers(users);
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Remove a user from the team list using patch request
+    String json = JsonUtils.pojoToJson(team);
+    int removeUserIndex = new Random().nextInt(totalUsers);
+    EntityReference deletedUser = team.getUsers().get(removeUserIndex).withHref(null);
+    team.getUsers().remove(removeUserIndex);
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("users").withOldValue(Arrays.asList(deletedUser)));
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
   private static void validateTeam(
       Team team,
       String expectedDescription,
@@ -237,6 +264,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       expectedUsers.add(new EntityReference().withId(teamId).withType(Entity.USER));
     }
     List<EntityReference> actualUsers = Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList());
+    actualUsers.forEach(actual -> TestUtils.validateEntityReference(actual));
+
     if (!expectedUsers.isEmpty()) {
       assertEquals(expectedUsers.size(), actualUsers.size());
       for (EntityReference user : expectedUsers) {
@@ -280,8 +309,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     List<EntityReference> expectedUsers = Optional.ofNullable(expected.getUsers()).orElse(Collections.emptyList());
     List<EntityReference> actualUsers = Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList());
     actualUsers.forEach(TestUtils::validateEntityReference);
-    actualUsers.forEach(user -> user.setHref(null));
-    expectedUsers.forEach(user -> user.setHref(null));
 
     actualUsers.sort(EntityUtil.compareEntityReference);
     expectedUsers.sort(EntityUtil.compareEntityReference);
@@ -296,6 +323,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("users")) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedUsers = (List<EntityReference>) expected;
+      List<EntityReference> actualUsers = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEntityReferencesFieldChange(expectedUsers, actualUsers);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

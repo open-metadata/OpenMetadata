@@ -1832,6 +1832,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
   }
 
+  protected void assertEntityReferencesFieldChange(
+      List<EntityReference> expectedList, List<EntityReference> actualList) {
+    for (EntityReference expected : expectedList) {
+      EntityReference actual =
+          actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);
+      assertNotNull(actual, "Expected entity " + expected.getId() + " not found");
+    }
+  }
+
   public final String getEntityName(TestInfo test) {
     return String.format("%s_%s", entityType, test.getDisplayName());
   }
