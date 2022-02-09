@@ -10,9 +10,20 @@
       "description": "Enum defining the possible Status.",
       "type": "string",
       "enum": [
-        "successful",
-        "failed",
-        "pending"
+        "Successful",
+        "Failed",
+        "Pending"
+      ],
+      "javaEnums": [
+        {
+          "name": "Successful"
+        },
+        {
+          "name": "Failed"
+        },
+        {
+          "name": "Pending"
+        }
       ]
     },
     "taskStatus": {
@@ -89,7 +100,7 @@
       "properties": {
         "executionDate": {
           "description": "Date where the job was executed.",
-          "$ref": "../../type/basic.json#/definitions/date"
+          "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "executionStatus": {
           "description": "Status at a specific execution date.",
