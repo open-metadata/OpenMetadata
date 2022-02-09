@@ -438,6 +438,13 @@ public final class EntityUtil {
     return localColumnName.toString();
   }
 
+  /** Return column field name of format columnName.fieldName */
+  public static String getColumnField(Column column, String columnField) {
+    // Remove table FQN from column FQN to get the local name
+    String localColumnName = EntityUtil.getLocalColumnName(column.getFullyQualifiedName());
+    return "columns." + localColumnName + (columnField == null ? "" : "." + columnField);
+  }
+
   public static Boolean toBoolean(Include include) {
     if (include.equals(DELETED)) {
       return Boolean.TRUE;
