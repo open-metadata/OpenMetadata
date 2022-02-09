@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
+import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -23,23 +24,30 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.entity.data.PipelineStatus;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
@@ -82,8 +90,68 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (!fields.contains("tasks")) {
       pipeline.withTasks(null);
     }
+    pipeline.setPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
     pipeline.setTags(fields.contains("tags") ? getTags(pipeline.getFullyQualifiedName()) : null);
     return pipeline;
+  }
+
+  private List<PipelineStatus> getPipelineStatus(Pipeline pipeline) throws IOException {
+    List<PipelineStatus> pipelineStatus =
+        JsonUtils.readObjects(
+            daoCollection.entityExtensionDAO().getExtension(pipeline.getId().toString(), "pipeline.pipelineStatus"),
+            PipelineStatus.class);
+    if (pipelineStatus != null) {
+      pipelineStatus.sort(
+          Comparator.comparing(s -> parseDate(s.getExecutionDate(), RestUtil.DATE_FORMAT), Comparator.reverseOrder()));
+    }
+    return pipelineStatus;
+  }
+
+  @Transaction
+  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException, ParseException {
+    // Validate the request content
+    Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
+    Map<String, PipelineStatus> storedMapStatus = new HashMap<>();
+
+    // Add stored status
+    List<PipelineStatus> storedPipelineStatus = getPipelineStatus(pipeline);
+    if (storedPipelineStatus != null) {
+      for (PipelineStatus status : storedPipelineStatus) {
+        storedMapStatus.put(status.getExecutionDate(), status);
+      }
+    }
+
+    // validate all the Tasks
+    for (Status taskStatus : pipelineStatus.getTaskStatus()) {
+      validateTask(pipeline, taskStatus.getName());
+    }
+
+    // Add new status
+    storedMapStatus.put(pipelineStatus.getExecutionDate(), pipelineStatus);
+
+    // Prepare to update status
+    List<PipelineStatus> updatedStatus = new ArrayList<>(storedMapStatus.values());
+
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            pipelineId.toString(), "pipeline.pipelineStatus", "pipelineStatus", JsonUtils.pojoToJson(updatedStatus));
+    setFields(pipeline, Fields.EMPTY_FIELDS);
+    return pipeline.withPipelineStatus(getPipelineStatus(pipeline));
+  }
+
+  // Validate if a given task exists in the pipeline
+  private void validateTask(Pipeline pipeline, String taskName) {
+    boolean validTask = false;
+    for (Task task : pipeline.getTasks()) {
+      if (task.getName().equals(taskName)) {
+        validTask = true;
+        break;
+      }
+    }
+    if (!validTask) {
+      throw new IllegalArgumentException("Invalid task name " + taskName);
+    }
   }
 
   @Override
