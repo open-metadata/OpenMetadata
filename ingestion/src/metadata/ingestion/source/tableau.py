@@ -42,8 +42,8 @@ logger = logging.getLogger(__name__)
 class TableauSourceConfig(ConfigModel):
     """Tableau pydantic source model"""
 
-    username: str
-    password: SecretStr
+    username: Optional[str] = None
+    password: Optional[SecretStr] = None
     server: str
     api_version: str
     env: Optional[str] = "tableau_prod"
@@ -51,6 +51,8 @@ class TableauSourceConfig(ConfigModel):
     site_url: str
     service_name: str
     service_type: str = "Tableau"
+    personal_access_token_name: Optional[str] = None
+    personal_access_token_secret: Optional[str] = None
     dashboard_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
@@ -87,12 +89,12 @@ class TableauSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.client = self.tableau_client()
         self.service = get_dashboard_service_or_create(
-            config.service_name,
-            DashboardServiceType.Tableau.name,
-            config.username,
-            config.password.get_secret_value(),
-            config.server,
-            metadata_config,
+            service_name=config.service_name,
+            dashboard_service_type=DashboardServiceType.Tableau.name,
+            username=config.username,
+            password=config.password.get_secret_value() if config.password else None,
+            dashboard_url=config.server,
+            metadata_config=metadata_config,
         )
         self.status = SourceStatus()
         self.dashboards = get_workbooks_dataframe(self.client).to_dict()
@@ -107,12 +109,23 @@ class TableauSource(Source[Entity]):
             f"{self.config.env}": {
                 "server": self.config.server,
                 "api_version": self.config.api_version,
-                "username": self.config.username,
-                "password": self.config.password.get_secret_value(),
                 "site_name": self.config.site_name,
                 "site_url": self.config.site_url,
             }
         }
+        if self.config.username and self.config.password:
+            tableau_server_config[self.config.env]["username"] = self.config.username
+            tableau_server_config[self.config.env]["password"] = self.config.password
+        elif (
+            self.config.personal_access_token_name
+            and self.config.personal_access_token_secret
+        ):
+            tableau_server_config[self.config.env][
+                "personal_access_token_name"
+            ] = self.config.personal_access_token_name
+            tableau_server_config[self.config.env][
+                "personal_access_token_secret"
+            ] = self.config.personal_access_token_secret
         try:
             conn = TableauServerConnection(
                 config_json=tableau_server_config, env="tableau_prod"

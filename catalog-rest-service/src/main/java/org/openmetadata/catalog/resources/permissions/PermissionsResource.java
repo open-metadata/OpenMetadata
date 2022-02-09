@@ -25,6 +25,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 import lombok.NonNull;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.Permissions;
@@ -37,7 +38,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 public class PermissionsResource {
   private final Authorizer authorizer;
 
-  public PermissionsResource(@NonNull Authorizer authorizer) {
+  public PermissionsResource(CollectionDAO dao, @NonNull Authorizer authorizer) {
     this.authorizer = authorizer;
   }
 
