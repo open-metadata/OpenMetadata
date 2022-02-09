@@ -368,7 +368,18 @@ public class PipelineResource {
 
   @PUT
   @Path("/{id}/status")
-  @Operation(summary = "Add status data", tags = "pipelines", description = "Add status data to the pipeline.")
+  @Operation(
+      summary = "Add status data",
+      tags = "pipelines",
+      description = "Add status data to the pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The pipeline with a the new status",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
   public Pipeline addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
