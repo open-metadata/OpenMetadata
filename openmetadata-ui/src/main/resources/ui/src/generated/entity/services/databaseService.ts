@@ -19,9 +19,14 @@
  */
 export interface DatabaseService {
   /**
+   * References to airflow pipelines deployed for this database service.
+   */
+  airflowPipelines?: EntityReference[];
+  /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
+  databaseConnection: DatabaseConnection;
   /**
    * When `true` indicates the entity has been soft deleted.
    */
@@ -43,17 +48,13 @@ export interface DatabaseService {
    */
   id: string;
   /**
-   * Schedule for running metadata ingestion jobs.
-   */
-  ingestionSchedule?: Schedule;
-  /**
-   * JDBC connection information.
-   */
-  jdbc: JDBCInfo;
-  /**
    * Name that identifies this database service.
    */
   name: string;
+  /**
+   * Owner of this database service.
+   */
+  owner?: EntityReference;
   /**
    * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
    */
@@ -71,6 +72,45 @@ export interface DatabaseService {
    * Metadata version of the entity.
    */
   version?: number;
+}
+
+/**
+ * References to airflow pipelines deployed for this database service.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Owner of this database service.
+ */
+export interface EntityReference {
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance. For entities such as tables, databases where the name is not
+   * unique, fullyQualifiedName is returned in this field.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
 }
 
 /**
@@ -115,30 +155,34 @@ export interface FieldChange {
 }
 
 /**
- * Schedule for running metadata ingestion jobs.
- *
- * This schema defines the type used for the schedule. The schedule has a start time and
- * repeat frequency.
+ * Database Connection.
  */
-export interface Schedule {
+export interface DatabaseConnection {
   /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
+   * Additional connection arguments such as security or protocol configs that can be sent to
+   * service during connection.
    */
-  repeatFrequency?: string;
+  connectionArguments?: { [key: string]: any };
   /**
-   * Start date and time of the schedule.
+   * Additional connection options that can be sent to service during the connection.
    */
-  startDate?: Date;
-}
-
-/**
- * JDBC connection information.
- *
- * Type for capturing JDBC connector information.
- */
-export interface JDBCInfo {
-  connectionUrl: string;
-  driverClass: string;
+  connectionOptions?: { [key: string]: any };
+  /**
+   * Database of the data source.
+   */
+  database?: string;
+  /**
+   * Host and port of the data source.
+   */
+  hostPort?: string;
+  /**
+   * password to connect  to the data source.
+   */
+  password?: string;
+  /**
+   * username to connect  to the data source.
+   */
+  username?: string;
 }
 
 /**
@@ -147,6 +191,7 @@ export interface JDBCInfo {
 export enum DatabaseServiceType {
   Athena = 'Athena',
   BigQuery = 'BigQuery',
+  Db2 = 'Db2',
   Druid = 'Druid',
   Glue = 'Glue',
   Hive = 'Hive',

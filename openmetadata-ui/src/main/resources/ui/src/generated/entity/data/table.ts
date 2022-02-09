@@ -476,6 +476,7 @@ export interface TableData {
 export enum DatabaseServiceType {
   Athena = 'Athena',
   BigQuery = 'BigQuery',
+  Db2 = 'Db2',
   Druid = 'Druid',
   Glue = 'Glue',
   Hive = 'Hive',
@@ -535,21 +536,44 @@ export interface TableProfile {
  */
 export interface ColumnProfile {
   /**
+   * Number of values that contain distinct values.
+   */
+  distinctCount?: number;
+  /**
+   * No.of Rows that contain duplicates in a column.
+   */
+  duplicateCount?: number;
+  /**
+   * Histogram of a column.
+   */
+  histogram?:
+    | any[]
+    | boolean
+    | number
+    | number
+    | null
+    | HistogramObject
+    | string;
+  /**
    * Maximum value in a column.
    */
-  max?: string;
+  max?: number;
   /**
    * Avg value in a column.
    */
-  mean?: string;
-  /**
-   * Median value in a column.
-   */
-  median?: string;
+  mean?: number;
   /**
    * Minimum value in a column.
    */
-  min?: string;
+  min?: number;
+  /**
+   * Missing count is calculated by subtracting valuesCount - validCount.
+   */
+  missingCount?: number;
+  /**
+   * Missing Percentage is calculated by taking percentage of validCount/valuesCount.
+   */
+  missingPercentage?: number;
   /**
    * Column Name.
    */
@@ -567,6 +591,10 @@ export interface ColumnProfile {
    */
   stddev?: number;
   /**
+   * Median value in a column.
+   */
+  sum?: number;
+  /**
    * No. of unique values in the column.
    */
   uniqueCount?: number;
@@ -574,6 +602,33 @@ export interface ColumnProfile {
    * Proportion of number of unique values in a column.
    */
   uniqueProportion?: number;
+  /**
+   * Total count of valid values in this column.
+   */
+  validCount?: number;
+  /**
+   * Total count of the values in this column.
+   */
+  valuesCount?: number;
+  /**
+   * Percentage of values in this column with respect to rowcount.
+   */
+  valuesPercentage?: number;
+  /**
+   * Variance of a column.
+   */
+  variance?: number;
+}
+
+export interface HistogramObject {
+  /**
+   * Boundaries of Histogram.
+   */
+  boundaries?: any[];
+  /**
+   * Frequencies of Histogram.
+   */
+  frequencies?: any[];
 }
 
 /**

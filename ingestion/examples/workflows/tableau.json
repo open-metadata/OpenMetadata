@@ -2,6 +2,8 @@
   "source": {
     "type": "tableau",
     "config": {
+      "personal_access_token_secret": "personal_access_token_secret",
+      "personal_access_token_name": "personal_access_token_name",
       "username": "username",
       "password": "password",
       "service_name": "local_tableau",

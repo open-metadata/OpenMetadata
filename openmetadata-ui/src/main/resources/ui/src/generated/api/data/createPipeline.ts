@@ -21,7 +21,7 @@ export interface CreatePipeline {
    */
   concurrency?: number;
   /**
-   * Description of the database instance. What it has and how to use it.
+   * Description of the pipeline instance. What it has and how to use it.
    */
   description?: string;
   /**
@@ -34,7 +34,7 @@ export interface CreatePipeline {
    */
   name: string;
   /**
-   * Owner of this database
+   * Owner of this pipeline
    */
   owner?: EntityReference;
   /**
@@ -46,7 +46,7 @@ export interface CreatePipeline {
    */
   pipelineUrl?: string;
   /**
-   * Link to the database service where this database is hosted in
+   * Link to the pipeline service where this pipeline is hosted in
    */
   service: EntityReference;
   /**
@@ -64,14 +64,14 @@ export interface CreatePipeline {
 }
 
 /**
- * Owner of this database
+ * Owner of this pipeline
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Link to the database service where this database is hosted in
+ * Link to the pipeline service where this pipeline is hosted in
  */
 export interface EntityReference {
   /**

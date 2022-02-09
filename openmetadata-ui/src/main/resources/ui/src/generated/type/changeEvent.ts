@@ -116,5 +116,6 @@ export interface FieldChange {
 export enum EventType {
   EntityCreated = 'entityCreated',
   EntityDeleted = 'entityDeleted',
+  EntitySoftDeleted = 'entitySoftDeleted',
   EntityUpdated = 'entityUpdated',
 }

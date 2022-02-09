@@ -23,7 +23,7 @@ export interface CreateTable {
   /**
    * Database corresponding to this table
    */
-  database: string;
+  database: EntityReference;
   /**
    * Description of entity instance.
    */
@@ -210,12 +210,14 @@ export enum State {
 }
 
 /**
- * Owner of this entity
+ * Database corresponding to this table
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Owner of this entity
  */
 export interface EntityReference {
   /**

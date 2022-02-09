@@ -26,7 +26,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           your organization.
         </p>
       ),
-      position: [5, 360],
       stepInteraction: false,
       selector: '#assetStatsCount',
     },
@@ -37,7 +36,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           changing in your organization.
         </p>
       ),
-      position: [540, 540],
       selector: '#feedData',
       stepInteraction: false,
     },
@@ -49,7 +47,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           <strong>Search</strong> box.
         </p>
       ),
-      position: [535, 70],
       selector: '#searchBox',
       stepInteraction: false,
       beforeNext: clearSearchTerm,
@@ -64,7 +61,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       actionType: 'enter',
       userTypeText: value,
-      position: [535, 70],
       selector: '#searchBox',
       beforeNext: () => {
         clearSearchTerm();
@@ -84,7 +80,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       selector: '#tabledatacard0',
       stepInteraction: false,
-      position: [550, 310],
     },
     {
       content: () => (
@@ -94,7 +89,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       actionType: 'click',
       selector: '#tabledatacard0Title',
-      position: [210, 190],
       beforeNext: () => {
         AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
       },
@@ -112,8 +106,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       stepInteraction: false,
-      position: [540, 23],
-      arrowPosition: 'bottom',
       selector: '#schemaDetails',
     },
     {
@@ -126,21 +118,18 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           Click on the <strong>&quot;Sample Data&quot;</strong> tab.
         </p>
       ),
-      position: [70, 240],
       selector: '#sampleData',
       beforeNext: () => {
         AppState.activeTabforTourDatasetPage = 2;
       },
     },
     {
-      arrowPosition: 'bottom',
       content: () => (
         <p>
           Take a look at the <strong>Sample Data</strong> to get a feel for what
           the table contains and how you might use it.
         </p>
       ),
-      position: [530, 60],
       selector: '#sampleDataDetails',
     },
     {
@@ -156,7 +145,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           Click on the <strong>&quot;Profiler&quot;</strong> tab.
         </p>
       ),
-      position: [200, 240],
       selector: '#profiler',
     },
     {
@@ -167,9 +155,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           understand the column data distributions.
         </p>
       ),
-      arrowPosition: 'bottom',
       stepInteraction: false,
-      position: [530, 20],
       selector: '#profilerDetails',
     },
     {
@@ -185,7 +171,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           Click on the <strong>&quot;Lineage&quot;</strong> tab
         </p>
       ),
-      position: [320, 240],
       selector: '#lineage',
     },
     {
@@ -195,9 +180,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           pipelines, & dashboards.
         </p>
       ),
-      position: [530, 45],
       stepInteraction: false,
-      arrowPosition: 'bottom',
       selector: '#lineageDetails',
     },
     {
@@ -210,7 +193,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           Click on the <strong>&quot;Manage&quot;</strong> tab
         </p>
       ),
-      position: [440, 240],
       selector: '#manage',
     },
     {
@@ -223,8 +205,6 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           set the tier.
         </p>
       ),
-      position: [560, 60],
-      arrowPosition: 'bottom',
       stepInteraction: false,
       selector: '#manageTabDetails',
     },
