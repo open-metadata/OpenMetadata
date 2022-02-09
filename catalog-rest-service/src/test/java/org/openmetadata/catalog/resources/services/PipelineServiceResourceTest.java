@@ -61,6 +61,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         false,
         true,
         false,
+        false,
         false);
     this.supportsPatch = false;
   }

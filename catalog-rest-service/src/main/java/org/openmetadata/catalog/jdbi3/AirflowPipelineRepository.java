@@ -84,6 +84,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   @Override
   public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(airflowPipeline));
     EntityReference entityReference =
         helper(helper(airflowPipeline).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE)))
             .toEntityReference();
@@ -145,6 +146,11 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -222,6 +228,11 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

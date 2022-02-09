@@ -147,6 +147,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void prepare(MlModel mlModel) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(mlModel));
     mlModel.setFullyQualifiedName(getFQN(mlModel));
 
     if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
@@ -251,6 +252,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -333,6 +339,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

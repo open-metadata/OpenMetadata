@@ -57,6 +57,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         false,
         true,
         false,
+        false,
         false);
     this.supportsPatch = false;
   }

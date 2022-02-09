@@ -65,7 +65,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false, false);
   }
 
   @Test
@@ -251,7 +251,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateCommonEntityFields(
         getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
-    assertEquals(createRequest.getDisplayName(), team.getDisplayName());
     assertEquals(createRequest.getProfile(), team.getProfile());
 
     List<EntityReference> expectedUsers = new ArrayList<>();

@@ -10,7 +10,8 @@
       "description": "Name that identifies the this entity instance uniquely",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^[^.]*$"
     },
     "description": {
       "description": "Description of Database entity.",

@@ -177,6 +177,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public void prepare(Location location) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(location));
     StorageService storageService = getService(location.getService().getId(), location.getService().getType());
     location.setService(
         new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
@@ -258,6 +259,11 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -345,6 +351,11 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

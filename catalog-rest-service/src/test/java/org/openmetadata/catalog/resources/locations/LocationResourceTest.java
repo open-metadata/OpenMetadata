@@ -58,6 +58,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
         true,
         true,
         true,
+        true,
         true);
   }
 

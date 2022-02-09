@@ -128,6 +128,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(dashboard));
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
@@ -244,6 +245,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -324,6 +330,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

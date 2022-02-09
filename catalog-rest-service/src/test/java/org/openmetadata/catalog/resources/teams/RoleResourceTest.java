@@ -46,7 +46,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false);
+    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false, false);
   }
 
   @Test
@@ -141,8 +141,6 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
         getEntityInterface(role), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
-    assertEquals(createRequest.getDisplayName(), role.getDisplayName());
   }
 
   @Override

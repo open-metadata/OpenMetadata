@@ -10,8 +10,7 @@
       "type": "string",
       "javaType": "org.openmetadata.catalog.type.topic.TopicName",
       "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "maxLength": 128
     },
     "schemaType": {
       "description": "Schema type used for the message.",

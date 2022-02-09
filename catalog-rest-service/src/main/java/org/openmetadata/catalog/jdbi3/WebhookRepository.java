@@ -84,9 +84,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public void prepare(Webhook entity) throws IOException {
-    // Nothing to prepare
-  }
+  public void prepare(Webhook entity) throws IOException {}
 
   @Override
   public void storeEntity(Webhook entity, boolean update) throws IOException {
@@ -185,6 +183,11 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
       return entity.getName();
     }
 
@@ -250,7 +253,12 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public void setDisplayName(String displayName) {
-      /* No display name */
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override
