@@ -224,7 +224,7 @@ class SampleDataSource(Source[Entity]):
             message_service_type=self.kafka_service_json.get("serviceType"),
             schema_registry_url=self.kafka_service_json.get("schemaRegistry"),
             brokers=self.kafka_service_json.get("brokers"),
-            metadata_config=metadata_config,
+            metadata_config=self.metadata_config,
         )
         self.dashboard_service_json = json.load(
             open(self.config.sample_data_folder + "/dashboards/service.json", "r")
