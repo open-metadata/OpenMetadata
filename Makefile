@@ -118,9 +118,9 @@ yarn_start_dev_ui:  ## Run the UI locally with Yarn
 core_install_dev:  ## Prepare a venv for the ingestion-core module
 	cd ingestion-core; \
 		rm -rf venv; \
-		python -m venv venv; \
+		python3 -m venv venv; \
 		. venv/bin/activate; \
-		python -m pip install ".[dev]"
+		python3 -m pip install ".[dev]"
 
 .PHONY: core_clean
 core_clean:  ## Clean the ingestion-core generated files
