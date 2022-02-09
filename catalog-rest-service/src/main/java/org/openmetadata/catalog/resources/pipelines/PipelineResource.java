@@ -376,8 +376,7 @@ public class PipelineResource {
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline with a the new status",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Pipeline addPipelineStatus(
