@@ -22,11 +22,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.put;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -282,19 +283,21 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void put_PipelineStatus_200(TestInfo test) throws IOException {
+  void put_PipelineStatus_200(TestInfo test) throws IOException, ParseException {
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+
     // PUT one status and validate
-    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.SUCCESSFUL);
-    Status t2Status = new Status().withName("task2").withExecutionStatus(StatusType.FAILED);
+    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
+    Status t2Status = new Status().withName("task2").withExecutionStatus(StatusType.Failed);
     List<Status> taskStatus = List.of(t1Status, t2Status);
 
     PipelineStatus pipelineStatus =
         new PipelineStatus()
-            .withExecutionStatus(StatusType.FAILED)
-            .withExecutionDate("2022-01-15")
+            .withExecutionStatus(StatusType.Failed)
+            .withExecutionDate(format.parse("2022-01-15").getTime())
             .withTaskStatus(taskStatus);
 
     Pipeline putResponse = putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS);
@@ -308,8 +311,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // PUT another status and validate
     PipelineStatus newPipelineStatus =
         new PipelineStatus()
-            .withExecutionStatus(StatusType.FAILED)
-            .withExecutionDate("2022-01-16")
+            .withExecutionStatus(StatusType.Failed)
+            .withExecutionDate(format.parse("2022-01-16").getTime())
             .withTaskStatus(taskStatus);
 
     putResponse = putPipelineStatusData(pipeline.getId(), newPipelineStatus, ADMIN_AUTH_HEADERS);
@@ -321,12 +324,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     verifyPipelineStatusData(pipeline.getPipelineStatus(), List.of(pipelineStatus, newPipelineStatus));
 
     // Replace status data for a date
-    Status t3Status = new Status().withName("task0").withExecutionStatus(StatusType.SUCCESSFUL);
+    Status t3Status = new Status().withName("task0").withExecutionStatus(StatusType.Successful);
     List<Status> newTaskStatus = List.of(t1Status, t2Status, t3Status);
     PipelineStatus anotherStatus =
         new PipelineStatus()
-            .withExecutionStatus(StatusType.SUCCESSFUL)
-            .withExecutionDate("2022-01-16")
+            .withExecutionStatus(StatusType.Successful)
+            .withExecutionDate(format.parse("2022-01-16").getTime())
             .withTaskStatus(newTaskStatus);
 
     putResponse = putPipelineStatusData(pipeline.getId(), anotherStatus, ADMIN_AUTH_HEADERS);
@@ -342,19 +345,21 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
-  void put_PipelineInvalidStatus_4xx(TestInfo test) throws IOException {
+  void put_PipelineInvalidStatus_4xx(TestInfo test) throws IOException, ParseException {
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+
     // PUT one status and validate
-    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.SUCCESSFUL);
-    Status t2Status = new Status().withName("invalidTask").withExecutionStatus(StatusType.FAILED);
+    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
+    Status t2Status = new Status().withName("invalidTask").withExecutionStatus(StatusType.Failed);
     List<Status> taskStatus = List.of(t1Status, t2Status);
 
     PipelineStatus pipelineStatus =
         new PipelineStatus()
-            .withExecutionStatus(StatusType.FAILED)
-            .withExecutionDate("2022-01-15")
+            .withExecutionStatus(StatusType.Failed)
+            .withExecutionDate(format.parse("2022-01-16").getTime())
             .withTaskStatus(taskStatus);
 
     HttpResponseException exception =
@@ -534,7 +539,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   // Check that the inserted status are properly stored
   private void verifyPipelineStatusData(List<PipelineStatus> actualStatus, List<PipelineStatus> expectedStatus) {
     assertEquals(actualStatus.size(), expectedStatus.size());
-    Map<String, PipelineStatus> statusMap = new HashMap<>();
+    Map<Long, PipelineStatus> statusMap = new HashMap<>();
     for (PipelineStatus status : actualStatus) {
       statusMap.put(status.getExecutionDate(), status);
     }

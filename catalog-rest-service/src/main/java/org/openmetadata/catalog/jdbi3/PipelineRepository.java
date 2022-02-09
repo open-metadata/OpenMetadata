@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
-import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -47,7 +46,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST, "owner,tags,tasks");
@@ -101,8 +99,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             daoCollection.entityExtensionDAO().getExtension(pipeline.getId().toString(), "pipeline.pipelineStatus"),
             PipelineStatus.class);
     if (pipelineStatus != null) {
-      pipelineStatus.sort(
-          Comparator.comparing(s -> parseDate(s.getExecutionDate(), RestUtil.DATE_FORMAT), Comparator.reverseOrder()));
+      pipelineStatus.sort(Comparator.comparing(PipelineStatus::getExecutionDate, Comparator.reverseOrder()));
     }
     return pipelineStatus;
   }
@@ -111,7 +108,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException, ParseException {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
-    Map<String, PipelineStatus> storedMapStatus = new HashMap<>();
+    Map<Long, PipelineStatus> storedMapStatus = new HashMap<>();
 
     // Add stored status
     List<PipelineStatus> storedPipelineStatus = getPipelineStatus(pipeline);
@@ -142,13 +139,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   // Validate if a given task exists in the pipeline
   private void validateTask(Pipeline pipeline, String taskName) {
-    boolean validTask = false;
-    for (Task task : pipeline.getTasks()) {
-      if (task.getName().equals(taskName)) {
-        validTask = true;
-        break;
-      }
-    }
+    boolean validTask = pipeline.getTasks().stream().anyMatch(task -> task.getName().equals(taskName));
     if (!validTask) {
       throw new IllegalArgumentException("Invalid task name " + taskName);
     }
