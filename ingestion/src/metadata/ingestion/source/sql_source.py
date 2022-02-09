@@ -124,6 +124,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(
                 f"Profiling not available for this databaseService: {str(err)}"
             )
+            self.config.data_profiler_enabled = False
+
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.print_exc())
             logger.debug(f"Error loading profiler {repr(exc)}")
