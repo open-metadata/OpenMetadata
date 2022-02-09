@@ -24,6 +24,7 @@ import {
   patchTopicDetails,
   removeFollower,
 } from '../../axiosAPIs/topicsAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
@@ -38,7 +39,11 @@ import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
-import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getEntityMissingError,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -75,6 +80,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [retentionSize, setRetentionSize] = useState<number>(0);
   const [name, setName] = useState<string>('');
   const [deleted, setDeleted] = useState<boolean>(false);
+  const [isError, setIsError] = useState(false);
 
   const [schemaText, setSchemaText] = useState<string>('{}');
   const [slashedTopicName, setSlashedTopicName] = useState<
@@ -185,11 +191,16 @@ const TopicDetailsPage: FunctionComponent = () => {
         setLoading(false);
       })
       .catch((err: AxiosError) => {
-        const errMsg = err.message || 'Error while fetching topic details';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg = err.message || 'Error while fetching topic details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
+
         setLoading(false);
       });
   };
@@ -260,6 +271,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('topic', topicFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <TopicDetails
           activeTab={activeTab}

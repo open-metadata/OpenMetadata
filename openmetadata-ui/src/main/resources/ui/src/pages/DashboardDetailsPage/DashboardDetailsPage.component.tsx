@@ -33,6 +33,7 @@ import {
 } from '../../axiosAPIs/dashboardAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
 import {
@@ -54,7 +55,11 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
-import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getEntityMissingError,
+} from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
   defaultFields,
@@ -109,6 +114,7 @@ const DashboardDetailsPage = () => {
   });
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [deleted, setDeleted] = useState<boolean>(false);
+  const [isError, setIsError] = useState(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -278,6 +284,18 @@ const DashboardDetailsPage = () => {
         setDashboardUrl(dashboardUrl);
         fetchCharts(charts).then((charts) => setCharts(charts));
       })
+      .catch((err: AxiosError) => {
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg =
+            err.message || 'Error while fetching dashboard details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
+      })
       .finally(() => {
         setLoading(false);
       });
@@ -442,6 +460,10 @@ const DashboardDetailsPage = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('dashboard', dashboardFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <DashboardDetails
           activeTab={activeTab}
