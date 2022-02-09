@@ -432,7 +432,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
 
     //
-    // Add a new column using PUT
+    // Add a new column c2 using PUT
     //
     change = getChangeDescription(table.getVersion());
     Column c2 = getColumn("c2", BINARY, null).withOrdinalPosition(2).withDataLength(10).withTags(tags);
@@ -444,6 +444,25 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(tagCategoryUsageCount + 4, getTagCategoryUsageCount("user", userAuthHeaders()));
     assertEquals(addressTagUsageCount + 2, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), userAuthHeaders()));
     assertEquals(bankTagUsageCount + 2, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
+
+    //
+    // Change the column c2 data length from 10 to 20. Increasing the data length is considered backward compatible
+    // and only minor version changes
+    //
+    c2.setDataLength(20);
+    change = getChangeDescription(table.getVersion());
+    String fieldName = "columns.c2.dataLength";
+    change.getFieldsUpdated().add(new FieldChange().withName(fieldName).withOldValue(10).withNewValue(20));
+    table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    //
+    // Change the column c2 data length from 20 to 10. Decreasing the data length is considered backward compatible
+    // and results in major version changes
+    //
+    c2.setDataLength(10);
+    change = getChangeDescription(table.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName(fieldName).withOldValue(20).withNewValue(10));
+    table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
     //
     // Remove a column c2 and make sure it is deleted by PUT
