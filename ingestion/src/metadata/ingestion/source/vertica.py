@@ -12,8 +12,10 @@
 import re
 from textwrap import dedent
 
-from sqlalchemy import exc, sql
+from sqlalchemy import exc, sql, util
 from sqlalchemy.engine import reflection
+from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql.sqltypes import VARCHAR, String
 from sqlalchemy_vertica.base import VerticaDialect
 
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -24,6 +26,13 @@ from metadata.utils.sql_queries import (
     VERTICA_GET_PRIMARY_KEYS,
     VERTICA_VIEW_DEFINITION,
 )
+
+
+class UUID(String):
+
+    """The SQL UUID type."""
+
+    __visit_name__ = "UUID"
 
 
 @reflection.cache
@@ -129,7 +138,7 @@ def _get_column_info(
         args = ()
     elif charlen:
         args = (int(charlen),)
-
+    self.ischema_names["UUID"] = UUID
     if attype.upper() in self.ischema_names:
         coltype = self.ischema_names[attype.upper()]
     else:

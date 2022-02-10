@@ -522,13 +522,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                     repr(column["type"]), column["name"]
                                 )
                             )
-                        col_data_length = (
-                            1 if col_data_length is None else col_data_length
-                        )
                         dataTypeDisplay = (
                             f"{data_type_display}"
                             if data_type_display
                             else "{}({})".format(col_type, col_data_length)
+                            if col_data_length
+                            else col_type
+                        )
+                        col_data_length = (
+                            1 if col_data_length is None else col_data_length
                         )
                         om_column = Column(
                             name=column["name"],
