@@ -31,6 +31,7 @@ import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import Description from '../../components/common/description/Description';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import IngestionError from '../../components/common/error/IngestionError';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -61,7 +62,7 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { isEven } from '../../utils/CommonUtils';
+import { getEntityMissingError, isEven } from '../../utils/CommonUtils';
 import {
   getIsIngestionEnable,
   getServiceCategoryFromType,
@@ -101,6 +102,7 @@ const ServicePage: FunctionComponent = () => {
   const [activeTab, setActiveTab] = useState(1);
   const [isConnectionAvailable, setConnectionAvailable] =
     useState<boolean>(true);
+  const [isError, setIsError] = useState(false);
   const [ingestions, setIngestions] = useState<AirflowPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
@@ -261,7 +263,17 @@ const ServicePage: FunctionComponent = () => {
           resolve();
           getAllIngestionWorkflows();
           if (triggerIngestion) {
-            triggerIngestionById(id, displayName).then();
+            triggerIngestionById(id, displayName)
+              .then()
+              .catch((err: AxiosError) => {
+                const msg = err.response?.data.message;
+                showToast({
+                  variant: 'error',
+                  body:
+                    msg ??
+                    `Error while triggring ingestion workflow ${displayName}`,
+                });
+              });
           }
         })
         .catch((err: AxiosError) => {
@@ -301,7 +313,17 @@ const ServicePage: FunctionComponent = () => {
         setIsloading(false);
         getAllIngestionWorkflows();
         if (triggerIngestion) {
-          triggerIngestionById(id, displayName).then();
+          triggerIngestionById(id, displayName)
+            .then()
+            .catch((err: AxiosError) => {
+              const msg = err.response?.data.message;
+              showToast({
+                variant: 'error',
+                body:
+                  msg ??
+                  `Error while triggring ingestion workflow ${displayName}`,
+              });
+            });
         }
       })
       .catch((err: AxiosError) => {
@@ -325,7 +347,14 @@ const ServicePage: FunctionComponent = () => {
           setServiceDetails(res.data);
           resolve();
         })
-        .catch(() => reject());
+        .catch((err: AxiosError) => {
+          reject();
+          const msg = err.response?.data.message;
+          showToast({
+            variant: 'error',
+            body: msg ?? `Error while updating config for ${serviceFQN}`,
+          });
+        });
     });
   };
 
@@ -600,8 +629,8 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    getServiceByFQN(serviceName, serviceFQN).then(
-      (resService: AxiosResponse) => {
+    getServiceByFQN(serviceName, serviceFQN)
+      .then((resService: AxiosResponse) => {
         const { description, serviceType } = resService.data;
         setServiceDetails(resService.data);
         setDescription(description);
@@ -614,8 +643,21 @@ const ServicePage: FunctionComponent = () => {
           },
         ]);
         getOtherDetails();
-      }
-    );
+      })
+      .catch((err: AxiosError) => {
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg =
+            err.response?.data.message ||
+            'Error while fetching service details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
+        setIsloading(false);
+      });
   }, [serviceFQN, serviceName]);
 
   useEffect(() => {
@@ -679,6 +721,10 @@ const ServicePage: FunctionComponent = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError(serviceName as string, serviceFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <PageContainer>
           <div className="tw-px-4" data-testid="service-page">
