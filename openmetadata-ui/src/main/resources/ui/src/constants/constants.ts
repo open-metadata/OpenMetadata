@@ -48,6 +48,7 @@ const PLACEHOLDER_ROUTE_TEAM = ':team';
 const PLAEHOLDER_ROUTE_VERSION = ':version';
 const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -149,10 +150,11 @@ export const ROUTES = {
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  ONBOARDING: '/onboarding',
-  INGESTION: '/ingestion',
   USER_LIST: '/user-list',
   ROLES: '/roles',
+  WEBHOOKS: '/webhooks',
+  ADD_WEBHOOK: '/add-webhook',
+  EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -255,6 +257,13 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
 export const getTeamDetailsPath = (teamName: string) => {
   let path = ROUTES.TEAM_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
+
+  return path;
+};
+
+export const getEditWebhookPath = (webhookName: string) => {
+  let path = ROUTES.EDIT_WEBHOOK;
+  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, webhookName);
 
   return path;
 };

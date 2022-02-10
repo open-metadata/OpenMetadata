@@ -12,7 +12,7 @@
  */
 
 export const button = {
-  base: `tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer 
+  base: `button-comp tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer 
     tw-leading-5 tw-transition-colors tw-duration-150 tw-font-medium focus:tw-outline-none`,
   block: 'tw-block tw-w-full',
   size: {
