@@ -8,10 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Tableau source module
+"""
 
 import logging
 import uuid
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 import dateutil.parser as dateparser
 from pydantic import SecretStr
@@ -55,6 +58,22 @@ class TableauSourceConfig(ConfigModel):
 
 
 class TableauSource(Source[Entity]):
+    """Tableau source entity class
+
+    Args:
+        config:
+        metadata_config:
+        ctx:
+
+    Attributes:
+        config:
+        metadata_config:
+        status:
+        service:
+        dashboard:
+        all_dashboard_details:
+    """
+
     config: TableauSourceConfig
     metadata_config: MetadataServerConfig
     status: SourceStatus
@@ -82,6 +101,10 @@ class TableauSource(Source[Entity]):
         self.all_dashboard_details = get_views_dataframe(self.client).to_dict()
 
     def tableau_client(self):
+        """Tableau client method
+
+        Returns:
+        """
         tableau_server_config = {
             f"{self.config.env}": {
                 "server": self.config.server,
@@ -107,11 +130,11 @@ class TableauSource(Source[Entity]):
             ] = self.config.personal_access_token_secret
         try:
             conn = TableauServerConnection(
-                config_json=tableau_server_config, env="tableau_prod"
+                config_json=tableau_server_config, env=self.config.env
             )
             conn.sign_in().json()
-        except Exception as err:
-            logger.error(f"{repr(err)}: {err}")
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error("%s: %s", repr(err), err)
         return conn
 
     @classmethod
@@ -130,11 +153,21 @@ class TableauSource(Source[Entity]):
         yield from self._get_tableau_dashboard()
 
     @staticmethod
-    def get_owner(owner) -> DashboardOwner:
+    def get_owner(owner) -> List[DashboardOwner]:
+        """Get dashboard owner
+
+        Args:
+            owner:
+        Returns:
+            List[DashboardOwner]
+        """
+        parts = owner["fullName"].split(" ")
+        first_name = " ".join(parts[: len(owner) // 2])
+        last_name = " ".join(parts[len(owner) // 2 :])
         return [
             DashboardOwner(
-                first_name=owner["fullName"].split(" ")[0],
-                last_name=owner["fullName"].split(" ")[1],
+                first_name=first_name,
+                last_name=last_name,
                 username=owner["name"],
             )
         ]
