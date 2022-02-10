@@ -130,7 +130,7 @@ class TableauSource(Source[Entity]):
             ] = self.config.personal_access_token_secret
         try:
             conn = TableauServerConnection(
-                config_json=tableau_server_config, env="tableau_prod"
+                config_json=tableau_server_config, env=self.config.env
             )
             conn.sign_in().json()
         except Exception as err:  # pylint: disable=broad-except
