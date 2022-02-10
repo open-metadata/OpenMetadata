@@ -27,6 +27,7 @@ import {
   patchTableDetails,
   removeFollower,
 } from '../../axiosAPIs/tableAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
 import {
@@ -56,6 +57,7 @@ import useToastContext from '../../hooks/useToastContext';
 import {
   addToRecentViewed,
   getCurrentUserId,
+  getEntityMissingError,
   getFields,
   getPartialNameFromFQN,
 } from '../../utils/CommonUtils';
@@ -120,6 +122,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
   );
   const [deleted, setDeleted] = useState<boolean>(false);
+  const [isError, setIsError] = useState(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -224,6 +227,17 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableTags(getTableTags(columns || []));
         setUsageSummary(usageSummary);
         setJoins(joins);
+      })
+      .catch((err: AxiosError) => {
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg = err.message || 'Error while fetching table details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
       })
       .finally(() => {
         setIsLoading(false);
@@ -422,6 +436,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('table', tableFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <DatasetDetails
           activeTab={activeTab}

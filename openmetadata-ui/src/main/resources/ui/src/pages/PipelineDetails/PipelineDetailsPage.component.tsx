@@ -33,6 +33,7 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from '../../axiosAPIs/pipelineAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
   Edge,
@@ -56,7 +57,11 @@ import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
-import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getEntityMissingError,
+} from '../../utils/CommonUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import {
   defaultFields,
@@ -110,6 +115,7 @@ const PipelineDetailsPage = () => {
 
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [deleted, setDeleted] = useState<boolean>(false);
+  const [isError, setIsError] = useState(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -226,6 +232,17 @@ const PipelineDetailsPage = () => {
 
         setPipelineUrl(pipelineUrl);
         setTasks(tasks);
+      })
+      .catch((err: AxiosError) => {
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg = err.message || 'Error while fetching pipeline details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
       })
       .finally(() => setLoading(false));
   };
@@ -385,6 +402,10 @@ const PipelineDetailsPage = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('pipeline', pipelineFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <PipelineDetails
           activeTab={activeTab}

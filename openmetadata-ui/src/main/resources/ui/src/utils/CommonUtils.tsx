@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isNull, isUndefined } from 'lodash';
+import { capitalize, isEmpty, isNull, isUndefined } from 'lodash';
 import {
   RecentlySearched,
   RecentlySearchedData,
@@ -397,4 +397,12 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
 
 export const restrictFormSubmit = (e: FormEvent) => {
   e.preventDefault();
+};
+
+export const getEntityMissingError = (entityType: string, fqn: string) => {
+  return (
+    <p>
+      {capitalize(entityType)} instance for <strong>{fqn}</strong> not found
+    </p>
+  );
 };
