@@ -24,7 +24,8 @@
         "Glue",
         "MariaDB",
         "Druid",
-        "Db2"
+        "Db2",
+        "ClickHouse"
       ],
       "javaEnums": [
         {
@@ -74,6 +75,9 @@
         },
         {
           "name": "Db2"
+        },
+        {
+          "name": "ClickHouse"
         }
       ]
     },

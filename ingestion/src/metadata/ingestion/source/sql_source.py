@@ -505,6 +505,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             arr_data_type = re.match(
                                 r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
                             ).groups()
+                            if isinstance(arr_data_type, list) or isinstance(
+                                arr_data_type, tuple
+                            ):
+                                arr_data_type = ColumnTypeParser.get_column_type(
+                                    arr_data_type[0]
+                                )
                             data_type_display = column["type"]
                     if parsed_string is None:
                         col_type = ColumnTypeParser.get_column_type(column["type"])

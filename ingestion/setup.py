@@ -114,6 +114,7 @@ plugins: Dict[str, Set[str]] = {
     "mlflow": {"mlflow-skinny~=1.22.0"},
     "sklearn": {"scikit-learn==1.0.2"},
     "db2": {"ibm-db-sa==0.3.7"},
+    "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.1.8"},
 }
 dev = {
     "boto3==1.20.14",
