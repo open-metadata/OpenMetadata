@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
@@ -26,6 +26,7 @@ import {
 } from '../../axiosAPIs/databaseAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import Description from '../../components/common/description/Description';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
@@ -43,7 +44,8 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
-import { isEven } from '../../utils/CommonUtils';
+import useToastContext from '../../hooks/useToastContext';
+import { getEntityMissingError, isEven } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -53,6 +55,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const showToast = useToastContext();
   const { databaseFQN } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
@@ -69,6 +72,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(1);
+  const [isError, setIsError] = useState(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -121,35 +125,48 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
-    getDatabaseDetailsByFQN(databaseFQN).then((res: AxiosResponse) => {
-      const { description, id, name, service, serviceType } = res.data;
-      setDatabase(res.data);
-      setDescription(description);
-      setDatabaseId(id);
-      setDatabaseName(name);
+    getDatabaseDetailsByFQN(databaseFQN)
+      .then((res: AxiosResponse) => {
+        const { description, id, name, service, serviceType } = res.data;
+        setDatabase(res.data);
+        setDescription(description);
+        setDatabaseId(id);
+        setDatabaseName(name);
 
-      setServiceType(serviceType);
+        setServiceType(serviceType);
 
-      setSlashedTableName([
-        {
-          name: service.name,
-          url: service.name
-            ? getServiceDetailsPath(
-                service.name,
-                serviceType,
-                ServiceCategory.DATABASE_SERVICES
-              )
-            : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-        },
-        {
-          name: name,
-          url: '',
-          activeTitle: true,
-        },
-      ]);
-    });
-    fetchDatabaseTablesAndDBTModels();
+        setSlashedTableName([
+          {
+            name: service.name,
+            url: service.name
+              ? getServiceDetailsPath(
+                  service.name,
+                  serviceType,
+                  ServiceCategory.DATABASE_SERVICES
+                )
+              : '',
+            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+          },
+          {
+            name: name,
+            url: '',
+            activeTitle: true,
+          },
+        ]);
+        fetchDatabaseTablesAndDBTModels();
+      })
+      .catch((err: AxiosError) => {
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg = err.message || 'Error while fetching database details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
+        setIsLoading(false);
+      });
   };
 
   const onCancel = () => {
@@ -176,11 +193,20 @@ const DatabaseDetails: FunctionComponent = () => {
         ...database,
         description: updatedHTML,
       };
-      saveUpdatedDatabaseData(updatedDatabaseDetails).then(() => {
-        setDatabase(updatedDatabaseDetails);
-        setDescription(updatedHTML);
-        setIsEdit(false);
-      });
+      saveUpdatedDatabaseData(updatedDatabaseDetails)
+        .then(() => {
+          setDatabase(updatedDatabaseDetails);
+          setDescription(updatedHTML);
+          setIsEdit(false);
+        })
+        .catch((err: AxiosError) => {
+          const errMsg =
+            err.response?.data.message || 'Error while updating description';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        });
     }
   };
 
@@ -226,6 +252,10 @@ const DatabaseDetails: FunctionComponent = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('database', databaseFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <PageContainer>
           <div

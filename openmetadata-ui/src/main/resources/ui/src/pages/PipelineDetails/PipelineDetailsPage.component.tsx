@@ -267,29 +267,58 @@ const PipelineDetailsPage = () => {
   };
 
   const followPipeline = () => {
-    addFollower(pipelineId, USERId).then((res: AxiosResponse) => {
-      const { newValue } = res.data.changeDescription.fieldsAdded[0];
+    addFollower(pipelineId, USERId)
+      .then((res: AxiosResponse) => {
+        const { newValue } = res.data.changeDescription.fieldsAdded[0];
 
-      setFollowers([...followers, ...newValue]);
-    });
+        setFollowers([...followers, ...newValue]);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message ||
+          'Error while following pipeline entity.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
   const unfollowPipeline = () => {
-    removeFollower(pipelineId, USERId).then((res: AxiosResponse) => {
-      const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+    removeFollower(pipelineId, USERId)
+      .then((res: AxiosResponse) => {
+        const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-      setFollowers(
-        followers.filter((follower) => follower.id !== oldValue[0].id)
-      );
-    });
+        setFollowers(
+          followers.filter((follower) => follower.id !== oldValue[0].id)
+        );
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message ||
+          'Error while unfollowing pipeline entity.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const descriptionUpdateHandler = (updatedPipeline: Pipeline) => {
-    saveUpdatedPipelineData(updatedPipeline).then((res: AxiosResponse) => {
-      const { description, version } = res.data;
-      setCurrentVersion(version);
-      setPipelineDetails(res.data);
-      setDescription(description);
-    });
+    saveUpdatedPipelineData(updatedPipeline)
+      .then((res: AxiosResponse) => {
+        const { description, version } = res.data;
+        setCurrentVersion(version);
+        setPipelineDetails(res.data);
+        setDescription(description);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while updating description.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const settingsUpdateHandler = (updatedPipeline: Pipeline): Promise<void> => {
@@ -302,16 +331,33 @@ const PipelineDetailsPage = () => {
           setTier(getTierTags(res.data.tags));
           resolve();
         })
-        .catch(() => reject());
+        .catch((err: AxiosError) => {
+          const errMsg =
+            err.response?.data.message || 'Error while updating entity.';
+          reject();
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        });
     });
   };
 
   const onTagUpdate = (updatedPipeline: Pipeline) => {
-    saveUpdatedPipelineData(updatedPipeline).then((res: AxiosResponse) => {
-      setTier(getTierTags(res.data.tags));
-      setCurrentVersion(res.data.version);
-      setTags(getTagsWithoutTier(res.data.tags));
-    });
+    saveUpdatedPipelineData(updatedPipeline)
+      .then((res: AxiosResponse) => {
+        setTier(getTierTags(res.data.tags));
+        setCurrentVersion(res.data.version);
+        setTags(getTagsWithoutTier(res.data.tags));
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while updating tags.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const onTaskUpdate = (jsonPatch: Array<Operation>) => {

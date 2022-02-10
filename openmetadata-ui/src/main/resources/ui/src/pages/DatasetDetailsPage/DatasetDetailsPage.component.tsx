@@ -148,7 +148,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: err.message ?? 'Error while fetching lineage data',
+          body: err.message ?? 'Error while fetching lineage data.',
         });
       })
       .finally(() => {
@@ -232,7 +232,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg = err.message || 'Error while fetching table details';
+          const errMsg = err.message || 'Error while fetching table details.';
           showToast({
             variant: 'error',
             body: errMsg,
@@ -259,7 +259,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             .catch(() =>
               showToast({
                 variant: 'error',
-                body: 'Error while getting sample data',
+                body: 'Error while getting sample data.',
               })
             )
             .finally(() => setIsSampleDataLoading(false));
@@ -305,22 +305,41 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const descriptionUpdateHandler = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
-      const { description, version } = res.data;
-      setCurrentVersion(version);
-      setTableDetails(res.data);
-      setDescription(description);
-    });
+    saveUpdatedTableData(updatedTable)
+      .then((res: AxiosResponse) => {
+        const { description, version } = res.data;
+        setCurrentVersion(version);
+        setTableDetails(res.data);
+        setDescription(description);
+      })
+      .catch((err: AxiosError) => {
+        const msg =
+          err.response?.data.message ||
+          `Error while updating entity description.`;
+        showToast({
+          variant: 'error',
+          body: msg,
+        });
+      });
   };
 
   const columnsUpdateHandler = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
-      const { columns, version } = res.data;
-      setCurrentVersion(version);
-      setTableDetails(res.data);
-      setColumns(columns);
-      setTableTags(getTableTags(columns || []));
-    });
+    saveUpdatedTableData(updatedTable)
+      .then((res: AxiosResponse) => {
+        const { columns, version } = res.data;
+        setCurrentVersion(version);
+        setTableDetails(res.data);
+        setColumns(columns);
+        setTableTags(getTableTags(columns || []));
+      })
+      .catch((err: AxiosError) => {
+        const msg =
+          err.response?.data.message || `Error while updating entity.`;
+        showToast({
+          variant: 'error',
+          body: msg,
+        });
+      });
   };
 
   const settingsUpdateHandler = (updatedTable: Table): Promise<void> => {
@@ -334,7 +353,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setTier(getTierTags(tags));
           resolve();
         })
-        .catch(() => reject());
+        .catch((err: AxiosError) => {
+          const msg =
+            err.response?.data.message || `Error while updating entity.`;
+          reject();
+          showToast({
+            variant: 'error',
+            body: msg,
+          });
+        });
     });
   };
 
@@ -346,13 +373,20 @@ const DatasetDetailsPage: FunctionComponent = () => {
     });
   };
   const unfollowTable = () => {
-    removeFollower(tableId, USERId).then((res: AxiosResponse) => {
-      const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+    removeFollower(tableId, USERId)
+      .then((res: AxiosResponse) => {
+        const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-      setFollowers(
-        followers.filter((follower) => follower.id !== oldValue[0].id)
-      );
-    });
+        setFollowers(
+          followers.filter((follower) => follower.id !== oldValue[0].id)
+        );
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: `Error while unfollowing entity.`,
+        });
+      });
   };
 
   const versionHandler = () => {
@@ -400,7 +434,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         .catch(() => {
           showToast({
             variant: 'error',
-            body: `Error while adding adding new edge`,
+            body: `Error while adding adding new edge.`,
           });
           reject();
         });
@@ -416,7 +450,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     ).catch(() => {
       showToast({
         variant: 'error',
-        body: `Error while removing edge`,
+        body: `Error while removing edge.`,
       });
     });
   };
