@@ -454,8 +454,8 @@ const TeamsPage = () => {
                       data-testid="header">
                       <div
                         className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-52"
-                        title={currentTeam?.displayName}>
-                        {currentTeam?.displayName}
+                        title={currentTeam?.displayName ?? currentTeam?.name}>
+                        {currentTeam?.displayName ?? currentTeam?.name}
                       </div>
                       <NonAdminAction
                         position="bottom"
@@ -479,7 +479,9 @@ const TeamsPage = () => {
                       <Description
                         blurWithBodyBG
                         description={currentTeam?.description || ''}
-                        entityName={currentTeam?.displayName}
+                        entityName={
+                          currentTeam?.displayName ?? currentTeam?.name
+                        }
                         isEdit={isEditable}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
@@ -494,7 +496,9 @@ const TeamsPage = () => {
                     {currentTab === 2 && getDatasetCards()}
                     {isAddingUsers && (
                       <AddUsersModal
-                        header={`Adding new users to ${currentTeam?.name}`}
+                        header={`Adding new users to ${
+                          currentTeam?.displayName ?? currentTeam?.name
+                        }`}
                         list={getUniqueUserList()}
                         onCancel={() => setIsAddingUsers(false)}
                         onSave={(data) => createUsers(data)}
