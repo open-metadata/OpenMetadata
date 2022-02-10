@@ -115,7 +115,9 @@ class TableauSource(Source[Entity]):
         }
         if self.config.username and self.config.password:
             tableau_server_config[self.config.env]["username"] = self.config.username
-            tableau_server_config[self.config.env]["password"] = self.config.password
+            tableau_server_config[self.config.env][
+                "password"
+            ] = self.config.password.get_secret_value()
         elif (
             self.config.personal_access_token_name
             and self.config.personal_access_token_secret
@@ -128,7 +130,7 @@ class TableauSource(Source[Entity]):
             ] = self.config.personal_access_token_secret
         try:
             conn = TableauServerConnection(
-                config_json=tableau_server_config, env="tableau_prod"
+                config_json=tableau_server_config, env=self.config.env
             )
             conn.sign_in().json()
         except Exception as err:  # pylint: disable=broad-except
@@ -159,10 +161,13 @@ class TableauSource(Source[Entity]):
         Returns:
             List[DashboardOwner]
         """
+        parts = owner["fullName"].split(" ")
+        first_name = " ".join(parts[: len(owner) // 2])
+        last_name = " ".join(parts[len(owner) // 2 :])
         return [
             DashboardOwner(
-                first_name=owner["fullName"].split(" ")[0],
-                last_name=owner["fullName"].split(" ")[1],
+                first_name=first_name,
+                last_name=last_name,
                 username=owner["name"],
             )
         ]
