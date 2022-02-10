@@ -147,6 +147,8 @@ class MetabaseSource(Source[Entity]):
         for chart in charts:
             try:
                 chart_details = chart["card"]
+                if not "name" in chart_details:
+                    continue
                 if not self.config.chart_pattern.included(chart_details["name"]):
                     self.status.filter(chart_details["name"], None)
                     continue
@@ -197,9 +199,10 @@ class MetabaseSource(Source[Entity]):
                         id=self.dashboard_service.id, type="dashboardService"
                     ),
                 )
-                yield from self.get_lineage(
-                    dashboard_details["ordered_cards"], dashboard_details["name"]
-                )
+                if self.config.database_service_name:
+                    yield from self.get_lineage(
+                        dashboard_details["ordered_cards"], dashboard_details["name"]
+                    )
 
     def get_lineage(self, chart_list, dashboard_name):
         """Get lineage method
