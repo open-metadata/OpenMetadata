@@ -62,7 +62,7 @@ public class Common {
   By whatsNewModalChangeLogs = By.cssSelector("[data-testid='WhatsNewModalChangeLogs']");
   By tableCount = By.xpath("(//span[@data-testid='filter-count'])[1]");
   By removeAssociatedTag = By.xpath("//span[@data-testid=\"remove\"]");
-  By breadCrumb = By.xpath("//li[@data-testid=\"breadcrumb-link\"]");
+  By breadCrumb = By.xpath("//li[@data-testid='breadcrumb-link']");
   By descriptionContainer = By.xpath("//div[@data-testid='description']/div/p");
   By manage = By.xpath("//button[@data-testid='tab'][contains(text(),'Manage')]");
   By selectTier = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
@@ -76,6 +76,26 @@ public class Common {
   By editDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
   By version = By.xpath("//button[@data-testid=\"version-button\"]");
   By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
+  By topics = By.xpath("(//button[@data-testid='tab'])[2]");
+  By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
+  By addTag = By.xpath("//div[@data-testid='tag-conatiner']");
+  By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])[1]");
+
+  public By breadCrumbTag() {
+    return breadCrumbTags;
+  }
+
+  public By addTag() {
+    return addTag;
+  }
+
+  public By selectTable() {
+    return selectTable;
+  }
+
+  public By topics() {
+    return topics;
+  }
 
   public By version() {
     return version;
