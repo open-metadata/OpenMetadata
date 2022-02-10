@@ -147,6 +147,12 @@ slackEventPublishers:
       - eventType: "entityDeleted"
         entities:
          - "*"
+
+# no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
+# to secure your instance of OpenMetadata with TLS and encryption at rest.
+fernetConfiguration:
+  fernetKey: ${FERNET_KEY:-no_encryption_at_rest}
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s

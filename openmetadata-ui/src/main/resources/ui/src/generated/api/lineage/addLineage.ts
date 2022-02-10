@@ -13,7 +13,7 @@
  */
 
 /**
- * Add lineage edge between two entities
+ * Add lineage details between two entities
  */
 export interface AddLineage {
   /**

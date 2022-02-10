@@ -136,6 +136,7 @@ module.exports = {
         'screen-lg': '992px',
         'screen-xl': '1200px',
         'screen-xxl': '1440px',
+        600: '600px',
       },
       minWidth: {
         badgeCount: '30px',

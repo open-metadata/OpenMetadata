@@ -172,7 +172,7 @@ const EntityInfoDrawer = ({
           </svg>
         </div>
       </header>
-      <hr className="tw-mt-3 tw-border-primary-hover-lite" />
+      <hr className="tw-mt-3 tw-border-separator" />
       {isLoading ? (
         <Loader />
       ) : (
@@ -209,7 +209,7 @@ const EntityInfoDrawer = ({
               })}
             </div>
           </section>
-          <hr className="tw-mt-3 tw-border-primary-hover-lite" />
+          <hr className="tw-mt-3 tw-border-separator" />
           <section className="tw-mt-1">
             <span className="tw-text-grey-muted">Tags</span>
             <div className="tw-flex tw-flex-wrap tw-pt-1.5">
@@ -222,7 +222,7 @@ const EntityInfoDrawer = ({
               )}
             </div>
           </section>
-          <hr className="tw-mt-3 tw-border-primary-hover-lite" />
+          <hr className="tw-mt-3 tw-border-separator" />
           <section className="tw-mt-1">
             <span className="tw-text-grey-muted">Description</span>
             <div>

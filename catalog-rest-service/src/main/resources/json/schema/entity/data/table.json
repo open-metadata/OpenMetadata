@@ -68,7 +68,8 @@
         "SET",
         "GEOGRAPHY",
         "ENUM",
-        "JSON"
+        "JSON",
+        "UUID"
       ]
     },
     "constraint": {

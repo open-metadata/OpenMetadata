@@ -26,6 +26,7 @@ import lombok.Setter;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
+import org.openmetadata.catalog.fernet.FernetConfiguration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
@@ -79,6 +80,11 @@ public class CatalogApplicationConfig extends Configuration {
   @Getter
   @Setter
   private MigrationConfiguration migrationConfiguration;
+
+  @JsonProperty("fernetConfiguration")
+  @Getter
+  @Setter
+  private FernetConfiguration fernetConfiguration;
 
   @JsonProperty("health")
   @NotNull

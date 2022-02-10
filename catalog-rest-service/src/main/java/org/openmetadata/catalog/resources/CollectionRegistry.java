@@ -200,8 +200,12 @@ public final class CollectionRegistry {
     // Create the resource identified by resourceClass
     try {
       resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
-    } catch (NoSuchMethodException ex) {
-      resource = Class.forName(resourceClass).getConstructor().newInstance();
+    } catch (NoSuchMethodException e) {
+      try {
+        resource = clz.getDeclaredConstructor(CatalogApplicationConfig.class).newInstance(config);
+      } catch (NoSuchMethodException ex) {
+        resource = Class.forName(resourceClass).getConstructor().newInstance();
+      }
     }
 
     // Call initialize method, if it exists

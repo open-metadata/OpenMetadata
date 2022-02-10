@@ -25,6 +25,7 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -108,8 +109,10 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     CreateDashboard create = createRequest(test).withService(SUPERSET_INVALID_SERVICE_REFERENCE);
     HttpResponseException exception =
         assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    assertResponseContains(
-        exception, BAD_REQUEST, invalidServiceEntity(SUPERSET_INVALID_SERVICE_REFERENCE.getType(), Entity.DASHBOARD));
+    assertResponse(
+        exception,
+        BAD_REQUEST,
+        invalidServiceEntity(SUPERSET_INVALID_SERVICE_REFERENCE.getType(), Entity.DASHBOARD, Entity.DASHBOARD_SERVICE));
   }
 
   @Test

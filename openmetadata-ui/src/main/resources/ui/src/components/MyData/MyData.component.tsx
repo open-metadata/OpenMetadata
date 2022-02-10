@@ -66,7 +66,7 @@ const MyData: React.FC<MyDataProps> = ({
       <Fragment>
         <div className="tw-relative tw-mt-5">
           <Button
-            className="tw-underline"
+            className="hover:tw-no-underline focus:tw-no-underline"
             data-testid="feeds"
             size="custom"
             tag="button"

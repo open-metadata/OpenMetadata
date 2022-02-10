@@ -177,6 +177,8 @@ export interface FieldChange {
  * Owner of this location.
  *
  * Link to the database cluster/service where this database is hosted in.
+ *
+ * Owner of this storage service.
  */
 export interface EntityReference {
   /**
@@ -283,7 +285,7 @@ export enum State {
 /**
  * The storage class to move this entity to.
  *
- * Type of storage class for the storage service
+ * Type of storage class for the storage service.
  *
  * Name of the entity field that changed.
  *
@@ -307,11 +309,11 @@ export enum State {
  *
  * Unique identifier of this storage service instance.
  *
- * Type of storage class offered by S3
+ * Type of storage class offered by S3.
  *
- * Type of storage class offered by GCS
+ * Type of storage class offered by GCS.
  *
- * Type of storage class offered by ABFS
+ * Type of storage class offered by ABFS.
  */
 export enum StorageClassType {
   Archive = 'ARCHIVE',
@@ -366,6 +368,10 @@ export interface StorageService {
    * Name that identifies this storage service.
    */
   name: string;
+  /**
+   * Owner of this storage service.
+   */
+  owner?: EntityReference;
   /**
    * Type of storage service such as S3, GCS, HDFS...
    */

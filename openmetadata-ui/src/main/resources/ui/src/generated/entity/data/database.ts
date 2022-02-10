@@ -180,6 +180,7 @@ export interface EntityReference {
 export enum DatabaseServiceType {
   Athena = 'Athena',
   BigQuery = 'BigQuery',
+  Db2 = 'Db2',
   Druid = 'Druid',
   Glue = 'Glue',
   Hive = 'Hive',

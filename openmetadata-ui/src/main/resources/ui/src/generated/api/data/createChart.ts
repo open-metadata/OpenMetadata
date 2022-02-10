@@ -35,11 +35,11 @@ export interface CreateChart {
    */
   name: string;
   /**
-   * Owner of this database
+   * Owner of this chart
    */
   owner?: EntityReference;
   /**
-   * Link to the database service where this database is hosted in
+   * Link to the chart service where this chart is hosted in
    */
   service: EntityReference;
   /**
@@ -69,14 +69,14 @@ export enum ChartType {
 }
 
 /**
- * Owner of this database
+ * Owner of this chart
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Link to the database service where this database is hosted in
+ * Link to the chart service where this chart is hosted in
  *
  * Link to tables used in this chart.
  */

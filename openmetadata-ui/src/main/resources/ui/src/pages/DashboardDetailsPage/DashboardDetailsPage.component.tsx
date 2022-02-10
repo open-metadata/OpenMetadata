@@ -33,6 +33,7 @@ import {
 } from '../../axiosAPIs/dashboardAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
 import {
@@ -54,7 +55,11 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
-import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getEntityMissingError,
+} from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
   defaultFields,
@@ -109,6 +114,7 @@ const DashboardDetailsPage = () => {
   });
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [deleted, setDeleted] = useState<boolean>(false);
+  const [isError, setIsError] = useState(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -278,6 +284,18 @@ const DashboardDetailsPage = () => {
         setDashboardUrl(dashboardUrl);
         fetchCharts(charts).then((charts) => setCharts(charts));
       })
+      .catch((err: AxiosError) => {
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg =
+            err.message || 'Error while fetching dashboard details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
+      })
       .finally(() => {
         setLoading(false);
       });
@@ -303,37 +321,75 @@ const DashboardDetailsPage = () => {
   };
 
   const descriptionUpdateHandler = (updatedDashboard: Dashboard) => {
-    saveUpdatedDashboardData(updatedDashboard).then((res: AxiosResponse) => {
-      const { description, version } = res.data;
-      setCurrentVersion(version);
-      setDashboardDetails(res.data);
-      setDescription(description);
-    });
+    saveUpdatedDashboardData(updatedDashboard)
+      .then((res: AxiosResponse) => {
+        const { description, version } = res.data;
+        setCurrentVersion(version);
+        setDashboardDetails(res.data);
+        setDescription(description);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while updating description.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const followDashboard = () => {
-    addFollower(dashboardId, USERId).then((res: AxiosResponse) => {
-      const { newValue } = res.data.changeDescription.fieldsAdded[0];
+    addFollower(dashboardId, USERId)
+      .then((res: AxiosResponse) => {
+        const { newValue } = res.data.changeDescription.fieldsAdded[0];
 
-      setFollowers([...followers, ...newValue]);
-    });
+        setFollowers([...followers, ...newValue]);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message ||
+          'Error while following dashboard entity.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
   const unfollowDashboard = () => {
-    removeFollower(dashboardId, USERId).then((res: AxiosResponse) => {
-      const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+    removeFollower(dashboardId, USERId)
+      .then((res: AxiosResponse) => {
+        const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-      setFollowers(
-        followers.filter((follower) => follower.id !== oldValue[0].id)
-      );
-    });
+        setFollowers(
+          followers.filter((follower) => follower.id !== oldValue[0].id)
+        );
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message ||
+          'Error while unfollowing dashboard entity.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const onTagUpdate = (updatedDashboard: Dashboard) => {
-    saveUpdatedDashboardData(updatedDashboard).then((res: AxiosResponse) => {
-      setTier(getTierTags(res.data.tags));
-      setCurrentVersion(res.data.version);
-      setTags(getTagsWithoutTier(res.data.tags));
-    });
+    saveUpdatedDashboardData(updatedDashboard)
+      .then((res: AxiosResponse) => {
+        setTier(getTierTags(res.data.tags));
+        setCurrentVersion(res.data.version);
+        setTags(getTagsWithoutTier(res.data.tags));
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while updating tags.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const settingsUpdateHandler = (
@@ -348,7 +404,15 @@ const DashboardDetailsPage = () => {
           setTier(getTierTags(res.data.tags));
           resolve();
         })
-        .catch(() => reject());
+        .catch((err: AxiosError) => {
+          const errMsg =
+            err.response?.data.message || 'Error while updating entity.';
+          reject();
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        });
     });
   };
 
@@ -442,6 +506,10 @@ const DashboardDetailsPage = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('dashboard', dashboardFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <DashboardDetails
           activeTab={activeTab}

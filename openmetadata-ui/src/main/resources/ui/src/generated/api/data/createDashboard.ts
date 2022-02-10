@@ -38,15 +38,15 @@ export interface CreateDashboard {
    */
   name: string;
   /**
-   * Owner of this database
+   * Owner of this dashboard
    */
   owner?: EntityReference;
   /**
-   * Link to the database service where this database is hosted in
+   * Link to the dashboard service where this dashboard is hosted in
    */
   service: EntityReference;
   /**
-   * Tags for this chart
+   * Tags for this dashboard
    */
   tags?: TagLabel[];
 }
@@ -57,9 +57,9 @@ export interface CreateDashboard {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owner of this database
+ * Owner of this dashboard
  *
- * Link to the database service where this database is hosted in
+ * Link to the dashboard service where this dashboard is hosted in
  */
 export interface EntityReference {
   /**

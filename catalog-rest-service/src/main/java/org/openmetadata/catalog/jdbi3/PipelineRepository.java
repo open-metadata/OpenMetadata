@@ -163,7 +163,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
       return daoCollection.pipelineServiceDAO().findEntityById(serviceId);
     }
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE));
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE, PIPELINE_SERVICE));
   }
 
   public static class PipelineEntityInterface implements EntityInterface<Pipeline> {

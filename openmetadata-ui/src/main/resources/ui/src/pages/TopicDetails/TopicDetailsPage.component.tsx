@@ -24,6 +24,7 @@ import {
   patchTopicDetails,
   removeFollower,
 } from '../../axiosAPIs/topicsAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
@@ -38,7 +39,11 @@ import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
-import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getEntityMissingError,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -75,6 +80,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [retentionSize, setRetentionSize] = useState<number>(0);
   const [name, setName] = useState<string>('');
   const [deleted, setDeleted] = useState<boolean>(false);
+  const [isError, setIsError] = useState(false);
 
   const [schemaText, setSchemaText] = useState<string>('{}');
   const [slashedTopicName, setSlashedTopicName] = useState<
@@ -185,39 +191,71 @@ const TopicDetailsPage: FunctionComponent = () => {
         setLoading(false);
       })
       .catch((err: AxiosError) => {
-        const errMsg = err.message || 'Error while fetching topic details';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        if (err.response?.status === 404) {
+          setIsError(true);
+        } else {
+          const errMsg = err.message || 'Error while fetching topic details';
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        }
+
         setLoading(false);
       });
   };
 
   const followTopic = () => {
-    addFollower(topicId, USERId).then((res: AxiosResponse) => {
-      const { newValue } = res.data.changeDescription.fieldsAdded[0];
+    addFollower(topicId, USERId)
+      .then((res: AxiosResponse) => {
+        const { newValue } = res.data.changeDescription.fieldsAdded[0];
 
-      setFollowers([...followers, ...newValue]);
-    });
+        setFollowers([...followers, ...newValue]);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while following entity.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
   const unfollowTopic = () => {
-    removeFollower(topicId, USERId).then((res: AxiosResponse) => {
-      const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+    removeFollower(topicId, USERId)
+      .then((res: AxiosResponse) => {
+        const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-      setFollowers(
-        followers.filter((follower) => follower.id !== oldValue[0].id)
-      );
-    });
+        setFollowers(
+          followers.filter((follower) => follower.id !== oldValue[0].id)
+        );
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while unfollowing entity.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const descriptionUpdateHandler = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic).then((res: AxiosResponse) => {
-      const { description, version } = res.data;
-      setCurrentVersion(version);
-      setTopicDetails(res.data);
-      setDescription(description);
-    });
+    saveUpdatedTopicData(updatedTopic)
+      .then((res: AxiosResponse) => {
+        const { description, version } = res.data;
+        setCurrentVersion(version);
+        setTopicDetails(res.data);
+        setDescription(description);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while updating description.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const settingsUpdateHandler = (updatedTopic: Topic): Promise<void> => {
@@ -230,16 +268,33 @@ const TopicDetailsPage: FunctionComponent = () => {
           setTier(getTierTags(res.data.tags));
           resolve();
         })
-        .catch(() => reject());
+        .catch((err: AxiosError) => {
+          const errMsg =
+            err.response?.data.message || 'Error while updating entity.';
+          reject();
+          showToast({
+            variant: 'error',
+            body: errMsg,
+          });
+        });
     });
   };
 
   const onTagUpdate = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic).then((res: AxiosResponse) => {
-      setTier(getTierTags(res.data.tags));
-      setCurrentVersion(res.data.version);
-      setTags(getTagsWithoutTier(res.data.tags));
-    });
+    saveUpdatedTopicData(updatedTopic)
+      .then((res: AxiosResponse) => {
+        setTier(getTierTags(res.data.tags));
+        setCurrentVersion(res.data.version);
+        setTags(getTagsWithoutTier(res.data.tags));
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message || 'Error while updating tags.';
+        showToast({
+          variant: 'error',
+          body: errMsg,
+        });
+      });
   };
 
   const versionHandler = () => {
@@ -260,6 +315,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     <>
       {isLoading ? (
         <Loader />
+      ) : isError ? (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('topic', topicFQN)}
+        </ErrorPlaceHolder>
       ) : (
         <TopicDetails
           activeTab={activeTab}

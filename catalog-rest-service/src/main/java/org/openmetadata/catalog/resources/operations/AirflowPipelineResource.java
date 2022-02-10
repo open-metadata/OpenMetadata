@@ -337,7 +337,7 @@ public class AirflowPipelineResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
     airflowPipeline = addHref(uriInfo, dao.create(uriInfo, airflowPipeline));
-    deploy(airflowPipeline);
+    deploy(airflowPipeline, true);
     return Response.created(airflowPipeline.getHref()).entity(airflowPipeline).build();
   }
 
@@ -393,7 +393,7 @@ public class AirflowPipelineResource {
     AirflowPipeline pipeline = getAirflowPipeline(securityContext, update);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(pipeline));
     PutResponse<AirflowPipeline> response = dao.createOrUpdate(uriInfo, pipeline);
-    deploy(pipeline);
+    deploy(pipeline, SecurityUtil.isAdminOrBotRole(authorizer, securityContext));
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -462,9 +462,9 @@ public class AirflowPipelineResource {
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  private void deploy(AirflowPipeline airflowPipeline) {
+  private void deploy(AirflowPipeline airflowPipeline, Boolean decrypt) {
     if (Boolean.TRUE.equals(airflowPipeline.getForceDeploy())) {
-      airflowRESTClient.deploy(airflowPipeline, config);
+      airflowRESTClient.deploy(airflowPipeline, config, decrypt);
     }
   }
 

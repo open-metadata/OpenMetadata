@@ -19,6 +19,7 @@ import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
+import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -835,6 +836,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
 
         updateColumnDescription(stored, updated);
+        updateColumnDataLength(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
             fieldName + "." + updated.getName() + ".tags",
@@ -848,7 +850,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
 
-      majorVersionChange = !deletedColumns.isEmpty();
+      majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
@@ -865,10 +867,14 @@ public class TableRepository extends EntityRepository<Table> {
       recordChange(getColumnField(origColumn, "constraint"), origColumn.getConstraint(), updatedColumn.getConstraint());
     }
 
-    private String getColumnField(Column column, String columnField) {
-      // Remove table FQN from column FQN to get the local name
-      String localColumnName = EntityUtil.getLocalColumnName(column.getFullyQualifiedName());
-      return "columns." + localColumnName + (columnField == null ? "" : "." + columnField);
+    private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
+      if (recordChange(
+          getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength())) {
+        if (updatedColumn.getDataLength() < origColumn.getDataLength()) {
+          // The data length of a column changed. Treat it as backward-incompatible change
+          majorVersionChange = true;
+        }
+      }
     }
   }
 }

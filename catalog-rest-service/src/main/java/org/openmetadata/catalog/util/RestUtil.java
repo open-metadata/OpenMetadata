@@ -209,6 +209,10 @@ public final class RestUtil {
       this.changeType = changeType;
     }
 
+    public T getEntity() {
+      return entity;
+    }
+
     public Response toResponse() {
       ResponseBuilder responseBuilder = Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType);
       return responseBuilder.entity(entity).build();

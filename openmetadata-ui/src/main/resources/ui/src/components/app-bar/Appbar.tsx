@@ -127,6 +127,14 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const getUserName = () => {
+    const currentUser = isAuthDisabled
+      ? appState.users[0]
+      : appState.userDetails;
+
+    return currentUser?.displayName || currentUser?.name || 'User';
+  };
+
   const getUserData = () => {
     const currentUser = isAuthDisabled
       ? appState.users[0]
@@ -244,6 +252,7 @@ const Appbar: React.FC = (): JSX.Element => {
           searchValue={searchValue || ''}
           settingDropdown={navLinkSettings}
           supportDropdown={supportLinks}
+          username={getUserName()}
         />
       ) : null}
     </>

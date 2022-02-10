@@ -22,6 +22,7 @@ export interface NavBarProps {
   isFeatureModalOpen: boolean;
   pathname: string;
   isSearchBoxOpen: boolean;
+  username: string;
   handleSearchBoxOpen: (value: boolean) => void;
   handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;

@@ -160,13 +160,13 @@ public class TableDetailsPageTest {
   @Order(6)
   void removeTags() {
     openExplorePage();
-    List<WebElement> tagDisplayed = topicDetails.breadCrumbTag();
+    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTag());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.tagName());
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
     webDriver.navigate().refresh();
-    List<WebElement> updatedTags = topicDetails.breadCrumbTag();
+    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTag());
     if (updatedTags.contains(tagDisplayed.get(1))) {
       Assert.fail("Selected Tag is not removed");
     } else {

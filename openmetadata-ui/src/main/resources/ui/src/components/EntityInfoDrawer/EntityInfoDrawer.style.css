@@ -19,12 +19,11 @@
   right: 0;
   width: 325px;
   z-index: 200;
-  margin-right: -16px;
   overflow-y: auto;
   padding: 16px;
   transform: translateX(100%);
   display: none;
-  border-left: 1px solid #d9ceee;
+  border-left: 1px solid #dce3ec;
   transition: transform 0.3s ease-out;
 }
 
