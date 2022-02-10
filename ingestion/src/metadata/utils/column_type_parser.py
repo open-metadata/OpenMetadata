@@ -132,6 +132,7 @@ class ColumnTypeParser:
         "VARIANT": "JSON",
         "XML": "BINARY",
         "XMLTYPE": "BINARY",
+        "UUID": "UUID",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
