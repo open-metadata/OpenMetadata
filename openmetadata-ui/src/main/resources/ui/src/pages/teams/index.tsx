@@ -497,7 +497,7 @@ const TeamsPage = () => {
                     {isAddingUsers && (
                       <AddUsersModal
                         header={`Adding new users to ${
-                          currentTeam?.name ?? currentTeam?.displayName
+                          currentTeam?.displayName ?? currentTeam?.name
                         }`}
                         list={getUniqueUserList()}
                         onCancel={() => setIsAddingUsers(false)}

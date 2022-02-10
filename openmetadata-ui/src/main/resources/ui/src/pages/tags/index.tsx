@@ -274,7 +274,7 @@ const TagsPage = () => {
                 fetchCurrentCategory(category.name);
               }}>
               <p className="tw-text-center tw-self-center tag-category label-category">
-                {category.name ?? category.displayName}
+                {category.displayName ?? category.name}
               </p>
 
               {getCountBadge(
@@ -308,7 +308,7 @@ const TagsPage = () => {
                     <div
                       className="tw-heading tw-text-link tw-text-base"
                       data-testid="category-name">
-                      {currentCategory.name ?? currentCategory.displayName}
+                      {currentCategory.displayName ?? currentCategory.name}
                     </div>
                     <NonAdminAction
                       position="bottom"
@@ -521,7 +521,7 @@ const TagsPage = () => {
                     errorData={errorDataTag}
                     form={Form}
                     header={`Adding new tag on ${
-                      currentCategory?.name ?? currentCategory?.displayName
+                      currentCategory?.displayName ?? currentCategory?.name
                     }`}
                     initialData={{
                       name: '',
