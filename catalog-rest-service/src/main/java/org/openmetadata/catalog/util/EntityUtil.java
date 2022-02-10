@@ -120,6 +120,10 @@ public final class EntityUtil {
           Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
               && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
 
+  public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
+      (filter1, filter2) ->
+          filter1.getEventType().equals(filter2.getEventType()) && filter1.getEntities().equals(filter2.getEntities());
+
   private EntityUtil() {}
 
   /** Validate Ingestion Schedule */

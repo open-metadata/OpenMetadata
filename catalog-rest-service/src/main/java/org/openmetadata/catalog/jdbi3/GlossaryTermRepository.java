@@ -84,7 +84,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (String id : ids) {
       children.add(Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(id)));
     }
-    System.out.println("XXX children " + children);
     return children.isEmpty() ? null : children;
   }
 

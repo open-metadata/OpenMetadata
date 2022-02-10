@@ -76,7 +76,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     String webhookName = getEntityName(test);
     LOG.info("creating webhook in disabled state");
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
-    CreateWebhook create = createRequest(webhookName, "", "", null).withEnabled(false).withEndpoint(URI.create(uri));
+    CreateWebhook create =
+        createRequest(webhookName, "", "", null).withEnabled(false).withEndpoint(URI.create(uri)).withBatchSize(10);
     Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertEquals(Status.DISABLED, webhook.getStatus());
     Webhook getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
@@ -178,6 +179,43 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
   }
 
+  @Test
+  void put_updateWebhookFilter(TestInfo test) throws IOException {
+    String endpoint =
+        "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter/" + test.getDisplayName();
+    EventFilter f1 = new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*"));
+    EventFilter f2 = new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*"));
+    EventFilter f3 = new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*"));
+    EventFilter f4 = new EventFilter().withEventType(EventType.ENTITY_SOFT_DELETED).withEntities(List.of("*"));
+
+    CreateWebhook create =
+        createRequest("filterUpdate", "", "", null)
+            .withEnabled(false)
+            .withEndpoint(URI.create(endpoint))
+            .withEventFilters(List.of(f1));
+    Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Now update the filter to include entity updated and deleted events
+    create.setEventFilters(List.of(f1, f2, f3));
+    ChangeDescription change = getChangeDescription(webhook.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f2, f3, f4)));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Now remove the filter for entityCreated
+    create.setEventFilters(List.of(f2, f3));
+    change = getChangeDescription(webhook.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f1)));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Now remove the filter for entityDeleted
+    create.setEventFilters(List.of(f2));
+    change = getChangeDescription(webhook.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f3, f4)));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
+  }
+
   @Override
   public CreateWebhook createRequest(String name, String description, String displayName, EntityReference owner) {
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/ignore";
@@ -223,7 +261,24 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   public void validateGetWithDifferentFields(Webhook entity, boolean byName) throws HttpResponseException {}
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("eventFilters")) {
+      List<EventFilter> expectedFilters = (List<EventFilter>) expected;
+      List<EventFilter> actualFilters = JsonUtils.readObjects(actual.toString(), EventFilter.class);
+      assertEquals(expectedFilters, actualFilters);
+    } else if (fieldName.equals("endPoint")) {
+      URI expectedEndpoint = (URI) expected;
+      URI actualEndpoint = URI.create(actual.toString());
+      assertEquals(expectedEndpoint, actualEndpoint);
+    } else if (fieldName.equals("status")) {
+      assertEquals((Status) expected, Status.fromValue(actual.toString()));
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
 
   /**
    * Before a test for every entity resource, create a webhook subscription. At the end of the test, ensure all events
