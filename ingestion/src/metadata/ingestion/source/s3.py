@@ -52,8 +52,11 @@ class S3Source(Source[Entity]):
         self.metadata_config = metadata_config
         self.status = SourceStatus()
         self.service = get_storage_service_or_create(
-            {"name": self.config.service_name, "serviceType": StorageServiceType.S3},
-            metadata_config,
+            service_json={
+                "name": self.config.service_name,
+                "serviceType": StorageServiceType.S3,
+            },
+            metadata_config=metadata_config,
         )
         self.s3 = AWSClient(self.config).get_client("s3")
 

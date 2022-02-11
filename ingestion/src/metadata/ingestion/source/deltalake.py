@@ -46,7 +46,11 @@ class DeltaLakeSource(Source):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
-        self.service = get_database_service_or_create(config, metadata_config)
+        self.service = get_database_service_or_create(
+            config=config,
+            metadata_config=metadata_config,
+            service_name=config.service_name,
+        )
         self.status = SQLSourceStatus()
         # spark session needs to initiated outside the workflow and pass it through WorkflowContext
         self.spark = ctx.spark

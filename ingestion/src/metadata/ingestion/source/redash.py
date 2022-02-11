@@ -68,12 +68,12 @@ class RedashSource(Source[Entity]):
         self.status = RedashSourceStatus()
         self.client = Redash(self.config.uri, self.config.api_key)
         self.service = get_dashboard_service_or_create(
-            config.service_name,
-            DashboardServiceType.Redash.name,
-            config.username,
-            config.api_key,
-            config.uri,
-            metadata_config,
+            service_name=config.service_name,
+            dashboard_service_type=DashboardServiceType.Redash.name,
+            username=config.username,
+            password=config.api_key,
+            dashboard_url=config.uri,
+            metadata_config=metadata_config,
         )
         self.dashboards_to_charts = {}
 

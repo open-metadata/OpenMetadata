@@ -62,7 +62,9 @@ class GlueSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service = get_database_service_or_create(
-            config, metadata_config, self.config.service_name
+            config=config,
+            metadata_config=metadata_config,
+            service_name=self.config.service_name,
         )
         self.storage_service = get_storage_service_or_create(
             {"name": self.config.storage_service_name, "serviceType": "S3"},
