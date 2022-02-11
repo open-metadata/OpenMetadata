@@ -76,7 +76,10 @@ public class UsageRepository {
 
   private void addUsage(String entityType, String entityId, DailyCount usage) throws IOException {
     // Insert usage record
+    LOG.info("Entity Type: " + entityType + " ; EntityId: " + entityId);
     dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
+
+    LOG.info("Inserted");
 
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
@@ -86,6 +89,7 @@ public class UsageRepository {
       List<String> databaseIds =
           dao.relationshipDAO()
               .findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE, toBoolean(include));
+      LOG.info("Insert or Update: " + databaseIds.toString());
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }
