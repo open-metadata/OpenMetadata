@@ -14,8 +14,10 @@ Mixin class containing Pipeline specific methods
 To be used by OpenMetadata class
 """
 import logging
+from typing import List
 
-from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus, Task
 from metadata.ingestion.ometa.client import REST
 
 logger = logging.getLogger(__name__)
@@ -42,3 +44,60 @@ class OMetaPipelineMixin:
             data=status.json(),
         )
         return Pipeline(**resp)
+
+    def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:
+        """
+        The background logic for this method is that during
+        Airflow backend lineage, we compute one task at
+        a time.
+
+        Let's generalise a bit the approach by preparing
+        a method capable of updating a tuple of tasks
+        from the client.
+
+        Latest changes leave all the task management
+        to the client. Therefore, a Pipeline will only contain
+        the tasks sent in each PUT from the client.
+        """
+
+        # Get the names of all incoming tasks
+        updated_tasks_names = {task.name for task in tasks}
+
+        # Check which tasks are currently in the pipeline but not being updated
+        not_updated_tasks = [
+            task for task in pipeline.tasks if task.name not in updated_tasks_names
+        ]
+
+        # All tasks are the union of the incoming tasks & the not updated tasks
+        all_tasks = [*tasks, *not_updated_tasks]
+
+        updated_pipeline = CreatePipelineRequest(
+            name=pipeline.name,
+            service=pipeline.service,
+            tasks=all_tasks,
+        )
+
+        return self.create_or_update(updated_pipeline)
+
+    def clean_pipeline_tasks(self, pipeline: Pipeline, tasks: List[Task]) -> Pipeline:
+        """
+        Given a list of tasks, remove from the
+        Pipeline Entity those that are not received
+        as an input.
+
+        e.g., if a Pipeline has tasks A, B, C,
+        but we only receive A & C, we will
+        remove the task B from the entity
+        """
+
+        names = {task.name for task in tasks}
+
+        updated_pipeline = CreatePipelineRequest(
+            name=pipeline.name,
+            service=pipeline.service,
+            tasks=[
+                task for task in pipeline.tasks if task.name in names
+            ]
+        )
+
+        return self.create_or_update(updated_pipeline)

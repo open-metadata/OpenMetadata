@@ -233,6 +233,89 @@ class OMetaPipelineTest(TestCase):
         # Cleanup
         self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
 
+    def test_add_tasks(self):
+        """
+        Check the add task logic
+        """
+
+        create_pipeline = CreatePipelineRequest(
+            name="pipeline-test",
+            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            tasks=[
+                Task(name="task1"),
+                Task(name="task2"),
+            ]
+        )
+
+        pipeline = self.metadata.create_or_update(data=create_pipeline)
+
+        # Add new tasks
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, Task(name="task3"),
+        )
+
+        assert len(updated_pipeline.tasks) == 3
+
+        # Update a task already added
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, Task(name="task3", displayName="TaskDisplay"),
+        )
+
+        assert len(updated_pipeline.tasks) == 3
+        assert next(
+            iter(
+                task for task in updated_pipeline.tasks
+                if task.displayName == "TaskDisplay"
+            )
+        )
+
+        # Add more than one task at a time
+        new_tasks = [
+            Task(name="task3"),
+            Task(name="task4"),
+        ]
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, *new_tasks
+        )
+
+        assert len(updated_pipeline.tasks) == 4
+
+        # Cleanup
+        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
+
+    def test_clean_tasks(self):
+        """
+        Check that we can remove Pipeline tasks
+        if they are not part of the list arg
+        """
+
+        create_pipeline = CreatePipelineRequest(
+            name="pipeline-test",
+            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            tasks=[
+                Task(name="task1"),
+                Task(name="task2"),
+                Task(name="task3"),
+                Task(name="task4"),
+            ]
+        )
+
+        pipeline = self.metadata.create_or_update(data=create_pipeline)
+
+        updated_pipeline = self.metadata.clean_pipeline_tasks(
+            pipeline=pipeline,
+            tasks=[
+                Task(name="task3"),
+                Task(name="task4")
+            ]
+        )
+
+        assert len(updated_pipeline.tasks) == 2
+        assert {task.name for task in updated_pipeline.tasks} == {"task3", "task4"}
+
+        # Cleanup
+        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
+
     def test_list_versions(self):
         """
         test list pipeline entity versions
