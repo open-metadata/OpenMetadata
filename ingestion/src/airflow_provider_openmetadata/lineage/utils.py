@@ -68,6 +68,7 @@ ALLOWED_FLOW_KEYS = {
     "start_date",
     "tags",
     "timezone",
+    "_task_group",  # We can get children information from here
 }
 
 
@@ -172,7 +173,7 @@ def iso_task_start_end_date(
     return task_start_date, task_end_date
 
 
-def create_pipeline_entity(
+def create_or_update_pipeline(
     dag_properties: Dict[str, str],
     task_properties: Dict[str, str],
     operator: "BaseOperator",
@@ -181,7 +182,12 @@ def create_pipeline_entity(
     client: OpenMetadata,
 ) -> Pipeline:
     """
-    Prepare the upsert the pipeline entity with the given task
+    Prepare the upsert of pipeline entity with the given task
+
+    We will:
+    - Create the pipeline Entity
+    - Append the task being processed
+    - Clean deleted tasks based on the DAG children information
 
     :param dag_properties: attributes of the dag object
     :param task_properties: attributes of the task object
@@ -215,17 +221,44 @@ def create_pipeline_entity(
         endDate=task_end_date,
         downstreamTasks=downstream_tasks,
     )
-    create_pipeline = CreatePipelineRequest(
+
+    # Check if the pipeline already exists
+    current_pipeline: Pipeline = client.get_by_name(
+        entity=Pipeline, fqdn=f"{airflow_service_entity.name}.{dag.dag_id}", fields=["tasks"]
+    )
+
+    # Create pipeline if not exists or update its properties
+    pipeline_request = CreatePipelineRequest(
         name=dag.dag_id,
         displayName=dag.dag_id,
         description=dag.description,
         pipelineUrl=dag_url,
+        concurrency=current_pipeline.concurrency if current_pipeline else None,
+        pipelineLocation=current_pipeline.pipelineLocation if current_pipeline else None,
         startDate=dag_start_date,
-        tasks=[task],  # TODO: should we GET + append?
+        tasks=current_pipeline.tasks if current_pipeline else None,  # use the current tasks, if any
         service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
+        owner=current_pipeline.owner if current_pipeline else None,
+        tags=current_pipeline.tags if current_pipeline else None,
     )
+    pipeline = client.create_or_update(pipeline_request)
 
-    return client.create_or_update(create_pipeline)
+    # Add the task we are processing in the lineage backend
+    operator.log.info(f"Adding tasks to pipeline...")
+    updated_pipeline = client.add_task_to_pipeline(pipeline, task)
+
+    # Clean pipeline
+    try:
+        operator.log.info(f"Cleaning pipeline tasks...")
+        children = dag_properties.get("_task_group").get("children")
+        dag_tasks = [
+            Task(name=name) for name in children.keys()
+        ]
+        updated_pipeline = client.clean_pipeline_tasks(updated_pipeline, dag_tasks)
+    except Exception as exc:  # pylint: disable=broad-except
+        operator.log.warning(f"Error cleaning pipeline tasks {exc}")
+
+    return updated_pipeline
 
 
 # pylint: disable=too-many-arguments,too-many-locals
@@ -272,7 +305,7 @@ def parse_lineage_to_openmetadata(
         airflow_service_entity = get_or_create_pipeline_service(
             operator, client, config
         )
-        pipeline = create_pipeline_entity(
+        pipeline = create_or_update_pipeline(
             dag_properties,
             task_properties,
             operator,
@@ -320,7 +353,7 @@ def get_or_create_pipeline_service(
     Check if we already have the airflow instance as a PipelineService,
     otherwise create it.
 
-    :param operator: task from which we extract the lienage
+    :param operator: task from which we extract the lineage
     :param client: OpenMetadata API wrapper
     :param config: lineage config
     :return: PipelineService

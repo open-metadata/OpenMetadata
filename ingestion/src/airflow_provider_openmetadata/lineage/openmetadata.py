@@ -32,37 +32,6 @@ if TYPE_CHECKING:
     from airflow.models.baseoperator import BaseOperator
 
 
-allowed_task_keys = [
-    "_downstream_task_ids",
-    "_inlets",
-    "_outlets",
-    "_task_type",
-    "_task_module",
-    "depends_on_past",
-    "email",
-    "label",
-    "execution_timeout",
-    "end_date",
-    "start_date",
-    "sla",
-    "sql",
-    "task_id",
-    "trigger_rule",
-    "wait_for_downstream",
-]
-allowed_flow_keys = [
-    "_access_control",
-    "_concurrency",
-    "_default_view",
-    "catchup",
-    "fileloc",
-    "is_paused_upon_creation",
-    "start_date",
-    "tags",
-    "timezone",
-]
-
-
 # pylint: disable=import-outside-toplevel, unused-import
 def is_airflow_version_1() -> bool:
     """
@@ -110,8 +79,8 @@ class OpenMetadataLineageBackend(LineageBackend):
         _ = get_lineage_config()
 
     # pylint: disable=protected-access
-    @staticmethod
     def send_lineage(
+        self,
         operator: "BaseOperator",
         inlets: Optional[List] = None,
         outlets: Optional[List] = None,
