@@ -224,7 +224,9 @@ def create_or_update_pipeline(
 
     # Check if the pipeline already exists
     current_pipeline: Pipeline = client.get_by_name(
-        entity=Pipeline, fqdn=f"{airflow_service_entity.name}.{dag.dag_id}", fields=["tasks"]
+        entity=Pipeline,
+        fqdn=f"{airflow_service_entity.name}.{dag.dag_id}",
+        fields=["tasks"],
     )
 
     # Create pipeline if not exists or update its properties
@@ -234,9 +236,13 @@ def create_or_update_pipeline(
         description=dag.description,
         pipelineUrl=dag_url,
         concurrency=current_pipeline.concurrency if current_pipeline else None,
-        pipelineLocation=current_pipeline.pipelineLocation if current_pipeline else None,
+        pipelineLocation=current_pipeline.pipelineLocation
+        if current_pipeline
+        else None,
         startDate=dag_start_date,
-        tasks=current_pipeline.tasks if current_pipeline else None,  # use the current tasks, if any
+        tasks=current_pipeline.tasks
+        if current_pipeline
+        else None,  # use the current tasks, if any
         service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
         owner=current_pipeline.owner if current_pipeline else None,
         tags=current_pipeline.tags if current_pipeline else None,
@@ -251,9 +257,7 @@ def create_or_update_pipeline(
     try:
         operator.log.info(f"Cleaning pipeline tasks...")
         children = dag_properties.get("_task_group").get("children")
-        dag_tasks = [
-            Task(name=name) for name in children.keys()
-        ]
+        dag_tasks = [Task(name=name) for name in children.keys()]
         updated_pipeline = client.clean_pipeline_tasks(updated_pipeline, dag_tasks)
     except Exception as exc:  # pylint: disable=broad-except
         operator.log.warning(f"Error cleaning pipeline tasks {exc}")
