@@ -536,6 +536,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = (
                             1 if col_data_length is None else col_data_length
                         )
+                        if col_type == "ARRAY":
+                            if arr_data_type is None:
+                                arr_data_type = "VARCHAR"
+                            dataTypeDisplay = col_type + "<" + arr_data_type + ">"
                         om_column = Column(
                             name=column["name"],
                             description=column.get("comment", None),
