@@ -179,3 +179,10 @@ def convert_epoch_to_iso(seconds_since_epoch):
     dt = datetime.utcfromtimestamp(seconds_since_epoch)
     iso_format = dt.isoformat() + "Z"
     return iso_format
+
+
+def datetime_to_ts(date: datetime) -> int:
+    """
+    Convert a given date to a timestamp as an Int
+    """
+    return int(date.timestamp())
