@@ -14,13 +14,14 @@ OpenMetadata high-level API Pipeline test
 """
 import uuid
 from unittest import TestCase
+from datetime import datetime
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus, StatusType, Task, TaskStatus
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
@@ -28,6 +29,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.utils.helpers import datetime_to_ts
 
 
 class OMetaPipelineTest(TestCase):
@@ -195,6 +197,41 @@ class OMetaPipelineTest(TestCase):
             ),
             None,
         )
+
+    def test_add_status(self):
+        """
+        We can add status data
+        """
+
+        create_pipeline = CreatePipelineRequest(
+            name="pipeline-test",
+            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            tasks=[
+                Task(name="task1"),
+                Task(name="task2"),
+            ]
+        )
+
+        pipeline = self.metadata.create_or_update(data=create_pipeline)
+        execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
+
+        updated = self.metadata.add_pipeline_status(
+            pipeline=pipeline,
+            status=PipelineStatus(
+                executionDate=execution_ts,
+                executionStatus=StatusType.Successful,
+                taskStatus=[
+                    TaskStatus(name="task1", executionStatus=StatusType.Successful),
+                    TaskStatus(name="task2", executionStatus=StatusType.Successful),
+                ]
+            )
+        )
+
+        # We get a list of status
+        assert updated.pipelineStatus[0].executionDate.__root__ == execution_ts
+
+        # Cleanup
+        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
 
     def test_list_versions(self):
         """
