@@ -24,7 +24,13 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    StatusType,
+    Task,
+    TaskStatus,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
@@ -39,7 +45,7 @@ if TYPE_CHECKING:
     from airflow import DAG
     from airflow.models.baseoperator import BaseOperator
 
-ALLOWED_TASK_KEYS = {
+_ALLOWED_TASK_KEYS = {
     "_downstream_task_ids",
     "_inlets",
     "_outlets",
@@ -58,7 +64,7 @@ ALLOWED_TASK_KEYS = {
     "wait_for_downstream",
 }
 
-ALLOWED_FLOW_KEYS = {
+_ALLOWED_FLOW_KEYS = {
     "_access_control",
     "_concurrency",
     "_default_view",
@@ -69,6 +75,12 @@ ALLOWED_FLOW_KEYS = {
     "tags",
     "timezone",
     "_task_group",  # We can get children information from here
+}
+
+_STATUS_MAP = {
+    "running": StatusType.Pending,
+    "success": StatusType.Successful,
+    "failed": StatusType.Failed,
 }
 
 
@@ -174,8 +186,8 @@ def iso_task_start_end_date(
 
 
 def create_or_update_pipeline(
-    dag_properties: Dict[str, str],
-    task_properties: Dict[str, str],
+    dag_properties: Dict[str, Any],
+    task_properties: Dict[str, Any],
     operator: "BaseOperator",
     dag: "DAG",
     airflow_service_entity: PipelineService,
@@ -265,6 +277,50 @@ def create_or_update_pipeline(
     return updated_pipeline
 
 
+def add_status(
+    operator: "BaseOperator",
+    pipeline: Pipeline,
+    client: OpenMetadata,
+    context: Dict,
+    dag_properties: Dict[str, Any],
+    task_properties: Dict[str, Any],
+) -> None:
+    """
+    Add status information for this execution date
+    """
+
+    # Let this fail if we cannot properly extract & cast the start_date
+    execution_date = int(dag_properties.get("start_date"))
+    operator.log.info(f"Logging pipeline status for execution {execution_date}")
+
+    # Check if we already have a pipelineStatus for our execution_date that we should update
+    pipeline_status: List[PipelineStatus] = client.get_by_id(
+        entity=Pipeline, entity_id=pipeline.id, fields=["pipelineStatus"]
+    ).pipelineStatus
+
+    task_status = []
+    # We will append based on the current registered status
+    if pipeline_status and pipeline_status[0].executionDate.__root__ == execution_date:
+        task_status = pipeline_status[0].taskStatus
+
+    updated_status = PipelineStatus(
+        executionDate=execution_date,
+        executionStatus=_STATUS_MAP.get(
+            context["dag_run"]._state  # pylint: disable=protected-access
+        ),
+        taskStatus=[
+            TaskStatus(
+                name=task_properties["task_id"],
+                executionStatus=_STATUS_MAP.get(context["task_instance"].state),
+            ),
+            *task_status,
+        ],
+    )
+
+    operator.log.info(f"Added status to DAG {updated_status}")
+    client.add_pipeline_status(pipeline=pipeline, status=updated_status)
+
+
 # pylint: disable=too-many-arguments,too-many-locals
 def parse_lineage_to_openmetadata(
     config: OpenMetadataLineageConfig,
@@ -296,9 +352,11 @@ def parse_lineage_to_openmetadata(
     operator.log.info("Parsing Lineage for OpenMetadata")
     dag: "DAG" = context["dag"]
 
-    dag_properties = get_properties(dag, SerializedDAG.serialize_dag, ALLOWED_FLOW_KEYS)
+    dag_properties = get_properties(
+        dag, SerializedDAG.serialize_dag, _ALLOWED_FLOW_KEYS
+    )
     task_properties = get_properties(
-        operator, SerializedBaseOperator.serialize_operator, ALLOWED_TASK_KEYS
+        operator, SerializedBaseOperator.serialize_operator, _ALLOWED_TASK_KEYS
     )
 
     operator.log.info(f"Task Properties {task_properties}")
@@ -310,12 +368,21 @@ def parse_lineage_to_openmetadata(
             operator, client, config
         )
         pipeline = create_or_update_pipeline(
-            dag_properties,
-            task_properties,
-            operator,
-            dag,
-            airflow_service_entity,
-            client,
+            dag_properties=dag_properties,
+            task_properties=task_properties,
+            operator=operator,
+            dag=dag,
+            airflow_service_entity=airflow_service_entity,
+            client=client,
+        )
+
+        add_status(
+            operator=operator,
+            pipeline=pipeline,
+            client=client,
+            context=context,
+            dag_properties=dag_properties,
+            task_properties=task_properties,
         )
 
         operator.log.info("Parsing Lineage")
@@ -328,19 +395,19 @@ def parse_lineage_to_openmetadata(
                     toEntity=EntityReference(id=pipeline.id, type="pipeline"),
                 )
             )
-            operator.log.debug(f"from lineage {lineage}")
+            operator.log.debug(f"From lineage {lineage}")
             client.add_lineage(lineage)
 
         for table in outlets if outlets else []:
             table_entity = client.get_by_name(entity=Table, fqdn=table)
-            operator.log.debug(f"to entity {table_entity}")
+            operator.log.debug(f"To entity {table_entity}")
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
                     toEntity=EntityReference(id=table_entity.id, type="table"),
                 )
             )
-            operator.log.debug(f"to lineage {lineage}")
+            operator.log.debug(f"To lineage {lineage}")
             client.add_lineage(lineage)
 
     except Exception as exc:  # pylint: disable=broad-except
