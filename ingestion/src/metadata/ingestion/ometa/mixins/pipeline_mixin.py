@@ -79,8 +79,16 @@ class OMetaPipelineMixin:
 
         updated_pipeline = CreatePipelineRequest(
             name=pipeline.name,
+            displayName=pipeline.displayName,
+            description=pipeline.description,
+            pipelineUrl=pipeline.pipelineUrl,
+            concurrency=pipeline.concurrency,
+            pipelineLocation=pipeline.pipelineLocation,
+            startDate=pipeline.startDate,
             service=pipeline.service,
             tasks=all_tasks,
+            owner=pipeline.owner,
+            tags=pipeline.tags,
         )
 
         return self.create_or_update(updated_pipeline)
@@ -100,8 +108,16 @@ class OMetaPipelineMixin:
 
         updated_pipeline = CreatePipelineRequest(
             name=pipeline.name,
+            displayName=pipeline.displayName,
+            description=pipeline.description,
+            pipelineUrl=pipeline.pipelineUrl,
+            concurrency=pipeline.concurrency,
+            pipelineLocation=pipeline.pipelineLocation,
+            startDate=pipeline.startDate,
             service=pipeline.service,
             tasks=[task for task in pipeline.tasks if task.name in names],
+            owner=pipeline.owner,
+            tags=pipeline.tags,
         )
 
         return self.create_or_update(updated_pipeline)
