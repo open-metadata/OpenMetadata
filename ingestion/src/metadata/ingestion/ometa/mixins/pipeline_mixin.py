@@ -17,7 +17,11 @@ import logging
 from typing import List
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus, Task
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    Task,
+)
 from metadata.ingestion.ometa.client import REST
 
 logger = logging.getLogger(__name__)
@@ -95,9 +99,7 @@ class OMetaPipelineMixin:
         updated_pipeline = CreatePipelineRequest(
             name=pipeline.name,
             service=pipeline.service,
-            tasks=[
-                task for task in pipeline.tasks if task.name in names
-            ]
+            tasks=[task for task in pipeline.tasks if task.name in names],
         )
 
         return self.create_or_update(updated_pipeline)
