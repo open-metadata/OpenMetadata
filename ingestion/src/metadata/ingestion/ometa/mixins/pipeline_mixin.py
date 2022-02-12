@@ -68,9 +68,11 @@ class OMetaPipelineMixin:
         updated_tasks_names = {task.name for task in tasks}
 
         # Check which tasks are currently in the pipeline but not being updated
-        not_updated_tasks = [
-            task for task in pipeline.tasks if task.name not in updated_tasks_names
-        ]
+        not_updated_tasks = []
+        if pipeline.tasks:
+            not_updated_tasks = [
+                task for task in pipeline.tasks if task.name not in updated_tasks_names
+            ]
 
         # All tasks are the union of the incoming tasks & the not updated tasks
         all_tasks = [*tasks, *not_updated_tasks]

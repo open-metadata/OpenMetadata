@@ -283,6 +283,19 @@ class OMetaPipelineTest(TestCase):
         # Cleanup
         self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
 
+    def test_add_tasks_to_empty_pipeline(self):
+        """
+        We can add tasks to a pipeline without tasks
+        """
+
+        pipeline = self.metadata.create_or_update(data=self.create)
+
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, Task(name="task", displayName="TaskDisplay"),
+        )
+
+        assert len(updated_pipeline.tasks) == 1
+
     def test_clean_tasks(self):
         """
         Check that we can remove Pipeline tasks
