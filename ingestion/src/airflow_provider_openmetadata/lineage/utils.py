@@ -108,7 +108,7 @@ def get_properties(
     :return: properties dict
     """
 
-    props: Dict[str, str] = {key: value for (key, value) in serializer(obj).items()}
+    props: Dict[str, str] = dict(serializer(obj).items())
 
     for key in obj.get_serialized_fields():
         if key not in props:
@@ -185,7 +185,7 @@ def iso_task_start_end_date(
     return task_start_date, task_end_date
 
 
-def create_or_update_pipeline(
+def create_or_update_pipeline(  # pylint: disable=too-many-locals
     dag_properties: Dict[str, Any],
     task_properties: Dict[str, Any],
     operator: "BaseOperator",
@@ -262,12 +262,12 @@ def create_or_update_pipeline(
     pipeline = client.create_or_update(pipeline_request)
 
     # Add the task we are processing in the lineage backend
-    operator.log.info(f"Adding tasks to pipeline...")
+    operator.log.info("Adding tasks to pipeline...")
     updated_pipeline = client.add_task_to_pipeline(pipeline, task)
 
     # Clean pipeline
     try:
-        operator.log.info(f"Cleaning pipeline tasks...")
+        operator.log.info("Cleaning pipeline tasks...")
         children = dag_properties.get("_task_group").get("children")
         dag_tasks = [Task(name=name) for name in children.keys()]
         updated_pipeline = client.clean_pipeline_tasks(updated_pipeline, dag_tasks)
@@ -316,7 +316,8 @@ def get_dag_status(dag_properties: Dict[str, Any], task_status: List[TaskStatus]
 
     if len(children) < len(task_status):
         raise ValueError(
-            f"We have more status than children: children {children} vs. status {task_status}"
+            "We have more status than children:"
+            + f"children {children} vs. status {task_status}"
         )
 
     # We are still processing tasks...
@@ -349,7 +350,8 @@ def add_status(
     execution_date = int(dag_properties.get("start_date"))
     operator.log.info(f"Logging pipeline status for execution {execution_date}")
 
-    # Check if we already have a pipelineStatus for our execution_date that we should update
+    # Check if we already have a pipelineStatus for
+    # our execution_date that we should update
     pipeline_status: List[PipelineStatus] = client.get_by_id(
         entity=Pipeline, entity_id=pipeline.id, fields=["pipelineStatus"]
     ).pipelineStatus
@@ -394,7 +396,7 @@ def parse_lineage(
     inlets: List,
     outlets: List,
     client: OpenMetadata,
-) -> Pipeline:
+) -> Optional[Pipeline]:
     """
     Main logic to extract properties from DAG and the
     triggered operator to ingest lineage data into
@@ -458,6 +460,8 @@ def parse_lineage(
             f"Failed to parse Airflow DAG task and publish to OpenMetadata due to {exc}"
         )
         operator.log.error(traceback.format_exc())
+
+        return None
 
 
 def get_or_create_pipeline_service(

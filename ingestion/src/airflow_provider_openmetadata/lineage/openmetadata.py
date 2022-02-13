@@ -29,24 +29,6 @@ if TYPE_CHECKING:
     from airflow.models.baseoperator import BaseOperator
 
 
-# pylint: disable=import-outside-toplevel, unused-import
-def is_airflow_version_1() -> bool:
-    """
-    Manage airflow submodule import based airflow version
-
-    Returns
-        bool
-    """
-    try:
-        from airflow.hooks.base import BaseHook
-
-        return False
-    except ModuleNotFoundError:
-        from airflow.hooks.base_hook import BaseHook
-
-        return True
-
-
 # pylint: disable=too-few-public-methods
 class OpenMetadataLineageBackend(LineageBackend):
     """
