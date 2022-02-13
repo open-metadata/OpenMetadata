@@ -19,21 +19,12 @@ from unittest import TestCase
 # The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.serialization.serialized_objects import (
-    SerializedBaseOperator,
-    SerializedDAG,
-)
 
 from airflow_provider_openmetadata.lineage.openmetadata import (
     OpenMetadataLineageBackend,
 )
 from airflow_provider_openmetadata.lineage.utils import (
-    _ALLOWED_FLOW_KEYS,
-    _ALLOWED_TASK_KEYS,
-    get_properties,
     get_xlets,
-    iso_dag_start_date,
-    iso_task_start_end_date,
 )
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -41,7 +32,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
@@ -143,67 +134,6 @@ class AirflowLineageTest(TestCase):
         self.assertIsNone(get_xlets(self.dag.get_task("task3"), "_inlets"))
         self.assertIsNone(get_xlets(self.dag.get_task("task3"), "_outlets"))
 
-    def test_properties(self):
-        """
-        check props
-        """
-
-        dag_props = get_properties(
-            self.dag, SerializedDAG.serialize_dag, _ALLOWED_FLOW_KEYS
-        )
-        self.assertTrue(set(dag_props.keys()).issubset(_ALLOWED_FLOW_KEYS))
-
-        task1_props = get_properties(
-            self.dag.get_task("task1"),
-            SerializedBaseOperator.serialize_operator,
-            _ALLOWED_TASK_KEYS,
-        )
-        self.assertTrue(set(task1_props.keys()).issubset(_ALLOWED_TASK_KEYS))
-
-        task2_props = get_properties(
-            self.dag.get_task("task2"),
-            SerializedBaseOperator.serialize_operator,
-            _ALLOWED_TASK_KEYS,
-        )
-        self.assertTrue(set(task2_props.keys()).issubset(_ALLOWED_TASK_KEYS))
-
-        task3_props = get_properties(
-            self.dag.get_task("task3"),
-            SerializedBaseOperator.serialize_operator,
-            _ALLOWED_TASK_KEYS,
-        )
-        self.assertTrue(set(task3_props.keys()).issubset(_ALLOWED_TASK_KEYS))
-
-    def test_times(self):
-        """
-        Check the ISO date extraction for DAG and Tasks instances
-        """
-        dag_props = get_properties(
-            self.dag, SerializedDAG.serialize_dag, _ALLOWED_FLOW_KEYS
-        )
-
-        dag_date = iso_dag_start_date(dag_props)
-        self.assertEqual("2021-01-01T00:00:00Z", dag_date)
-
-        # Remove the start_time
-        dag_props.pop("start_date")
-        dag_none_date = iso_dag_start_date(dag_props)
-        self.assertIsNone(dag_none_date)
-
-        # By default we'll get the start_date for the task,
-        # so we can check its value, but the end date
-        # might not come as in this case.
-        # Check that we can have those values as None
-        task1_props = get_properties(
-            self.dag.get_task("task1"),
-            SerializedBaseOperator.serialize_operator,
-            _ALLOWED_TASK_KEYS,
-        )
-
-        task_start_date, task_end_date = iso_task_start_end_date(task1_props)
-        self.assertEqual("2021-01-01T00:00:00Z", task_start_date)
-        self.assertIsNone(task_end_date)
-
     def test_lineage(self):
         """
         Test end to end
@@ -219,11 +149,11 @@ class AirflowLineageTest(TestCase):
         )
 
         self.assertIsNotNone(
-            self.metadata.get_by_name(entity=Pipeline, fqdn="airflow.lineage")
+            self.metadata.get_by_name(entity=Pipeline, fqdn="local_airflow_3.lineage")
         )
 
         lineage = self.metadata.get_lineage_by_name(
-            entity=Pipeline, fqdn="airflow.lineage"
+            entity=Pipeline, fqdn="local_airflow_3.lineage"
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
