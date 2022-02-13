@@ -26,6 +26,8 @@ import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -42,15 +44,19 @@ import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.entity.data.PipelineStatus;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Status;
+import org.openmetadata.catalog.type.StatusType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -277,6 +283,93 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
+  void put_PipelineStatus_200(TestInfo test) throws IOException, ParseException {
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
+    Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+
+    // PUT one status and validate
+    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
+    Status t2Status = new Status().withName("task2").withExecutionStatus(StatusType.Failed);
+    List<Status> taskStatus = List.of(t1Status, t2Status);
+
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withExecutionDate(format.parse("2022-01-15").getTime())
+            .withTaskStatus(taskStatus);
+
+    Pipeline putResponse = putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS);
+    // Validate put response
+    verifyPipelineStatusData(putResponse.getPipelineStatus(), List.of(pipelineStatus));
+
+    // Validate that a new GET will come with the proper status
+    pipeline = getEntity(pipeline.getId(), "pipelineStatus", ADMIN_AUTH_HEADERS);
+    verifyPipelineStatusData(pipeline.getPipelineStatus(), List.of(pipelineStatus));
+
+    // PUT another status and validate
+    PipelineStatus newPipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withExecutionDate(format.parse("2022-01-16").getTime())
+            .withTaskStatus(taskStatus);
+
+    putResponse = putPipelineStatusData(pipeline.getId(), newPipelineStatus, ADMIN_AUTH_HEADERS);
+    // Validate put response
+    verifyPipelineStatusData(putResponse.getPipelineStatus(), List.of(pipelineStatus, newPipelineStatus));
+
+    // Validate that a new GET will come with the proper status
+    pipeline = getEntity(pipeline.getId(), "pipelineStatus", ADMIN_AUTH_HEADERS);
+    verifyPipelineStatusData(pipeline.getPipelineStatus(), List.of(pipelineStatus, newPipelineStatus));
+
+    // Replace status data for a date
+    Status t3Status = new Status().withName("task0").withExecutionStatus(StatusType.Successful);
+    List<Status> newTaskStatus = List.of(t1Status, t2Status, t3Status);
+    PipelineStatus anotherStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withExecutionDate(format.parse("2022-01-16").getTime())
+            .withTaskStatus(newTaskStatus);
+
+    putResponse = putPipelineStatusData(pipeline.getId(), anotherStatus, ADMIN_AUTH_HEADERS);
+    // As the results come sorted, check the first status, as we are updating the newest one,
+    // ordering with reverseOrder
+    assertEquals(anotherStatus.getExecutionDate(), putResponse.getPipelineStatus().get(0).getExecutionDate());
+    // Validate put response
+    verifyPipelineStatusData(putResponse.getPipelineStatus(), List.of(pipelineStatus, anotherStatus));
+
+    // Validate that a new GET will come with the proper status
+    pipeline = getEntity(pipeline.getId(), "pipelineStatus", ADMIN_AUTH_HEADERS);
+    verifyPipelineStatusData(pipeline.getPipelineStatus(), List.of(pipelineStatus, anotherStatus));
+  }
+
+  @Test
+  void put_PipelineInvalidStatus_4xx(TestInfo test) throws IOException, ParseException {
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
+    Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+
+    // PUT one status and validate
+    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
+    Status t2Status = new Status().withName("invalidTask").withExecutionStatus(StatusType.Failed);
+    List<Status> taskStatus = List.of(t1Status, t2Status);
+
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withExecutionDate(format.parse("2022-01-16").getTime())
+            .withTaskStatus(taskStatus);
+
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS));
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid task name invalidTask");
+  }
+
+  @Test
   void patch_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException, URISyntaxException {
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -434,5 +527,26 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     WebTarget target = getResource("pipelines/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Pipeline.class, authHeaders);
+  }
+
+  // Prepare Pipeline status endpoint for PUT
+  public static Pipeline putPipelineStatusData(UUID pipelineId, PipelineStatus data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("pipelines/" + pipelineId + "/status");
+    return TestUtils.put(target, data, Pipeline.class, OK, authHeaders);
+  }
+
+  // Check that the inserted status are properly stored
+  private void verifyPipelineStatusData(List<PipelineStatus> actualStatus, List<PipelineStatus> expectedStatus) {
+    assertEquals(actualStatus.size(), expectedStatus.size());
+    Map<Long, PipelineStatus> statusMap = new HashMap<>();
+    for (PipelineStatus status : actualStatus) {
+      statusMap.put(status.getExecutionDate(), status);
+    }
+    for (PipelineStatus status : expectedStatus) {
+      PipelineStatus storedStatus = statusMap.get(status.getExecutionDate());
+      assertNotNull(storedStatus);
+      assertEquals(status, storedStatus);
+    }
   }
 }

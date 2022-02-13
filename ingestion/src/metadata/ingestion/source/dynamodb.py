@@ -4,14 +4,12 @@ import uuid
 from typing import Any, Generic, Iterable, List
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, IncludeFilterPattern
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -102,7 +100,7 @@ class DynamodbSource(Source[Entity]):
             logger.error(err)
 
     def get_columns(self, column_data):
-        for index, column in enumerate(column_data):
+        for column in column_data:
             try:
                 if "S" in column["AttributeType"].lower():
                     column["AttributeType"] = column["AttributeType"].replace(" ", "")
@@ -114,7 +112,6 @@ class DynamodbSource(Source[Entity]):
                     parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
                     parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
-                parsed_string["ordinalPosition"] = index
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                 yield Column(**parsed_string)
             except Exception as err:
