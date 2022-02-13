@@ -54,6 +54,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
       batch.clear();
     } catch (RetriableException ex) {
       setNextBackOff();
+      LOG.error("Failed to publish event {} due to {}, will try again in {} ms", changeEvent, ex, currentBackoffTime);
       Thread.sleep(currentBackoffTime);
     } catch (Exception e) {
       LOG.error("Failed to publish event {}", changeEvent);
