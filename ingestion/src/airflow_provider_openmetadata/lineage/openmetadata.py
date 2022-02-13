@@ -24,7 +24,7 @@ from airflow_provider_openmetadata.lineage.config import (
 )
 from airflow_provider_openmetadata.lineage.utils import (
     get_xlets,
-    parse_lineage_to_openmetadata,
+    parse_lineage,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -106,7 +106,7 @@ class OpenMetadataLineageBackend(LineageBackend):
             op_inlets = get_xlets(operator, "_inlets")
             op_outlets = get_xlets(operator, "_outlets")
 
-            parse_lineage_to_openmetadata(
+            parse_lineage(
                 config, context, operator, op_inlets, op_outlets, client
             )
         except Exception as exc:  # pylint: disable=broad-except

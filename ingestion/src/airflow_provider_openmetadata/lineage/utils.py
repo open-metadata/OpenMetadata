@@ -277,17 +277,46 @@ def create_or_update_pipeline(
     return updated_pipeline
 
 
+def get_context_properties(
+        operator: "BaseOperator",
+        dag: "DAG"
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Prepare DAG and Task properties based on attributes
+    and serializers
+    """
+    # Move this import to avoid circular import error when airflow parses the config
+    # pylint: disable=import-outside-toplevel
+    from airflow.serialization.serialized_objects import (
+        SerializedBaseOperator,
+        SerializedDAG,
+    )
+
+    dag_properties = get_properties(
+        dag, SerializedDAG.serialize_dag, _ALLOWED_FLOW_KEYS
+    )
+    task_properties = get_properties(
+        operator, SerializedBaseOperator.serialize_operator, _ALLOWED_TASK_KEYS
+    )
+
+    operator.log.info(f"Task Properties {task_properties}")
+    operator.log.info(f"DAG properties {dag_properties}")
+
+    return dag_properties, task_properties
+
+
 def add_status(
     operator: "BaseOperator",
     pipeline: Pipeline,
     client: OpenMetadata,
     context: Dict,
-    dag_properties: Dict[str, Any],
-    task_properties: Dict[str, Any],
 ) -> None:
     """
     Add status information for this execution date
     """
+
+    dag: "DAG" = context["dag"]
+    dag_properties, task_properties = get_context_properties(operator, dag)
 
     # Let this fail if we cannot properly extract & cast the start_date
     execution_date = int(dag_properties.get("start_date"))
@@ -327,14 +356,14 @@ def add_status(
 
 
 # pylint: disable=too-many-arguments,too-many-locals
-def parse_lineage_to_openmetadata(
+def parse_lineage(
     config: OpenMetadataLineageConfig,
     context: Dict,
     operator: "BaseOperator",
     inlets: List,
     outlets: List,
     client: OpenMetadata,
-) -> None:
+) -> Pipeline:
     """
     Main logic to extract properties from DAG and the
     triggered operator to ingest lineage data into
@@ -347,25 +376,10 @@ def parse_lineage_to_openmetadata(
     :param outlets: list of downstream tables
     :param client: OpenMetadata client
     """
-    # Move this import to avoid circular import error when airflow parses the config
-    # pylint: disable=import-outside-toplevel
-    from airflow.serialization.serialized_objects import (
-        SerializedBaseOperator,
-        SerializedDAG,
-    )
-
     operator.log.info("Parsing Lineage for OpenMetadata")
+
     dag: "DAG" = context["dag"]
-
-    dag_properties = get_properties(
-        dag, SerializedDAG.serialize_dag, _ALLOWED_FLOW_KEYS
-    )
-    task_properties = get_properties(
-        operator, SerializedBaseOperator.serialize_operator, _ALLOWED_TASK_KEYS
-    )
-
-    operator.log.info(f"Task Properties {task_properties}")
-    operator.log.info(f"DAG properties {dag_properties}")
+    dag_properties, task_properties = get_context_properties(operator, dag)
 
     try:
 
@@ -379,15 +393,6 @@ def parse_lineage_to_openmetadata(
             dag=dag,
             airflow_service_entity=airflow_service_entity,
             client=client,
-        )
-
-        add_status(
-            operator=operator,
-            pipeline=pipeline,
-            client=client,
-            context=context,
-            dag_properties=dag_properties,
-            task_properties=task_properties,
         )
 
         operator.log.info("Parsing Lineage")
@@ -414,6 +419,8 @@ def parse_lineage_to_openmetadata(
             )
             operator.log.debug(f"To lineage {lineage}")
             client.add_lineage(lineage)
+
+        return pipeline
 
     except Exception as exc:  # pylint: disable=broad-except
         operator.log.error(
