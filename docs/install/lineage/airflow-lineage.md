@@ -122,9 +122,89 @@ In order to still get the metadata information from the workflow, we can configu
 Import it with
 
 ```python
-from airflow_provider_openmetadata.lineage.callback import lineage_callback
+from airflow_provider_openmetadata.lineage.callback import failure_callback
 ```
 
 and use it as an argument for `on_failure_callback` property.
 
 This can be set both at DAG and Task level, giving us flexibility on how (and if) we want to handle lineage on failure.
+
+## Pipeline Status
+
+Another property that we can check from each Pipeline instance is `pipelineStatus`. You could check status and
+the current tasks using a REST query such as:
+
+```bash
+http GET http://localhost:8585/api/v1/pipelines/name/<FQDN>\?fields\=tasks,pipelineStatus
+```
+
+The pipeline status property looks like:
+
+```json
+"pipelineStatus": [
+    {
+        "executionDate": 1609459200,
+        "executionStatus": "Failed",
+        "taskStatus": [
+            {
+                "executionStatus": "Successful",
+                "name": "sleep"
+            },
+            {
+                "executionStatus": "Failed",
+                "name": "explode"
+            },
+            {
+                "executionStatus": "Successful",
+                "name": "print_date"
+            }
+        ]
+    },
+    ...
+]
+```
+
+Note that it is a list of all the statuses recorded for a specific Pipeline instance. This can help us keep track
+of our executions and check our processes KPIs in terms of reliability.
+
+To properly extract the status data we need to again play with the failure and success callbacks. This is because
+during the Lineage Backend execution, the tasks are still flagged as `running`. It is not until we reach to a callback
+that we can properly use the Task Instance information to operate with the statuses.
+
+The `failure_callback` will both compute the lineage and status of failed tasks. For successful ones, we can import
+
+```python
+from airflow_provider_openmetadata.lineage.callback import success_callback
+```
+
+and pass it as the value for the `on_success_callback` property.
+
+Note that:
+
+- We will mark the DAG status as **successful** only if all the tasks of a given execution are successful.
+- Clearing a task/DAG will update its previous `pipelineStatus` element of the specific `executionDate`.
+
+## Best Practices
+
+It is encouraged to use a set of default arguments for all our DAGs. In there we can set specific configurations
+such as the `catchup`, `email` or `email_on_failure`, which are usually handled at project level.
+
+Using this default arguments `dict` to configure globally the success and failure callbacks for status information
+is the most comfortable way to make sure we won't be missing any information. E.g.,
+
+```python
+from airflow import DAG
+
+from airflow_provider_openmetadata.lineage.callback import success_callback, failure_callback
+
+default_args = {
+    "on_failure_callback": failure_callback,
+    "on_success_callback": success_callback,
+}
+
+with DAG(
+    ...,
+    default_args=default_args,
+) as dag:
+    ...
+```

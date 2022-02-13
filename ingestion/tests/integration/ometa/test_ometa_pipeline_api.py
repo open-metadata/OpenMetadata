@@ -14,13 +14,14 @@ OpenMetadata high-level API Pipeline test
 """
 import uuid
 from unittest import TestCase
+from datetime import datetime
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus, StatusType, Task, TaskStatus
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
@@ -28,6 +29,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.utils.helpers import datetime_to_ts
 
 
 class OMetaPipelineTest(TestCase):
@@ -195,6 +197,153 @@ class OMetaPipelineTest(TestCase):
             ),
             None,
         )
+
+    def test_add_status(self):
+        """
+        We can add status data
+        """
+
+        create_pipeline = CreatePipelineRequest(
+            name="pipeline-test",
+            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            tasks=[
+                Task(name="task1"),
+                Task(name="task2"),
+            ]
+        )
+
+        pipeline = self.metadata.create_or_update(data=create_pipeline)
+        execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
+
+        updated = self.metadata.add_pipeline_status(
+            pipeline=pipeline,
+            status=PipelineStatus(
+                executionDate=execution_ts,
+                executionStatus=StatusType.Successful,
+                taskStatus=[
+                    TaskStatus(name="task1", executionStatus=StatusType.Successful),
+                ]
+            )
+        )
+
+        # We get a list of status
+        assert updated.pipelineStatus[0].executionDate.__root__ == execution_ts
+        assert len(updated.pipelineStatus[0].taskStatus) == 1
+
+        # Check that we can update a given status properly
+        updated = self.metadata.add_pipeline_status(
+            pipeline=pipeline,
+            status=PipelineStatus(
+                executionDate=execution_ts,
+                executionStatus=StatusType.Successful,
+                taskStatus=[
+                    TaskStatus(name="task1", executionStatus=StatusType.Successful),
+                    TaskStatus(name="task2", executionStatus=StatusType.Successful),
+                ]
+            )
+        )
+
+        assert updated.pipelineStatus[0].executionDate.__root__ == execution_ts
+        assert len(updated.pipelineStatus[0].taskStatus) == 2
+
+        # Cleanup
+        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
+
+    def test_add_tasks(self):
+        """
+        Check the add task logic
+        """
+
+        create_pipeline = CreatePipelineRequest(
+            name="pipeline-test",
+            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            tasks=[
+                Task(name="task1"),
+                Task(name="task2"),
+            ]
+        )
+
+        pipeline = self.metadata.create_or_update(data=create_pipeline)
+
+        # Add new tasks
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, Task(name="task3"),
+        )
+
+        assert len(updated_pipeline.tasks) == 3
+
+        # Update a task already added
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, Task(name="task3", displayName="TaskDisplay"),
+        )
+
+        assert len(updated_pipeline.tasks) == 3
+        assert next(
+            iter(
+                task for task in updated_pipeline.tasks
+                if task.displayName == "TaskDisplay"
+            )
+        )
+
+        # Add more than one task at a time
+        new_tasks = [
+            Task(name="task3"),
+            Task(name="task4"),
+        ]
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, *new_tasks
+        )
+
+        assert len(updated_pipeline.tasks) == 4
+
+        # Cleanup
+        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
+
+    def test_add_tasks_to_empty_pipeline(self):
+        """
+        We can add tasks to a pipeline without tasks
+        """
+
+        pipeline = self.metadata.create_or_update(data=self.create)
+
+        updated_pipeline = self.metadata.add_task_to_pipeline(
+            pipeline, Task(name="task", displayName="TaskDisplay"),
+        )
+
+        assert len(updated_pipeline.tasks) == 1
+
+    def test_clean_tasks(self):
+        """
+        Check that we can remove Pipeline tasks
+        if they are not part of the list arg
+        """
+
+        create_pipeline = CreatePipelineRequest(
+            name="pipeline-test",
+            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            tasks=[
+                Task(name="task1"),
+                Task(name="task2"),
+                Task(name="task3"),
+                Task(name="task4"),
+            ]
+        )
+
+        pipeline = self.metadata.create_or_update(data=create_pipeline)
+
+        updated_pipeline = self.metadata.clean_pipeline_tasks(
+            pipeline=pipeline,
+            tasks=[
+                Task(name="task3"),
+                Task(name="task4")
+            ]
+        )
+
+        assert len(updated_pipeline.tasks) == 2
+        assert {task.name for task in updated_pipeline.tasks} == {"task3", "task4"}
+
+        # Cleanup
+        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
 
     def test_list_versions(self):
         """

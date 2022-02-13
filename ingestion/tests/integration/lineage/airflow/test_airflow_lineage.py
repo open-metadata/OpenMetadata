@@ -25,13 +25,13 @@ from airflow.serialization.serialized_objects import (
 )
 
 from airflow_provider_openmetadata.lineage.openmetadata import (
-    ALLOWED_FLOW_KEYS,
-    ALLOWED_TASK_KEYS,
     OpenMetadataLineageBackend,
-    get_properties,
-    get_xlets,
 )
 from airflow_provider_openmetadata.lineage.utils import (
+    _ALLOWED_FLOW_KEYS,
+    _ALLOWED_TASK_KEYS,
+    get_properties,
+    get_xlets,
     iso_dag_start_date,
     iso_task_start_end_date,
 )
@@ -83,7 +83,9 @@ class AirflowLineageTest(TestCase):
 
         cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
 
-        cls.db_reference = EntityReference(id=cls.create_db_entity.id, name="test-db", type="database")
+        cls.db_reference = EntityReference(
+            id=cls.create_db_entity.id, name="test-db", type="database"
+        )
 
         cls.create = CreateTableRequest(
             name="lineage-test",
@@ -147,37 +149,37 @@ class AirflowLineageTest(TestCase):
         """
 
         dag_props = get_properties(
-            self.dag, SerializedDAG.serialize_dag, ALLOWED_FLOW_KEYS
+            self.dag, SerializedDAG.serialize_dag, _ALLOWED_FLOW_KEYS
         )
-        self.assertTrue(set(dag_props.keys()).issubset(ALLOWED_FLOW_KEYS))
+        self.assertTrue(set(dag_props.keys()).issubset(_ALLOWED_FLOW_KEYS))
 
         task1_props = get_properties(
             self.dag.get_task("task1"),
             SerializedBaseOperator.serialize_operator,
-            ALLOWED_TASK_KEYS,
+            _ALLOWED_TASK_KEYS,
         )
-        self.assertTrue(set(task1_props.keys()).issubset(ALLOWED_TASK_KEYS))
+        self.assertTrue(set(task1_props.keys()).issubset(_ALLOWED_TASK_KEYS))
 
         task2_props = get_properties(
             self.dag.get_task("task2"),
             SerializedBaseOperator.serialize_operator,
-            ALLOWED_TASK_KEYS,
+            _ALLOWED_TASK_KEYS,
         )
-        self.assertTrue(set(task2_props.keys()).issubset(ALLOWED_TASK_KEYS))
+        self.assertTrue(set(task2_props.keys()).issubset(_ALLOWED_TASK_KEYS))
 
         task3_props = get_properties(
             self.dag.get_task("task3"),
             SerializedBaseOperator.serialize_operator,
-            ALLOWED_TASK_KEYS,
+            _ALLOWED_TASK_KEYS,
         )
-        self.assertTrue(set(task3_props.keys()).issubset(ALLOWED_TASK_KEYS))
+        self.assertTrue(set(task3_props.keys()).issubset(_ALLOWED_TASK_KEYS))
 
     def test_times(self):
         """
         Check the ISO date extraction for DAG and Tasks instances
         """
         dag_props = get_properties(
-            self.dag, SerializedDAG.serialize_dag, ALLOWED_FLOW_KEYS
+            self.dag, SerializedDAG.serialize_dag, _ALLOWED_FLOW_KEYS
         )
 
         dag_date = iso_dag_start_date(dag_props)
@@ -195,7 +197,7 @@ class AirflowLineageTest(TestCase):
         task1_props = get_properties(
             self.dag.get_task("task1"),
             SerializedBaseOperator.serialize_operator,
-            ALLOWED_TASK_KEYS,
+            _ALLOWED_TASK_KEYS,
         )
 
         task_start_date, task_end_date = iso_task_start_end_date(task1_props)
