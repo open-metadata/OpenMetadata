@@ -20,8 +20,9 @@ from airflow_provider_openmetadata.lineage.config import (
     get_metadata_config,
 )
 from airflow_provider_openmetadata.lineage.utils import (
+    add_status,
     get_xlets,
-    parse_lineage, add_status,
+    parse_lineage,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
