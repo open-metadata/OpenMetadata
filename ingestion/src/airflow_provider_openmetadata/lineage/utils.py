@@ -301,7 +301,12 @@ def add_status(
     task_status = []
     # We will append based on the current registered status
     if pipeline_status and pipeline_status[0].executionDate.__root__ == execution_date:
-        task_status = pipeline_status[0].taskStatus
+        # If we are clearing a task, use the status of the new execution
+        task_status = [
+            task
+            for task in pipeline_status[0].taskStatus
+            if task.name != task_properties["task_id"]
+        ]
 
     updated_status = PipelineStatus(
         executionDate=execution_date,
