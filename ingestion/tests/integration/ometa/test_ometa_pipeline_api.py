@@ -222,13 +222,29 @@ class OMetaPipelineTest(TestCase):
                 executionStatus=StatusType.Successful,
                 taskStatus=[
                     TaskStatus(name="task1", executionStatus=StatusType.Successful),
-                    TaskStatus(name="task2", executionStatus=StatusType.Successful),
                 ]
             )
         )
 
         # We get a list of status
         assert updated.pipelineStatus[0].executionDate.__root__ == execution_ts
+        assert len(updated.pipelineStatus[0].taskStatus) == 1
+
+        # Check that we can update a given status properly
+        updated = self.metadata.add_pipeline_status(
+            pipeline=pipeline,
+            status=PipelineStatus(
+                executionDate=execution_ts,
+                executionStatus=StatusType.Successful,
+                taskStatus=[
+                    TaskStatus(name="task1", executionStatus=StatusType.Successful),
+                    TaskStatus(name="task2", executionStatus=StatusType.Successful),
+                ]
+            )
+        )
+
+        assert updated.pipelineStatus[0].executionDate.__root__ == execution_ts
+        assert len(updated.pipelineStatus[0].taskStatus) == 2
 
         # Cleanup
         self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
