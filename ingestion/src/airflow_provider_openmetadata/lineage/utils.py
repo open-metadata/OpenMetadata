@@ -278,8 +278,7 @@ def create_or_update_pipeline(
 
 
 def get_context_properties(
-        operator: "BaseOperator",
-        dag: "DAG"
+    operator: "BaseOperator", dag: "DAG"
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Prepare DAG and Task properties based on attributes
@@ -303,6 +302,34 @@ def get_context_properties(
     operator.log.info(f"DAG properties {dag_properties}")
 
     return dag_properties, task_properties
+
+
+def get_dag_status(dag_properties: Dict[str, Any], task_status: List[TaskStatus]):
+    """
+    Based on the task information and the total DAG tasks, cook the
+    DAG status.
+    We are not directly using `context["dag_run"]._state` as it always
+    gets flagged as "running" during the callbacks.
+    """
+
+    children = dag_properties.get("_task_group").get("children")
+
+    if len(children) < len(task_status):
+        raise ValueError(
+            f"We have more status than children: children {children} vs. status {task_status}"
+        )
+
+    # We are still processing tasks...
+    if len(children) > len(task_status):
+        return StatusType.Pending
+
+    # Check for any failure if all tasks have been processed
+    if len(children) == len(task_status) and StatusType.Failed in {
+        task.executionStatus for task in task_status
+    }:
+        return StatusType.Failed
+
+    return StatusType.Successful
 
 
 def add_status(
@@ -337,18 +364,22 @@ def add_status(
             if task.name != task_properties["task_id"]
         ]
 
+    # Prepare the new task status information based on the tasks already
+    # visited and the current task
+    updated_task_status = [
+        TaskStatus(
+            name=task_properties["task_id"],
+            executionStatus=_STATUS_MAP.get(context["task_instance"].state),
+        ),
+        *task_status,
+    ]
+
     updated_status = PipelineStatus(
         executionDate=execution_date,
-        executionStatus=_STATUS_MAP.get(
-            context["dag_run"]._state  # pylint: disable=protected-access
+        executionStatus=get_dag_status(
+            dag_properties=dag_properties, task_status=updated_task_status
         ),
-        taskStatus=[
-            TaskStatus(
-                name=task_properties["task_id"],
-                executionStatus=_STATUS_MAP.get(context["task_instance"].state),
-            ),
-            *task_status,
-        ],
+        taskStatus=updated_task_status,
     )
 
     operator.log.info(f"Added status to DAG {updated_status}")
