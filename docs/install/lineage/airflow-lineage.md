@@ -179,7 +179,10 @@ from airflow_provider_openmetadata.lineage.callback import success_callback
 
 and pass it as the value for the `on_success_callback` property.
 
-We will mark the DAG status as **successful** only if all the tasks of a given execution are successful.
+Note that:
+
+- We will mark the DAG status as **successful** only if all the tasks of a given execution are successful.
+- Clearing a task/DAG will update its previous `pipelineStatus` element of the specific `executionDate`.
 
 ## Best Practices
 
