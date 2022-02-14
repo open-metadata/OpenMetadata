@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { LoadingState } from 'Models';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 
 export interface AddWebhookProps {
   data?: Webhook;
   header: string;
+  saveState?: LoadingState;
   onCancel: () => void;
   onSave: (data: CreateWebhook) => void;
 }

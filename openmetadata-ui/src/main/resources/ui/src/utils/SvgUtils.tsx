@@ -28,6 +28,7 @@ import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
 import IconControlPlus from '../assets/svg/control-plus.svg';
+import IconCopy from '../assets/svg/copy.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -151,6 +152,7 @@ export const Icons = {
   STORE: 'icon-store',
   THUMBSUP: 'icon-thumbs-up',
   VELLIPSIS: 'icon-v-ellipsis',
+  COPY: 'copy',
   DELETE: 'icon-delete',
   REPLY: 'icon-reply',
   SEARCH: 'icon-search',
@@ -337,6 +339,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DELETE:
       IconComponent = IconDelete;
+
+      break;
+    case Icons.COPY:
+      IconComponent = IconCopy;
 
       break;
     case Icons.REPLY:

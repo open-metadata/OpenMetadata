@@ -35,8 +35,26 @@ export const addWebhook = (data: CreateWebhook): Promise<AxiosResponse> => {
   return APIClient.post(url, data);
 };
 
+export const updateWebhook = (data: CreateWebhook): Promise<AxiosResponse> => {
+  const url = '/webhook';
+
+  return APIClient.put(url, data);
+};
+
 export const deleteWebhook = (id: string): Promise<AxiosResponse> => {
   const url = `/webhook/${id}`;
 
   return APIClient.delete(url);
+};
+
+export const getWebhookByName = (name: string): Promise<AxiosResponse> => {
+  const url = `/webhook/name/${name}`;
+
+  return APIClient.get(url);
+};
+
+export const getWebhookById = (id: string): Promise<AxiosResponse> => {
+  const url = `/webhook/${id}`;
+
+  return APIClient.get(url);
 };

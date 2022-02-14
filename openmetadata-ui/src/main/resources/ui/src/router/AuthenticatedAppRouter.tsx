@@ -21,6 +21,7 @@ import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
+import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
@@ -91,7 +92,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
       <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
-      <Route exact component={AddWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
+      <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
       {isAuthDisabled || isAdminUser ? (
         <>
           <Route exact component={RolesPage} path={ROUTES.ROLES} />

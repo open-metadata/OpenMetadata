@@ -12,9 +12,11 @@
  */
 
 import classNames from 'classnames';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useRef, useState } from 'react';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { EntityType } from '../../enums/entity.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import {
@@ -27,11 +29,14 @@ import {
   getDocButton,
   getSeparator,
   requiredField,
+  validMsg,
 } from '../../utils/CommonUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
+import Loader from '../Loader/Loader';
 import { AddWebhookProps } from './AddWebhook.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -48,6 +53,7 @@ const getEventFilterByType = (
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   data,
   header,
+  saveState = 'initial',
   onCancel,
   onSave,
 }: AddWebhookProps) => {
@@ -74,16 +80,20 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       ? getEventFilterByType(data.eventFilters, EventType.EntityDeleted)
       : ({} as EventFilter)
   );
-  const [secretKey, setSecretKey] = useState<string>(data?.secretKey || '');
-  const [batchSize, setBatchSize] = useState<number>(data?.batchSize || 10);
-  const [connectionTimeout, setConnectionTimeout] = useState<number>(
-    data?.timeout || 10
+  const [secretKey, setSecretKey] = useState<string>('');
+  const [batchSize, setBatchSize] = useState<number | undefined>(
+    data?.batchSize
   );
+  const [connectionTimeout, setConnectionTimeout] = useState<
+    number | undefined
+  >(data?.timeout);
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
     endpointUrl: false,
     eventFilters: false,
   });
+  const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
+  const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
 
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -105,11 +115,6 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
 
         break;
       }
-      case 'secret-key': {
-        setSecretKey(value);
-
-        break;
-      }
       case 'batch-size': {
         setBatchSize(value as unknown as number);
 
@@ -124,6 +129,21 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     setShowErrorMsg((prev) => {
       return { ...prev, name, endpointUrl };
     });
+  };
+
+  const generateSecret = () => {
+    const apiKey = cryptoRandomString({ length: 50, type: 'alphanumeric' });
+    setGeneratingSecret(true);
+    setTimeout(() => {
+      setCopiedSecret(false);
+      setSecretKey(apiKey);
+      setGeneratingSecret(false);
+    }, 500);
+  };
+
+  const resetSecret = () => {
+    setCopiedSecret(false);
+    setSecretKey('');
   };
 
   const getEntitiesList = () => {
@@ -355,7 +375,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <div
                 className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
                 data-testid="checkbox-label">
-                <div className="tw-ml-1">Entity Created</div>
+                <div className="tw-ml-1">Trigger when entity is created</div>
               </div>
             </div>
           </div>
@@ -392,7 +412,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <div
                 className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
                 data-testid="checkbox-label">
-                <div className="tw-ml-1">Entity Updated</div>
+                <div className="tw-ml-1">Trigger when entity is updated</div>
               </div>
             </div>
           </div>
@@ -429,7 +449,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <div
                 className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
                 data-testid="checkbox-label">
-                <div className="tw-ml-1">Entity Deleted</div>
+                <div className="tw-ml-1">Trigger when entity is deleted</div>
               </div>
             </div>
           </div>
@@ -452,37 +472,25 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             errorMsg('Webhook event filters are required.')}
         </Field>
         <Field>
-          <div className="tw-flex tw-pt-1">
-            <label>Advanced Config</label>
-            <div
-              className={classNames('toggle-switch', { open: showAdv })}
-              data-testid="active"
-              onClick={() => {
-                setShowAdv((prev) => !prev);
-              }}>
-              <div className="switch" />
-            </div>
+          <div className="tw-flex tw-justify-end tw-pt-1">
+            <Button
+              data-testid="show-advanced"
+              size="regular"
+              theme="primary"
+              variant="text"
+              onClick={() => setShowAdv((prev) => !prev)}>
+              {showAdv ? 'Hide Advanced Config' : 'Show Advanced Config'}
+            </Button>
           </div>
         </Field>
         {showAdv ? (
           <>
+            {getSeparator(
+              <span className="tw-text-base tw-px-0.5">Advanced Config</span>,
+              'tw-mt-3'
+            )}
             <Field>
-              <label className="tw-block tw-form-label" htmlFor="secret-key">
-                Secret Key:
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="secret-key"
-                id="secret-key"
-                name="secret-key"
-                placeholder="secret key"
-                type="text"
-                value={secretKey}
-                onChange={handleValidation}
-              />
-            </Field>
-            <Field>
-              <div className="tw-flex tw-gap-1 tw-w-full">
+              <div className="tw-flex tw-gap-4 tw-w-full">
                 <div className="tw-flex-1">
                   <label
                     className="tw-block tw-form-label"
@@ -494,7 +502,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                     data-testid="batch-size"
                     id="batch-size"
                     name="batch-size"
-                    placeholder="batch size"
+                    placeholder="10"
                     type="number"
                     value={batchSize}
                     onChange={handleValidation}
@@ -511,13 +519,79 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                     data-testid="connection-timeout"
                     id="connection-timeout"
                     name="connection-timeout"
-                    placeholder="connection timeout"
+                    placeholder="10"
                     type="number"
                     value={connectionTimeout}
                     onChange={handleValidation}
                   />
                 </div>
               </div>
+            </Field>
+            <Field>
+              {!data ? (
+                <>
+                  <div className="tw-flex tw-items-center">
+                    <label
+                      className="tw-block tw-form-label tw-my-0"
+                      htmlFor="secret-key">
+                      Secret Key:
+                    </label>
+                    <Button
+                      className="tw-w-32 tw-h-8 tw-ml-4"
+                      data-testid="generate-secret"
+                      size="regular"
+                      theme="primary"
+                      variant="outlined"
+                      onClick={generateSecret}>
+                      {generatingSecret ? (
+                        <Loader size="small" type="white" />
+                      ) : secretKey ? (
+                        'Re-Generate'
+                      ) : (
+                        'Generate'
+                      )}
+                    </Button>
+                    {secretKey ? (
+                      <>
+                        <CopyToClipboard
+                          text={secretKey}
+                          onCopy={() => setCopiedSecret(true)}>
+                          <Button
+                            className="tw-h-8"
+                            data-testid="copy-secret"
+                            size="regular"
+                            theme="default"
+                            variant="text">
+                            <SVGIcons
+                              alt="Copy"
+                              icon={Icons.COPY}
+                              width="16px"
+                            />
+                          </Button>
+                        </CopyToClipboard>
+                        <Button
+                          className="tw-h-8 tw--ml-4"
+                          data-testid="clear-secret"
+                          size="regular"
+                          theme="default"
+                          variant="text"
+                          onClick={resetSecret}>
+                          <SVGIcons
+                            alt="Delete"
+                            icon={Icons.DELETE}
+                            width="16px"
+                          />
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                  {copiedSecret && validMsg('Copied to clipboard.')}
+                </>
+              ) : data.secretKey ? (
+                <span className="tw-block tw-form-label">
+                  Secret key has been set already.
+                </span>
+              ) : null}
             </Field>
           </>
         ) : null}
@@ -531,15 +605,35 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               onClick={onCancel}>
               Discard
             </Button>
-            <Button
-              className="tw-w-16 tw-h-10"
-              data-testid="save-webhook"
-              size="regular"
-              theme="primary"
-              variant="contained"
-              onClick={handleSave}>
-              Save
-            </Button>
+            {saveState === 'waiting' ? (
+              <Button
+                disabled
+                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                size="regular"
+                theme="primary"
+                variant="contained">
+                <Loader size="small" type="white" />
+              </Button>
+            ) : saveState === 'success' ? (
+              <Button
+                disabled
+                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                size="regular"
+                theme="primary"
+                variant="contained">
+                <i aria-hidden="true" className="fa fa-check" />
+              </Button>
+            ) : (
+              <Button
+                className="tw-w-16 tw-h-10"
+                data-testid="save-webhook"
+                size="regular"
+                theme="primary"
+                variant="contained"
+                onClick={handleSave}>
+                Save
+              </Button>
+            )}
           </div>
         </Field>
       </div>

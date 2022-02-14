@@ -24,7 +24,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { Status, Webhook } from '../../generated/entity/events/webhook';
+import { Webhook } from '../../generated/entity/events/webhook';
 import useToastContext from '../../hooks/useToastContext';
 
 const WebhooksPage: FunctionComponent = () => {
@@ -39,16 +39,7 @@ const WebhooksPage: FunctionComponent = () => {
     getWebhooks(paging)
       .then((res) => {
         if (res.data?.data) {
-          const resData = res.data.data.map((item: Webhook, index: number) => {
-            let status = Status.NotStarted;
-            if (!((index + 1) % 5)) status = Status.RetryLimitReached;
-            else if (!((index + 1) % 4)) status = Status.AwaitingRetry;
-            else if (!((index + 1) % 3)) status = Status.Failed;
-            else if (!((index + 1) % 2)) status = Status.Started;
-
-            return { ...item, status };
-          });
-          setData(resData);
+          setData(res.data.data);
           setPaging(res.data.paging);
         } else {
           setData([]);

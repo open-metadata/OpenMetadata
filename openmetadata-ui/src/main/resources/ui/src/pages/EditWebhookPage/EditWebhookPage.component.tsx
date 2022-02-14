@@ -13,19 +13,39 @@
 
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { addWebhook } from '../../axiosAPIs/webhookAPI';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
+import { getWebhookByName, updateWebhook } from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
+import { Webhook } from '../../generated/entity/events/webhook';
 import useToastContext from '../../hooks/useToastContext';
 
-const AddWebhookPage: FunctionComponent = () => {
+const EditWebhookPage: FunctionComponent = () => {
+  const { webhookName } = useParams<{ [key: string]: string }>();
   const history = useHistory();
   const showToast = useToastContext();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [webhookData, setWebhookData] = useState<Webhook>();
   const [status, setStatus] = useState<LoadingState>('initial');
+
+  const fetchWebhook = () => {
+    setIsLoading(true);
+    getWebhookByName(webhookName)
+      .then((res) => {
+        setWebhookData(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message || 'Something went wrong!',
+        });
+      })
+      .finally(() => setIsLoading(false));
+  };
 
   const goToWebhooks = () => {
     history.push(ROUTES.WEBHOOKS);
@@ -37,7 +57,8 @@ const AddWebhookPage: FunctionComponent = () => {
 
   const handleSave = (data: CreateWebhook) => {
     setStatus('waiting');
-    addWebhook(data)
+    const { name, secretKey } = webhookData || data;
+    updateWebhook({ ...data, name, secretKey })
       .then(() => {
         setStatus('success');
         setTimeout(() => {
@@ -54,16 +75,25 @@ const AddWebhookPage: FunctionComponent = () => {
       });
   };
 
+  useEffect(() => {
+    fetchWebhook();
+  }, []);
+
   return (
     <PageContainerV1 className="tw-pt-4">
-      <AddWebhook
-        header="Add Webhook"
-        saveState={status}
-        onCancel={handleCancel}
-        onSave={handleSave}
-      />
+      {!isLoading ? (
+        <AddWebhook
+          data={webhookData}
+          header="Edit Webhook"
+          saveState={status}
+          onCancel={handleCancel}
+          onSave={handleSave}
+        />
+      ) : (
+        <Loader />
+      )}
     </PageContainerV1>
   );
 };
 
-export default AddWebhookPage;
+export default EditWebhookPage;

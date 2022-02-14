@@ -60,6 +60,13 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
   const { isAuthDisabled, isAdminUser } = useAuth();
   const [deleteData, setDeleteData] = useState<Webhook>();
 
+  const handleDelete = () => {
+    if (deleteData) {
+      onDeleteWebhook(deleteData.id);
+    }
+    setDeleteData(undefined);
+  };
+
   const fetchLeftPanel = () => {
     return (
       <>
@@ -155,10 +162,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
             confirmText="Delete"
             header="Are you sure?"
             onCancel={() => setDeleteData(undefined)}
-            onConfirm={() => {
-              setDeleteData(undefined);
-              onDeleteWebhook(deleteData.id);
-            }}
+            onConfirm={handleDelete}
           />
         )}
       </div>

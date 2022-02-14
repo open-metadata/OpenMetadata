@@ -319,6 +319,18 @@ export const errorMsg = (value: string) => {
   );
 };
 
+export const validMsg = (value: string) => {
+  return (
+    <div className="tw-mt-1">
+      <strong
+        className="tw-text-success tw-text-xs tw-italic"
+        data-testid="error-message">
+        {value}
+      </strong>
+    </div>
+  );
+};
+
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
     {label}{' '}
