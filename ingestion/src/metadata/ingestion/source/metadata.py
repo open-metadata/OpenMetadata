@@ -19,6 +19,8 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -34,6 +36,8 @@ class MetadataTablesRestSourceConfig(ConfigModel):
     include_topics: Optional[bool] = True
     include_dashboards: Optional[bool] = True
     include_pipelines: Optional[bool] = True
+    include_users: Optional[bool] = True
+    include_teams: Optional[bool] = True
     limit_records: int = 1000
 
 
@@ -77,6 +81,24 @@ class MetadataSourceStatus(SourceStatus):
         """
         self.success.append(dashboard_name)
         logger.info("Dashboard Scanned: %s", dashboard_name)
+
+    def scanned_team(self, team_name: str) -> None:
+        """scanned team method
+
+        Args:
+            team_name (str)
+        """
+        self.success.append(team_name)
+        logger.info("Team Scanned: %s", team_name)
+
+    def scanned_user(self, user_name: str) -> None:
+        """scanned user method
+
+        Args:
+            user_name (str)
+        """
+        self.success.append(user_name)
+        logger.info("User Scanned: %s", user_name)
 
     # pylint: disable=unused-argument
     def filtered(
@@ -145,6 +167,8 @@ class MetadataSource(Source[Entity]):
         yield from self.fetch_topic()
         yield from self.fetch_dashboard()
         yield from self.fetch_pipeline()
+        yield from self.fetch_users()
+        yield from self.fetch_teams()
 
     def fetch_table(self) -> Table:
         """Fetch table method
@@ -246,6 +270,50 @@ class MetadataSource(Source[Entity]):
                 if pipeline_entities.after is None:
                     break
                 after = pipeline_entities.after
+
+    def fetch_users(self) -> User:
+        """fetch users method
+
+        Returns:
+            User:
+        """
+        if self.config.include_users:
+            after = None
+            while True:
+                user_entities = self.metadata.list_entities(
+                    entity=User,
+                    fields=["teams", "roles"],
+                    after=after,
+                    limit=self.config.limit_records,
+                )
+                for user in user_entities.entities:
+                    self.status.scanned_user(user.name)
+                    yield user
+                if user_entities.after is None:
+                    break
+                after = user_entities.after
+
+    def fetch_teams(self) -> Team:
+        """fetch teams method
+
+        Returns:
+            Team:
+        """
+        if self.config.include_teams:
+            after = None
+            while True:
+                team_entities = self.metadata.list_entities(
+                    entity=Team,
+                    fields=["users", "owns"],
+                    after=after,
+                    limit=self.config.limit_records,
+                )
+                for team in team_entities.entities:
+                    self.status.scanned_team(team.name)
+                    yield team
+                if team_entities.after is None:
+                    break
+                after = team_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status
