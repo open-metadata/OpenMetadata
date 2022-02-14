@@ -63,7 +63,7 @@ public class TeamsPageTest {
     options.addArguments("--no-sandbox");
     options.addArguments("--disable-dev-shm-usage");
     options.addArguments("--headless");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     common = new Common(webDriver);
     teamsPage = new TeamsPage(webDriver);
