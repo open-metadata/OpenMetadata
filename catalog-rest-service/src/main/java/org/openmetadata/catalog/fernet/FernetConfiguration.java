@@ -14,16 +14,11 @@
 package org.openmetadata.catalog.fernet;
 
 import javax.validation.constraints.NotEmpty;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class FernetConfiguration {
-
   @NotEmpty private String fernetKey;
-
-  public String getFernetKey() {
-    return fernetKey;
-  }
-
-  public void setFernetKey(String fernetKey) {
-    this.fernetKey = fernetKey;
-  }
 }
