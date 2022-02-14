@@ -127,8 +127,12 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
         + f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={operator.task_id}"
     )
     dag_start_date = dag.start_date.isoformat() if dag.start_date else None
-    task_start_date = task_instance.start_date.isoformat() if task_instance.start_date else None
-    task_end_date = task_instance.end_date.isoformat() if task_instance.end_date else None
+    task_start_date = (
+        task_instance.start_date.isoformat() if task_instance.start_date else None
+    )
+    task_end_date = (
+        task_instance.end_date.isoformat() if task_instance.end_date else None
+    )
 
     downstream_tasks = []
     if getattr(operator, "downstream_task_ids", None):
