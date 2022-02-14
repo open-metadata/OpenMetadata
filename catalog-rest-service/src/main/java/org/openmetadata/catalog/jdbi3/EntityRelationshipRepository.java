@@ -26,7 +26,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityRelationship;
-import org.openmetadata.catalog.type.EntityRelationshipType;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.common.utils.CommonUtil;
 
@@ -96,25 +96,18 @@ public class EntityRelationshipRepository {
     }
   }
 
-  public void addRelationship(
-      UUID fromId, UUID toId, String fromEntity, String toEntity, EntityRelationshipType entityRelationshipType) {
+  public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
     daoCollection
         .relationshipDAO()
-        .insert(fromId.toString(), toId.toString(), fromEntity, toEntity, entityRelationshipType.ordinal());
+        .insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relationship.ordinal());
   }
 
   public void addRelationship(
-      String fromFQN, String toFQN, String fromEntity, String toEntity, EntityRelationshipType entityRelationshipType)
-      throws IOException {
+      String fromFQN, String toFQN, String fromEntity, String toEntity, Relationship relationship) throws IOException {
     EntityReference fromRef = Entity.getEntityReferenceByName(fromEntity, fromFQN);
     EntityReference toRef = Entity.getEntityReferenceByName(toEntity, toFQN);
     daoCollection
         .relationshipDAO()
-        .insert(
-            fromRef.getId().toString(),
-            toRef.getId().toString(),
-            fromEntity,
-            toEntity,
-            entityRelationshipType.ordinal());
+        .insert(fromRef.getId().toString(), toRef.getId().toString(), fromEntity, toEntity, relationship.ordinal());
   }
 }

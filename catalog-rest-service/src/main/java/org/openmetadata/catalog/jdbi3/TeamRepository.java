@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
@@ -30,6 +29,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -145,7 +145,7 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(
         daoCollection
             .relationshipDAO()
-            .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(toInclude(team))));
+            .findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal(), toBoolean(toInclude(team))));
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {
