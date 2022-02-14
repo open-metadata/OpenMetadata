@@ -8,9 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Tableau source module
-"""
 
 import logging
 import uuid
@@ -58,22 +55,6 @@ class TableauSourceConfig(ConfigModel):
 
 
 class TableauSource(Source[Entity]):
-    """Tableau source entity class
-
-    Args:
-        config:
-        metadata_config:
-        ctx:
-
-    Attributes:
-        config:
-        metadata_config:
-        status:
-        service:
-        dashboard:
-        all_dashboard_details:
-    """
-
     config: TableauSourceConfig
     metadata_config: MetadataServerConfig
     status: SourceStatus
@@ -101,10 +82,6 @@ class TableauSource(Source[Entity]):
         self.all_dashboard_details = get_views_dataframe(self.client).to_dict()
 
     def tableau_client(self):
-        """Tableau client method
-
-        Returns:
-        """
         tableau_server_config = {
             f"{self.config.env}": {
                 "server": self.config.server,
@@ -133,8 +110,8 @@ class TableauSource(Source[Entity]):
                 config_json=tableau_server_config, env=self.config.env
             )
             conn.sign_in().json()
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error("%s: %s", repr(err), err)
+        except Exception as err:
+            logger.error(f"{repr(err)}: {err}")
         return conn
 
     @classmethod
