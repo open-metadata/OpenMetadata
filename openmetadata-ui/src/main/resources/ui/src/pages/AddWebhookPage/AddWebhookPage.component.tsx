@@ -43,7 +43,7 @@ const AddWebhookPage: FunctionComponent = () => {
         setTimeout(() => {
           setStatus('initial');
           goToWebhooks();
-        }, 1000);
+        }, 500);
       })
       .catch((err: AxiosError) => {
         showToast({
