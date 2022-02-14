@@ -37,6 +37,8 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
 import org.openmetadata.catalog.events.errors.EventPublisherException;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
@@ -83,6 +85,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.PIPELINE:
             updateRequest = updatePipeline(event);
+            break;
+          case Entity.USER:
+            updateRequest = updateUser(event);
+            break;
+          case Entity.TEAM:
+            updateRequest = updateTeam(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
@@ -291,10 +299,90 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     return updateRequest;
   }
 
+  private UpdateRequest updateUser(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    UserESIndex userESIndex = null;
+    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+      User user = (User) event.getEntity();
+      userESIndex = UserESIndex.builder(user, event.getEventType()).build();
+    }
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        String json = JsonUtils.pojoToJson(userESIndex);
+        updateRequest.doc(json, XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        break;
+      case ENTITY_UPDATED:
+        scriptedUserUpsert(userESIndex, updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        break;
+    }
+
+    return updateRequest;
+  }
+
+  private UpdateRequest updateTeam(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    TeamESIndex teamESIndex = null;
+    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+      Team team = (Team) event.getEntity();
+      teamESIndex = TeamESIndex.builder(team, event.getEventType()).build();
+    }
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        String json = JsonUtils.pojoToJson(teamESIndex);
+        updateRequest.doc(json, XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        break;
+      case ENTITY_UPDATED:
+        scriptedTeamUpsert(teamESIndex, updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        break;
+    }
+
+    return updateRequest;
+  }
+
   private void scriptedUpsert(Object index, UpdateRequest updateRequest) {
     String scriptTxt =
         "for (k in params.keySet()) {if (k == 'change_descriptions') "
             + "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } "
+            + "else { ctx._source.put(k, params.get(k)) }}";
+    Map<String, Object> doc = JsonUtils.getMap(index);
+    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
+    updateRequest.script(script);
+    updateRequest.scriptedUpsert(true);
+  }
+
+  private void scriptedUserUpsert(Object index, UpdateRequest updateRequest) {
+    String scriptTxt =
+        "for (k in params.keySet()) {if (k == 'teams') "
+            + "{ ctx._source.teams.addAll(params.teams) } "
+            + "else if (k == 'roles') "
+            + " { ctx._source.roles.addAll(params.roles) }"
+            + "else { ctx._source.put(k, params.get(k)) }}";
+    Map<String, Object> doc = JsonUtils.getMap(index);
+    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
+    updateRequest.script(script);
+    updateRequest.scriptedUpsert(true);
+  }
+
+  private void scriptedTeamUpsert(Object index, UpdateRequest updateRequest) {
+    String scriptTxt =
+        "for (k in params.keySet()) {if (k == 'users') "
+            + "{ ctx._source.users.addAll(params.users) } "
+            + "else if (k == 'owns') "
+            + " { ctx._source.owns.addAll(params.owns) }"
             + "else { ctx._source.put(k, params.get(k)) }}";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);

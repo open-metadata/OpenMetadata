@@ -34,6 +34,8 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
@@ -63,7 +65,9 @@ public class ElasticSearchIndexDefinition {
     TABLE_SEARCH_INDEX("table_search_index", "/elasticsearch/table_index_mapping.json"),
     TOPIC_SEARCH_INDEX("topic_search_index", "/elasticsearch/topic_index_mapping.json"),
     DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/dashboard_index_mapping.json"),
-    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json");
+    PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
+    USER_SEARCH_INDEX("user_search_index", "/elasticsearch/user_index_mapping.json"),
+    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -189,6 +193,10 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
       return ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.USER)) {
+      return ElasticSearchIndexType.USER_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEAM)) {
+      return ElasticSearchIndexType.TEAM_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }
@@ -706,5 +714,141 @@ class PipelineESIndex extends ElasticSearchIndex {
     }
     pipelineESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return pipelineESIndexBuilder;
+  }
+}
+
+@Getter
+@SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
+class UserESIndex {
+  @JsonProperty("user_id")
+  String userId;
+
+  @JsonProperty("name")
+  String name;
+
+  @JsonProperty("display_name")
+  String displayName;
+
+  @JsonProperty("email")
+  String email;
+
+  @JsonProperty("entity_type")
+  String entityType;
+
+  @JsonProperty("teams")
+  List<String> teams;
+
+  @JsonProperty("roles")
+  List<String> roles;
+
+  @JsonProperty("last_updated_timestamp")
+  @Builder.Default
+  Long lastUpdatedTimestamp = System.currentTimeMillis();
+
+  List<ElasticSearchSuggest> suggest;
+
+  Boolean deleted;
+
+  public static UserESIndexBuilder builder(User user, EventType eventType) {
+    List<String> teams = new ArrayList<>();
+    List<String> roles = new ArrayList<>();
+    List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    suggest.add(ElasticSearchSuggest.builder().input(user.getName()).weight(5).build());
+    suggest.add(ElasticSearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
+    Long updatedTimestamp = user.getUpdatedAt();
+    String displayName = user.getDisplayName() != null ? user.getDisplayName() : "";
+    if (user.getTeams() != null) {
+      for (EntityReference team : user.getTeams()) {
+        teams.add(team.getId().toString());
+      }
+    }
+
+    for (EntityReference role : user.getRoles()) {
+      roles.add(role.getId().toString());
+    }
+
+    UserESIndexBuilder userESIndexBuilder =
+        internalBuilder()
+            .userId(user.getId().toString())
+            .deleted(user.getDeleted())
+            .name(user.getName())
+            .email(user.getEmail())
+            .displayName(displayName)
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .entityType("user")
+            .suggest(suggest)
+            .teams(teams)
+            .roles(roles);
+
+    return userESIndexBuilder;
+  }
+}
+
+@Getter
+@SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
+class TeamESIndex {
+  @JsonProperty("team_id")
+  String teamId;
+
+  @JsonProperty("name")
+  String name;
+
+  @JsonProperty("display_name")
+  String displayName;
+
+  @JsonProperty("entity_type")
+  String entityType;
+
+  @JsonProperty("users")
+  List<String> users;
+
+  @JsonProperty("owns")
+  List<String> owns;
+
+  @JsonProperty("last_updated_timestamp")
+  @Builder.Default
+  Long lastUpdatedTimestamp = System.currentTimeMillis();
+
+  List<ElasticSearchSuggest> suggest;
+
+  Boolean deleted;
+
+  public static TeamESIndexBuilder builder(Team team, EventType eventType) {
+    List<String> users = new ArrayList<>();
+    List<String> owns = new ArrayList<>();
+    List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    suggest.add(ElasticSearchSuggest.builder().input(team.getName()).weight(5).build());
+    suggest.add(ElasticSearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
+    Long updatedTimestamp = team.getUpdatedAt();
+    String displayName = team.getDisplayName() != null ? team.getDisplayName() : "";
+    if (team.getUsers() != null) {
+      for (EntityReference user : team.getUsers()) {
+        users.add(user.getId().toString());
+      }
+    }
+    if (team.getOwns() != null) {
+      for (EntityReference own : team.getOwns()) {
+        owns.add(own.getId().toString());
+      }
+    }
+
+    TeamESIndexBuilder teamESIndexBuilder =
+        internalBuilder()
+            .teamId(team.getId().toString())
+            .deleted(team.getDeleted())
+            .name(team.getName()) // pipeline names can be unique ids from source, hence use displayName for search
+            // indexing
+            .displayName(displayName)
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .entityType("team")
+            .suggest(suggest)
+            .owns(owns)
+            .users(users);
+
+    return teamESIndexBuilder;
   }
 }
