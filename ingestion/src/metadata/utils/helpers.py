@@ -12,8 +12,6 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from pydantic import SecretStr
-
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -173,12 +171,6 @@ def get_database_service_or_create_v2(service_json, metadata_config) -> Database
             CreateDatabaseServiceRequest(**service_json)
         )
     return created_service
-
-
-def convert_epoch_to_iso(seconds_since_epoch):
-    dt = datetime.utcfromtimestamp(seconds_since_epoch)
-    iso_format = dt.isoformat() + "Z"
-    return iso_format
 
 
 def datetime_to_ts(date: datetime) -> int:
