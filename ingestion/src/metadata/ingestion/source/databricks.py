@@ -17,7 +17,7 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class DatabricksConfig(SQLConnectionConfig):
-    host_port = "localhost:443"
+    host_port: str
     scheme = "databricks+pyhive"
     service_type = "Databricks"
     token: str
