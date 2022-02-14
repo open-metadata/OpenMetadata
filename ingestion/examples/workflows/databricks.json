@@ -3,7 +3,7 @@
       "type": "databricks",
       "config": {
         "token": "<databricks token>",
-        "host_port": "host:post",
+        "host_port": "host:port",
         "database": "default",
         "service_name": "local_databricks",
         "connect_args":{
