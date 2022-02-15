@@ -17,9 +17,11 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
+import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
+import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
@@ -34,6 +36,7 @@ import TeamsPage from '../pages/teams';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPageComponent from '../pages/tour-page/TourPage.component';
 import UserListPage from '../pages/UserListPage/UserListPage';
+import WebhooksPage from '../pages/WebhooksPage/WebhooksPage.component';
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { isAuthDisabled, isAdminUser } = useAuth();
 
@@ -87,6 +90,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
+      <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
+      <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
       {isAuthDisabled || isAdminUser ? (
         <>
           <Route exact component={RolesPage} path={ROUTES.ROLES} />
