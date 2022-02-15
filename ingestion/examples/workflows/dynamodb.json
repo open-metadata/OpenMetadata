@@ -6,8 +6,11 @@
         "aws_secret_access_key": "aws_secret_access_key",
         "service_name": "DynamoDB",
         "region_name": "us-east-2",
-        "endpoint_url": "dynamodb.us-east-2.amazonaws.com",
-        "db_name":"custom_database_name"
+        "endpoint_url": "https://dynamodb.us-east-2.amazonaws.com",
+        "db_name":"custom_database_name",
+        "table_filter_pattern":{
+          "excludes": [""]
+        }
       }
     },
     "sink": {
