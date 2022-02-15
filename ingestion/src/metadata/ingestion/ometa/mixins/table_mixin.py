@@ -96,7 +96,7 @@ class OMetaTableMixin:
         :param table_queries: SqlQuery to add
         """
         for query in table_queries:
-            resp = self.client.put(
+            self.client.put(
                 f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
                 data=query.json(),
             )
