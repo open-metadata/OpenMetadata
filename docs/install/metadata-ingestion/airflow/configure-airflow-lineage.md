@@ -1,6 +1,8 @@
 # Configure Airflow Lineage
 
-### Install from PyPI
+### Install the Python Module
+
+Prior to installing the Python module, ensure that you have a virtual environment set up and activated. Run the following command to install the Python module for Airflow.
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
