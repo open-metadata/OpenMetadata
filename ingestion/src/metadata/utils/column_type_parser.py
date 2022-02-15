@@ -161,7 +161,7 @@ class ColumnTypeParser:
                 if not ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(
                     str(column_type).split("(")[0].split("<")[0].upper()
                 ):
-                    return None
+                    return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("VARCHAR")
                 return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(
                     str(column_type).split("(")[0].split("<")[0].upper()
                 )
