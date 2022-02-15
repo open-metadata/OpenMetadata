@@ -13,6 +13,9 @@ from typing import Optional
 
 import pydruid
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -21,7 +24,7 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 class DruidConfig(SQLConnectionConfig):
     scheme = "druid"
     auth_options: Optional[str] = None
-    service_type = "Druid"
+    service_type = DatabaseServiceType.Druid.value
 
     def get_connection_url(self):
         url = super().get_connection_url()

@@ -40,7 +40,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class GlueSourceConfig(AWSClientConfigModel):
-    service_type = "Glue"
+    service_type = DatabaseServiceType.Glue.value
     service_name: str
     storage_service_name: str = "S3"
     pipeline_service_name: str

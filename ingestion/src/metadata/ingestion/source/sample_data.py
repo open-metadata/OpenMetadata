@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -91,7 +94,7 @@ class SampleDataSourceConfig(ConfigModel):
     sample_data_folder: str
     service_name: str = "bigquery_gcp"
     database: str = "warehouse"
-    service_type: str = "BigQuery"
+    service_type: str = DatabaseServiceType.BigQuery.value
     scheme: str = "bigquery+pymysql"
     host_port: str = "9999"
 
