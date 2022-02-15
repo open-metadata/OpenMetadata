@@ -3,5 +3,5 @@
   "fromEntity": "role",
   "toFQN": "DataConsumerRoleAccessControlPolicy",
   "toEntity": "policy",
-  "relation": "CONTAINS"
+  "relationshipType": "contains"
 }

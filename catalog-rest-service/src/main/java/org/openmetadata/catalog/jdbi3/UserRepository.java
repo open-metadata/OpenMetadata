@@ -14,9 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.helper;
-import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
-import static org.openmetadata.catalog.jdbi3.Relationship.HAS;
-import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,6 +32,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -116,7 +114,7 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> ownedEntities =
         daoCollection
             .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, OWNS.ordinal(), toBoolean(toInclude(user)));
+            .findTo(user.getId().toString(), Entity.USER, Relationship.OWNS.ordinal(), toBoolean(toInclude(user)));
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
@@ -124,7 +122,11 @@ public class UserRepository extends EntityRepository<User> {
       ownedEntities.addAll(
           daoCollection
               .relationshipDAO()
-              .findTo(team.getId().toString(), Entity.TEAM, OWNS.ordinal(), toBoolean(helper(team).isDeleted())));
+              .findTo(
+                  team.getId().toString(),
+                  Entity.TEAM,
+                  Relationship.OWNS.ordinal(),
+                  toBoolean(helper(team).isDeleted())));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);
@@ -134,7 +136,7 @@ public class UserRepository extends EntityRepository<User> {
     return EntityUtil.populateEntityReferences(
         daoCollection
             .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, FOLLOWS.ordinal(), toBoolean(toInclude(user))));
+            .findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal(), toBoolean(toInclude(user))));
   }
 
   public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
@@ -164,7 +166,12 @@ public class UserRepository extends EntityRepository<User> {
     List<String> roleIds =
         daoCollection
             .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE, toBoolean(toInclude(user)));
+            .findTo(
+                user.getId().toString(),
+                Entity.USER,
+                Relationship.HAS.ordinal(),
+                Entity.ROLE,
+                toBoolean(toInclude(user)));
     List<EntityReference> roles = new ArrayList<>(roleIds.size());
     for (String roleId : roleIds) {
       roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
@@ -177,7 +184,12 @@ public class UserRepository extends EntityRepository<User> {
     List<String> teamIds =
         daoCollection
             .relationshipDAO()
-            .findFrom(user.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM, toBoolean(toInclude(user)));
+            .findFrom(
+                user.getId().toString(),
+                Entity.USER,
+                Relationship.HAS.ordinal(),
+                Entity.TEAM,
+                toBoolean(toInclude(user)));
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(daoCollection.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
@@ -190,7 +202,8 @@ public class UserRepository extends EntityRepository<User> {
     for (EntityReference role : roles) {
       daoCollection
           .relationshipDAO()
-          .insert(user.getId().toString(), role.getId().toString(), Entity.USER, Entity.ROLE, HAS.ordinal());
+          .insert(
+              user.getId().toString(), role.getId().toString(), Entity.USER, Entity.ROLE, Relationship.HAS.ordinal());
     }
   }
 
@@ -200,7 +213,8 @@ public class UserRepository extends EntityRepository<User> {
     for (EntityReference team : teams) {
       daoCollection
           .relationshipDAO()
-          .insert(team.getId().toString(), user.getId().toString(), Entity.TEAM, Entity.USER, HAS.ordinal());
+          .insert(
+              team.getId().toString(), user.getId().toString(), Entity.TEAM, Entity.USER, Relationship.HAS.ordinal());
     }
   }
 
@@ -334,7 +348,9 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateRoles(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove roles from original and add roles from updated
-      daoCollection.relationshipDAO().deleteFrom(origUser.getId().toString(), Entity.USER, HAS.ordinal(), Entity.ROLE);
+      daoCollection
+          .relationshipDAO()
+          .deleteFrom(origUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.ROLE);
       assignRoles(updatedUser, updatedUser.getRoles());
 
       List<EntityReference> origRoles = Optional.ofNullable(origUser.getRoles()).orElse(Collections.emptyList());
@@ -350,7 +366,9 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove teams from original and add teams from updated
-      daoCollection.relationshipDAO().deleteTo(origUser.getId().toString(), Entity.USER, HAS.ordinal(), Entity.TEAM);
+      daoCollection
+          .relationshipDAO()
+          .deleteTo(origUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
       assignTeams(updatedUser, updatedUser.getTeams());
 
       List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());

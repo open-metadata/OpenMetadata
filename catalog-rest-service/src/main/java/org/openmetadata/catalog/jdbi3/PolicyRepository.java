@@ -39,6 +39,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;

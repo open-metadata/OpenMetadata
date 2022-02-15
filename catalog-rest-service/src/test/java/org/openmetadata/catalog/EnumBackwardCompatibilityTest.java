@@ -16,7 +16,7 @@ package org.openmetadata.catalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
-import org.openmetadata.catalog.jdbi3.Relationship;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.TagLabel.State;

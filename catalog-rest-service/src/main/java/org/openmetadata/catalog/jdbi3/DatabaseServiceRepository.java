@@ -36,6 +36,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
