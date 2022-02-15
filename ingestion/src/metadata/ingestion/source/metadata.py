@@ -24,12 +24,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-<<<<<<< HEAD
 from metadata.ingestion.ometa.openmetadata_rest import Glossary, MetadataServerConfig
-=======
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.ometa.openmetadata_rest import Glossary
->>>>>>> 06bc2f51 (Fixes #2760 - Add entities for Glossary and initial API)
 
 logger = logging.getLogger(__name__)
 
