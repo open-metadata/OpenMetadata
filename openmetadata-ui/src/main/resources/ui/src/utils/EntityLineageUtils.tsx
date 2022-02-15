@@ -421,7 +421,7 @@ export const getDataLabel = (
       data-testid="lineage-entity">
       {type === 'table'
         ? databaseName
-          ? `${databaseName}/${label}`
+          ? `${databaseName}.${label}`
           : label
         : label}
     </span>
