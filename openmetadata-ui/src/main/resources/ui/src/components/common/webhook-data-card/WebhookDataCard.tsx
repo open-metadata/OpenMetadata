@@ -42,17 +42,6 @@ const WebhookDataCard: FunctionComponent<Props> = ({
       data-testid="webhook-data-card">
       <div>
         <div className="tw-flex tw-items-center">
-          {/* <PopOver
-            position="bottom"
-            title={startCase(status)}
-            trigger="mouseenter">
-            <div
-              className={classNames(
-                'tw-w-3 tw-h-3 tw-rounded-full',
-                `tw-bg-${status}`
-              )}
-            />
-          </PopOver> */}
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
             <span className="tw-text-grey-body tw-font-medium">
               {stringToHTML(name)}
