@@ -537,9 +537,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       Secret Key:
                     </label>
                     <Button
-                      className="tw-w-32 tw-h-8 tw-ml-4"
+                      className="tw-w-32 tw-h-8 tw-ml-4 tw-rounded-md"
                       data-testid="generate-secret"
-                      size="regular"
+                      size="custom"
                       theme="primary"
                       variant="outlined"
                       onClick={generateSecret}>
@@ -557,9 +557,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                           text={secretKey}
                           onCopy={() => setCopiedSecret(true)}>
                           <Button
-                            className="tw-h-8"
+                            className="tw-h-8 tw-ml-4"
                             data-testid="copy-secret"
-                            size="regular"
+                            size="custom"
                             theme="default"
                             variant="text">
                             <SVGIcons
@@ -570,9 +570,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                           </Button>
                         </CopyToClipboard>
                         <Button
-                          className="tw-h-8 tw--ml-4"
+                          className="tw-h-8 tw-ml-4"
                           data-testid="clear-secret"
-                          size="regular"
+                          size="custom"
                           theme="default"
                           variant="text"
                           onClick={resetSecret}>
