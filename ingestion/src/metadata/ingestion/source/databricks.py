@@ -11,6 +11,9 @@
 
 from typing import Optional
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -19,7 +22,7 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 class DatabricksConfig(SQLConnectionConfig):
     host_port: str
     scheme = "databricks+pyhive"
-    service_type = "Databricks"
+    service_type = DatabaseServiceType.Databricks.value
     token: str
     database: Optional[str]
 
