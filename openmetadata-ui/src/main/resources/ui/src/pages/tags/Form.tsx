@@ -93,6 +93,7 @@ const Form: React.FC<FormProp> = forwardRef(
                   className="tw-text-sm tw-appearance-none tw-border tw-border-main
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
+                  data-testid="category-type"
                   name="categoryType"
                   value={data.categoryType}
                   onChange={onChangeHadler}>
@@ -108,6 +109,7 @@ const Form: React.FC<FormProp> = forwardRef(
                 className="tw-text-sm tw-appearance-none tw-border tw-border-main
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
+                data-testid="name"
                 name="name"
                 placeholder="Name"
                 type="text"
