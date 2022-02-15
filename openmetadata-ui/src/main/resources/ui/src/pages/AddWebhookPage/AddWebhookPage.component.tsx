@@ -55,7 +55,7 @@ const AddWebhookPage: FunctionComponent = () => {
   };
 
   return (
-    <PageContainerV1 className="tw-pt-4">
+    <PageContainerV1>
       <AddWebhook
         header="Add Webhook"
         saveState={status}

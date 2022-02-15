@@ -80,7 +80,7 @@ const EditWebhookPage: FunctionComponent = () => {
   }, []);
 
   return (
-    <PageContainerV1 className="tw-pt-4">
+    <PageContainerV1>
       {!isLoading ? (
         <AddWebhook
           data={webhookData}

@@ -28,6 +28,7 @@ import {
   errorMsg,
   getDocButton,
   getSeparator,
+  isValidUrl,
   requiredField,
   validMsg,
 } from '../../utils/CommonUtils';
@@ -80,7 +81,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       ? getEventFilterByType(data.eventFilters, EventType.EntityDeleted)
       : ({} as EventFilter)
   );
-  const [secretKey, setSecretKey] = useState<string>('');
+  const [secretKey, setSecretKey] = useState<string>(data?.secretKey || '');
   const [batchSize, setBatchSize] = useState<number | undefined>(
     data?.batchSize
   );
@@ -91,6 +92,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     name: false,
     endpointUrl: false,
     eventFilters: false,
+    invalidEndpointUrl: false,
   });
   const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
@@ -100,7 +102,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   ) => {
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name, endpointUrl } = cloneDeep(showErrorMsg);
+    let { name, endpointUrl, invalidEndpointUrl } = cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
@@ -112,6 +114,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       case 'endpoint-url': {
         setEndpointUrl(value);
         endpointUrl = false;
+        invalidEndpointUrl = false;
 
         break;
       }
@@ -127,7 +130,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name, endpointUrl };
+      return { ...prev, name, endpointUrl, invalidEndpointUrl };
     });
   };
 
@@ -147,7 +150,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const getEntitiesList = () => {
-    return [
+    const retVal: Array<{ name: string; value: string }> = [
       EntityType.TABLE,
       EntityType.TOPIC,
       EntityType.DASHBOARD,
@@ -158,15 +161,26 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         value: item,
       };
     });
+    retVal.unshift({ name: 'All entities', value: '*' });
+
+    return retVal;
   };
 
   const getSelectedEvents = (prev: EventFilter, value: string) => {
-    const entities = prev.entities || [];
-    if (entities.includes(value as string)) {
-      const index = entities.indexOf(value as string);
+    let entities = prev.entities || [];
+    if (entities.includes(value)) {
+      const index = entities.indexOf(value);
       entities.splice(index, 1);
     } else {
-      entities.push(value as string);
+      if (value === '*') {
+        entities = [value];
+      } else {
+        if (value !== '*' && entities.includes('*')) {
+          const allIndex = entities.indexOf('*');
+          entities.splice(allIndex, 1);
+        }
+        entities.push(value);
+      }
     }
 
     return { ...prev, entities };
@@ -229,6 +243,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         ...updateEvents,
         ...deleteEvents,
       }),
+      invalidEndpointUrl: !isValidUrl(endpointUrl.trim()),
     };
     setShowErrorMsg(errMsg);
 
@@ -279,7 +294,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
 
   return (
     <PageLayout
-      classes="tw-w-full-hd"
+      classes="tw-max-w-full-hd tw-bg-white tw-pt-4"
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <h6 className="tw-heading tw-text-base">{header}</h6>
@@ -331,13 +346,16 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             data-testid="endpoint-url"
             id="endpoint-url"
             name="endpoint-url"
-            placeholder="endpoint url"
+            placeholder="http(s)://www.example.com"
             type="text"
             value={endpointUrl}
             onChange={handleValidation}
           />
-          {showErrorMsg.endpointUrl &&
-            errorMsg('Webhook endpoint is required.')}
+          {showErrorMsg.endpointUrl
+            ? errorMsg('Webhook endpoint is required.')
+            : showErrorMsg.invalidEndpointUrl
+            ? errorMsg('Webhook endpoint is invalid.')
+            : null}
         </Field>
         <Field>
           <div className="tw-flex tw-pt-1">
@@ -380,12 +398,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             </div>
           </div>
           <DropDown
-            className={classNames('tw-bg-white', {
-              'tw-bg-gray-100 tw-pointer-events-none tw-cursor-not-allowed':
-                isEmpty(createEvents),
-            })}
+            className="tw-bg-white"
+            disabled={isEmpty(createEvents)}
             dropDownList={getEntitiesList()}
-            label="All Entities"
+            label="select entities"
             selectedItems={createEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
@@ -417,12 +433,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             </div>
           </div>
           <DropDown
-            className={classNames('tw-bg-white', {
-              'tw-bg-gray-100 tw-pointer-events-none tw-cursor-not-allowed':
-                isEmpty(updateEvents),
-            })}
+            className="tw-bg-white"
+            disabled={isEmpty(updateEvents)}
             dropDownList={getEntitiesList()}
-            label="All Entities"
+            label="select entities"
             selectedItems={updateEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
@@ -454,12 +468,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             </div>
           </div>
           <DropDown
-            className={classNames('tw-bg-white', {
-              'tw-bg-gray-100 tw-pointer-events-none tw-cursor-not-allowed':
-                isEmpty(deleteEvents),
-            })}
+            className="tw-bg-white"
+            disabled={isEmpty(deleteEvents)}
             dropDownList={getEntitiesList()}
-            label="All Entities"
+            label="select entities"
             selectedItems={deleteEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
@@ -530,25 +542,33 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             <Field>
               {!data ? (
                 <>
+                  <label
+                    className="tw-block tw-form-label tw-my-0"
+                    htmlFor="secret-key">
+                    Secret Key:
+                  </label>
                   <div className="tw-flex tw-items-center">
-                    <label
-                      className="tw-block tw-form-label tw-my-0"
-                      htmlFor="secret-key">
-                      Secret Key:
-                    </label>
+                    <input
+                      readOnly
+                      className="tw-form-inputs tw-px-3 tw-py-1"
+                      data-testid="connection-timeout"
+                      id="connection-timeout"
+                      name="connection-timeout"
+                      placeholder="secret key"
+                      type="text"
+                      value={secretKey}
+                    />
                     <Button
-                      className="tw-w-32 tw-h-8 tw-ml-4 tw-rounded-md"
+                      className="tw-w-8 tw-h-8 tw--ml-8 tw-rounded-md"
                       data-testid="generate-secret"
                       size="custom"
-                      theme="primary"
-                      variant="outlined"
+                      theme="default"
+                      variant="text"
                       onClick={generateSecret}>
                       {generatingSecret ? (
-                        <Loader size="small" type="white" />
-                      ) : secretKey ? (
-                        'Re-Generate'
+                        <Loader size="small" type="default" />
                       ) : (
-                        'Generate'
+                        <i className="fas fa-sync-alt" />
                       )}
                     </Button>
                     {secretKey ? (
@@ -585,13 +605,34 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       </>
                     ) : null}
                   </div>
-                  {copiedSecret && validMsg('Copied to clipboard.')}
                 </>
               ) : data.secretKey ? (
-                <span className="tw-block tw-form-label">
-                  Secret key has been set already.
-                </span>
+                <div className="tw-flex tw-items-center">
+                  <input
+                    readOnly
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="secret-key"
+                    id="secret-key"
+                    name="secret-key"
+                    placeholder="secret key"
+                    type="text"
+                    value={secretKey}
+                  />
+                  <CopyToClipboard
+                    text={secretKey}
+                    onCopy={() => setCopiedSecret(true)}>
+                    <Button
+                      className="tw-h-8 tw-ml-4"
+                      data-testid="copy-secret"
+                      size="custom"
+                      theme="default"
+                      variant="text">
+                      <SVGIcons alt="Copy" icon={Icons.COPY} width="16px" />
+                    </Button>
+                  </CopyToClipboard>
+                </div>
               ) : null}
+              {copiedSecret && validMsg('Copied to clipboard.')}
             </Field>
           </>
         ) : null}
