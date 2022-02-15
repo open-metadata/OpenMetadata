@@ -24,9 +24,9 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
-from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -40,10 +40,10 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     ChangeDescription,
     DashboardESDocument,
+    GlossaryESDocument,
     PipelineESDocument,
     TableESDocument,
     TeamESDocument,
-    GlossaryESDocument,
     TopicESDocument,
     UserESDocument,
 )
@@ -51,10 +51,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
+    GLOSSARY_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
     TEAM_ELASTICSEARCH_INDEX_MAPPING,
-    GLOSSARY_ELASTICSEARCH_INDEX_MAPPING,
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
     USER_ELASTICSEARCH_INDEX_MAPPING,
 )
