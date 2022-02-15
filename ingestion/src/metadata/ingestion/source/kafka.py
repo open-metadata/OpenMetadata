@@ -73,11 +73,11 @@ class KafkaSource(Source[CreateTopicRequest]):
         self.metadata_config = metadata_config
         self.status = KafkaSourceStatus()
         self.service = get_messaging_service_or_create(
-            config.service_name,
-            MessagingServiceType.Kafka.name,
-            config.schema_registry_url,
-            config.bootstrap_servers.split(","),
-            metadata_config,
+            service_name=config.service_name,
+            message_service_type=MessagingServiceType.Kafka.name,
+            schema_registry_url=config.schema_registry_url,
+            brokers=config.bootstrap_servers.split(","),
+            metadata_config=metadata_config,
         )
         self.schema_registry_client = SchemaRegistryClient(
             {"url": self.config.schema_registry_url}

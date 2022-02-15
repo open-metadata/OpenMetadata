@@ -33,6 +33,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink.LinkTyp
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -198,7 +199,7 @@ public class FeedRepository {
     Set<String> uniqueValues = new HashSet<>();
     for (String t : threadIds) {
       // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same thread
-      // Don't sent duplicated copies of the thread in response
+      // Don't send duplicated copies of the thread in response
       if (uniqueValues.add(t)) {
         threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));
       }

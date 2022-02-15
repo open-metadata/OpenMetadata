@@ -48,6 +48,23 @@
       "description": "User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
+    "createdBy": {
+      "description": "User who created the thread.",
+      "type": "string"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "resolved": {
+      "description": "When `true` indicates the thread has been resolved",
+      "type": "boolean",
+      "default": false
+    },
     "posts": {
       "type": "array",
       "items": {

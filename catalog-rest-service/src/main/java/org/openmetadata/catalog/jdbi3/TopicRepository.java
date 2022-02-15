@@ -30,6 +30,7 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;

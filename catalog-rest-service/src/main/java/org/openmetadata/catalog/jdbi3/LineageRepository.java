@@ -27,6 +27,7 @@ import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.Relationship;
 
 public class LineageRepository {
   private final CollectionDAO dao;

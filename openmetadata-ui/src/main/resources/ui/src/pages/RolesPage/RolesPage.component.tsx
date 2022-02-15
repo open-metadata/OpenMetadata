@@ -325,7 +325,7 @@ const RolesPage = () => {
               1,
               currentTab
             )}`}
-            data-testid="users"
+            data-testid="policy"
             onClick={() => {
               setCurrentTab(1);
             }}>
@@ -336,7 +336,7 @@ const RolesPage = () => {
               2,
               currentTab
             )}`}
-            data-testid="assets"
+            data-testid="users"
             onClick={() => {
               setCurrentTab(2);
             }}>
@@ -351,7 +351,11 @@ const RolesPage = () => {
     return (
       <>
         <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-          <h6 className="tw-heading tw-text-base">Roles</h6>
+          <h6
+            className="tw-heading tw-text-base"
+            data-testid="left-panel-title">
+            Roles
+          </h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
@@ -376,6 +380,7 @@ const RolesPage = () => {
                 role.name,
                 currentRole?.name
               )}`}
+              data-testid="role-name-container"
               key={role.name}
               onClick={() => setCurrentRole(role)}>
               <p
@@ -403,16 +408,16 @@ const RolesPage = () => {
         <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
           <thead>
             <tr className="tableHead-row">
-              <th className="tableHead-cell" data-testid="heading-description">
+              <th className="tableHead-cell" data-testid="table-heading">
                 Operation
               </th>
-              <th className="tableHead-cell" data-testid="heading-description">
+              <th className="tableHead-cell" data-testid="table-heading">
                 Access
               </th>
-              <th className="tableHead-cell" data-testid="heading-description">
+              <th className="tableHead-cell" data-testid="table-heading">
                 Enabled
               </th>
-              <th className="tableHead-cell" data-testid="heading-description">
+              <th className="tableHead-cell" data-testid="table-heading">
                 Action
               </th>
             </tr>
@@ -531,7 +536,9 @@ const RolesPage = () => {
                     <div
                       className="tw-flex tw-justify-between tw-items-center"
                       data-testid="header">
-                      <div className="tw-heading tw-text-link tw-text-base">
+                      <div
+                        className="tw-heading tw-text-link tw-text-base"
+                        data-testid="header-title">
                         {currentRole?.displayName}
                       </div>
                       <NonAdminAction
@@ -541,7 +548,7 @@ const RolesPage = () => {
                           className={classNames('tw-h-8 tw-rounded tw-mb-3', {
                             'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                           })}
-                          data-testid="add-new-user-button"
+                          data-testid="add-new-rule-button"
                           size="small"
                           theme="primary"
                           variant="contained"

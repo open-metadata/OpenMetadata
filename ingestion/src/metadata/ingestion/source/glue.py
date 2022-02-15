@@ -46,7 +46,7 @@ class GlueSourceConfig(AWSClientConfigModel):
     pipeline_service_name: str
     # Glue doesn't have an host_port but the service definition requires it
     host_port: str = ""
-    filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -62,7 +62,9 @@ class GlueSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service = get_database_service_or_create(
-            config, metadata_config, self.config.service_name
+            config=config,
+            metadata_config=metadata_config,
+            service_name=self.config.service_name,
         )
         self.storage_service = get_storage_service_or_create(
             {"name": self.config.storage_service_name, "serviceType": "S3"},
@@ -116,7 +118,7 @@ class GlueSource(Source[Entity]):
         yield from self.ingest_pipelines()
 
     def get_columns(self, column_data):
-        for index, column in enumerate(column_data["Columns"]):
+        for column in column_data["Columns"]:
             if column["Type"].lower().startswith("union"):
                 column["Type"] = column["Type"].replace(" ", "")
             parsed_string = ColumnTypeParser._parse_datatype_string(
@@ -127,7 +129,6 @@ class GlueSource(Source[Entity]):
                 parsed_string["dataTypeDisplay"] = str(column["Type"])
                 parsed_string["dataType"] = "UNION"
             parsed_string["name"] = column["Name"][:64]
-            parsed_string["ordinalPosition"] = index
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             yield Column(**parsed_string)
 
@@ -140,9 +141,9 @@ class GlueSource(Source[Entity]):
             else:
                 glue_resp = self.glue.get_tables(DatabaseName=self.database_name)
             for table in glue_resp["TableList"]:
-                if not self.config.filter_pattern.included(table["Name"]):
+                if not self.config.table_filter_pattern.included(table["Name"]):
                     self.status.filter(
-                        "{}.{}".format(self.config.get_service_name(), table["Name"]),
+                        "{}".format(table["Name"]),
                         "Table pattern not allowed",
                     )
                     continue

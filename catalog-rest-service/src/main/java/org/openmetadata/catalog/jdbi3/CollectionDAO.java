@@ -76,6 +76,7 @@ import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;

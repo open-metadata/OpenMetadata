@@ -147,6 +147,12 @@ public class SearchResource {
       case "table_search_index":
         searchSourceBuilder = buildTableSearchBuilder(query, from, size);
         break;
+      case "user_search_index":
+        searchSourceBuilder = buildUserSearchBuilder(query, from, size);
+        break;
+      case "team_search_index":
+        searchSourceBuilder = buildTeamSearchBuilder(query, from, size);
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
         break;
@@ -349,6 +355,26 @@ public class SearchResource {
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
         .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
         .highlighter(hb)
+        .from(from)
+        .size(size);
+
+    return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder
+        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("display_name", 1.0f).lenient(true))
+        .from(from)
+        .size(size);
+
+    return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder
+        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("display_name", 3.0f).lenient(true))
         .from(from)
         .size(size);
 

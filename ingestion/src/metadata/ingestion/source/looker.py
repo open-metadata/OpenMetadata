@@ -85,12 +85,12 @@ class LookerSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.client = self.looker_client()
         self.service = get_dashboard_service_or_create(
-            config.service_name,
-            DashboardServiceType.Looker.name,
-            config.username,
-            config.password.get_secret_value(),
-            config.url,
-            metadata_config,
+            service_name=config.service_name,
+            dashboard_service_type=DashboardServiceType.Looker.name,
+            username=config.username,
+            password=config.password.get_secret_value(),
+            dashboard_url=config.url,
+            metadata_config=metadata_config,
         )
 
     def check_env(self, env_key):

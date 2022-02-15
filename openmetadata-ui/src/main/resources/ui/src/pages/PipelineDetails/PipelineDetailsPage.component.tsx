@@ -224,6 +224,7 @@ const PipelineDetailsPage = () => {
         ]);
 
         addToRecentViewed({
+          displayName,
           entityType: EntityType.PIPELINE,
           fqn: fullyQualifiedName,
           serviceType: serviceType,

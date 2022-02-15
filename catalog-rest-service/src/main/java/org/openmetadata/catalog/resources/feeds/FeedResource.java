@@ -35,6 +35,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.entity.feed.Thread;
@@ -131,12 +132,10 @@ public class FeedResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateThread.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Valid CreateThread cr) throws IOException, ParseException {
-    Thread thread =
-        new Thread().withId(UUID.randomUUID()).withThreadTs(System.currentTimeMillis()).withAbout(cr.getAbout());
-    // For now redundantly storing everything in json (that includes fromEntity, addressedTo entity)
-    // TODO - This needs cleanup later if this information is too much or inconsistent in relationship table
-    FeedUtil.addPost(thread, new Post().withMessage(cr.getMessage()).withFrom(cr.getFrom()));
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
+      throws IOException, ParseException {
+    Thread thread = getThread(securityContext, create);
+    FeedUtil.addPost(thread, new Post().withMessage(create.getMessage()).withFrom(create.getFrom()));
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();
   }
@@ -157,5 +156,16 @@ public class FeedResource {
   public Response addPost(@Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post) throws IOException {
     Thread thread = addHref(uriInfo, dao.addPostToThread(id, post));
     return Response.created(thread.getHref()).entity(thread).build();
+  }
+
+  private Thread getThread(SecurityContext securityContext, CreateThread create) {
+    return new Thread()
+        .withId(UUID.randomUUID())
+        .withThreadTs(System.currentTimeMillis())
+        .withCreatedBy(securityContext.getUserPrincipal().getName())
+        .withAbout(create.getAbout())
+        .withAddressedTo(create.getAddressedTo())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

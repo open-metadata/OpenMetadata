@@ -474,14 +474,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         table_columns = []
         columns = inspector.get_columns(table, schema)
         try:
-            for row_order, column in enumerate(columns):
+            for column in columns:
                 try:
-                    col_dict = None
                     if "." in column["name"]:
                         column["name"] = column["name"].replace(".", "_DOT_")
                     children = None
                     data_type_display = None
-                    col_data_length = None
                     arr_data_type = None
                     parsed_string = None
                     if (
@@ -538,6 +536,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = (
                             1 if col_data_length is None else col_data_length
                         )
+                        if col_type == "ARRAY":
+                            if arr_data_type is None:
+                                arr_data_type = "VARCHAR"
+                            dataTypeDisplay = col_type + "<" + arr_data_type + ">"
                         om_column = Column(
                             name=column["name"],
                             description=column.get("comment", None),
@@ -545,7 +547,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             dataTypeDisplay=dataTypeDisplay,
                             dataLength=col_data_length,
                             constraint=col_constraint,
-                            ordinalPosition=row_order,
                             children=children if children else None,
                             arrayDataType=arr_data_type,
                         )

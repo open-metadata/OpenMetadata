@@ -3,5 +3,5 @@
   "fromEntity": "role",
   "toFQN": "DataStewardRoleAccessControlPolicy",
   "toEntity": "policy",
-  "relation": "CONTAINS"
+  "relationshipType": "contains"
 }

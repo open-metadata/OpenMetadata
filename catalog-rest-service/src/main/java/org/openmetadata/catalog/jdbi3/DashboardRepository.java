@@ -34,6 +34,7 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;

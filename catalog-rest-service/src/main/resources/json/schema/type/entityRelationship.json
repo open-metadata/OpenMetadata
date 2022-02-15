@@ -5,6 +5,48 @@
   "description": "This schema defines the EntityRelationship type used for establishing relationship between two entities. EntityRelationship is used for capturing relationships from one entity to another. For example, a database contains tables.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.EntityRelationship",
+  "definitions": {
+    "relationshipType": {
+      "javaType": "org.openmetadata.catalog.type.Relationship",
+      "description": "This enum captures all the relationships between Catalog entities. Note that the relationship from is a Strong entity and to is Weak entity when possible.",
+      "$comment": "Rules for changing enums since the ordinal position is stored in the database: (1) Don't remove an enum, since the database might have stored the enum ordinal number. (2) When adding a new enum, add it as the last enum to preserve the ordinal positions of the existing enums.",
+      "type": "string",
+      "enum": [
+        "contains",
+        "createdBy",
+        "repliedTo",
+        "isAbout",
+        "addressedTo",
+        "mentionedIn",
+        "testedBy",
+        "uses",
+        "owns",
+        "parentOf",
+        "has",
+        "follows",
+        "joinedWith",
+        "upstream",
+        "appliedTo"
+      ],
+      "javaEnums": [
+        { "name": "CONTAINS" },
+        { "name": "CREATED" },
+        { "name": "REPLIED_TO" },
+        { "name": "IS_ABOUT" },
+        { "name": "ADDRESSED_TO" },
+        { "name": "MENTIONED_IN" },
+        { "name": "TESTED_BY" },
+        { "name": "USES" },
+        { "name": "OWNS" },
+        { "name": "PARENT_OF" },
+        { "name": "HAS" },
+        { "name": "FOLLOWS" },
+        { "name": "JOINED_WITH" },
+        { "name": "UPSTREAM" },
+        { "name": "APPLIED_TO" }
+      ]
+    }
+  },
   "properties": {
     "fromId": {
       "description": "Unique identifier that identifies the entity from which the relationship originates.",
@@ -31,8 +73,13 @@
       "type": "string"
     },
     "relation": {
-      "description": "Describes relationship between the two entities.",
-      "type": "string"
+      "description": "Describes relationship between the two entities as an integer.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "relationshipType": {
+      "description": "Describes relationship between the two entities. Eg: Database --- Contains --> Table",
+      "$ref": "#/definitions/relationshipType"
     },
     "deleted": {
       "description": "`true` indicates the relationship has been soft deleted.",
@@ -40,6 +87,6 @@
       "default": false
     }
   },
-  "required": ["fromEntity", "toEntity", "relation"],
+  "required": ["fromEntity", "toEntity", "relationshipType"],
   "additionalProperties": false
 }

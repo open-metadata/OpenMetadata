@@ -35,6 +35,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;

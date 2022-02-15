@@ -178,8 +178,8 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/locations/locations.json", "r")
         )
         self.storage_service = get_storage_service_or_create(
-            self.storage_service_json,
-            metadata_config,
+            service_json=self.storage_service_json,
+            metadata_config=metadata_config,
         )
         self.glue_storage_service_json = json.load(
             open(self.config.sample_data_folder + "/glue/storage_service.json", "r")
@@ -194,8 +194,8 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/glue/tables.json", "r")
         )
         self.glue_database_service = get_database_service_or_create_v2(
-            self.glue_database_service_json,
-            metadata_config,
+            service_json=self.glue_database_service_json,
+            metadata_config=metadata_config,
         )
         self.glue_storage_service = get_storage_service_or_create(
             self.glue_storage_service_json,
@@ -211,7 +211,7 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/datasets/tables.json", "r")
         )
         self.database_service = get_database_service_or_create(
-            config, self.metadata_config
+            config=config, metadata_config=self.metadata_config
         )
         self.kafka_service_json = json.load(
             open(self.config.sample_data_folder + "/topics/service.json", "r")
@@ -220,11 +220,11 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/topics/topics.json", "r")
         )
         self.kafka_service = get_messaging_service_or_create(
-            self.kafka_service_json.get("name"),
-            self.kafka_service_json.get("serviceType"),
-            self.kafka_service_json.get("schemaRegistry"),
-            self.kafka_service_json.get("brokers"),
-            self.metadata_config,
+            service_name=self.kafka_service_json.get("name"),
+            message_service_type=self.kafka_service_json.get("serviceType"),
+            schema_registry_url=self.kafka_service_json.get("schemaRegistry"),
+            brokers=self.kafka_service_json.get("brokers"),
+            metadata_config=self.metadata_config,
         )
         self.dashboard_service_json = json.load(
             open(self.config.sample_data_folder + "/dashboards/service.json", "r")
@@ -236,12 +236,12 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/dashboards/dashboards.json", "r")
         )
         self.dashboard_service = get_dashboard_service_or_create(
-            self.dashboard_service_json.get("name"),
-            self.dashboard_service_json.get("serviceType"),
-            self.dashboard_service_json.get("username"),
-            self.dashboard_service_json.get("password"),
-            self.dashboard_service_json.get("dashboardUrl"),
-            metadata_config,
+            service_name=self.dashboard_service_json.get("name"),
+            dashboard_service_type=self.dashboard_service_json.get("serviceType"),
+            username=self.dashboard_service_json.get("username"),
+            password=self.dashboard_service_json.get("password"),
+            dashboard_url=self.dashboard_service_json.get("dashboardUrl"),
+            metadata_config=metadata_config,
         )
         self.pipeline_service_json = json.load(
             open(self.config.sample_data_folder + "/pipelines/service.json", "r")
@@ -250,8 +250,8 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/pipelines/pipelines.json", "r")
         )
         self.pipeline_service = get_pipeline_service_or_create(
-            self.pipeline_service_json,
-            metadata_config,
+            service_json=self.pipeline_service_json,
+            metadata_config=metadata_config,
         )
         self.lineage = json.load(
             open(self.config.sample_data_folder + "/lineage/lineage.json", "r")
