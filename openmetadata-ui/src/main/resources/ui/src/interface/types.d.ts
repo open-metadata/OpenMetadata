@@ -388,6 +388,7 @@ declare module 'Models' {
   // topic interface end
 
   interface RecentlyViewedData {
+    displayName?: string;
     entityType: 'table' | 'topic' | 'dashboard' | 'pipeline';
     fqn: string;
     serviceType?: string;

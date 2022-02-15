@@ -275,6 +275,7 @@ const DashboardDetailsPage = () => {
         ]);
 
         addToRecentViewed({
+          displayName,
           entityType: EntityType.DASHBOARD,
           fqn: fullyQualifiedName,
           serviceType: serviceType,

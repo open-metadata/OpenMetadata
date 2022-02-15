@@ -158,6 +158,37 @@ class PipelineESDocument(BaseModel):
     doc_as_upsert: bool = True
 
 
+class UserESDocument(BaseModel):
+    """Elastic Search Mapping doc for Users"""
+
+    user_id: str
+    deleted: bool
+    entity_type: str = "user"
+    name: str
+    display_name: str
+    email: str
+    suggest: List[dict]
+    last_updated_timestamp: Optional[int]
+    teams: List[str]
+    roles: List[str]
+    doc_as_upsert: bool = True
+
+
+class TeamESDocument(BaseModel):
+    """Elastic Search Mapping doc for Teams"""
+
+    team_id: str
+    deleted: bool
+    entity_type: str = "team"
+    name: str
+    display_name: str
+    suggest: List[dict]
+    last_updated_timestamp: Optional[int]
+    users: List[str]
+    owns: List[str]
+    doc_as_upsert: bool = True
+
+
 class DashboardOwner(BaseModel):
     """Dashboard owner"""
 
