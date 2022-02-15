@@ -13,18 +13,7 @@
 
 import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
-import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
-import { getTopicByFqn } from '../../axiosAPIs/topicsAPI';
-import { EntityType } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
-import {
-  getRecentlyViewedData,
-  setRecentlyViewedData,
-} from '../../utils/CommonUtils';
-import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
+import { getRecentlyViewedData } from '../../utils/CommonUtils';
 import EntityList from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 
@@ -33,147 +22,19 @@ const RecentlyViewed: FunctionComponent = () => {
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [isLoading, setIsloading] = useState<boolean>(false);
 
-  const fetchRecentlyViewedEntity = async () => {
-    setIsloading(true);
-    const arrData: Array<FormatedTableData> = [];
-    let filteredRecentData = [...recentlyViewedData];
-
-    for (const oData of recentlyViewedData) {
-      // for (let i = 0; i < recentlyViewedData.length; i++) {
-      // const oData = recentlyViewedData[i];
-      try {
-        switch (oData.entityType) {
-          case EntityType.TABLE: {
-            const res = await getTableDetailsByFQN(
-              oData.fqn,
-              'usageSummary, tags, owner,columns'
-            );
-
-            const {
-              description,
-              id,
-              name,
-              columns,
-              owner,
-              usageSummary,
-              fullyQualifiedName,
-              tags,
-            } = res.data;
-            const tableTags = getTableTags(columns || []);
-            arrData.push({
-              description,
-              fullyQualifiedName,
-              id,
-              index: SearchIndex.TABLE,
-              name,
-              owner: getOwnerFromId(owner?.id)?.name || '--',
-              serviceType: oData.serviceType,
-              tags: [...tableTags].filter((tag) => tag),
-              tier: getTierTags(tags),
-              weeklyPercentileRank:
-                usageSummary?.weeklyStats.percentileRank || 0,
-            });
-
-            break;
-          }
-          case EntityType.TOPIC: {
-            const res = await getTopicByFqn(oData.fqn, 'owner, tags');
-
-            const { description, id, name, tags, owner, fullyQualifiedName } =
-              res.data;
-            arrData.push({
-              description,
-              fullyQualifiedName,
-              id,
-              index: SearchIndex.TOPIC,
-              name,
-              owner: getOwnerFromId(owner?.id)?.name || '--',
-              serviceType: oData.serviceType,
-              tags: tags,
-              tier: getTierTags(tags),
-            });
-
-            break;
-          }
-          case EntityType.DASHBOARD: {
-            const res = await getDashboardByFqn(
-              oData.fqn,
-              'owner, tags, usageSummary'
-            );
-
-            const {
-              description,
-              id,
-              displayName,
-              tags,
-              owner,
-              fullyQualifiedName,
-            } = res.data;
-            arrData.push({
-              description,
-              fullyQualifiedName,
-              id,
-              index: SearchIndex.DASHBOARD,
-              name: displayName,
-              owner: getOwnerFromId(owner?.id)?.name || '--',
-              serviceType: oData.serviceType,
-              tags: tags,
-              tier: getTierTags(tags),
-            });
-
-            break;
-          }
-
-          case EntityType.PIPELINE: {
-            const res = await getPipelineByFqn(
-              oData.fqn,
-              'owner, tags, usageSummary'
-            );
-
-            const {
-              description,
-              id,
-              displayName,
-              tags,
-              owner,
-              fullyQualifiedName,
-            } = res.data;
-            arrData.push({
-              description,
-              fullyQualifiedName,
-              id,
-              index: SearchIndex.PIPELINE,
-              name: displayName,
-              owner: getOwnerFromId(owner?.id)?.name || '--',
-              serviceType: oData.serviceType,
-              tags: tags,
-              tier: getTierTags(tags),
-            });
-
-            break;
-          }
-
-          default:
-            break;
-        }
-      } catch {
-        filteredRecentData = filteredRecentData.filter(
-          (data) => data.fqn !== oData.fqn
-        );
-
-        continue;
-      }
-    }
-    if (filteredRecentData.length !== recentlyViewedData.length) {
-      setRecentlyViewedData(filteredRecentData);
-    }
-    setIsloading(false);
-    setData(arrData);
-  };
-
   useEffect(() => {
     if (recentlyViewedData.length) {
-      fetchRecentlyViewedEntity();
+      setIsloading(true);
+      const formatedData = recentlyViewedData.map((data) => {
+        return {
+          serviceType: data.serviceType,
+          name: data.displayName || data.fqn.split('.')[1],
+          fullyQualifiedName: data.fqn,
+          index: data.entityType,
+        };
+      });
+      setData(formatedData as unknown as FormatedTableData[]);
+      setIsloading(false);
     }
   }, []);
 

@@ -275,7 +275,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
       data: [entityData],
     };
   }
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, recentlyViewed);
+  setRecentlyViewedData(recentlyViewed.data);
 };
 
 export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
