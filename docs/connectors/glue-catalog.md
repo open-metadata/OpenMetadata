@@ -34,22 +34,18 @@ python3 --version
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
 1. [Prepare a Python virtual environment](glue-catalog.md#1.-prepare-a-python-virtual-environment)
-2. [Install the Python module for this connector](glue-catalog.md#2.-install-the-python-module-for-this-connector)&#x20;
+2. [Install the Python module for this connector](glue-catalog.md#2.-install-the-python-module-for-this-connector)
 3. [Configure your AWS default profile](glue-catalog.md#3.-configure-a-local-aws-profile-optional)
-4. [Create a configuration file using template JSON](glue-catalog.md#4.-create-a-configuration-file-using-template-json)&#x20;
-5. [Configure service settings](glue-catalog.md#5.-configure-service-settings)&#x20;
-6. [Enable/disable the data profiler](glue-catalog.md#6.-enable-disable-the-data-profiler)&#x20;
-7. [Install the data profiler Python module (optional)](glue-catalog.md#7.-install-the-data-profiler-python-module-optional)&#x20;
-8. [Configure data filters (optional)](glue-catalog.md#8.-configure-data-filters-optional)&#x20;
-9. [Configure sample data (optional)](glue-catalog.md#9.-configure-sample-data-optional)&#x20;
-10. [Configure DBT (optional)](glue-catalog.md#10.-configure-dbt-optional)&#x20;
-11. [Confirm sink settings](glue-catalog.md#11.-confirm-sink-settings)&#x20;
-12. [Confirm metadata\_server settings](glue-catalog.md#12.-confirm-metadata\_server-settings)&#x20;
-13. [Run ingestion workflow](glue-catalog.md#13.-run-ingestion-workflow)
+4. [Create a configuration file using template JSON](glue-catalog.md#4.-create-a-configuration-file-using-template-json)
+5. [Configure service settings](glue-catalog.md#5.-configure-service-settings)
+6. [Configure data filters (optional)](glue-catalog.md#6.-configure-data-filters-optional)
+7. [Confirm sink settings](glue-catalog.md#8.-confirm-sink-settings)
+8. [Confirm metadata\_server settings](glue-catalog.md#9.-confirm-metadata\_server-settings)
+9. [Run ingestion workflow](glue-catalog.md#10.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
-In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.&#x20;
+In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
@@ -205,7 +201,7 @@ Edit the value for `source.config.aws_access_key_id` to specify the key id for y
 ```
 
 {% hint style="info" %}
-Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.&#x20;
+Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.
 {% endhint %}
 
 #### aws\_secret\_access\_key (optional)
@@ -217,12 +213,12 @@ Edit the value for `source.config.aws_secret_access_key` to specify the secret f
 ```
 
 {% hint style="info" %}
-Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.&#x20;
+Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.
 {% endhint %}
 
 #### service\_name
 
-OpenMetadata associates each database and table entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata ingested from database services you are using through AWS Glue.&#x20;
+OpenMetadata associates each database and table entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata ingested from database services you are using through AWS Glue.
 
 Edit the value for `source.config.service_name` with a name that uniquely identifies this database and table metadata.
 
@@ -234,7 +230,7 @@ When the metadata has been ingested you will find it in the OpenMetadata UI data
 
 #### pipeline\_service\_name
 
-OpenMetadata associates each pipeline entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for pipelines you are using through AWS Glue.&#x20;
+OpenMetadata associates each pipeline entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for pipelines you are using through AWS Glue.
 
 Edit the value for `source.config.pipeline_service_name` with a name that uniquely identifies this pipeline metadata.
 
@@ -246,7 +242,7 @@ When this metadata has been ingested you will find it in the OpenMetadata UI pip
 
 #### storage\_service\_name (optional)
 
-OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.&#x20;
+OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.
 
 Edit the value for `source.config.storage_service_name` with a name that uniquely identifies this object store metadata.
 
@@ -256,7 +252,7 @@ Edit the value for `source.config.storage_service_name` with a name that uniquel
 
 #### region\_name
 
-Specify the region in which your Glue catalog is located using `source.config.region_name`.&#x20;
+Specify the region in which your Glue catalog is located using `source.config.region_name`.
 
 ```
 "region_name": "region_for_your_glue_catalog"
@@ -268,7 +264,7 @@ Note: This setting is required even if you have configured a local AWS profile a
 
 #### endpoint\_url (optional)
 
-The Glue connector will automatically determine the AWS Glue endpoint url based on the `region_name`.&#x20;
+The Glue connector will automatically determine the AWS Glue endpoint url based on the `region_name`.
 
 You may specify a value for `source.config.endpoint_url` to override this behavior. The value you specify should be a complete url, including the protocol (i.e. “http" or "https”).
 
@@ -276,41 +272,7 @@ You may specify a value for `source.config.endpoint_url` to override this behavi
 "endpoint_url": "endpoint_url"
 ```
 
-### **6. Enable/disable the data profiler**
-
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
-
-#### **data\_profiler\_enabled**
-
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
-
-You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We’ve done this in the configuration template provided.
-
-```javascript
-"data_profiler_enabled": "false"
-```
-
-If you want to enable the data profiler, update your configuration file as follows.
-
-```javascript
-"data_profiler_enabled": "true"
-```
-
-{% hint style="info" %}
-**Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
-{% endhint %}
-
-### **7. Install the data profiler Python module (optional)**
-
-If you’ve enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
-
-```javascript
-pip3 install 'openmetadata-ingestion[data-profiler]'
-```
-
-The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
-
-### **8. Configure data filters (optional)**
+### **6. Configure data filters (optional)**
 
 #### **include\_views (optional)**
 
@@ -378,63 +340,7 @@ See the documentation for the[ Python re module](https://docs.python.org/3/libra
 You may use either `excludes` or `includes` but not both in `table_filter_pattern`.
 {% endhint %}
 
-#### **schema\_filter\_pattern (optional)**
-
-Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
-
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](glue-catalog.md#table\_filter\_pattern-optional). Please check that section for details.
-
-### **9. Configure sample data (optional)**
-
-#### **generate\_sample\_data (optional)**
-
-Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
-
-![](../.gitbook/assets/generate\_sample\_data.png)
-
-Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```javascript
-"generate_sample_data": "true"
-```
-
-If set to true, the connector will collect the first 50 rows of data from each table included in ingestion, and catalog that data as sample data, which users can refer to in the OpenMetadata user interface.
-
-You can exclude the collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```javascript
-"generate_sample_data": "false"
-```
-
-{% hint style="info" %}
-**Note:** `generate_sample_data` is set to true by default.
-{% endhint %}
-
-### **10. Configure DBT (optional)**
-
-DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
-
-![](../.gitbook/assets/configure\_dbt.png)
-
-To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
-
-#### **dbt\_manifest\_file (optional)**
-
-Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
-
-```javascript
-"dbt_manifest_file": "./dbt/manifest.json"
-```
-
-#### **dbt\_catalog\_file (optional)**
-
-Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
-
-```javascript
-"dbt_catalog_file": "./dbt/catalog.json"
-```
-
-### **11. Confirm sink settings**
+### **7. Confirm sink settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `glue.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -445,7 +351,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-### **12. Confirm metadata\_server settings**
+### **8. Confirm metadata\_server settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `glue.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -459,7 +365,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-### **13. Run ingestion workflow**
+### **9. Run ingestion workflow**
 
 Your `glue.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
