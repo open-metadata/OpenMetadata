@@ -11,13 +11,41 @@
 
 """
 OpenMetadata Profiler supported metrics
+
+Use these registries to avoid messy imports.
+
+Note that we are using our own Registry definition
+that allows us to directly call our metrics without
+having the verbosely pass .value all the time...
 """
-from enum import Enum
+
+from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
+from metadata.orm_profiler.metrics.static.count import Count
+from metadata.orm_profiler.metrics.static.min import Min
+from metadata.orm_profiler.metrics.static.null_count import NullCount
+from metadata.orm_profiler.metrics.static.stddev import StdDev
+from metadata.orm_profiler.registry import MetricRegistry
 
 
-class StaticMetricRegistry(Enum):
+class StaticMetrics(MetricRegistry):
     """
     Set of all supported metrics and our metric
     definition using SQLAlchemy functions or
     custom implementations
     """
+
+    MIN = Min
+    COUNT = Count
+    NULL_COUNT = NullCount
+    STDDEV = StdDev
+
+
+class ComposedMetrics(MetricRegistry):
+    """
+    Set of all supported Composed Metrics, meaning
+    that they are based on existing metrics results'.
+
+    They will be executed last in the Profiler.
+    """
+
+    NULL_RATIO = NullRatio
