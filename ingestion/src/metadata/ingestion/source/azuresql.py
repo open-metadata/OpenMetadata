@@ -23,7 +23,7 @@ class AzuresqlConfig(SQLConnectionConfig):
 
     host_port = "localhost:1433"
     scheme = "mssql+pyodbc"
-    service_type = DatabaseServiceType.MySQL.value
+    service_type = DatabaseServiceType.AzureSQL.value
     driver = "{ODBC Driver 17 for SQL Server}"
 
     def get_connection_url(self):
