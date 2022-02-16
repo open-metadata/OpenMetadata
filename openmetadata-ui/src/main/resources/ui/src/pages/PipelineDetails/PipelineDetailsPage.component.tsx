@@ -74,13 +74,12 @@ import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
   const showToast = useToastContext();
-  const [tagList, setTagList] = useState<Array<string>>([]);
+
   const { pipelineFQN, tab } = useParams() as Record<string, string>;
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
@@ -147,14 +146,6 @@ const PipelineDetailsPage = () => {
       pipelineId,
       jsonPatch
     ) as unknown as Promise<AxiosResponse>;
-  };
-
-  const fetchTags = () => {
-    getTagCategories().then((res) => {
-      if (res.data) {
-        setTagList(getTaglist(res.data));
-      }
-    });
   };
 
   const getLineageData = () => {
@@ -441,10 +432,6 @@ const PipelineDetailsPage = () => {
     fetchPipelineDetail(pipelineFQN);
   }, [pipelineFQN]);
 
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
   return (
     <>
       {isLoading ? (
@@ -478,7 +465,6 @@ const PipelineDetailsPage = () => {
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
           slashedPipelineName={slashedPipelineName}
-          tagList={tagList}
           tagUpdateHandler={onTagUpdate}
           taskUpdateHandler={onTaskUpdate}
           tasks={tasks}
