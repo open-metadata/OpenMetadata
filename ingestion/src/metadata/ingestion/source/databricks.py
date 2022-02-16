@@ -21,7 +21,7 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 class DatabricksConfig(SQLConnectionConfig):
     host_port: str
-    scheme = "databricks+pyhive"
+    scheme = "databricks+connector"
     service_type = DatabaseServiceType.Databricks.value
     token: str
     database: Optional[str]
