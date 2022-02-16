@@ -14,7 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 import sqlalchemy
-from sqlalchemy.orm import DeclarativeMeta, declarative_base
+from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
