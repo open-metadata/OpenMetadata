@@ -26,7 +26,8 @@
         "Druid",
         "Db2",
         "ClickHouse",
-        "SingleStore"
+        "SingleStore",
+        "AzureSQL"
       ],
       "javaEnums": [
         {
@@ -79,6 +80,9 @@
         },
         {
           "name": "ClickHouse"
+        },
+        {
+          "name": "AzureSQL"
         },
         {
           "name": "SingleStore"
