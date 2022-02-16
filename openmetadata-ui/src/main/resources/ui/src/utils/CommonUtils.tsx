@@ -23,6 +23,7 @@ import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
+import { Button } from '../components/buttons/Button/Button';
 import {
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
@@ -318,6 +319,18 @@ export const errorMsg = (value: string) => {
   );
 };
 
+export const validMsg = (value: string) => {
+  return (
+    <div className="tw-mt-1">
+      <strong
+        className="tw-text-success tw-text-xs tw-italic"
+        data-testid="error-message">
+        {value}
+      </strong>
+    </div>
+  );
+};
+
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
     {label}{' '}
@@ -325,12 +338,15 @@ export const requiredField = (label: string, excludeSpace = false) => (
   </>
 );
 
-export const getSeparator = (title: string | JSX.Element) => {
+export const getSeparator = (
+  title: string | JSX.Element,
+  hrMarginTop = 'tw-mt-2.5'
+) => {
   return (
     <span className="tw-flex tw-py-2 tw-text-grey-muted">
-      <hr className="tw-mt-2.5 tw-w-full" />
+      <hr className={classNames('tw-w-full', hrMarginTop)} />
       {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
-      <hr className="tw-mt-2.5 tw-w-full" />
+      <hr className={classNames('tw-w-full', hrMarginTop)} />
     </span>
   );
 };
@@ -404,5 +420,46 @@ export const getEntityMissingError = (entityType: string, fqn: string) => {
     <p>
       {capitalize(entityType)} instance for <strong>{fqn}</strong> not found
     </p>
+  );
+};
+
+export const getDocButton = (label: string, url: string, dataTestId = '') => {
+  return (
+    <Button
+      className="tw-group tw-rounded tw-w-full tw-px-3 tw-py-1.5 tw-text-sm"
+      data-testid={dataTestId}
+      href={url}
+      rel="noopener noreferrer"
+      size="custom"
+      tag="a"
+      target="_blank"
+      theme="primary"
+      variant="outlined">
+      <SVGIcons
+        alt="Doc icon"
+        className="tw-align-middle tw-mr-2 group-hover:tw-hidden"
+        icon={Icons.DOC_PRIMARY}
+        width="14"
+      />
+      <SVGIcons
+        alt="Doc icon"
+        className="tw-align-middle tw-mr-2 tw-hidden group-hover:tw-inline-block"
+        icon={Icons.DOC_WHITE}
+        width="14"
+      />
+      <span>{label}</span>
+      <SVGIcons
+        alt="external-link"
+        className="tw-align-middle tw-ml-2 group-hover:tw-hidden"
+        icon={Icons.EXTERNAL_LINK}
+        width="14"
+      />
+      <SVGIcons
+        alt="external-link"
+        className="tw-align-middle tw-ml-2 tw-hidden group-hover:tw-inline-block"
+        icon={Icons.EXTERNAL_LINK_WHITE}
+        width="14"
+      />
+    </Button>
   );
 };

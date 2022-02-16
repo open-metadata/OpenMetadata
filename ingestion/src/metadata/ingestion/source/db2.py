@@ -12,6 +12,9 @@
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -28,7 +31,7 @@ DB2Dialect.get_pk_constraint = get_pk_constraint
 class Db2Config(SQLConnectionConfig):
     host_port = "localhost:50000"
     scheme = "db2+ibm_db"
-    service_type = "Db2"
+    service_type = DatabaseServiceType.Db2.value
 
     def get_connection_url(self):
         return super().get_connection_url()

@@ -52,7 +52,7 @@ class KafkaSourceConfig(ConfigModel):
     schema_registry_url: str = "http://localhost:8081"
     consumer_config: dict = {}
     service_name: str
-    service_type: str = "Kafka"
+    service_type: str = MessagingServiceType.Kafka.value
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
 

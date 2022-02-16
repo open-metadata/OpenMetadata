@@ -161,7 +161,7 @@ class SupersetSource(Source[Entity]):
     metadata_config: MetadataServerConfig
     status: SourceStatus
     platform = "superset"
-    service_type = "Superset"
+    service_type = DashboardServiceType.Superset.value
 
     def __init__(
         self,

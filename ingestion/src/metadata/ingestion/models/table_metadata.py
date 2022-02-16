@@ -104,6 +104,23 @@ class TopicESDocument(BaseModel):
     doc_as_upsert: bool = True
 
 
+class GlossaryESDocument(BaseModel):
+    """Glossary Elastic Search Mapping doc"""
+
+    glossary_id: str
+    glossary_name: str
+    entity_type: str = "glossary"
+    suggest: List[dict]
+    description: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    schema_description: Optional[str] = None
+    owner: str
+    followers: List[str]
+
+
 class DashboardESDocument(BaseModel):
     """Elastic Search Mapping doc for Dashboards"""
 

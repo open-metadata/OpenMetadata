@@ -494,4 +494,7 @@ declare module 'Models' {
     SuggestTags: boolean;
     UpdateTags: boolean;
   }
+  export interface EditorContentRef {
+    getEditorContent: () => string;
+  }
 }

@@ -795,8 +795,16 @@ body .profiler-graph .recharts-active-dot circle {
 
 .page-layout-container {
   display: grid;
-  grid-template-columns: 256px auto 256px;
   grid-auto-flow: column;
+}
+.page-layout-container.l3-col {
+  grid-template-columns: 256px auto 256px;
+}
+.page-layout-container.l2-ltr-col {
+  grid-template-columns: 300px auto auto;
+}
+.page-layout-container.l2-rtl-col {
+  grid-template-columns: auto auto 300px;
 }
 
 .page-layout-container-left-center-right {
