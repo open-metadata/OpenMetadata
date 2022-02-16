@@ -9,6 +9,7 @@ from typing import List
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     DataModel,
+    SqlQuery,
     Table,
     TableData,
     TableJoins,
@@ -84,6 +85,22 @@ class OMetaTableMixin:
             data=data_model.json(),
         )
         return Table(**resp)
+
+    def ingest_table_queries_data(
+        self, table: Table, table_queries: List[SqlQuery]
+    ) -> None:
+        """
+        PUT table queries for a table
+
+        :param table: Table Entity to update
+        :param table_queries: SqlQuery to add
+        """
+        for query in table_queries:
+            self.client.put(
+                f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
+                data=query.json(),
+            )
+        return None
 
     def publish_table_usage(
         self, table: Table, table_usage_request: TableUsageRequest
