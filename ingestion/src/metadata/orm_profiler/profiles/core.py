@@ -94,7 +94,6 @@ class Profiler(ABC):
         """
         Build the query with all the metrics
         """
-        # TODO: Figure out time and custom metrics run
 
         query = self.session.query(*[metric.fn() for metric in self.static_metrics])
 
@@ -120,8 +119,7 @@ class Profiler(ABC):
 
         for metric in self.composed_metrics:
             # Composed metrics require the results as an argument
-            res = metric.fn(self.results)
-            self.results[metric.__class__.name()] = res
+            self._results[metric.name()] = metric.fn(self.results)
 
     def execute(self):
         """
