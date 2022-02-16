@@ -25,7 +25,8 @@
         "MariaDB",
         "Druid",
         "Db2",
-        "ClickHouse"
+        "ClickHouse",
+        "SingleStore"
       ],
       "javaEnums": [
         {
@@ -78,6 +79,9 @@
         },
         {
           "name": "ClickHouse"
+        },
+        {
+          "name": "SingleStore"
         }
       ]
     },

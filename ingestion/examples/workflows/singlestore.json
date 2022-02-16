@@ -1,0 +1,26 @@
+{
+    "source": {
+      "type": "singlestore",
+      "config": {
+        "username": "openmetadata_user",
+        "password": "openmetadata_password",
+        "database": "openmetadata_db",
+        "service_name": "local_singlestore",
+        "schema_filter_pattern": {
+          "includes": ["test_delete.*"]
+        }
+      }
+    },
+    "sink": {
+      "type": "metadata-rest",
+      "config": {}
+    },
+    "metadata_server": {
+      "type": "metadata-server",
+      "config": {
+        "api_endpoint": "http://localhost:8585/api",
+        "auth_provider_type": "no-auth"
+      }
+    }
+  }
+  

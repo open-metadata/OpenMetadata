@@ -115,6 +115,7 @@ plugins: Dict[str, Set[str]] = {
     "sklearn": {"scikit-learn==1.0.2"},
     "db2": {"ibm-db-sa==0.3.7"},
     "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.1.8"},
+    "singlestore": {"pymysql>=1.0.2"},
 }
 dev = {
     "boto3==1.20.14",
