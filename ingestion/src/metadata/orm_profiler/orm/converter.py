@@ -14,16 +14,51 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 import sqlalchemy
-from metadata.generated.schema.entity.data.database import Database
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.orm_profiler.orm.registry import CustomTypes
 
 Base = declarative_base()
 
 _TYPE_MAP = {
-    DataType.NUMBER: sqlalchemy.Integer,
-    DataType.NUMERIC: sqlalchemy.Numeric,
+    DataType.NUMBER: sqlalchemy.INTEGER,
+    DataType.TINYINT: sqlalchemy.SMALLINT,
+    DataType.SMALLINT: sqlalchemy.SMALLINT,
+    DataType.INT: sqlalchemy.INT,
+    DataType.BIGINT: sqlalchemy.BIGINT,
+    DataType.BYTEINT: sqlalchemy.SMALLINT,
+    DataType.BYTES: CustomTypes.BYTES,
+    DataType.FLOAT: sqlalchemy.FLOAT,
+    DataType.DOUBLE: sqlalchemy.DECIMAL,
+    DataType.DECIMAL: sqlalchemy.DECIMAL,
+    DataType.NUMERIC: sqlalchemy.NUMERIC,
+    DataType.TIMESTAMP: sqlalchemy.TIMESTAMP,
+    DataType.TIME: sqlalchemy.TIME,
+    DataType.DATE: sqlalchemy.DATE,
+    DataType.DATETIME: sqlalchemy.DATETIME,
+    DataType.INTERVAL: sqlalchemy.Interval,
+    DataType.STRING: sqlalchemy.String,
+    DataType.MEDIUMTEXT: sqlalchemy.TEXT,
+    DataType.TEXT: sqlalchemy.TEXT,
+    DataType.CHAR: sqlalchemy.CHAR,
+    DataType.VARCHAR: sqlalchemy.VARCHAR,
+    DataType.BOOLEAN: sqlalchemy.BOOLEAN,
+    DataType.BINARY: sqlalchemy.BINARY,
+    DataType.VARBINARY: sqlalchemy.VARBINARY,
+    DataType.ARRAY: sqlalchemy.ARRAY,
+    DataType.BLOB: sqlalchemy.BLOB,
+    DataType.LONGBLOB: sqlalchemy.LargeBinary,
+    DataType.MEDIUMBLOB: sqlalchemy.LargeBinary,
+    DataType.MAP: ...,
+    DataType.STRUCT: ...,
+    DataType.UNION: ...,
+    DataType.SET: ...,
+    DataType.GEOGRAPHY: ...,
+    DataType.ENUM: sqlalchemy.Enum,
+    DataType.JSON: sqlalchemy.JSON,
+    DataType.UUID: CustomTypes.UUID,
 }
 
 
@@ -46,16 +81,9 @@ def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
     )
 
 
-def build_table_name(table: Table, database: Database) -> str:
-    """
-    Let's use the Table information to build the table
-    name, which will be based on its db name.
-    """
-
-    return f"{database.name.__root__}.{table.name.__root__}"
-
-
-def ometa_to_orm(table: Table, database: Database) -> DeclarativeMeta:
+def ometa_to_orm(
+    table: Table, database: Database
+) -> type:  # Actually returns DeclarativeMeta
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy DeclarativeMeta class
@@ -76,7 +104,8 @@ def ometa_to_orm(table: Table, database: Database) -> DeclarativeMeta:
         table.fullyQualifiedName.replace(".", "_"),  # Output class name
         (Base,),  # SQLAlchemy declarative base
         {
-            "__tablename__": build_table_name(table, database),
+            "__tablename__": str(table.name.__root__),
+            "__table_args__": {"schema": str(database.name.__root__)},
             **cols,
         },
     )
