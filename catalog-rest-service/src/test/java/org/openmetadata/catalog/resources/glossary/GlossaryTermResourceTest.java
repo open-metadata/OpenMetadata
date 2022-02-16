@@ -16,20 +16,29 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
@@ -42,6 +51,7 @@ import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityI
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -90,6 +100,89 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GLOSSARY_TERM_REF2 = new GlossaryTermEntityInterface(GLOSSARY_TERM2).getEntityReference();
   }
 
+  @Order(0)
+  @Test
+  void get_listGlossaryTermsWithDifferentFilters() throws HttpResponseException {
+    // Create the following glossary
+    // glossary1
+    // - term1
+    //   - term11
+    //   - term12
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest("glossary1", "", "", null);
+    Glossary glossary1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm term1 = createTerm(glossary1, null, "term1");
+    createTerm(glossary1, term1, "term11");
+    createTerm(glossary1, term1, "term12");
+
+    // Create the following glossary
+    // glossary2
+    // - term2
+    //   - term21
+    //   - term22
+    createGlossary = glossaryResourceTest.createRequest("glossary2", "", "", null);
+    Glossary glossary2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm term2 = createTerm(glossary2, null, "term2");
+    createTerm(glossary2, term2, "term21");
+    createTerm(glossary2, term2, "term22");
+
+    // List terms without any filters
+    ResultList<GlossaryTerm> list = listEntities(null, ADMIN_AUTH_HEADERS);
+    List<String> expectedTerms =
+        Arrays.asList(
+            GLOSSARY_TERM1.getName(),
+            GLOSSARY_TERM2.getName(),
+            "term1",
+            "term11",
+            "term12",
+            "term2",
+            "term21",
+            "term22");
+    assertContains(list, expectedTerms);
+
+    // List terms under glossary1
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("glossary", glossary1.getId().toString());
+    list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertContains(list, Arrays.asList("term1", "term11", "term12"));
+
+    // List terms under glossary1 parent term1
+    queryParams = new HashMap<>();
+    queryParams.put("glossary", glossary1.getId().toString());
+    queryParams.put("parent", term1.getId().toString());
+    list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertContains(list, Arrays.asList("term11", "term12"));
+
+    // List terms under glossary2
+    queryParams = new HashMap<>();
+    queryParams.put("glossary", glossary2.getId().toString());
+    list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertContains(list, Arrays.asList("term2", "term21", "term22"));
+
+    // List terms under glossary 2 but give glossary term1 in glossary 1 as parent
+    queryParams.put("parent", term1.getId().toString());
+    Map<String, String> map = Collections.unmodifiableMap(queryParams);
+    assertResponse(
+        () -> listEntities(map, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        glossaryTermMismatch(term1.getId().toString(), glossary2.getId().toString()));
+  }
+
+  public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws HttpResponseException {
+    EntityReference glossaryRef = new GlossaryEntityInterface(glossary).getEntityReference();
+    EntityReference parentRef = parent != null ? new GlossaryTermEntityInterface(parent).getEntityReference() : null;
+    CreateGlossaryTerm createGlossaryTerm =
+        createRequest(termName, "", "", null).withGlossary(glossaryRef).withParent(parentRef);
+    return createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+  }
+
+  public void assertContains(ResultList<GlossaryTerm> list, List<String> expectedTerm) {
+    assertEquals(expectedTerm.size(), list.getData().size());
+    list.getData().forEach(term -> assertTrue(expectedTerm.contains(term.getName())));
+  }
+
   @Override
   public CreateGlossaryTerm createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreateGlossaryTerm()
@@ -108,25 +201,30 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public void validateCreatedEntity(
-      GlossaryTerm createdEntity, CreateGlossaryTerm request, Map<String, String> authHeaders)
+  public void validateCreatedEntity(GlossaryTerm entity, CreateGlossaryTerm request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(createdEntity), request.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(entity), request.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
-    validateEntityReference(createdEntity.getGlossary());
-    assertTrue(EntityUtil.entityReferenceMatch.test(request.getGlossary(), createdEntity.getGlossary()));
+    // Validate fully qualified name
+    String fqn = entity.getParent() == null ? entity.getGlossary().getName() : entity.getParent().getName();
+    fqn = fqn + "." + entity.getName();
+    assertEquals(fqn, entity.getFullyQualifiedName());
+
+    // Validate glossary that holds this term is present
+    validateEntityReference(entity.getGlossary());
+    assertTrue(EntityUtil.entityReferenceMatch.test(request.getGlossary(), entity.getGlossary()));
 
     if (request.getParent() != null) {
-      validateEntityReference(createdEntity.getParent());
-      assertTrue(EntityUtil.entityReferenceMatch.test(request.getParent(), createdEntity.getParent()));
+      validateEntityReference(entity.getParent());
+      assertTrue(EntityUtil.entityReferenceMatch.test(request.getParent(), entity.getParent()));
     }
 
-    assertEntityReferenceList(request.getRelatedTerms(), createdEntity.getRelatedTerms());
-    assertEntityReferenceList(request.getReviewers(), createdEntity.getReviewers());
+    assertEntityReferenceList(request.getRelatedTerms(), entity.getRelatedTerms());
+    assertEntityReferenceList(request.getReviewers(), entity.getReviewers());
 
     // Entity specific validation
-    TestUtils.validateTags(request.getTags(), createdEntity.getTags());
+    TestUtils.validateTags(request.getTags(), entity.getTags());
   }
 
   @Override
@@ -154,7 +252,22 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public void validateGetWithDifferentFields(GlossaryTerm entity, boolean byName) throws HttpResponseException {}
+  public void validateGetWithDifferentFields(GlossaryTerm term, boolean byName) throws HttpResponseException {
+    String fields = "";
+    term =
+        byName
+            ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNull(term.getChildren(), term.getRelatedTerms(), term.getReviewers(), term.getTags());
+
+    // .../teams?fields=profile,teams
+    fields = "relatedTerms,reviewers,tags";
+    term =
+        byName
+            ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(term.getRelatedTerms(), term.getReviewers(), term.getTags());
+  }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
