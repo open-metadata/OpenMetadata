@@ -439,7 +439,6 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
-    setEntityLineage({} as EntityLineage);
   }, [pipelineFQN]);
 
   useEffect(() => {
