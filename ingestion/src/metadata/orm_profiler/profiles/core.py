@@ -15,6 +15,7 @@ Main Profile definition and queries to execute
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+from sqlalchemy.orm import Query
 from sqlalchemy.orm.session import Session
 
 from metadata.orm_profiler.metrics.core import (
@@ -24,6 +25,7 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TimeMetric,
 )
+from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -48,7 +50,7 @@ class Profiler(ABC):
         return self._metrics
 
     @property
-    def results(self):
+    def results(self) -> Optional[Dict[str, Any]]:
         """
         Iterate over the _metrics to pick up
         all values from _results dict.
@@ -62,6 +64,9 @@ class Profiler(ABC):
         Here we prepare the logic to being able to have
         the complete suite of computed metrics.
         """
+        if not self._results:
+            return None
+
         results = {
             metric.name(): self._results.get(metric.name()) for metric in self.metrics
         }
@@ -90,12 +95,27 @@ class Profiler(ABC):
     def custom_metrics(self):
         return self._filter_metrics(CustomMetric)
 
-    def build_query(self):
+    def build_query(self) -> Optional[Query]:
         """
-        Build the query with all the metrics
+        Build the query with all the metrics.
+
+        Can return None if no metric has an allowed
+        type. In that case, we cannot build an empty
+        query.
         """
 
-        query = self.session.query(*[metric.fn() for metric in self.static_metrics])
+        allowed_metrics = [
+                metric.fn()
+                for metric in self.static_metrics
+                if metric.col.type.__class__ not in NOT_COMPUTE
+            ]
+
+        if not allowed_metrics:
+            return
+
+        query = self.session.query(
+            *allowed_metrics
+        )
 
         return query
 
@@ -117,11 +137,14 @@ class Profiler(ABC):
 
         logger.info("Running post Profiler...")
 
+        if not self._results:
+            return
+
         for metric in self.composed_metrics:
             # Composed metrics require the results as an argument
             self._results[metric.name()] = metric.fn(self.results)
 
-    def execute(self):
+    def execute(self) -> Optional[Dict[str, Any]]:
         """
         Run the whole profiling
         """
@@ -146,7 +169,10 @@ class SingleProfiler(Profiler):
         """
         logger.info("Running SQL Profiler...")
 
-        row = super().build_query().first()
-        self._results = dict(row)
+        query = super().build_query()
+
+        if query:
+            row = query.first()
+            self._results = dict(row)
 
         return self.results

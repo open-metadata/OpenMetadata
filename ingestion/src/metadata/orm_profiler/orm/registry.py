@@ -36,3 +36,12 @@ SQLALCHEMY_NUMERIC = {
     sqlalchemy.DECIMAL,
     sqlalchemy.NUMERIC,
 }
+
+# Sometimes we want to skip types for computing metrics.
+# If the type is NULL, then we won't run the metric execution
+# in the profiler.
+# Note that not mapped types are set to NULL by default.
+NOT_COMPUTE = {
+    sqlalchemy.types.NullType,
+    sqlalchemy.ARRAY,
+}
