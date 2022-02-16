@@ -27,6 +27,7 @@ class CustomTypes(TypeRegistry):
 
 # Numeric types in SQLAlchemy
 SQLALCHEMY_NUMERIC = {
+    sqlalchemy.Integer,
     sqlalchemy.INTEGER,
     sqlalchemy.SMALLINT,
     sqlalchemy.INT,
