@@ -10,7 +10,7 @@ description: >-
 
 Using the OpenMetadata Athena connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-### **OpenMetadata (version 0.7.0 or later)**
+### **OpenMetadata (version 0.8.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 

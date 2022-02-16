@@ -10,7 +10,7 @@ description: >-
 
 Using the OpenMetadata Redshift connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-### OpenMetadata (version 0.7.0 or later)
+### OpenMetadata (version 0.8.0 or later)
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -31,7 +31,7 @@ python3 --version
 
 ### PostgreSQL (version 14.1 or later)
 
-Please use the following command to check the version of PostgreSQL you have.&#x20;
+Please use the following command to check the version of PostgreSQL you have.
 
 ```
 postgres --version
@@ -56,7 +56,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 ### 1. Prepare a Python virtual environment
 
-In this step, we'll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.&#x20;
+In this step, we'll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
@@ -78,7 +78,7 @@ python3 -m venv env
 
 #### 1.3 Activate the virtual environment
 
-Run the following command to activate the virtual environment.&#x20;
+Run the following command to activate the virtual environment.
 
 ```bash
 source env/bin/activate
@@ -104,12 +104,12 @@ pip3 install 'openmetadata-ingestion[redshift]'
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `redshift.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.&#x20;
+Create a new file called `redshift.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
 Copy and paste the configuration template below into the `redshift.json` file you created.
 
 {% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.&#x20;
+Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
 {% code title="redshift.json" %}
@@ -147,13 +147,13 @@ Note: The `source.config` field in the configuration JSON will include the major
 ```
 {% endcode %}
 
-### 4. Configure service settings&#x20;
+### 4. Configure service settings
 
 In this step we will configure the Redshift service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
 
 #### host\_port
 
-Edit the value for `source.config.host_port` in `redshift.json` for your Redshift deployment. Use the `host:port` format illustrated in the example below.&#x20;
+Edit the value for `source.config.host_port` in `redshift.json` for your Redshift deployment. Use the `host:port` format illustrated in the example below.
 
 ```json
 "host_port": "cluster.name.region.redshift.amazonaws.com:5439"
@@ -183,7 +183,7 @@ Edit the value for `source.config.password` with the password for your Redshift 
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value  for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Redshift services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Redshift services that you might be ingesting metadata from.
 
 ```json
 "service_name": "aws_redshift"
@@ -191,7 +191,7 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the  `source.config.database` field in your configuration file. If this field is not included, the Redshift connector will ingest metadata from all databases that the specified user is authorized to read.&#x20;
+If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the Redshift connector will ingest metadata from all databases that the specified user is authorized to read.
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
@@ -201,7 +201,7 @@ To specify a single database to ingest metadata from, provide the name of the da
 
 ### 5. Enable/disable the data profiler
 
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.&#x20;
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
 #### data\_profiler\_enabled
 
@@ -213,7 +213,7 @@ You may disable the data profiler by setting the value for the key `source.confi
 "data_profiler_enabled": "false"
 ```
 
-If you want to enable the data profiler, update your configuration file as follows.&#x20;
+If you want to enable the data profiler, update your configuration file as follows.
 
 ```json
 "data_profiler_enabled": "true"
@@ -277,7 +277,7 @@ Note: `source.config.include_tables` is set to `true` by default.
 
 #### table\_filter\_pattern (optional)
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.&#x20;
+Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
 
 Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
 
@@ -402,7 +402,7 @@ As the ingestion workflow runs, you may observe progress both from the command l
 
 ### Error: pg\_config executable not found
 
-When attempting to install the `openmetadata-ingestion[redshift]` Python package in Step 2, you might encounter the following error.&#x20;
+When attempting to install the `openmetadata-ingestion[redshift]` Python package in Step 2, you might encounter the following error.
 
 ```
 pg_config is required to build psycopg2 from source.  Please add the directory
@@ -440,7 +440,7 @@ Then re-run the install command in [Step 2](redshift.md#install-from-pypi-or-sou
 
 ### requests.exceptions.ConnectionError
 
-If you encounter the following error when attempting to run the ingestion workflow in Step 12, this is probably because there is no OpenMetadata server running at http://localhost:8585.&#x20;
+If you encounter the following error when attempting to run the ingestion workflow in Step 12, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 

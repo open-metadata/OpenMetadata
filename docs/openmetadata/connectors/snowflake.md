@@ -10,7 +10,7 @@ description: >-
 
 Using the OpenMetadata Snowflake connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-### OpenMetadata (version 0.7.0 or later)
+### OpenMetadata (version 0.8.0 or later)
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -48,7 +48,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 ### 1. Prepare a Python virtual environment
 
-In this step, we'll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.&#x20;
+In this step, we'll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
@@ -70,7 +70,7 @@ python3 -m venv env
 
 #### 1.3 Activate the virtual environment
 
-Run the following command to activate the virtual environment.&#x20;
+Run the following command to activate the virtual environment.
 
 ```bash
 source env/bin/activate
@@ -96,7 +96,7 @@ pip3 install 'openmetadata-ingestion[snowflake]'
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.&#x20;
+Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
 To create a configuration file for Snowflake, you’ll need to select one of the three options below and then customize the appropriate template to match your needs.
 
@@ -104,7 +104,7 @@ To create a configuration file for Snowflake, you’ll need to select one of the
 * Authenticate with SSO Specifying Provider, Username, and Password
 * Authenticate with Username and Password
 
-The choice of a template depends on how your Snowflake user will be authenticated.&#x20;
+The choice of a template depends on how your Snowflake user will be authenticated.
 
 Please select the form of authentication you will use for Snowflake and select the template below that matches your use case. Then, copy and paste the configuration template into the `snowflake.json` file you created.
 
@@ -114,7 +114,7 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 #### Authenticate with SSO using an External Browser Popup
 
-Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). This method will pop up a browser window to enable you to authenticate using your SSO method.&#x20;
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). This method will pop up a browser window to enable you to authenticate using your SSO method.
 
 ```json
 {
@@ -160,7 +160,7 @@ Use this method to test metadata ingestion on a Snowflake instance to which you 
 
 #### Authenticate with SSO Specifying Provider, Username, and Password
 
-Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). Using this method, you will specify a url for your authentication provider and a username and password that will authenticate against this provider. &#x20;
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). Using this method, you will specify a url for your authentication provider and a username and password that will authenticate against this provider.
 
 ```json
 {
@@ -207,7 +207,7 @@ Use this method to test metadata ingestion on a Snowflake instance to which you 
 
 #### Authenticate with Username and Password
 
-Use this method in production OpenMetadata deployments in which you plan to configure scheduled metadata ingestion. For this method your Snowflake instance must support authentication using username and password.&#x20;
+Use this method in production OpenMetadata deployments in which you plan to configure scheduled metadata ingestion. For this method your Snowflake instance must support authentication using username and password.
 
 ```json
 {
@@ -246,13 +246,13 @@ Use this method in production OpenMetadata deployments in which you plan to conf
 }
 ```
 
-### 4. Configure service settings&#x20;
+### 4. Configure service settings
 
 In this step we will configure the Snowflake service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
 #### host\_port
 
-Edit the value for `source.config.host_port` in `snowflake.json` for your Snowflake deployment. Use the `host:port` format illustrated in the example below.&#x20;
+Edit the value for `source.config.host_port` in `snowflake.json` for your Snowflake deployment. Use the `host:port` format illustrated in the example below.
 
 ```json
 "host_port": "account.region.service.snowflakecomputing.com"
@@ -298,7 +298,7 @@ Edit the value for `source.config.warehouse` with the name of the Snowflake ware
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the  `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.&#x20;
+If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
@@ -308,7 +308,7 @@ To specify a single database to ingest metadata from, provide the name of the da
 
 ### 5. Enable/disable the data profiler
 
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.&#x20;
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
 #### data\_profiler\_enabled
 
@@ -320,7 +320,7 @@ You may disable the data profiler by setting the value for the key `source.confi
 "data_profiler_enabled": "false"
 ```
 
-If you want to enable the data profiler, update your configuration file as follows.&#x20;
+If you want to enable the data profiler, update your configuration file as follows.
 
 ```json
 "data_profiler_enabled": "true"
@@ -384,7 +384,7 @@ Note: `source.config.include_tables` is set to `true` by default.
 
 #### table\_filter\_pattern (optional)
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.&#x20;
+Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
 
 Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
 
@@ -526,7 +526,7 @@ Then re-run the install command in [Step 2](snowflake.md#install-from-pypi-or-so
 
 ### requests.exceptions.ConnectionError
 
-If you encounter the following error when attempting to run the ingestion workflow in Step 12, this is probably because there is no OpenMetadata server running at http://localhost:8585.&#x20;
+If you encounter the following error when attempting to run the ingestion workflow in Step 12, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
