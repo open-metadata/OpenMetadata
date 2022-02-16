@@ -19,6 +19,9 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -135,7 +138,7 @@ RequestsTransport.execute = execute
 class ClickhouseConfig(SQLConnectionConfig):
     host_port = "localhost:8123"
     scheme = "clickhouse+http"
-    service_type = "ClickHouse"
+    service_type = DatabaseServiceType.ClickHouse.value
 
     def get_connection_url(self):
         return super().get_connection_url()

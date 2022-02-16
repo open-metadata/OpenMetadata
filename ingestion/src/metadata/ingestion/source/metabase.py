@@ -56,7 +56,7 @@ class MetabaseSourceConfig(ConfigModel):
     dashboard_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     service_name: str
-    service_type: str = "Metabase"
+    service_type: str = DashboardServiceType.Metabase.value
     database_service_name: str = None
 
     def get_connection_url(self):

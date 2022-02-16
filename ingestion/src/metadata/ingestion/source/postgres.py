@@ -29,7 +29,7 @@ class PostgresConfig(SQLConnectionConfig):
     # defaults
     scheme = "postgresql+psycopg2"
     service_name = "postgres"
-    service_type = "Postgres"
+    service_type = DatabaseServiceType.Postgres.value
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]

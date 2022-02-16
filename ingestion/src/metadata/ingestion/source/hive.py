@@ -15,6 +15,9 @@ from typing import Optional
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -61,7 +64,7 @@ HiveDialect.get_columns = get_columns
 class HiveConfig(SQLConnectionConfig):
     scheme = "hive"
     auth_options: Optional[str] = None
-    service_type = "Hive"
+    service_type = DatabaseServiceType.Hive.value
 
     def get_connection_url(self):
         url = super().get_connection_url()

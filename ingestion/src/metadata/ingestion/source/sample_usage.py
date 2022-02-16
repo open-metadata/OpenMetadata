@@ -14,6 +14,9 @@ import json
 from datetime import datetime
 from typing import Iterable
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -26,7 +29,7 @@ from metadata.utils.helpers import get_database_service_or_create
 
 class SampleUsageSource(Source[TableQuery]):
 
-    service_type = "BigQuery"
+    service_type = DatabaseServiceType.BigQuery.value
 
     def __init__(
         self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig, ctx

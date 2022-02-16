@@ -50,7 +50,7 @@ class TableauSourceConfig(ConfigModel):
     site_name: str
     site_url: str
     service_name: str
-    service_type: str = "Tableau"
+    service_type: str = DashboardServiceType.Tableau.value
     personal_access_token_name: Optional[str] = None
     personal_access_token_secret: Optional[str] = None
     dashboard_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()

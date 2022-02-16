@@ -18,6 +18,9 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.sqltypes import VARCHAR, String
 from sqlalchemy_vertica.base import VerticaDialect
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -213,7 +216,7 @@ VerticaDialect.get_view_definition = (
 class VerticaConfig(SQLConnectionConfig):
     host_port = "localhost:5433"
     scheme = "vertica+vertica_python"
-    service_type = "Vertica"
+    service_type = DatabaseServiceType.Vertica.value
 
     def get_connection_url(self):
         return super().get_connection_url()
