@@ -25,7 +25,9 @@
         "MariaDB",
         "Druid",
         "Db2",
-        "ClickHouse"
+        "ClickHouse",
+        "DynamoDB",
+        "SingleStore"
       ],
       "javaEnums": [
         {
@@ -78,6 +80,12 @@
         },
         {
           "name": "ClickHouse"
+        },
+        {
+          "name": "DynamoDB"
+        },
+        {
+          "name": "SingleStore"
         }
       ]
     },
@@ -174,6 +182,12 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "href", "databaseConnection"],
+  "required": [
+    "id",
+    "name",
+    "serviceType",
+    "href",
+    "databaseConnection"
+  ],
   "additionalProperties": false
 }

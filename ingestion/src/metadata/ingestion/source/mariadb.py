@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -16,7 +19,7 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 class MariadbConfig(SQLConnectionConfig):
     host_port = "localhost:3306"
     scheme = "mysql+pymysql"
-    service_type = "MariaDB"
+    service_type = DatabaseServiceType.MariaDB.value
 
     def get_connection_url(self):
         return super().get_connection_url()

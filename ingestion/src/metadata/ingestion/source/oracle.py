@@ -15,6 +15,9 @@ from typing import Optional
 import cx_Oracle  # noqa: F401
 import pydantic
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -25,7 +28,7 @@ class OracleConfig(SQLConnectionConfig):
     scheme = "oracle+cx_oracle"
     oracle_service_name: Optional[str] = None
     query: Optional[str] = "select * from {}.{} where ROWNUM <= 50"
-    service_type = "Oracle"
+    service_type = DatabaseServiceType.Oracle.value
 
     @pydantic.validator("oracle_service_name")
     def check_oracle_service_name(cls, v, values):

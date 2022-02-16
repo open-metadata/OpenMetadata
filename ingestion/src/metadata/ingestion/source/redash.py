@@ -34,7 +34,7 @@ class RedashSourceConfig(ConfigModel):
     username: str = ""
     api_key: str
     service_name: str
-    service_type: str = "Redash"
+    service_type: str = DashboardServiceType.Redash.value
 
 
 @dataclass

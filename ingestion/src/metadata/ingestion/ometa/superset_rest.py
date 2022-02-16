@@ -18,6 +18,9 @@ from typing import Optional
 from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
+)
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
 
@@ -42,7 +45,7 @@ class SupersetConfig(ConfigModel):
     username: Optional[str] = None
     password: Optional[SecretStr] = None
     service_name: str
-    service_type: str = "Superset"
+    service_type: str = DashboardServiceType.Superset.value
     provider: str = "db"
     options: dict = {}
     db_service_name: Optional[str] = None
