@@ -60,7 +60,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -96,10 +95,6 @@ public class DatabaseResource {
     Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
     return db;
-  }
-
-  public static void addHref(UriInfo uriInfo, EntityReference databaseEntityReference) {
-    databaseEntityReference.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, databaseEntityReference.getId()));
   }
 
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {

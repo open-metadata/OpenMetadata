@@ -305,6 +305,19 @@ public final class TestUtils {
     }
   }
 
+  public static void assertEntityReferenceList(List<EntityReference> expected, List<EntityReference> actual) {
+    if (expected == actual) { // Take care of both being null
+      return;
+    }
+    validateEntityReference(actual);
+    if (expected != null) {
+      assertEquals(expected.size(), actual.size());
+      for (EntityReference e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
+      }
+    }
+  }
+
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
     boolean exists = false;
     for (EntityReference ref : list) {

@@ -114,6 +114,10 @@ public final class Entity {
         entityRepository.getClass().getSimpleName());
   }
 
+  public static EntityReference getEntityReference(EntityReference ref) throws IOException {
+    return getEntityReference(ref.getType(), ref.getId());
+  }
+
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {

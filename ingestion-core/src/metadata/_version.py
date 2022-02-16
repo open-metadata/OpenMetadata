@@ -7,5 +7,5 @@ Provides metadata version information.
 
 from incremental import Version
 
-__version__ = Version("metadata", 0, 9, 0, dev=3)
+__version__ = Version("metadata", 0, 9, 0, dev=4)
 __all__ = ["__version__"]

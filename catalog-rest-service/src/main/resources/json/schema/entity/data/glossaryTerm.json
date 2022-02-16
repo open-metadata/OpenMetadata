@@ -24,6 +24,11 @@
           "format": "uri"
         }
       }
+    },
+    "status" : {
+      "type" : "string",
+      "enum": ["Draft", "Approved", "Deprecated"],
+      "default": "Draft"
     }
   },
   "properties": {
@@ -98,10 +103,7 @@
     },
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this glossary term.",
@@ -114,6 +116,10 @@
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "status" : {
+      "description" : "Status of the glossary term.",
+      "$ref" : "#/definitions/status"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",

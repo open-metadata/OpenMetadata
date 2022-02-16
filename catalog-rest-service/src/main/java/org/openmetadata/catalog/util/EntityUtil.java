@@ -87,7 +87,7 @@ public final class EntityUtil {
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
-      (ref1, ref2) -> ref1.getId().equals(ref2.getId());
+      (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN());

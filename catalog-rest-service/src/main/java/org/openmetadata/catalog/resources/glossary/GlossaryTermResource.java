@@ -90,6 +90,9 @@ public class GlossaryTermResource {
   public static GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
     term.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, term.getId()));
     Entity.withHref(uriInfo, term.getGlossary());
+    Entity.withHref(uriInfo, term.getParent());
+    Entity.withHref(uriInfo, term.getRelatedTerms());
+    Entity.withHref(uriInfo, term.getReviewers());
     return term;
   }
 
@@ -112,7 +115,7 @@ public class GlossaryTermResource {
     }
   }
 
-  static final String FIELDS = "tags";
+  static final String FIELDS = "children,relatedTerms,reviewers,tags";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
@@ -380,17 +383,14 @@ public class GlossaryTermResource {
   }
 
   private GlossaryTerm getGlossaryTerm(SecurityContext securityContext, CreateGlossaryTerm create) throws IOException {
-    EntityReference glossary = Entity.getEntityReference(Entity.GLOSSARY, create.getGlossaryId());
-    EntityReference parentTerm =
-        create.getParentId() != null ? Entity.getEntityReference(Entity.GLOSSARY_TERM, create.getParentId()) : null;
     return new GlossaryTerm()
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withSynonyms(create.getSynonyms())
-        .withGlossary(glossary)
-        .withParent(parentTerm)
+        .withGlossary(create.getGlossary())
+        .withParent(create.getParent())
         .withRelatedTerms(create.getRelatedTerms())
         .withReferences(create.getReferences())
         .withReviewers(create.getReviewers())
