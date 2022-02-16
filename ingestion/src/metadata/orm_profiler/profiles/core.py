@@ -13,7 +13,7 @@
 Main Profile definition and queries to execute
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from sqlalchemy.orm.session import Session
 
@@ -34,11 +34,10 @@ class Profiler(ABC):
     Basic Profiler
     """
 
-    results: Dict[str, Any] = None
-
     def __init__(self, session: Session, *metric: Metric):
         self._session = session
         self._metrics = metric
+        self._results: Optional[Dict[str, Any]] = None
 
     @property
     def session(self) -> Session:
@@ -47,6 +46,27 @@ class Profiler(ABC):
     @property
     def metrics(self):
         return self._metrics
+
+    @property
+    def results(self):
+        """
+        Iterate over the _metrics to pick up
+        all values from _results dict.
+
+        Note that if some Metric does not run against
+        a specific column (e.g., STDDEV only runs against
+        numerical columns), then the metric won't appear
+        in _results. However, we still want that
+        result to be available, even if it is `None`.
+
+        Here we prepare the logic to being able to have
+        the complete suite of computed metrics.
+        """
+        results = {
+            metric.name(): self._results.get(metric.name()) for metric in self.metrics
+        }
+
+        return results
 
     def _filter_metrics(self, _type: type):  # Type of class is `type`
         """
@@ -129,6 +149,6 @@ class SingleProfiler(Profiler):
         logger.info("Running SQL Profiler...")
 
         row = super().build_query().first()
-        self.results = dict(row)
+        self._results = dict(row)
 
         return self.results
