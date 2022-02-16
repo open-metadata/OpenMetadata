@@ -1,0 +1,129 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/glossaryTerm.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlossaryTerm",
+  "description": "This schema defines the Glossary term entities.",
+  "type": "object",
+  "definitions": {
+    "name": {
+      "description": "Name that identifies a glossary term.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "termReference": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`",
+          "type": "string"
+        },
+        "endpoint": {
+          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`",
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of a glossary term instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Preferred name for the glossary term.",
+      "$ref": "#/definitions/name"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this glossary.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the glossary term.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "synonyms": {
+      "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/name"
+      }
+    },
+    "glossary": {
+      "description": "Glosary that this term belongs to.",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "parent": {
+      "description": "Parent glossary term that this term is child of. When `null` this term is the root term of the glossary.",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "Other glossary terms that are children of this glossary term.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "relatedTerms": {
+      "description": "Other glossary terms that are related to this glossary term.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "references": {
+      "description": "Link to a reference from an external glossary.",
+      "$ref": "#/definitions/termReference"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "skos": {
+      "description": "SKOS data in JSON-LD format",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "reviewers": {
+      "description": "User names of the reviewers for this glossary.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "description": "Tags for this glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "glossary"
+  ]
+}

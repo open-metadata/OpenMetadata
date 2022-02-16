@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createGlossary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Glossary entity request",
+  "description": "Create Glossary entity request",
+  "type": "object",
+  "properties": {
+    "glossaryId" : {
+      "description": "UUID of the glossary.",
+      "$ref" : "../../type/basic.json#/definitions/uuid"
+    },
+    "parentId" : {
+      "description": "UUID of the parent term. When null, the term is at the root of the glossary.",
+      "$ref" : "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Preferred name for the glossary term.",
+      "$ref": "../../entity/data/glossaryTerm.json#/definitions/name"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this glossary.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the glossary term.",
+      "type": "string"
+    },
+    "synonyms": {
+      "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/glossaryTerm.json#/definitions/name"
+      }
+    },
+    "children": {
+      "description": "Other glossary terms that are children of this glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
+    },
+    "relatedTerms": {
+      "description": "Other glossary terms that are related to this glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
+    },
+    "references": {
+      "description": "Link to a reference from an external glossary.",
+      "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
+    },
+    "reviewers": {
+      "description": "User names of the reviewers for this glossary.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "description": "Tags for this glossary term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    }
+  },
+  "required": [
+    "glossaryId",
+    "name"
+  ]
+}

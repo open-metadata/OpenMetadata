@@ -829,15 +829,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Create an entity with owner
     K request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
-    K updateRequest = createRequest(getEntityName(test), "newdescription", "displayName", null);
+    K updateRequest = createRequest(getEntityName(test), "newDescription", "displayName", null);
     HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> updateAndCheckEntity(updateRequest, OK, TEST_AUTH_HEADERS, UpdateType.NO_CHANGE, null));
+        assertThrows(HttpResponseException.class, () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS));
     TestUtils.assertResponse(
         exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
@@ -846,7 +844,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with null description
     K request = createRequest(getEntityName(test), null, "displayName", null);
-    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update null description with a new description
@@ -861,7 +859,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
     // Create entity with empty description
     K request = createRequest(getEntityName(test), "", "displayName", null);
-    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update empty description with a new description
