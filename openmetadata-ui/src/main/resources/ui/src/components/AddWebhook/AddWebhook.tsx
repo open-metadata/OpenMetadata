@@ -93,6 +93,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     endpointUrl: false,
     eventFilters: false,
     invalidEndpointUrl: false,
+    invalidEventFilters: false,
   });
   const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
@@ -214,7 +215,34 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           : ({} as EventFilter)
       );
       setShowErrorMsg((prev) => {
-        return { ...prev, eventFilters: false };
+        return { ...prev, eventFilters: false, invalidEventFilters: false };
+      });
+    }
+  };
+
+  const handleEntitySelection = (type: EventType, value: string) => {
+    let setter;
+    switch (type) {
+      case EventType.EntityCreated: {
+        setter = setCreateEvents;
+
+        break;
+      }
+      case EventType.EntityUpdated: {
+        setter = setUpdateEvents;
+
+        break;
+      }
+      case EventType.EntityDeleted: {
+        setter = setDeleteEvents;
+
+        break;
+      }
+    }
+    if (setter) {
+      setter((prev) => getSelectedEvents(prev, value));
+      setShowErrorMsg((prev) => {
+        return { ...prev, eventFilters: false, invalidEventFilters: false };
       });
     }
   };
@@ -234,6 +262,21 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     return eventFilters;
   };
 
+  const validateEventFilters = () => {
+    let isValid = false;
+    if (!isEmpty(createEvents)) {
+      isValid = Boolean(createEvents.entities?.length);
+    }
+    if (!isEmpty(updateEvents)) {
+      isValid = Boolean(updateEvents.entities?.length);
+    }
+    if (!isEmpty(deleteEvents) && deleteEvents.entities?.length) {
+      isValid = Boolean(deleteEvents.entities?.length);
+    }
+
+    return isValid;
+  };
+
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
@@ -244,6 +287,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         ...deleteEvents,
       }),
       invalidEndpointUrl: !isValidUrl(endpointUrl.trim()),
+      invalidEventFilters: !validateEventFilters(),
     };
     setShowErrorMsg(errMsg);
 
@@ -405,9 +449,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             selectedItems={createEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
-              setCreateEvents((prev) =>
-                getSelectedEvents(prev, value as string)
-              )
+              handleEntitySelection(EventType.EntityCreated, value as string)
             }
           />
         </Field>
@@ -440,9 +482,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             selectedItems={updateEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
-              setUpdateEvents((prev) =>
-                getSelectedEvents(prev, value as string)
-              )
+              handleEntitySelection(EventType.EntityUpdated, value as string)
             }
           />
         </Field>
@@ -475,13 +515,14 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             selectedItems={deleteEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
-              setDeleteEvents((prev) =>
-                getSelectedEvents(prev, value as string)
-              )
+              handleEntitySelection(EventType.EntityDeleted, value as string)
             }
           />
-          {showErrorMsg.eventFilters &&
-            errorMsg('Webhook event filters are required.')}
+          {showErrorMsg.eventFilters
+            ? errorMsg('Webhook event filters are required.')
+            : showErrorMsg.invalidEventFilters
+            ? errorMsg('Webhook event filters are invalid.')
+            : null}
         </Field>
         <Field>
           <div className="tw-flex tw-justify-end tw-pt-1">

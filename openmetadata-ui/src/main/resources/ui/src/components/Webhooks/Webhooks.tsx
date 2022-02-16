@@ -19,6 +19,7 @@ import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import { getDocButton } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
@@ -117,7 +118,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
     );
   };
 
-  return (
+  return data.length ? (
     <PageLayout leftPanel={fetchLeftPanel()} rightPanel={fetchRightPanel()}>
       <div className="">
         <div className="tw-flex tw-justify-end tw-items-center">
@@ -166,6 +167,23 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
           />
         )}
       </div>
+    </PageLayout>
+  ) : (
+    <PageLayout>
+      <ErrorPlaceHolder>
+        <p className="tw-text-center">No webhooks found</p>
+        <p className="tw-text-center">
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <button
+              className="link-text tw-underline"
+              data-testid="add-webhook-button"
+              onClick={onAddWebhook}>
+              Click here
+            </button>
+          </NonAdminAction>{' '}
+          to add new Webhook
+        </p>
+      </ErrorPlaceHolder>
     </PageLayout>
   );
 };
