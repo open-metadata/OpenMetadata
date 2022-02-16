@@ -17,7 +17,6 @@ import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import {
@@ -36,7 +35,6 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
@@ -347,8 +345,8 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const getDeleteButton = () => {
-    return (
-      <NonAdminAction position="top" title={TITLE_FOR_NON_ADMIN_ACTION}>
+    return allowAccess ? (
+      <>
         {deleteState === 'waiting' ? (
           <Button
             disabled
@@ -371,13 +369,13 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             Delete
           </Button>
         )}
-      </NonAdminAction>
-    );
+      </>
+    ) : null;
   };
 
   const getSaveButton = () => {
-    return (
-      <NonAdminAction position="top" title={TITLE_FOR_NON_ADMIN_ACTION}>
+    return allowAccess ? (
+      <>
         {saveState === 'waiting' ? (
           <Button
             disabled
@@ -409,8 +407,8 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             Save
           </Button>
         )}
-      </NonAdminAction>
-    );
+      </>
+    ) : null;
   };
 
   const fetchRightPanel = () => {
