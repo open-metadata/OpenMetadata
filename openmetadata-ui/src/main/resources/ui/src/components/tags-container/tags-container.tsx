@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { withLoader } from '../../hoc/withLoader';
 import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
 import Tags from '../tags/tags';
@@ -255,4 +256,4 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   );
 };
 
-export default TagsContainer;
+export default withLoader<TagsContainerProps>(TagsContainer);

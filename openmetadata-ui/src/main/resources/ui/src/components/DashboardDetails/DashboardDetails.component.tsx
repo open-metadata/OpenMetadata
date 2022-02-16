@@ -30,6 +30,7 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -49,7 +50,6 @@ const DashboardDetails = ({
   followDashboardHandler,
   unfollowDashboardHandler,
   owner,
-  tagList,
   tier,
   slashedDashboardName,
   activeTab,
@@ -90,6 +90,9 @@ const DashboardDetails = ({
     chart: ChartType;
     index: number;
   }>();
+  const [tagList, setTagList] = useState<Array<string>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -307,6 +310,17 @@ const DashboardDetails = ({
     }
   };
 
+  const fetchTags = () => {
+    setIsTagLoading(true);
+    getTagCategories()
+      .then((res) => {
+        setTagList(getTaglist(res.data));
+      })
+      .finally(() => {
+        setIsTagLoading(false);
+      });
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -332,7 +346,6 @@ const DashboardDetails = ({
             hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
             owner={owner}
-            tagList={tagList}
             tags={dashboardTags}
             tagsHandler={onTagUpdate}
             tier={tier || ''}
@@ -449,6 +462,7 @@ const DashboardDetails = ({
                               className="tw-group tw-relative tableBody-cell"
                               onClick={() => {
                                 if (!editChartTags) {
+                                  fetchTags();
                                   handleEditChartTag(chart, index);
                                 }
                               }}>
@@ -476,7 +490,12 @@ const DashboardDetails = ({
                                   trigger="click">
                                   <TagsContainer
                                     editable={editChartTags?.index === index}
+                                    isLoading={
+                                      isTagLoading &&
+                                      editChartTags?.index === index
+                                    }
                                     selectedTags={chart.tags as EntityTags[]}
+                                    size="small"
                                     tagList={tagList}
                                     type="label"
                                     onCancel={() => {

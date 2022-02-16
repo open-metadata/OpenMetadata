@@ -40,7 +40,6 @@ export interface DashboardDetailsProps {
   charts: Array<ChartType>;
   serviceType: string;
   dashboardUrl: string;
-  tagList: Array<string>;
   users: Array<User>;
   dashboardDetails: Dashboard;
   entityName: string;
