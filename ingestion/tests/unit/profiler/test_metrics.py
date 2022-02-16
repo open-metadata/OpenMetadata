@@ -18,11 +18,7 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
-from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.min import Min
-from metadata.orm_profiler.metrics.static.null_count import NullCount
-from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
-from metadata.orm_profiler.metrics.static.stddev import StdDev
+from metadata.orm_profiler.metrics.registry import StaticMetrics, ComposedMetrics
 from metadata.orm_profiler.profiles.core import SingleProfiler
 
 Base = declarative_base()
@@ -62,41 +58,41 @@ class MetricsTest(TestCase):
         """
         Check the Min metric
         """
-        min_age = Min(col=User.age)
+        min_age = StaticMetrics.MIN(col=User.age)
         min_profiler = SingleProfiler(self.session, min_age)
         res = min_profiler.execute()
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(Min.name()) == 30
+        assert res.get(StaticMetrics.MIN.name) == 30
 
     def test_std(self):
         """
         Check STD metric
         """
-        std_age = StdDev(col=User.age)
+        std_age = StaticMetrics.STDDEV(col=User.age)
         std_profiler = SingleProfiler(self.session, std_age)
         res = std_profiler.execute()
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
-        assert res.get(StdDev.name()) == 0.25
+        assert res.get(StaticMetrics.STDDEV.name) == 0.25
 
     def test_null_count(self):
         """
         Check null count
         """
-        null_count = NullCount(col=User.nickname)
+        null_count = StaticMetrics.NULL_COUNT(col=User.nickname)
         nc_profiler = SingleProfiler(self.session, null_count)
         res = nc_profiler.execute()
 
-        assert res.get(NullCount.name()) == 1
+        assert res.get(StaticMetrics.NULL_COUNT.name) == 1
 
     def test_null_ratio(self):
-        count = Count(col=User.nickname)
-        null_count = NullCount(col=User.nickname)
+        count = StaticMetrics.COUNT(col=User.nickname)
+        null_count = StaticMetrics.NULL_COUNT(col=User.nickname)
 
         # Build the ratio based on the other two metrics
-        null_ratio = NullRatio(col=User.nickname)
+        null_ratio = ComposedMetrics.NULL_RATIO(col=User.nickname)
 
         composed_profiler = SingleProfiler(self.session, count, null_count, null_ratio)
         res = composed_profiler.execute()
-        assert res.get(NullRatio.name()) == 0.5
+        assert res.get(ComposedMetrics.NULL_RATIO.name) == 0.5
