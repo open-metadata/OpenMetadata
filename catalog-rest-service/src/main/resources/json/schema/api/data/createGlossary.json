@@ -1,41 +1,41 @@
 {
-    "$id": "https://open-metadata.org/schema/api/data/createGlossary.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "Create Glossary entity request",
-    "description": "Create Glossary entity request",
-    "type": "object",
-    "properties" : {
-      "name": {
-        "description": "Name that identifies this glossary.",
-        "$ref": "../../entity/data/glossary.json#/definitions/name"
-      },
-      "displayName": {
-        "description": "Display Name that identifies this glossary.",
+  "$id": "https://open-metadata.org/schema/api/data/createGlossary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateGlossaryRequest",
+  "description": "Create Glossary entity request",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies this glossary.",
+      "$ref": "../../entity/data/glossary.json#/definitions/name"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this glossary.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the glossary instance.",
+      "type": "string"
+    },
+    "reviewers": {
+      "description": "User names of the reviewers for this glossary.",
+      "type": "array",
+      "items": {
         "type": "string"
-      },
-      "description": {
-        "description": "Description of the glossary instance.",
-        "type": "string"
-      },
-      "reviewers": {
-        "description": "User names of the reviewers for this glossary.",
-        "type": "array",
-        "items" : {
-          "type": "string"
-        }
-      },
-      "owner": {
-        "description": "Owner of this glossary",
-        "$ref": "../../type/entityReference.json"
-      },
-      "tags": {
-        "description": "Tags for this glossary",
-        "type": "array",
-        "items": {
-          "$ref": "../../type/tagLabel.json"
-        },
-        "default": null
       }
     },
-    "required": ["name"]
-  }
+    "owner": {
+      "description": "Owner of this glossary",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this glossary",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    }
+  },
+  "required": ["name"]
+}
