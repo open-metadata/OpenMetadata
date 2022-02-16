@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric
+from metadata.orm_profiler.orm.registry import SQLALCHEMY_NUMERIC
 
 
 class StdDevFn(FunctionElement):
@@ -55,4 +56,7 @@ class StdDev(StaticMetric):
     """
 
     def fn(self):
+        if self.col.type.__class__ not in SQLALCHEMY_NUMERIC:
+            return None
+
         return StdDevFn(self.col).label(self.__class__.name())
