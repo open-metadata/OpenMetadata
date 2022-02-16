@@ -12,7 +12,8 @@ The whole process is structured as follows:
 5. If some expressions are not universal, we can `compile` specific expressions for the required `DatabaseServiceType`.
     This allows us to not have any logic branching, as all the expressions will be safely built beforehand. The
     `Engine` will then know what to use in each case.
-6. The Profiling results are then mapped to our own `Profile` `pydantic` model for easily moving the data.
+6. Profiling results are available in `profiler.results` property. This property returns a `dict` with
+    the data of all the metrics sent as input.
 7. We can validate the `Profile` result with a `ProfileValidator`.
 
 ## Development
