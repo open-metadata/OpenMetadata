@@ -17,4 +17,7 @@ logger = logging.getLogger(__name__)
 
 class GlossaryMixin:
     def __init__(self):
-        pass
+        print("=======")
+        import sys
+
+        sys.exit()

@@ -223,6 +223,9 @@ class OpenMetadata(
         if issubclass(entity, (Tag, TagCategory)):
             return "/tags"
 
+        if issubclass(entity, Glossary):
+            return "/glossaries"
+
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
             return "/roles"
 
