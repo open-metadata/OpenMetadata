@@ -1,5 +1,5 @@
 """
-Mixin class containing Glossary specific methods
+Mixin class containing Glossaries specific methods
 
 To be used be OpenMetadata
 """
@@ -16,8 +16,29 @@ logger = logging.getLogger(__name__)
 
 
 class GlossaryMixin:
-    def __init__(self):
-        print("=======")
-        import sys
+    def list_glossaries(
+        self, entity: Type[T], fields: Optional[List[str]] = None
+    ) -> Optional[List[T]]:
+        """Get list of Glossary pydantic model
 
-        sys.exit()
+        Args:
+            entity: entity class model
+            fields (List): list of fields to pass with the request
+        """
+
+        fields_str = "?fields=" + ",".join(fields) if fields else ""
+        try:
+            resp = self.client.get(f"{self.get_suffix(entity)}/{fields_str}")
+            return [entity(**glossaries_resp) for glossaries_resp in resp.get("data")]
+        except APIError as err:
+            logger.error(f"GET {entity.__name__}. Error {err.status_code} - {err}")
+            return None
+
+    def create_glossaries_category(self, glossaries_body: Glossary):
+        """Method to create new tag category
+        Args:
+            tag_category_body (TagCategory): body of the request
+        """
+        path = "/glossaries"
+        resp = self.client.post(path=path, data=glossaries_body.json())
+        logger.info(f"Created a Glossary: {resp}")
