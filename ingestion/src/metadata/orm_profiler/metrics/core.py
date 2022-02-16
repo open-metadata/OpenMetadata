@@ -14,12 +14,40 @@ Metric Core definitions
 """
 
 from abc import ABC, abstractmethod
+from functools import wraps
 from typing import Any, Dict
 
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 # When creating complex metrics, use inherit_cache = CACHE
 CACHE = True
+
+
+def _label(_fn):
+    """
+    Decorator factory (based on self) to
+    automate how we pass the naming - label -
+    to the metrics when defining `fn`.
+
+    Decorate fn with @self.label() if you
+    want the default label, or ignore and write
+    your own query.label("<name>").
+
+    Using the name `_fn` here to not be confused
+    with the `fn` method in Metric.
+    """
+
+    @wraps(_fn)
+    def inner(self, *args, **kwargs):
+        res = _fn(self, *args, **kwargs)
+
+        # If the metric computation returns some value
+        if res is not None:
+            return res.label(self.name())
+
+        return None
+
+    return inner
 
 
 class Metric(ABC):

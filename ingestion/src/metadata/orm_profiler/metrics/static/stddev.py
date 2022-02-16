@@ -18,8 +18,11 @@ from sqlalchemy.sql.functions import FunctionElement
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.orm_profiler.metrics.core import CACHE, StaticMetric
+from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.registry import SQLALCHEMY_NUMERIC
+from metadata.orm_profiler.utils import logger
+
+logger = logger()
 
 
 class StdDevFn(FunctionElement):
@@ -55,8 +58,13 @@ class StdDev(StaticMetric):
     Given a column, return the Standard Deviation value.
     """
 
+    @_label
     def fn(self):
         if self.col.type.__class__ not in SQLALCHEMY_NUMERIC:
+            logger.info(
+                f"{self.col} has type {self.col.type}, which is not listed as numeric."
+                + " We won't compute STDDEV for it."
+            )
             return None
 
-        return StdDevFn(self.col).label(self.__class__.name())
+        return StdDevFn(self.col)

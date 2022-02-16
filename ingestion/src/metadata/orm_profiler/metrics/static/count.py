@@ -14,7 +14,7 @@ Count Metric definition
 """
 from sqlalchemy import func
 
-from metadata.orm_profiler.metrics.core import StaticMetric
+from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
 class Count(StaticMetric):
@@ -24,5 +24,6 @@ class Count(StaticMetric):
     Given a column, return the count. Ignores NULL values
     """
 
+    @_label
     def fn(self):
-        return func.count(self.col).label(self.__class__.name())
+        return func.count(self.col)

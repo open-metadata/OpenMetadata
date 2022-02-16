@@ -14,7 +14,7 @@ Null Count Metric definition
 """
 from sqlalchemy import case, func
 
-from metadata.orm_profiler.metrics.core import StaticMetric
+from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
 class NullCount(StaticMetric):
@@ -32,7 +32,6 @@ class NullCount(StaticMetric):
     ```
     """
 
+    @_label
     def fn(self):
-        return func.sum(case([(self.col.is_(None), 1)], else_=0)).label(
-            self.__class__.name()
-        )
+        return func.sum(case([(self.col.is_(None), 1)], else_=0))

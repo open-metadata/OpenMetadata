@@ -14,7 +14,7 @@ Min Metric definition
 """
 from sqlalchemy import func
 
-from metadata.orm_profiler.metrics.core import StaticMetric
+from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
 class Min(StaticMetric):
@@ -24,5 +24,6 @@ class Min(StaticMetric):
     Given a column, return the min value.
     """
 
+    @_label
     def fn(self):
-        return func.min(self.col).label(self.__class__.name())
+        return func.min(self.col)
