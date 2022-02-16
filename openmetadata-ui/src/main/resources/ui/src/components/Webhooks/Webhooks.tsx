@@ -13,9 +13,9 @@
 
 import classNames from 'classnames';
 import { isNil, startCase } from 'lodash';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { Status, Webhook } from '../../generated/entity/events/webhook';
+import { Status } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import { getDocButton } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -24,7 +24,6 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
 import PageLayout from '../containers/PageLayout';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { WebhooksProps } from './Webhooks.interface';
 
 const statuses = [
@@ -54,19 +53,10 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
   data = [],
   paging,
   onAddWebhook,
-  onDeleteWebhook,
-  onEditWebhook,
+  onClickWebhook,
   onPageChange,
 }: WebhooksProps) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
-  const [deleteData, setDeleteData] = useState<Webhook>();
-
-  const handleDelete = () => {
-    if (deleteData) {
-      onDeleteWebhook(deleteData.id);
-    }
-    setDeleteData(undefined);
-  };
 
   const fetchLeftPanel = () => {
     return (
@@ -143,28 +133,12 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
               endpoint={webhook.endpoint}
               name={webhook.name}
               status={webhook.status}
-              onDelete={() => {
-                setDeleteData(webhook);
-              }}
-              onEdit={() => {
-                onEditWebhook(webhook.name);
-              }}
+              onClick={onClickWebhook}
             />
           </div>
         ))}
         {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
           <NextPrevious paging={paging} pagingHandler={onPageChange} />
-        )}
-        {deleteData && (
-          <ConfirmationModal
-            bodyText={`You want to delete webhook ${deleteData.name} permanently? This action cannot be reverted.`}
-            cancelText="Discard"
-            confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-            confirmText="Delete"
-            header="Are you sure?"
-            onCancel={() => setDeleteData(undefined)}
-            onConfirm={handleDelete}
-          />
         )}
       </div>
     </PageLayout>

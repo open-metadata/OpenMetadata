@@ -18,7 +18,11 @@ import { Webhook } from '../../generated/entity/events/webhook';
 export interface AddWebhookProps {
   data?: Webhook;
   header: string;
+  mode: 'add' | 'edit';
   saveState?: LoadingState;
+  deleteState?: LoadingState;
+  allowAccess?: boolean;
   onCancel: () => void;
+  onDelete?: (id: string) => void;
   onSave: (data: CreateWebhook) => void;
 }

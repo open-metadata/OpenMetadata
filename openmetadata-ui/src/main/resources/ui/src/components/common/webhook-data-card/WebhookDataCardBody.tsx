@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -28,8 +29,16 @@ const WebhookDataCardBody: FunctionComponent<Props> = ({
 }: Props) => {
   return (
     <div data-testid="card-body">
-      <div className="tw-mb-3">
-        <span>{startCase(status)}</span>
+      <div className="tw-mb-3 tw-flex">
+        <span className="tw-flex tw-items-center">
+          <div
+            className={classNames(
+              'tw-w-3 tw-h-3 tw-rounded-full',
+              `tw-bg-${status}`
+            )}
+          />
+          <span className="tw-ml-1">{startCase(status)}</span>
+        </span>
         <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
         <span>{endpoint}</span>
       </div>

@@ -17,6 +17,7 @@ import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import {
@@ -35,9 +36,11 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AddWebhookProps } from './AddWebhook.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -54,8 +57,12 @@ const getEventFilterByType = (
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   data,
   header,
+  mode = 'add',
   saveState = 'initial',
+  deleteState = 'initial',
+  allowAccess = true,
   onCancel,
+  onDelete,
   onSave,
 }: AddWebhookProps) => {
   const markdownRef = useRef<EditorContentRef>();
@@ -97,6 +104,14 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   });
   const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+
+  const handleDelete = () => {
+    if (data) {
+      onDelete && onDelete(data.id);
+    }
+    setIsDelete(false);
+  };
 
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -167,19 +182,31 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     return retVal;
   };
 
+  const getHiddenEntitiesList = (entities: Array<string> = []) => {
+    if (entities.includes('*')) {
+      return entities.filter((item) => item !== '*');
+    } else {
+      return undefined;
+    }
+  };
+
   const getSelectedEvents = (prev: EventFilter, value: string) => {
     let entities = prev.entities || [];
     if (entities.includes(value)) {
-      const index = entities.indexOf(value);
-      entities.splice(index, 1);
-    } else {
       if (value === '*') {
-        entities = [value];
+        entities = [];
       } else {
-        if (value !== '*' && entities.includes('*')) {
+        if (entities.includes('*')) {
           const allIndex = entities.indexOf('*');
           entities.splice(allIndex, 1);
         }
+        const index = entities.indexOf(value);
+        entities.splice(index, 1);
+      }
+    } else {
+      if (value === '*') {
+        entities = getEntitiesList().map((item) => item.value);
+      } else {
         entities.push(value);
       }
     }
@@ -250,13 +277,22 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const getEventFiltersData = () => {
     const eventFilters: Array<EventFilter> = [];
     if (!isEmpty(createEvents)) {
-      eventFilters.push(createEvents);
+      const event = createEvents.entities?.includes('*')
+        ? { ...createEvents, entities: ['*'] }
+        : createEvents;
+      eventFilters.push(event);
     }
     if (!isEmpty(updateEvents)) {
-      eventFilters.push(updateEvents);
+      const event = updateEvents.entities?.includes('*')
+        ? { ...updateEvents, entities: ['*'] }
+        : updateEvents;
+      eventFilters.push(event);
     }
     if (!isEmpty(deleteEvents)) {
-      eventFilters.push(deleteEvents);
+      const event = deleteEvents.entities?.includes('*')
+        ? { ...deleteEvents, entities: ['*'] }
+        : deleteEvents;
+      eventFilters.push(event);
     }
 
     return eventFilters;
@@ -308,6 +344,73 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       };
       onSave(oData);
     }
+  };
+
+  const getDeleteButton = () => {
+    return (
+      <NonAdminAction position="top" title={TITLE_FOR_NON_ADMIN_ACTION}>
+        {deleteState === 'waiting' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="text">
+            <Loader size="small" type="default" />
+          </Button>
+        ) : (
+          <Button
+            className={classNames({
+              'tw-opacity-40': !allowAccess,
+            })}
+            data-testid="delete-webhook"
+            size="regular"
+            theme="primary"
+            variant="text"
+            onClick={() => setIsDelete(true)}>
+            Delete
+          </Button>
+        )}
+      </NonAdminAction>
+    );
+  };
+
+  const getSaveButton = () => {
+    return (
+      <NonAdminAction position="top" title={TITLE_FOR_NON_ADMIN_ACTION}>
+        {saveState === 'waiting' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <Loader size="small" type="white" />
+          </Button>
+        ) : saveState === 'success' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <i aria-hidden="true" className="fa fa-check" />
+          </Button>
+        ) : (
+          <Button
+            className={classNames('tw-w-16 tw-h-10', {
+              'tw-opacity-40': !allowAccess,
+            })}
+            data-testid="save-webhook"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={handleSave}>
+            Save
+          </Button>
+        )}
+      </NonAdminAction>
+    );
   };
 
   const fetchRightPanel = () => {
@@ -445,6 +548,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             className="tw-bg-white"
             disabled={isEmpty(createEvents)}
             dropDownList={getEntitiesList()}
+            hiddenItems={getHiddenEntitiesList(createEvents.entities)}
             label="select entities"
             selectedItems={createEvents.entities}
             type="checkbox"
@@ -478,6 +582,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             className="tw-bg-white"
             disabled={isEmpty(updateEvents)}
             dropDownList={getEntitiesList()}
+            hiddenItems={getHiddenEntitiesList(updateEvents.entities)}
             label="select entities"
             selectedItems={updateEvents.entities}
             type="checkbox"
@@ -511,6 +616,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             className="tw-bg-white"
             disabled={isEmpty(deleteEvents)}
             dropDownList={getEntitiesList()}
+            hiddenItems={getHiddenEntitiesList(deleteEvents.entities)}
             label="select entities"
             selectedItems={deleteEvents.entities}
             type="checkbox"
@@ -673,51 +779,52 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   </CopyToClipboard>
                 </div>
               ) : null}
-              {copiedSecret && validMsg('Copied to clipboard.')}
+              {copiedSecret && validMsg('Copied to the clipboard.')}
             </Field>
           </>
         ) : null}
         <Field>
-          <div className="tw-flex tw-justify-end">
-            <Button
-              data-testid="cancel-webhook"
-              size="regular"
-              theme="primary"
-              variant="text"
-              onClick={onCancel}>
-              Discard
-            </Button>
-            {saveState === 'waiting' ? (
+          {data && mode === 'edit' ? (
+            <div className="tw-flex tw-justify-between">
               <Button
-                disabled
-                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                data-testid="cancel-webhook"
                 size="regular"
                 theme="primary"
-                variant="contained">
-                <Loader size="small" type="white" />
+                variant="outlined"
+                onClick={onCancel}>
+                <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />{' '}
+                <span>Back</span>
               </Button>
-            ) : saveState === 'success' ? (
+              <div className="tw-flex tw-justify-end">
+                {getDeleteButton()}
+                {getSaveButton()}
+              </div>
+            </div>
+          ) : (
+            <div className="tw-flex tw-justify-end">
               <Button
-                disabled
-                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                data-testid="cancel-webhook"
                 size="regular"
                 theme="primary"
-                variant="contained">
-                <i aria-hidden="true" className="fa fa-check" />
+                variant="text"
+                onClick={onCancel}>
+                Discard
               </Button>
-            ) : (
-              <Button
-                className="tw-w-16 tw-h-10"
-                data-testid="save-webhook"
-                size="regular"
-                theme="primary"
-                variant="contained"
-                onClick={handleSave}>
-                Save
-              </Button>
-            )}
-          </div>
+              {getSaveButton()}
+            </div>
+          )}
         </Field>
+        {data && isDelete && (
+          <ConfirmationModal
+            bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
+            cancelText="Discard"
+            confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
+            confirmText="Delete"
+            header="Are you sure?"
+            onCancel={() => setIsDelete(false)}
+            onConfirm={handleDelete}
+          />
+        )}
       </div>
     </PageLayout>
   );
