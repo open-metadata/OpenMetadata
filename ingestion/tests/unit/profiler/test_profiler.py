@@ -59,4 +59,4 @@ class ProfilerTest(TestCase):
         """
         simple = SimpleProfiler(self.session, User.age)
         simple.execute()
-        assert simple.results == {'MIN': 30, 'COUNT': 2, 'STDDEV': 0.25, 'NULLCOUNT': 0, 'NULLRATIO': 1.0}
+        assert simple.results == {'MIN': 30, 'COUNT': 2, 'STDDEV': 0.25, 'NULLCOUNT': 0, 'NULLRATIO': 0.0}
