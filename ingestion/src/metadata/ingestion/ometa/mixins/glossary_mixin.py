@@ -35,9 +35,9 @@ class GlossaryMixin:
             return None
 
     def create_glossaries_category(self, glossaries_body: Glossary):
-        """Method to create new tag category
+        """Method to create new Glossary category
         Args:
-            tag_category_body (TagCategory): body of the request
+            glossaries_body (Glossary): body of the request
         """
         path = "/glossaries"
         resp = self.client.put(path=path, data=glossaries_body.json())
