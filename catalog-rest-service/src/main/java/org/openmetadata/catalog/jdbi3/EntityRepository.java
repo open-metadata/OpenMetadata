@@ -836,6 +836,32 @@ public abstract class EntityRepository<T> {
     }
   }
 
+  public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
+    daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  }
+
+  public List<String> findBoth(
+      UUID entity1, String entityType1, Relationship relationship, String entity2, Boolean deleted) {
+    List<String> ids = new ArrayList<>();
+    ids.addAll(findFrom(entity1, entityType1, relationship, entity2, deleted));
+    ids.addAll(findTo(entity1, entityType1, relationship, entity2, deleted));
+    return ids;
+  }
+
+  public List<String> findFrom(
+      UUID toId, String toEntity, Relationship relationship, String fromEntity, Boolean deleted) {
+    return daoCollection
+        .relationshipDAO()
+        .findFrom(toId.toString(), toEntity, relationship.ordinal(), fromEntity, deleted);
+  }
+
+  public List<String> findTo(
+      UUID fromId, String fromEntity, Relationship relationship, String toEntity, Boolean deleted) {
+    return daoCollection
+        .relationshipDAO()
+        .findTo(fromId.toString(), fromEntity, relationship.ordinal(), toEntity, deleted);
+  }
+
   enum Operation {
     PUT,
     PATCH,

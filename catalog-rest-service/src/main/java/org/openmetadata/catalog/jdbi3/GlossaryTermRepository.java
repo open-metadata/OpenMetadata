@@ -20,7 +20,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
@@ -60,25 +62,69 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException, ParseException {
     entity.setGlossary(getGlossary(entity));
+    entity.setParent(fields.contains("parent") ? getParent(entity) : null);
+    entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
+    entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : null);
     entity.setTags(fields.contains("tags") ? getTags(entity.getFullyQualifiedName()) : null);
     return entity;
   }
 
+  private EntityReference getParent(GlossaryTerm entity) throws IOException {
+    List<String> ids =
+        findFrom(entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY, entity.getDeleted());
+    return ids.size() == 1 ? Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
+  }
+
+  private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
+    List<String> ids =
+        findBoth(
+            entity.getId(), Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, entity.getDeleted());
+    List<EntityReference> relatedTerms = new ArrayList<>();
+    for (String id : ids) {
+      relatedTerms.add(Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(id)));
+    }
+    return relatedTerms.isEmpty() ? null : relatedTerms;
+  }
+
+  private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
+    List<String> ids =
+        findFrom(entity.getId(), Entity.GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
+
+    List<EntityReference> reviewers = new ArrayList<>();
+    for (String id : ids) {
+      reviewers.add(Entity.getEntityReference(Entity.USER, UUID.fromString(id)));
+    }
+    return reviewers.isEmpty() ? null : reviewers;
+  }
+
   @Override
   public void prepare(GlossaryTerm entity) throws IOException, ParseException {
-    // Set fully qualified name
+    // Validate glossary
+    EntityReference glossary = Entity.getEntityReference(entity.getGlossary());
+    entity.setGlossary(glossary);
+
+    // Validate parent
     if (entity.getParent() == null) {
       entity.setFullyQualifiedName(entity.getGlossary().getName() + "." + entity.getName());
     } else {
+      EntityReference parent = Entity.getEntityReference(entity.getParent());
       entity.setFullyQualifiedName(entity.getParent().getName() + "." + entity.getName());
+      entity.setParent(parent);
     }
 
     // Validate related terms
     List<EntityReference> validatedRelatedTerms = new ArrayList<>();
-    for (EntityReference related : entity.getRelatedTerms()) {
+    for (EntityReference related : Optional.ofNullable(entity.getRelatedTerms()).orElse(Collections.emptyList())) {
       validatedRelatedTerms.add(daoCollection.glossaryTermDAO().findEntityReferenceById(related.getId()));
     }
     entity.setRelatedTerms(validatedRelatedTerms);
+
+    // Validate reviewers
+    List<EntityReference> reviewers = new ArrayList<>();
+    for (EntityReference reviewer : Optional.ofNullable(entity.getReviewers()).orElse(Collections.emptyList())) {
+      reviewers.add(daoCollection.userDAO().findEntityReferenceById(reviewer.getId()));
+    }
+    entity.setReviewers(reviewers);
 
     // Set tags
     entity.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), entity.getTags()));
@@ -91,9 +137,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // TODO Add relationships for reviewers
     EntityReference glossary = entity.getGlossary();
     EntityReference parentTerm = entity.getParent();
+    List<EntityReference> relatedTerms = entity.getRelatedTerms();
+    List<EntityReference> reviewers = entity.getReviewers();
 
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    entity.withGlossary(null).withParent(null).withHref(null).withTags(null);
+    entity
+        .withGlossary(null)
+        .withParent(null)
+        .withRelatedTerms(relatedTerms)
+        .withReviewers(null)
+        .withHref(null)
+        .withTags(null);
 
     if (update) {
       dao.glossaryTermDAO().update(entity.getId(), JsonUtils.pojoToJson(entity));
@@ -102,29 +156,35 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     // Restore the relationships
-    entity.withGlossary(glossary).withParent(parentTerm).withTags(tags);
+    entity
+        .withGlossary(glossary)
+        .withParent(parentTerm)
+        .withRelatedTerms(relatedTerms)
+        .withReviewers(reviewers)
+        .withTags(tags);
   }
 
   @Override
   public void storeRelationships(GlossaryTerm entity) {
     // TODO Add relationships for  related terms, and reviewers
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            entity.getGlossary().getId(),
-            entity.getId(),
-            Entity.GLOSSARY,
-            Entity.GLOSSARY_TERM,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(
+        entity.getGlossary().getId(), entity.getId(), Entity.GLOSSARY, Entity.GLOSSARY_TERM, Relationship.CONTAINS);
     if (entity.getParent() != null) {
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              entity.getParent().getId(),
-              entity.getId(),
-              Entity.GLOSSARY,
-              Entity.GLOSSARY_TERM,
-              Relationship.CONTAINS.ordinal());
+      addRelationship(
+          entity.getParent().getId(),
+          entity.getId(),
+          Entity.GLOSSARY_TERM,
+          Entity.GLOSSARY_TERM,
+          Relationship.PARENT_OF);
+    }
+    for (EntityReference relTerm : Optional.ofNullable(entity.getRelatedTerms()).orElse(Collections.emptyList())) {
+      // Make this bidirectional relationship
+      addRelationship(
+          entity.getId(), relTerm.getId(), Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, Relationship.RELATED_TO);
+    }
+    for (EntityReference reviewer : Optional.ofNullable(entity.getReviewers()).orElse(Collections.emptyList())) {
+      // Make this bidirectional relationship
+      addRelationship(reviewer.getId(), entity.getId(), Entity.USER, Entity.GLOSSARY_TERM, Relationship.REVIEWS);
     }
 
     applyTags(entity);
@@ -134,11 +194,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {}
 
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
-    List<String> refs =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(
-                term.getId().toString(), Entity.GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), Entity.GLOSSARY, null);
+    // TODO check delted
+    List<String> refs = findFrom(term.getId(), Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY, null);
     if (refs.size() != 1) {
       LOG.warn(
           "Possible database issues - multiple owners found for entity {} with type {}", term.getId(), Entity.GLOSSARY);

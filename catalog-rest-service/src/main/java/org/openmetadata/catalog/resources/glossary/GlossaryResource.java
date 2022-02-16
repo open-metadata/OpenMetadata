@@ -81,10 +81,6 @@ public class GlossaryResource {
   private final GlossaryRepository dao;
   private final Authorizer authorizer;
 
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, ref.getId()));
-  }
-
   public static List<Glossary> addHref(UriInfo uriInfo, List<Glossary> glossaries) {
     Optional.ofNullable(glossaries).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return glossaries;

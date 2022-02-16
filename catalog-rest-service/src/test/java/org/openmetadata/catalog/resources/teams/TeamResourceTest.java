@@ -193,13 +193,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(expectedUpdatedBy, team.getUpdatedBy());
     assertEquals(expectedDisplayName, team.getDisplayName());
     assertEquals(expectedProfile, team.getProfile());
-    if (expectedUsers != null && !expectedUsers.isEmpty()) {
-      assertEquals(expectedUsers.size(), team.getUsers().size());
-      for (EntityReference user : team.getUsers()) {
-        TestUtils.validateEntityReference(user);
-        TestUtils.existsInEntityReferenceList(expectedUsers, user.getId(), true);
-      }
-    }
+    TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
     TestUtils.validateEntityReference(team.getOwns());
   }
 
@@ -263,15 +257,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     for (UUID teamId : Optional.ofNullable(createRequest.getUsers()).orElse(Collections.emptyList())) {
       expectedUsers.add(new EntityReference().withId(teamId).withType(Entity.USER));
     }
-    List<EntityReference> actualUsers = Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList());
-    actualUsers.forEach(actual -> TestUtils.validateEntityReference(actual));
-
-    if (!expectedUsers.isEmpty()) {
-      assertEquals(expectedUsers.size(), actualUsers.size());
-      for (EntityReference user : expectedUsers) {
-        TestUtils.existsInEntityReferenceList(actualUsers, user.getId(), true);
-      }
-    }
+    expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
+    TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
     TestUtils.validateEntityReference(team.getOwns());
   }
 
@@ -290,12 +277,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     for (EntityReference ref : Optional.ofNullable(teamBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
-    if (!expectedOwnedEntities.isEmpty()) {
-      assertEquals(expectedOwnedEntities.size(), teamAfterDeletion.getOwns().size());
-      for (EntityReference ref : expectedOwnedEntities) {
-        TestUtils.existsInEntityReferenceList(teamAfterDeletion.getOwns(), ref.getId(), true);
-      }
-    }
+    TestUtils.assertEntityReferenceList(expectedOwnedEntities, teamAfterDeletion.getOwns());
   }
 
   @Override

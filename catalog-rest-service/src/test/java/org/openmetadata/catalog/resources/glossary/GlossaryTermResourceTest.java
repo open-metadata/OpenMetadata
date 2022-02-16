@@ -17,11 +17,15 @@
 package org.openmetadata.catalog.resources.glossary;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,14 +37,24 @@ import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
-  public static Glossary GLOSSARY;
+  public static Glossary GLOSSARY1;
+  public static EntityReference GLOSSARY_REF1;
+  public static Glossary GLOSSARY2;
+  public static EntityReference GLOSSARY_REF2;
+
+  public static GlossaryTerm GLOSSARY_TERM1;
+  public static EntityReference GLOSSARY_TERM_REF1;
+  public static GlossaryTerm GLOSSARY_TERM2;
+  public static EntityReference GLOSSARY_TERM_REF2;
 
   public GlossaryTermResourceTest() {
     super(
@@ -59,17 +73,33 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest(test);
-    GLOSSARY = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest(test, 1);
+    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY_REF1 = new GlossaryEntityInterface(GLOSSARY1).getEntityReference();
+
+    createGlossary = glossaryResourceTest.createRequest(test, 2);
+    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY_REF2 = new GlossaryEntityInterface(GLOSSARY2).getEntityReference();
+
+    CreateGlossaryTerm createGlossaryTerm = createRequest(test, 1).withRelatedTerms(null);
+    GLOSSARY_TERM1 = createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY_TERM_REF1 = new GlossaryTermEntityInterface(GLOSSARY_TERM1).getEntityReference();
+
+    createGlossaryTerm = createRequest(test, 2).withRelatedTerms(null);
+    GLOSSARY_TERM2 = createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY_TERM_REF2 = new GlossaryTermEntityInterface(GLOSSARY_TERM2).getEntityReference();
   }
 
   @Override
   public CreateGlossaryTerm createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreateGlossaryTerm()
         .withName(name)
+        .withSynonyms(List.of("syn1", "syn2", "syn3"))
         .withDescription(description)
         .withDisplayName(displayName)
-        .withGlossaryId(GLOSSARY.getId());
+        .withGlossary(GLOSSARY_REF1)
+        .withRelatedTerms(Arrays.asList(GLOSSARY_TERM_REF1, GLOSSARY_TERM_REF2))
+        .withReviewers(List.of(USER_OWNER1));
   }
 
   @Override
@@ -77,27 +107,26 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     return null;
   }
 
-  /**
-   * A method variant to be called form other tests to create a glossary without depending on Database, DatabaseService
-   * set up in the {@code setup()} method
-   */
-  public GlossaryTerm createEntity(TestInfo test, int index) throws IOException {
-    CreateGlossaryTerm create = new CreateGlossaryTerm().withName(getEntityName(test, index));
-    return createEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
   @Override
   public void validateCreatedEntity(
-      GlossaryTerm createdEntity, CreateGlossaryTerm createRequest, Map<String, String> authHeaders)
+      GlossaryTerm createdEntity, CreateGlossaryTerm request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(createdEntity), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(createdEntity), request.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     validateEntityReference(createdEntity.getGlossary());
-    assertEquals(createRequest.getGlossaryId(), createdEntity.getGlossary().getId());
+    assertTrue(EntityUtil.entityReferenceMatch.test(request.getGlossary(), createdEntity.getGlossary()));
+
+    if (request.getParent() != null) {
+      validateEntityReference(createdEntity.getParent());
+      assertTrue(EntityUtil.entityReferenceMatch.test(request.getParent(), createdEntity.getParent()));
+    }
+
+    assertEntityReferenceList(request.getRelatedTerms(), createdEntity.getRelatedTerms());
+    assertEntityReferenceList(request.getReviewers(), createdEntity.getReviewers());
 
     // Entity specific validation
-    TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
+    TestUtils.validateTags(request.getTags(), createdEntity.getTags());
   }
 
   @Override

@@ -5,13 +5,13 @@
   "description": "Create Glossary entity request",
   "type": "object",
   "properties": {
-    "glossaryId" : {
-      "description": "UUID of the glossary.",
-      "$ref" : "../../type/basic.json#/definitions/uuid"
+    "glossary" : {
+      "description": "Reference to the glossary that this term is part of.",
+      "$ref": "../../type/entityReference.json"
     },
-    "parentId" : {
-      "description": "UUID of the parent term. When null, the term is at the root of the glossary.",
-      "$ref" : "../../type/basic.json#/definitions/uuid"
+    "parent" : {
+      "description": "Reference to the parent glossary term. When null, the term is at the root of the glossary.",
+      "$ref": "../../type/entityReference.json"
     },
     "name": {
       "description": "Preferred name for the glossary term.",
@@ -34,17 +34,11 @@
     },
     "children": {
       "description": "Other glossary terms that are children of this glossary term.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/entityReference.json"
-      }
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "relatedTerms": {
       "description": "Other glossary terms that are related to this glossary term.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/entityReference.json"
-      }
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "references": {
       "description": "Link to a reference from an external glossary.",
@@ -52,10 +46,7 @@
     },
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "tags": {
       "description": "Tags for this glossary term.",
@@ -67,7 +58,7 @@
     }
   },
   "required": [
-    "glossaryId",
+    "glossary",
     "name"
   ]
 }
