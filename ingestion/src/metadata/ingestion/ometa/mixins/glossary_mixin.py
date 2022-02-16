@@ -40,5 +40,5 @@ class GlossaryMixin:
             tag_category_body (TagCategory): body of the request
         """
         path = "/glossaries"
-        resp = self.client.post(path=path, data=glossaries_body.json())
+        resp = self.client.put(path=path, data=glossaries_body.json())
         logger.info(f"Created a Glossary: {resp}")
