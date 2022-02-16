@@ -91,6 +91,7 @@ services:
 
 networks:
   local_app_net:
+    name: ometa_network
     ipam:
       driver: default
       config:

@@ -545,6 +545,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (EntityReference ref : Optional.ofNullable(userBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
+
     if (!expectedOwnedEntities.isEmpty()) {
       assertEquals(expectedOwnedEntities.size(), userAfterDeletion.getOwns().size());
       for (EntityReference ref : expectedOwnedEntities) {
@@ -579,12 +580,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (UUID teamId : Optional.ofNullable(createRequest.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
-    if (!expectedTeams.isEmpty()) {
-      assertEquals(expectedTeams.size(), user.getTeams().size());
-      for (EntityReference team : expectedTeams) {
-        TestUtils.existsInEntityReferenceList(user.getTeams(), team.getId(), true);
-      }
-    }
+    TestUtils.assertEntityReferenceList(expectedTeams, user.getTeams());
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
     }

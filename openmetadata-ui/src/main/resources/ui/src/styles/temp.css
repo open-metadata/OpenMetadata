@@ -63,7 +63,7 @@
   display: flex;
 }
 
-.svg-icon {
+.svg-icon:not(.tw-hidden) {
   display: inline-block;
 }
 

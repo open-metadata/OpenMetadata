@@ -56,6 +56,7 @@ export type DropDownListProp = {
 
 export type DropDownProp = {
   className?: string;
+  disabled?: boolean;
   label?: string | React.ReactElement;
   type: string;
   icon?: React.ReactElement | string;

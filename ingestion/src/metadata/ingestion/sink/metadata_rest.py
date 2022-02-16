@@ -198,6 +198,11 @@ class MetadataRestSink(Sink[Entity]):
                     table=created_table, data_model=db_and_table.table.dataModel
                 )
 
+            if db_and_table.table.tableQueries is not None:
+                self.metadata.ingest_table_queries_data(
+                    table=created_table, table_queries=db_and_table.table.tableQueries
+                )
+
             logger.info(
                 "Successfully ingested table {}.{}".format(
                     db_and_table.database.name.__root__,

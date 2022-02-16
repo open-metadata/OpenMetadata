@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.helper;
-import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
@@ -56,6 +55,7 @@ import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableData;
@@ -494,7 +494,12 @@ public class TableRepository extends EntityRepository<Table> {
       String json =
           daoCollection
               .fieldRelationshipDAO()
-              .find(fromColumnFQN, toColumnFQN, "table.columns.column", "table.columns.column", JOINED_WITH.ordinal());
+              .find(
+                  fromColumnFQN,
+                  toColumnFQN,
+                  "table.columns.column",
+                  "table.columns.column",
+                  Relationship.JOINED_WITH.ordinal());
 
       DailyCount dailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
       List<DailyCount> dailyCountList;
@@ -549,7 +554,7 @@ public class TableRepository extends EntityRepository<Table> {
               toColumnFQN,
               "table.columns.column",
               "table.columns.column",
-              JOINED_WITH.ordinal(),
+              Relationship.JOINED_WITH.ordinal(),
               "dailyCount",
               json);
     }
@@ -565,12 +570,18 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection
             .fieldRelationshipDAO()
             .listToByPrefix(
-                table.getFullyQualifiedName(), "table.columns.column", "table.columns.column", JOINED_WITH.ordinal());
+                table.getFullyQualifiedName(),
+                "table.columns.column",
+                "table.columns.column",
+                Relationship.JOINED_WITH.ordinal());
     list.addAll(
         daoCollection
             .fieldRelationshipDAO()
             .listFromByPrefix(
-                table.getFullyQualifiedName(), "table.columns.column", "table.columns.column", JOINED_WITH.ordinal()));
+                table.getFullyQualifiedName(),
+                "table.columns.column",
+                "table.columns.column",
+                Relationship.JOINED_WITH.ordinal()));
 
     if (list.isEmpty()) { // No join information found. Return empty list
       return tableJoins;

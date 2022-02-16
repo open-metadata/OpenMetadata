@@ -23,6 +23,8 @@ const secondary = '#B02AAC';
 const secondaryBG = '#B02AAC40';
 
 // state colors
+const ideal = '#C4C4C4';
+const idealBG = '#C4C4C440';
 const success = '#008376';
 const successBG = '#00837640';
 const error = '#E54937';
@@ -99,6 +101,7 @@ module.exports = {
         'body-hover': bodyHoverBG,
         tag: tagBG,
         badge: badgeBG,
+        // Snackbar statuses begin
         success: success,
         'success-lite': successBG,
         error: error,
@@ -107,10 +110,25 @@ module.exports = {
         'warning-lite': warningBG,
         info: info,
         'info-lite': infoBG,
+        // Snackbar statuses end
+        // Ingestion statuses begin
         'status-success': statusSuccess,
         'status-failed': statusFailed,
         'status-running': statusRunning,
         'status-queued': statusQueued,
+        // Ingestion statuses end
+        // Webhook statuses begin
+        notStarted: ideal,
+        started: success,
+        failed: error,
+        awaitingRetry: info,
+        retryLimitReached: warning,
+        'notStarted-lite': idealBG,
+        'started-lite': successBG,
+        'failed-lite': errorBG,
+        'awaitingRetry-lite': infoBG,
+        'retryLimitReached-lite': warningBG,
+        // Webhook statuses end
         separator: mainSeparator,
       },
       fontFamily: {
@@ -136,10 +154,14 @@ module.exports = {
         'screen-lg': '992px',
         'screen-xl': '1200px',
         'screen-xxl': '1440px',
+        'full-hd': '1080px',
         600: '600px',
       },
       minWidth: {
         badgeCount: '30px',
+      },
+      maxWidth: {
+        'full-hd': '1080px',
       },
       maxHeight: {
         32: '8rem',

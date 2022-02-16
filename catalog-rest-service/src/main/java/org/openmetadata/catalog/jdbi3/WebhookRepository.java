@@ -115,7 +115,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
   public void addWebhookPublisher(Webhook webhook) {
     if (Boolean.FALSE.equals(webhook.getEnabled())) { // Only add webhook that is enabled for publishing events
-      webhook.setStatus(Status.NOT_STARTED);
+      webhook.setStatus(Status.DISABLED);
       return;
     }
     WebhookPublisher publisher = new WebhookPublisher(webhook);
@@ -138,7 +138,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       // Update the existing publisher
       Status status = previousPublisher.getWebhook().getStatus();
       previousPublisher.updateWebhook(webhook);
-      if (status != Status.STARTED && status != Status.AWAITING_RETRY) {
+      if (status != Status.ACTIVE && status != Status.AWAITING_RETRY) {
         // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
         BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(previousPublisher);
         previousPublisher.setProcessor(processor);
@@ -357,8 +357,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         if (response.getStatus() >= 200 && response.getStatus() < 300) { // All 2xx responses
           batch.clear();
           webhook.getFailureDetails().setLastSuccessfulAt(changeEventHolder.get().getTimestamp());
-          if (webhook.getStatus() != Status.STARTED) {
-            setStatus(Status.STARTED, null, null, null, null);
+          if (webhook.getStatus() != Status.ACTIVE) {
+            setStatus(Status.ACTIVE, null, null, null, null);
           }
           // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
         } else if (response.getStatus() >= 300 && response.getStatus() < 400) {
@@ -491,6 +491,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       recordChange("status", origWebhook.getStatus(), updatedWebhook.getStatus());
       recordChange("endPoint", origWebhook.getEndpoint(), updatedWebhook.getEndpoint());
       recordChange("batchSize", origWebhook.getBatchSize(), updatedWebhook.getBatchSize());
+      recordChange("timeout", origWebhook.getTimeout(), updatedWebhook.getTimeout());
       if (fieldsChanged()) {
         // If updating the other fields, opportunistically use it to capture failure details
         WebhookPublisher publisher = WebhookRepository.this.getPublisher(origWebhook.getId());
@@ -499,7 +500,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
               .withStatus(publisher.getWebhook().getStatus())
               .withFailureDetails(publisher.getWebhook().getFailureDetails());
           if (Boolean.FALSE.equals(updatedWebhook.getEnabled())) {
-            updatedWebhook.setStatus(Status.NOT_STARTED);
+            updatedWebhook.setStatus(Status.DISABLED);
           }
         }
         recordChange(

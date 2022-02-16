@@ -101,7 +101,7 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
             </p>
           </nav>
         </div>
-        <div className="tw-py-5">
+        <div className="tw-my-5 tw-bg-white">
           {activeTab === 1 && (
             <RichTextEditor
               format={isValidJSONString(initValue) ? 'json' : 'markdown'}

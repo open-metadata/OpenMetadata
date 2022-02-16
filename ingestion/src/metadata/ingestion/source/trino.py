@@ -18,6 +18,9 @@ from urllib.parse import quote_plus
 import click
 from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -39,7 +42,7 @@ class TrinoConfig(SQLConnectionConfig):
 
     host_port = "localhost:8080"
     scheme = "trino"
-    service_type = "Trino"
+    service_type = DatabaseServiceType.Trino.value
     catalog: str
     database: str
 

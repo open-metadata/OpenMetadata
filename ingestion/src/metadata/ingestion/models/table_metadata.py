@@ -104,6 +104,23 @@ class TopicESDocument(BaseModel):
     doc_as_upsert: bool = True
 
 
+class GlossaryESDocument(BaseModel):
+    """Glossary Elastic Search Mapping doc"""
+
+    glossary_id: str
+    glossary_name: str
+    entity_type: str = "glossary"
+    suggest: List[dict]
+    description: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    schema_description: Optional[str] = None
+    owner: str
+    followers: List[str]
+
+
 class DashboardESDocument(BaseModel):
     """Elastic Search Mapping doc for Dashboards"""
 
@@ -155,6 +172,37 @@ class PipelineESDocument(BaseModel):
     owner: str
     followers: List[str]
     change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
+
+
+class UserESDocument(BaseModel):
+    """Elastic Search Mapping doc for Users"""
+
+    user_id: str
+    deleted: bool
+    entity_type: str = "user"
+    name: str
+    display_name: str
+    email: str
+    suggest: List[dict]
+    last_updated_timestamp: Optional[int]
+    teams: List[str]
+    roles: List[str]
+    doc_as_upsert: bool = True
+
+
+class TeamESDocument(BaseModel):
+    """Elastic Search Mapping doc for Teams"""
+
+    team_id: str
+    deleted: bool
+    entity_type: str = "team"
+    name: str
+    display_name: str
+    suggest: List[dict]
+    last_updated_timestamp: Optional[int]
+    users: List[str]
+    owns: List[str]
     doc_as_upsert: bool = True
 
 

@@ -48,6 +48,7 @@ const PLACEHOLDER_ROUTE_TEAM = ':team';
 const PLAEHOLDER_ROUTE_VERSION = ':version';
 const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -149,10 +150,11 @@ export const ROUTES = {
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  ONBOARDING: '/onboarding',
-  INGESTION: '/ingestion',
   USER_LIST: '/user-list',
   ROLES: '/roles',
+  WEBHOOKS: '/webhooks',
+  ADD_WEBHOOK: '/add-webhook',
+  EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -259,6 +261,13 @@ export const getTeamDetailsPath = (teamName: string) => {
   return path;
 };
 
+export const getEditWebhookPath = (webhookName: string) => {
+  let path = ROUTES.EDIT_WEBHOOK;
+  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, webhookName);
+
+  return path;
+};
+
 export const LIST_TYPES = ['numbered-list', 'bulleted-list'];
 
 export const TIMEOUT = {
@@ -279,6 +288,7 @@ export const navLinkSettings = [
   { name: 'Tags', to: '/tags', disabled: false },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },
+  { name: 'Webhooks', to: '/webhooks', disabled: false },
   // { name: 'Ingestions', to: '/ingestion', disabled: false },
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },

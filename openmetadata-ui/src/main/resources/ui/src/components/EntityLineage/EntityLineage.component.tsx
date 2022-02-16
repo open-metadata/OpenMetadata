@@ -168,7 +168,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         ) : null}
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(node.displayName, node.name)}
+          {getDataLabel(node.displayName, node.name, '.', false, node.type)}
         </p>
       </>
     );

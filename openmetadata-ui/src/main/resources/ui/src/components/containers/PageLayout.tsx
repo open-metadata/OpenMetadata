@@ -13,61 +13,138 @@
 
 import classNames from 'classnames';
 import React, { FC, ReactNode } from 'react';
+import { PageLayoutType } from '../../enums/layout.enum';
 
 interface PageLayoutProp {
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
   children: ReactNode;
+  layout?: PageLayoutType;
+  classes?: string;
 }
 
 const PageLayout: FC<PageLayoutProp> = ({
   leftPanel,
   children,
   rightPanel,
+  layout = PageLayoutType['3Col'],
+  classes = '',
 }: PageLayoutProp) => {
-  return (
-    <div
-      className={classNames(
-        'page-layout-container tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
-        {
-          'page-layout-container-left-center-right':
-            leftPanel && children && rightPanel,
-        },
-        {
-          'page-layout-container-left-center': !rightPanel,
-        },
-        {
-          'page-layout-container-center-right': !leftPanel,
-        },
-        {
-          'page-layout-container-center': !leftPanel && !rightPanel,
-        }
-      )}>
-      {leftPanel && (
-        <div className="tw-overflow-y-auto tw-pr-4 tw-py-1" id="left-panel">
-          {leftPanel}
-        </div>
-      )}
+  const get3ColLayout = () => {
+    return (
       <div
         className={classNames(
-          'tw-overflow-y-auto tw-py-1',
+          'page-layout-container l3-col tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
+          classes,
           {
-            'tw-pl-2': leftPanel,
+            'page-layout-container-left-center-right':
+              leftPanel && children && rightPanel,
           },
           {
-            'tw-pr-4': rightPanel,
+            'page-layout-container-left-center': !rightPanel,
+          },
+          {
+            'page-layout-container-center-right': !leftPanel,
+          },
+          {
+            'page-layout-container-center': !leftPanel && !rightPanel,
           }
+        )}>
+        {leftPanel && (
+          <div className="tw-overflow-y-auto tw-pr-4 tw-py-1" id="left-panel">
+            {leftPanel}
+          </div>
         )}
-        id="center">
-        {children}
-      </div>
-      {rightPanel && (
-        <div className="tw-overflow-y-auto tw-px-2 tw-py-1" id="right-panel">
-          {rightPanel}
+        <div
+          className={classNames(
+            'tw-overflow-y-auto tw-py-1',
+            {
+              'tw-pl-2': leftPanel,
+            },
+            {
+              'tw-pr-4': rightPanel,
+            }
+          )}
+          id="center">
+          {children}
         </div>
-      )}
-    </div>
-  );
+        {rightPanel && (
+          <div className="tw-overflow-y-auto tw-px-2 tw-py-1" id="right-panel">
+            {rightPanel}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const get2ColLTRLayout = () => {
+    return (
+      <div
+        className={classNames(
+          'page-layout-container l2-ltr-col tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
+          classes,
+          leftPanel
+            ? 'page-layout-container-left-center'
+            : 'page-layout-container-center'
+        )}>
+        {leftPanel && (
+          <div className="tw-overflow-y-auto tw-pr-4 tw-py-1" id="left-panel">
+            {leftPanel}
+          </div>
+        )}
+        <div
+          className={classNames('tw-overflow-y-auto tw-py-1', {
+            'tw-pl-8': leftPanel,
+          })}
+          id="center">
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+  const get2ColRTLLayout = () => {
+    return (
+      <div
+        className={classNames(
+          'page-layout-container l2-rtl-col tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
+          classes,
+          rightPanel
+            ? 'page-layout-container-center-right'
+            : 'page-layout-container-center'
+        )}>
+        <div
+          className={classNames('tw-overflow-y-auto tw-py-1', {
+            'tw-pr-10': rightPanel,
+          })}
+          id="center">
+          {children}
+        </div>
+        {rightPanel && (
+          <div className="tw-overflow-y-auto tw-px-2 tw-py-1" id="right-panel">
+            {rightPanel}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const getLayoutByType = (type: PageLayoutType) => {
+    switch (type) {
+      case PageLayoutType['2ColLTR']: {
+        return get2ColLTRLayout();
+      }
+      case PageLayoutType['2ColRTL']: {
+        return get2ColRTLLayout();
+      }
+      case PageLayoutType['3Col']:
+      default: {
+        return get3ColLayout();
+      }
+    }
+  };
+
+  return getLayoutByType(layout);
 };
 
 export default PageLayout;

@@ -17,6 +17,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import {
   DynamicFormFieldType,
   DynamicObj,
+  EditorContentRef,
   ServiceTypes,
   StepperStepType,
 } from 'Models';
@@ -163,9 +164,6 @@ type ErrorMsg = {
   apiVersion?: boolean;
   server?: boolean;
   pipelineUrl?: boolean;
-};
-type EditorContentRef = {
-  getEditorContent: () => string;
 };
 
 type IngestionListType = {

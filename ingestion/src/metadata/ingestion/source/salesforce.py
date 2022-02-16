@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -59,7 +62,7 @@ class SalesforceConfig(SQLConnectionConfig):
     security_token: str
     host_port: Optional[str]
     scheme: str
-    service_type = "MySQL"
+    service_type = DatabaseServiceType.MySQL.value
     sobject_name: str
 
     def get_connection_url(self):

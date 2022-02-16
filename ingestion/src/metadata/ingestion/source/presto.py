@@ -11,6 +11,9 @@
 
 from urllib.parse import quote_plus
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -19,7 +22,7 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 class PrestoConfig(SQLConnectionConfig):
     host_port = "localhost:8080"
     scheme = "presto"
-    service_type = "Presto"
+    service_type = DatabaseServiceType.Presto.value
     catalog: str
     include_views = False
 

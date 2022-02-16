@@ -576,7 +576,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_dict = Column(**parsed_string)
                         try:
                             if (
-                                self.config.enable_policy_tags
+                                hasattr(self.config, "enable_policy_tags")
                                 and "policy_tags" in column
                                 and column["policy_tags"]
                             ):

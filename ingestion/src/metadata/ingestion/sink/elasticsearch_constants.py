@@ -200,6 +200,48 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 )
 
+GLOSSARY_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
+    {
+    "mappings":{
+          "properties": {
+            "glossary_name": {
+              "type":"text"
+            },
+            "display_name": {
+              "type": "text"
+            },
+            "owner": {
+              "type": "text"
+            },
+            "followers": {
+              "type": "keyword"
+            },
+            "last_updated_timestamp": {
+              "type": "date",
+              "format": "epoch_second"
+            },
+            "description": {
+              "type": "text"
+            },
+            "tier": {
+              "type": "keyword"
+            },
+            "tags": {
+              "type": "keyword"
+            },
+            "entity_type": {
+              "type": "keyword"
+            },
+            "suggest": {
+              "type": "completion"
+            }
+          }
+        }
+    }
+    """
+)
+
 DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
     {
@@ -387,6 +429,81 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           }
          }
       }
+    }
+    """
+)
+
+USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
+     {
+    "mappings":{
+          "properties": {
+            "name": {
+              "type":"text"
+            },
+            "display_name": {
+              "type": "text"
+            },
+            "email": {
+              "type": "text"
+            },
+            "last_updated_timestamp": {
+              "type": "date",
+              "format": "epoch_second"
+            },
+            "entity_type": {
+              "type": "keyword"
+            },
+            "teams": {
+              "type": "keyword"
+            },
+            "roles": {
+              "type": "keyword"
+            },
+            "deleted": {
+              "type": "boolean"
+            },
+            "suggest": {
+              "type": "completion"
+            }
+          }
+        }
+    }
+    """
+)
+
+TEAM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
+     {
+    "mappings":{
+          "properties": {
+            "name": {
+              "type":"text"
+            },
+            "display_name": {
+              "type": "text"
+            },
+            "last_updated_timestamp": {
+              "type": "date",
+              "format": "epoch_second"
+            },
+            "entity_type": {
+              "type": "keyword"
+            },
+            "deleted": {
+              "type": "boolean"
+            },
+            "users": {
+              "type": "keyword"
+            },
+            "owns": {
+              "type": "keyword"
+            },
+            "suggest": {
+              "type": "completion"
+            }
+          }
+        }
     }
     """
 )

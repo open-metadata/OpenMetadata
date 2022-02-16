@@ -44,7 +44,6 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
-import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
@@ -55,6 +54,7 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.Tag;
@@ -87,7 +87,7 @@ public final class EntityUtil {
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
-      (ref1, ref2) -> ref1.getId().equals(ref2.getId());
+      (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN());

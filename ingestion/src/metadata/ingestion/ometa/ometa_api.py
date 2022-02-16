@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -168,6 +169,11 @@ class OpenMetadata(
             entity, get_args(Union[MlModel, self.get_create_entity_type(MlModel)])
         ):
             return "/mlmodels"
+
+        if issubclass(
+            entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
+        ):
+            return "/glossary"
 
         if issubclass(
             entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])

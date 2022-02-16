@@ -28,6 +28,7 @@ import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
 import IconControlPlus from '../assets/svg/control-plus.svg';
+import IconCopy from '../assets/svg/copy.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -36,10 +37,13 @@ import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
+import IconDocPrimary from '../assets/svg/doc-primary.svg';
+import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
+import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
@@ -148,6 +152,7 @@ export const Icons = {
   STORE: 'icon-store',
   THUMBSUP: 'icon-thumbs-up',
   VELLIPSIS: 'icon-v-ellipsis',
+  COPY: 'copy',
   DELETE: 'icon-delete',
   REPLY: 'icon-reply',
   SEARCH: 'icon-search',
@@ -182,6 +187,8 @@ export const Icons = {
   USERS: 'users',
   TERMS: 'terms',
   DOC: 'doc',
+  DOC_WHITE: 'doc-white',
+  DOC_PRIMARY: 'doc-primary',
   API: 'api',
   WHATS_NEW: 'whats-new',
   TABLE: 'table',
@@ -194,6 +201,7 @@ export const Icons = {
   SLACK: 'slack',
   SLACK_GREY: 'slack-grey',
   EXTERNAL_LINK: 'external-link',
+  EXTERNAL_LINK_WHITE: 'external-link-white',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
   PIPELINE_GREY: 'pipeline-grey',
@@ -333,6 +341,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconDelete;
 
       break;
+    case Icons.COPY:
+      IconComponent = IconCopy;
+
+      break;
     case Icons.REPLY:
       IconComponent = IconReply;
 
@@ -465,6 +477,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconDoc;
 
       break;
+    case Icons.DOC_WHITE:
+      IconComponent = IconDocWhite;
+
+      break;
+    case Icons.DOC_PRIMARY:
+      IconComponent = IconDocPrimary;
+
+      break;
     case Icons.API:
       IconComponent = IconAPI;
 
@@ -511,6 +531,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EXTERNAL_LINK:
       IconComponent = IconExternalLink;
+
+      break;
+    case Icons.EXTERNAL_LINK_WHITE:
+      IconComponent = IconExternalLinkWhite;
 
       break;
     case Icons.PROFILER:

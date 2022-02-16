@@ -399,8 +399,10 @@ export const getDataLabel = (
   displayName?: string,
   name = '',
   separator = '.',
-  isTextOnly = false
+  isTextOnly = false,
+  type?: string
 ) => {
+  const databaseName = getPartialNameFromFQN(name, ['database']);
   let label = '';
   if (displayName) {
     label = displayName;
@@ -417,7 +419,11 @@ export const getDataLabel = (
     <span
       className="tw-break-words description-text tw-self-center"
       data-testid="lineage-entity">
-      {label}
+      {type === 'table'
+        ? databaseName
+          ? `${databaseName}.${label}`
+          : label
+        : label}
     </span>
   );
 };

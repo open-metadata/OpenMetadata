@@ -28,6 +28,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
