@@ -40,6 +40,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/events")
@@ -117,6 +118,8 @@ public class EventResource {
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
-    return dao.list(timestamp, entityCreatedList, entityUpdatedList, entityDeletedList);
+    List<ChangeEvent> events = dao.list(timestamp, entityCreatedList, entityUpdatedList, entityDeletedList);
+    events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
+    return new ChangeEventList(events, null, null, events.size()); // TODO
   }
 }

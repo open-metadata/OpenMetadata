@@ -266,9 +266,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
-    List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(actualEvents, callbackEvents, 15, 250);
+    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 15, 250);
     assertWebhookStatusSuccess("healthy");
   }
 
@@ -279,15 +277,13 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     List<ChangeEvent> callbackEvents =
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
     long timestamp = callbackEvents.get(0).getTimestamp();
-    List<ChangeEvent> events = getChangeEvents(entity, null, null, timestamp, ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+    waitAndCheckForEvents(entity, null, null, timestamp, callbackEvents, 30, 100);
 
     // For the entity all the webhooks registered for updated events have the right number of events
     callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
     timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
-    events = getChangeEvents(null, entity, null, timestamp, ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+    waitAndCheckForEvents(null, entity, null, timestamp, callbackEvents, 30, 100);
 
     // TODO add delete event support
   }
@@ -311,9 +307,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents.peek());
 
-    List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(actualEvents, callbackEvents, 30, 100);
+    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30, 100);
 
     // Check all webhook status
     assertWebhookStatusSuccess("slowServer");
@@ -356,13 +350,23 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   public void waitAndCheckForEvents(
-      Collection<ChangeEvent> expected, Collection<ChangeEvent> received, int iteration, long sleepMillis)
-      throws InterruptedException {
+      String entityCreated,
+      String entityUpdated,
+      String entityDeleted,
+      long timestamp,
+      Collection<ChangeEvent> received,
+      int iteration,
+      long sleepMillis)
+      throws InterruptedException, HttpResponseException {
     int i = 0;
+    List<ChangeEvent> expected =
+        getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
     while (expected.size() < received.size() && i < iteration) {
       Thread.sleep(sleepMillis);
       i++;
     }
+    // Refresh the expected events again by getting list of events to compare with webhook received events
+    expected = getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
     if (expected.size() != received.size()) {
       expected.forEach(
           c1 ->
