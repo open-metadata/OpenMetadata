@@ -19,9 +19,12 @@ from typing import Iterable
 
 from google.cloud import logging
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -130,6 +133,7 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 service_name=self.config.service_name,
                             )
                             yield tq
+                            yield self.ingest_lineage(queryConfig["query"])
         except Exception as err:
             logger.error(repr(err))
 
@@ -143,3 +147,13 @@ class BigqueryUsageSource(Source[TableQuery]):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
+
+    def ingest_lineage(self, query):
+
+        from_entity_ref = query["source"]
+        to_entity_ref = query["target"]
+
+        lineage = AddLineageRequest(
+            edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
+        )
+        return lineage
