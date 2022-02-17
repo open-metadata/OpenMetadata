@@ -70,6 +70,7 @@ class ColumnTypeParser:
         "DOUBLE PRECISION": "DOUBLE",
         "DOUBLE": "DOUBLE",
         "ENUM": "ENUM",
+        "FLOAT": "FLOAT",
         "FLOAT4": "FLOAT",
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
