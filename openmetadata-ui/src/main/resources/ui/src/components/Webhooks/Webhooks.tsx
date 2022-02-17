@@ -28,12 +28,12 @@ import { WebhooksProps } from './Webhooks.interface';
 
 const statuses = [
   {
-    name: startCase(Status.NotStarted),
-    value: Status.NotStarted,
+    name: startCase(Status.Disabled),
+    value: Status.Disabled,
   },
   {
-    name: startCase(Status.Started),
-    value: Status.Started,
+    name: startCase(Status.Active),
+    value: Status.Active,
   },
   {
     name: startCase(Status.Failed),

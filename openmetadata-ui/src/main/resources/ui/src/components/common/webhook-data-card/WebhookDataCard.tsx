@@ -28,7 +28,7 @@ const WebhookDataCard: FunctionComponent<Props> = ({
   name,
   description,
   endpoint,
-  status = Status.NotStarted,
+  status = Status.Disabled,
   onClick,
 }: Props) => {
   const handleLinkClick = () => {

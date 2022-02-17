@@ -33,6 +33,10 @@ export interface Webhook {
    */
   description?: string;
   /**
+   * Display Name that identifies this webhook.
+   */
+  displayName?: string;
+  /**
    * When set to `true`, the webhook event notification is enabled. Set it to `false` to
    * disable the subscription. (Default `true`).
    */
@@ -67,8 +71,8 @@ export interface Webhook {
    */
   secretKey?: string;
   /**
-   * Status is `notStarted`, when webhook was created with `enabled` set to false and it never
-   * started publishing events. Status is `started` when webhook is normally functioning and
+   * Status is `disabled`, when webhook was created with `enabled` set to false and it never
+   * started publishing events. Status is `active` when webhook is normally functioning and
    * 200 OK response was received for callback notification. Status is `failed` on bad
    * callback URL, connection failures, `1xx`, and `3xx` response was received for callback
    * notification. Status is `awaitingRetry` when previous attempt at callback timed out or
@@ -187,17 +191,17 @@ export interface FailureDetails {
 }
 
 /**
- * Status is `notStarted`, when webhook was created with `enabled` set to false and it never
- * started publishing events. Status is `started` when webhook is normally functioning and
+ * Status is `disabled`, when webhook was created with `enabled` set to false and it never
+ * started publishing events. Status is `active` when webhook is normally functioning and
  * 200 OK response was received for callback notification. Status is `failed` on bad
  * callback URL, connection failures, `1xx`, and `3xx` response was received for callback
  * notification. Status is `awaitingRetry` when previous attempt at callback timed out or
  * received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.
  */
 export enum Status {
+  Active = 'active',
   AwaitingRetry = 'awaitingRetry',
+  Disabled = 'disabled',
   Failed = 'failed',
-  NotStarted = 'notStarted',
   RetryLimitReached = 'retryLimitReached',
-  Started = 'started',
 }
