@@ -16,11 +16,7 @@ Default simple profiler to use
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.session import Session
 
-from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
-from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.min import Min
-from metadata.orm_profiler.metrics.static.null_count import NullCount
-from metadata.orm_profiler.metrics.static.stddev import StdDev
+from metadata.orm_profiler.metrics.registry import ComposedMetrics, StaticMetrics
 from metadata.orm_profiler.profiles.core import SingleProfiler
 
 
@@ -31,6 +27,13 @@ class SimpleProfiler(SingleProfiler):
     a default.
     """
 
-    def __init__(self, session: Session, col: InstrumentedAttribute):
-        _metrics = [Min(col), Count(col), StdDev(col), NullCount(col), NullRatio(col)]
-        super().__init__(session, *_metrics)
+    def __init__(self, session: Session, col: InstrumentedAttribute, table):
+        _metrics = [
+            StaticMetrics.MIN(col),
+            StaticMetrics.COUNT(col),
+            StaticMetrics.STDDEV(col),
+            StaticMetrics.NULL_COUNT(col),
+            ComposedMetrics.NULL_RATIO(col),
+            StaticMetrics.TABLE_COUNT(),
+        ]
+        super().__init__(*_metrics, session=session, table=table)
