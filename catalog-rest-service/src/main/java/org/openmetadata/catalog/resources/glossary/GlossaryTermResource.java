@@ -57,6 +57,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -138,6 +139,18 @@ public class GlossaryTermResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
+              description = "List glossary terms filtered by glossary identified by Id given in `glossary` parameter.",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("glossary")
+          String glossaryIdParam,
+      @Parameter(
+              description =
+                  "List glossary terms filtered by children of glossary term identified by Id given in "
+                      + "`parent` parameter.",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("parent")
+          String parentTermParam,
+      @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
@@ -164,11 +177,31 @@ public class GlossaryTermResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
+    // Filter by glossary
+    String fqn = null;
+    EntityReference glossary = null;
+    if (glossaryIdParam != null) {
+      glossary = dao.getGlossary(glossaryIdParam);
+      fqn = glossary.getName();
+    }
+
+    // Filter by glossary parent term
+    if (parentTermParam != null) {
+      GlossaryTerm parentTerm = dao.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
+      fqn = parentTerm.getFullyQualifiedName();
+
+      // Ensure parent glossary term belongs to the glossary
+      if ((glossary != null) && (!parentTerm.getGlossary().getId().equals(glossary.getId()))) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.glossaryTermMismatch(parentTermParam, glossaryIdParam));
+      }
+    }
+
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
-      terms = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
+      terms = dao.listBefore(uriInfo, fields, fqn, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
-      terms = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
+      terms = dao.listAfter(uriInfo, fields, fqn, limitParam, after, include);
     }
     addHref(uriInfo, terms.getData());
     return terms;
@@ -382,7 +415,7 @@ public class GlossaryTermResource {
     return response.toResponse();
   }
 
-  private GlossaryTerm getGlossaryTerm(SecurityContext securityContext, CreateGlossaryTerm create) throws IOException {
+  private GlossaryTerm getGlossaryTerm(SecurityContext securityContext, CreateGlossaryTerm create) {
     return new GlossaryTerm()
         .withId(UUID.randomUUID())
         .withName(create.getName())

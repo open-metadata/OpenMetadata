@@ -62,7 +62,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException, ParseException {
     entity.setGlossary(getGlossary(entity));
-    entity.setParent(fields.contains("parent") ? getParent(entity) : null);
+    entity.setParent(getParent(entity));
+    entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
     entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : null);
     entity.setTags(fields.contains("tags") ? getTags(entity.getFullyQualifiedName()) : null);
@@ -73,6 +74,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<String> ids =
         findFrom(entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY, entity.getDeleted());
     return ids.size() == 1 ? Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
+  }
+
+  private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
+    List<String> ids =
+        findBoth(
+            entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
+    List<EntityReference> children = new ArrayList<>();
+    for (String id : ids) {
+      children.add(Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(id)));
+    }
+    System.out.println("XXX children " + children);
+    return children.isEmpty() ? null : children;
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
@@ -194,13 +207,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {}
 
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
-    // TODO check delted
+    // TODO check deleted
     List<String> refs = findFrom(term.getId(), Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY, null);
     if (refs.size() != 1) {
       LOG.warn(
           "Possible database issues - multiple owners found for entity {} with type {}", term.getId(), Entity.GLOSSARY);
     }
-    return daoCollection.glossaryDAO().findEntityReferenceById(UUID.fromString(refs.get(0)));
+    return getGlossary(refs.get(0));
+  }
+
+  public EntityReference getGlossary(String id) throws IOException {
+    return daoCollection.glossaryDAO().findEntityReferenceById(UUID.fromString(id));
   }
 
   @Override

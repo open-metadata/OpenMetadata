@@ -332,14 +332,18 @@ public final class TestUtils {
   }
 
   public static void assertListNull(Object... values) {
+    int index = 0;
     for (Object value : values) {
-      Assertions.assertNull(value);
+      Assertions.assertNull(value, "Object at index " + index + " is not null");
+      index++;
     }
   }
 
   public static void assertListNotNull(Object... values) {
+    int index = 0;
     for (Object value : values) {
-      Assertions.assertNotNull(value);
+      Assertions.assertNotNull(value, "Object at index " + index + " is null");
+      index++;
     }
   }
 }
