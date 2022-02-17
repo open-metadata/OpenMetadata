@@ -13,8 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.eventFilterMatch;
 import static org.openmetadata.catalog.util.EntityUtil.failureDetailsMatch;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.LifecycleAware;
@@ -45,6 +47,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.Webhook;
@@ -500,6 +503,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       recordChange("endPoint", origWebhook.getEndpoint(), updatedWebhook.getEndpoint());
       recordChange("batchSize", origWebhook.getBatchSize(), updatedWebhook.getBatchSize());
       recordChange("timeout", origWebhook.getTimeout(), updatedWebhook.getTimeout());
+      updateEventFilters();
       if (fieldsChanged()) {
         // If updating the other fields, opportunistically use it to capture failure details
         WebhookPublisher publisher = WebhookRepository.this.getPublisher(origWebhook.getId());
@@ -517,6 +521,24 @@ public class WebhookRepository extends EntityRepository<Webhook> {
             updatedWebhook.getFailureDetails(),
             true,
             failureDetailsMatch);
+      }
+    }
+
+    private void updateEventFilters() throws JsonProcessingException {
+      Webhook origWebhook = original.getEntity();
+      Webhook updatedWebhook = updated.getEntity();
+      List<EventFilter> origFilter = origWebhook.getEventFilters();
+      List<EventFilter> updatedFilter = updatedWebhook.getEventFilters();
+      List<EventFilter> added = new ArrayList<>();
+      List<EventFilter> deleted = new ArrayList<>();
+      recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);
+    }
+
+    private void sort(List<EventFilter> eventFilters) {
+      for (EventFilter filter : eventFilters) {
+        if (filter != null && filter.getEntities() != null) {
+          filter.getEntities().sort(String.CASE_INSENSITIVE_ORDER);
+        }
       }
     }
   }
