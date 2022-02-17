@@ -360,11 +360,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             .withExecutionDate(format.parse("2022-01-16").getTime())
             .withTaskStatus(taskStatus);
 
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid task name invalidTask");
+    assertResponseContains(
+        () -> putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid task name invalidTask");
   }
 
   @Test
