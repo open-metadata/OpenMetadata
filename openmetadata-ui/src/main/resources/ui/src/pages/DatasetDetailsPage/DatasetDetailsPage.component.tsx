@@ -489,6 +489,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setTableFQN(
       getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
     );
+    setEntityLineage({} as EntityLineage);
   }, [datasetFQN]);
 
   return (

@@ -84,6 +84,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   @Override
   public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(airflowPipeline));
     EntityReference entityReference =
         helper(helper(airflowPipeline).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE)))
             .toEntityReference();
@@ -110,14 +111,8 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   @Override
   public void storeRelationships(AirflowPipeline airflowPipeline) {
     EntityReference service = airflowPipeline.getService();
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            service.getId().toString(),
-            airflowPipeline.getId().toString(),
-            service.getType(),
-            Entity.AIRFLOW_PIPELINE,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(
+        service.getId(), airflowPipeline.getId(), service.getType(), Entity.AIRFLOW_PIPELINE, Relationship.CONTAINS);
     setOwner(airflowPipeline, airflowPipeline.getOwner());
     applyTags(airflowPipeline);
   }
@@ -151,6 +146,11 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -228,6 +228,11 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

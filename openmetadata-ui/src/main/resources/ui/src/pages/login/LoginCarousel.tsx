@@ -21,15 +21,17 @@ import {
 
 const LoginCarousel = () => {
   return (
-    <div style={{ width: '85%' }}>
+    <div data-testid="carousel-container" style={{ width: '85%' }}>
       <Slider {...LOGIN_SLIDER_SETTINGS}>
         {LOGIN_SLIDE.map((data) => (
-          <div key={uniqueId()}>
+          <div data-testid="slider-container" key={uniqueId()}>
             <div>
               <img alt="slider" className="tw-w-full" src={data.image} />
             </div>
             <div className="tw-mt-24 tw-mb-11">
-              <p className="tw-text-center tw-w-5/6 tw-mx-auto tw-font-medium tw-text-white tw-text-xl">
+              <p
+                className="tw-text-center tw-w-5/6 tw-mx-auto tw-font-medium tw-text-white tw-text-xl"
+                data-testid="carousel-slide-description">
                 {data.description}
               </p>
             </div>

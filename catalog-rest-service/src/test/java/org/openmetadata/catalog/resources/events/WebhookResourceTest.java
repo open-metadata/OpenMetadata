@@ -64,7 +64,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   public WebhookResourceTest() {
-    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false, false);
+    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false, false, false);
     supportsPatch = false;
   }
 
@@ -78,9 +78,9 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
     CreateWebhook create = createRequest(webhookName, "", "", null).withEnabled(false).withEndpoint(URI.create(uri));
     Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, webhook.getStatus());
+    assertEquals(Status.DISABLED, webhook.getStatus());
     Webhook getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
     EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
 
@@ -92,14 +92,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(false).withNewValue(true));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.NOT_STARTED).withNewValue(Status.STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.DISABLED).withNewValue(Status.ACTIVE));
     change.getFieldsUpdated().add(new FieldChange().withName("batchSize").withOldValue(10).withNewValue(50));
     create.withEnabled(true).withBatchSize(50);
 
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    assertEquals(Status.STARTED, webhook.getStatus());
+    assertEquals(Status.ACTIVE, webhook.getStatus());
     getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.STARTED, getWebhook.getStatus());
+    assertEquals(Status.ACTIVE, getWebhook.getStatus());
 
     // Ensure the call back notification has started
     details = waitForFirstEvent(webhookName, 25, 100);
@@ -119,15 +119,15 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.STARTED).withNewValue(Status.NOT_STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.ACTIVE).withNewValue(Status.DISABLED));
 
-    // Disabled webhook state is NOT_STARTED
+    // Disabled webhook state is DISABLED
     getWebhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
 
     // Disabled webhook state also records last successful time when event was sent
     getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
     assertEquals(details.getFirstEventTime(), getWebhook.getFailureDetails().getLastSuccessfulAt());
 
     // Ensure callback back notification is disabled with no new events
@@ -172,7 +172,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
                 .withNewValue(create.getEndpoint()));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.ACTIVE));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
@@ -266,9 +266,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
-    List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(actualEvents, callbackEvents, 15, 250);
+    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 15, 250);
     assertWebhookStatusSuccess("healthy");
   }
 
@@ -279,15 +277,13 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     List<ChangeEvent> callbackEvents =
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
     long timestamp = callbackEvents.get(0).getTimestamp();
-    List<ChangeEvent> events = getChangeEvents(entity, null, null, timestamp, ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+    waitAndCheckForEvents(entity, null, null, timestamp, callbackEvents, 30, 100);
 
     // For the entity all the webhooks registered for updated events have the right number of events
     callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
     timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
-    events = getChangeEvents(null, entity, null, timestamp, ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+    waitAndCheckForEvents(null, entity, null, timestamp, callbackEvents, 30, 100);
 
     // TODO add delete event support
   }
@@ -311,9 +307,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents.peek());
 
-    List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(actualEvents, callbackEvents, 30, 100);
+    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30, 100);
 
     // Check all webhook status
     assertWebhookStatusSuccess("slowServer");
@@ -343,7 +337,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
 
   public void assertWebhookStatusSuccess(String name) throws HttpResponseException {
     Webhook webhook = getEntityByName(name, "", ADMIN_AUTH_HEADERS);
-    assertEquals(Status.STARTED, webhook.getStatus());
+    assertEquals(Status.ACTIVE, webhook.getStatus());
     assertNull(webhook.getFailureDetails());
   }
 
@@ -356,13 +350,23 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   public void waitAndCheckForEvents(
-      Collection<ChangeEvent> expected, Collection<ChangeEvent> received, int iteration, long sleepMillis)
-      throws InterruptedException {
+      String entityCreated,
+      String entityUpdated,
+      String entityDeleted,
+      long timestamp,
+      Collection<ChangeEvent> received,
+      int iteration,
+      long sleepMillis)
+      throws InterruptedException, HttpResponseException {
     int i = 0;
+    List<ChangeEvent> expected =
+        getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
     while (expected.size() < received.size() && i < iteration) {
       Thread.sleep(sleepMillis);
       i++;
     }
+    // Refresh the expected events again by getting list of events to compare with webhook received events
+    expected = getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
     if (expected.size() != received.size()) {
       expected.forEach(
           c1 ->

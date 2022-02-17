@@ -26,6 +26,9 @@
         "Druid",
         "Db2",
         "ClickHouse",
+        "Databricks",
+        "DynamoDB",
+        "AzureSQL",
         "SingleStore"
       ],
       "javaEnums": [
@@ -81,6 +84,15 @@
           "name": "ClickHouse"
         },
         {
+          "name": "Databricks"
+        },
+        {
+          "name": "AzureSQL"
+        },
+        {
+          "name": "DynamoDB"
+        },
+        {
           "name": "SingleStore"
         }
       ]
@@ -127,7 +139,8 @@
       "description": "Name that identifies this database service.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^[^.]*$"
     },
     "displayName": {
       "description": "Display Name that identifies this database service.",
@@ -178,6 +191,12 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "href", "databaseConnection"],
+  "required": [
+    "id",
+    "name",
+    "serviceType",
+    "href",
+    "databaseConnection"
+  ],
   "additionalProperties": false
 }

@@ -80,14 +80,7 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public void storeRelationships(Report report) {
     EntityReference service = report.getService();
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            service.getId().toString(),
-            report.getId().toString(),
-            service.getType(),
-            Entity.CHART,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(service.getId(), report.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
     setOwner(report, report.getOwner());
     applyTags(report);
   }
@@ -117,6 +110,11 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -197,6 +195,11 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

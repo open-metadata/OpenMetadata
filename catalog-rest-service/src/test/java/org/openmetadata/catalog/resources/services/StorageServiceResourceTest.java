@@ -46,6 +46,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
         false,
         true,
         false,
+        false,
         false);
     this.supportsPatch = false;
   }

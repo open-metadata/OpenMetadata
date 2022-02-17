@@ -15,7 +15,6 @@ package org.openmetadata.catalog.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -47,7 +46,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false);
+    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false, false);
   }
 
   @Test
@@ -84,10 +83,10 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(role);
     role.setDisplayName("newDisplayName");
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(
+        () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   private static void validateRole(
@@ -142,8 +141,6 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
         getEntityInterface(role), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
-    assertEquals(createRequest.getDisplayName(), role.getDisplayName());
   }
 
   @Override

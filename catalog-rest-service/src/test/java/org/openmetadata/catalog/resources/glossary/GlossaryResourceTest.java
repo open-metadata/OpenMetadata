@@ -44,7 +44,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         false,
         true,
         true,
-        true);
+        true,
+        false);
   }
 
   @BeforeAll

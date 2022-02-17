@@ -120,6 +120,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -187,6 +192,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

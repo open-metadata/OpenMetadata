@@ -36,7 +36,6 @@ export interface PipeLineDetailsProp {
   serviceType: string;
   pipelineUrl: string;
   entityName: string;
-  tagList: Array<string>;
   users: Array<User>;
   pipelineDetails: Pipeline;
   activeTab: number;

@@ -9,7 +9,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.common import Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -23,11 +23,12 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class DynamoDBSourceConfig(AWSClientConfigModel):
-    service_type = "DynamoDB"
+    service_type = DatabaseServiceType.DynamoDB.value
     service_name: str
     endpoint_url: str
     host_port: str = ""
     db_name = "DynamoDB"
+    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -74,6 +75,12 @@ class DynamodbSource(Source[Entity]):
         try:
             tables = list(self.dynamodb.tables.all())
             for table in tables:
+                if not self.config.table_filter_pattern.included(table.name):
+                    self.status.filter(
+                        "{}".format(table.name),
+                        "Table pattern not allowed",
+                    )
+                    continue
                 database_entity = Database(
                     name=self.config.db_name,
                     service=EntityReference(id=self.service.id, type="databaseService"),

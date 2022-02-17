@@ -99,37 +99,69 @@ class KafkaSource(Source[CreateTopicRequest]):
         pass
 
     def next_record(self) -> Iterable[CreateTopicRequest]:
-        topics = self.admin_client.list_topics().topics
-        for t in topics:
+        topics_dict = self.admin_client.list_topics().topics
+        for topic_name, topic_metadata in topics_dict.items():
             try:
-                if self.config.filter_pattern.included(t):
-                    logger.info("Fetching topic schema {}".format(t))
-                    topic_schema = self._parse_topic_metadata(t)
-                    topic = CreateTopicRequest(
-                        name=t.replace(".", "_DOT_"),
+                if self.config.filter_pattern.included(topic_name):
+                    logger.info("Fetching topic schema {}".format(topic_name))
+                    topic_schema = self._parse_topic_metadata(topic_name)
+                    logger.info("Fetching topic config {}".format(topic_name))
+                    topic_request = CreateTopicRequest(
+                        name=topic_name.replace(".", "_DOT_"),
                         service=EntityReference(
                             id=self.service.id, type="messagingService"
                         ),
-                        partitions=1,
+                        partitions=len(topic_metadata.partitions),
+                        replicationFactor=len(
+                            topic_metadata.partitions.get(0).replicas
+                        ),
                     )
-                    if topic_schema is not None:
-                        topic.schemaText = topic_schema.schema_str
-                        if topic_schema.schema_type == "AVRO":
-                            topic.schemaType = SchemaType.Avro.name
-                        elif topic_schema.schema_type == "PROTOBUF":
-                            topic.schemaType = SchemaType.Protobuf.name
-                        elif topic_schema.schema_type == "JSON":
-                            topic.schemaType = SchemaType.JSON.name
-                        else:
-                            topic.schemaType = SchemaType.Other.name
+                    topic_configResource = self.admin_client.describe_configs(
+                        [
+                            ConfigResource(
+                                confluent_kafka.admin.RESOURCE_TOPIC, topic_name
+                            )
+                        ]
+                    )
+                    for j in concurrent.futures.as_completed(
+                        iter(topic_configResource.values())
+                    ):
+                        config_response = j.result(timeout=10)
+                        topic_request.maximumMessageSize = config_response.get(
+                            "max.message.bytes"
+                        ).value
+                        topic_request.minimumInSyncReplicas = config_response.get(
+                            "min.insync.replicas"
+                        ).value
+                        topic_request.retentionTime = config_response.get(
+                            "retention.ms"
+                        ).value
+                        topic_request.cleanupPolicies = [
+                            config_response.get("cleanup.policy").value
+                        ]
+                        topic_config = {}
+                        for key, conf_response in config_response.items():
+                            topic_config[key] = conf_response.value
+                        topic_request.topicConfig = topic_config
 
-                    self.status.topic_scanned(topic.name.__root__)
-                    yield topic
+                    if topic_schema is not None:
+                        topic_request.schemaText = topic_schema.schema_str
+                        if topic_schema.schema_type == "AVRO":
+                            topic_request.schemaType = SchemaType.Avro.name
+                        elif topic_schema.schema_type == "PROTOBUF":
+                            topic_request.schemaType = SchemaType.Protobuf.name
+                        elif topic_schema.schema_type == "JSON":
+                            topic_request.schemaType = SchemaType.JSON.name
+                        else:
+                            topic_request.schemaType = SchemaType.Other.name
+
+                    self.status.topic_scanned(topic_request.name.__root__)
+                    yield topic_request
                 else:
-                    self.status.dropped(t)
+                    self.status.dropped(topic_name)
             except Exception as err:
                 logger.error(repr(err))
-                self.status.failure(t)
+                self.status.failure(topic_name)
 
     def _parse_topic_metadata(self, topic: str) -> Optional[Schema]:
         logger.debug(f"topic = {topic}")

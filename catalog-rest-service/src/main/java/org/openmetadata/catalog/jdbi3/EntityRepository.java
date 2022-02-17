@@ -426,10 +426,7 @@ public abstract class EntityRepository<T> {
     }
 
     // Add relationship
-    int added =
-        daoCollection
-            .relationshipDAO()
-            .insert(userId.toString(), entityId.toString(), Entity.USER, entityType, Relationship.FOLLOWS.ordinal());
+    int added = addRelationship(userId, entityId, Entity.USER, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
@@ -581,7 +578,7 @@ public abstract class EntityRepository<T> {
   protected void setOwner(T entity, EntityReference owner) {
     if (supportsOwner) {
       EntityInterface<T> entityInterface = getEntityInterface(entity);
-      EntityUtil.setOwner(daoCollection.relationshipDAO(), entityInterface.getId(), entityType, owner);
+      setOwner(entityInterface.getId(), entityType, owner);
       entityInterface.setOwner(owner);
     }
   }
@@ -836,8 +833,16 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
-    daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  public int addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
+    return daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  }
+
+  public void setOwner(UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
+    // Add relationship owner --- owns ---> ownedEntity
+    if (owner != null) {
+      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
+      addRelationship(owner.getId(), ownedEntityId, owner.getType(), ownedEntityType, Relationship.OWNS);
+    }
   }
 
   public List<String> findBoth(

@@ -16,7 +16,6 @@ package org.openmetadata.catalog.resources.lineage;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -107,16 +106,12 @@ public class LineageResourceTest extends CatalogApplicationTest {
     Map<String, String> authHeaders = authHeaders(userName + "@open-metadata.org");
 
     if (shouldThrowException) {
-      HttpResponseException exception =
-          assertThrows(HttpResponseException.class, () -> addEdge(TABLES.get(1), TABLES.get(2), authHeaders));
       assertResponse(
-          exception,
+          () -> addEdge(TABLES.get(1), TABLES.get(2), authHeaders),
           FORBIDDEN,
           String.format("Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateLineage", userName));
-      exception =
-          assertThrows(HttpResponseException.class, () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders));
       assertResponse(
-          exception,
+          () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders),
           FORBIDDEN,
           String.format("Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateLineage", userName));
       return;

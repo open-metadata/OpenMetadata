@@ -117,6 +117,7 @@ const EntityTable = ({
   }>();
 
   const [allTags, setAllTags] = useState<Array<string>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const getDataTypeString = (dataType: string): string => {
     switch (upperCase(dataType)) {
@@ -147,11 +148,16 @@ const EntityTable = ({
   };
 
   const fetchTags = () => {
-    getTagCategories().then((res) => {
-      if (res.data) {
-        setAllTags(getTaglist(res.data));
-      }
-    });
+    setIsTagLoading(true);
+    getTagCategories()
+      .then((res) => {
+        if (res.data) {
+          setAllTags(getTaglist(res.data));
+        }
+      })
+      .finally(() => {
+        setIsTagLoading(false);
+      });
   };
 
   const handleEditColumn = (column: Column, index: number): void => {
@@ -300,7 +306,6 @@ const EntityTable = ({
   }, [searchText, tableColumns]);
 
   useEffect(() => {
-    fetchTags();
     toggleAllRowsExpanded(isReadOnly);
   }, []);
 
@@ -431,6 +436,7 @@ const EntityTable = ({
                               onClick={() => {
                                 if (!editColumnTag) {
                                   handleEditColumnTag(row.original, row.id);
+                                  fetchTags();
                                 }
                               }}>
                               <NonAdminAction
@@ -441,7 +447,12 @@ const EntityTable = ({
                                 trigger="click">
                                 <TagsContainer
                                   editable={editColumnTag?.index === row.id}
+                                  isLoading={
+                                    isTagLoading &&
+                                    editColumnTag?.index === row.id
+                                  }
                                   selectedTags={cell.value || []}
+                                  size="small"
                                   tagList={allTags}
                                   type="label"
                                   onCancel={() => {

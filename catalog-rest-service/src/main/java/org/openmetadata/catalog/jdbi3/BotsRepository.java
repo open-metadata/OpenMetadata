@@ -55,9 +55,7 @@ public class BotsRepository extends EntityRepository<Bots> {
   }
 
   @Override
-  public void prepare(Bots entity) {
-    /* Nothing to do */
-  }
+  public void prepare(Bots entity) {}
 
   @Override
   public void storeEntity(Bots entity, boolean update) throws IOException {
@@ -89,6 +87,11 @@ public class BotsRepository extends EntityRepository<Bots> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -159,6 +162,11 @@ public class BotsRepository extends EntityRepository<Bots> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

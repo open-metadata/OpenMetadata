@@ -50,7 +50,6 @@ import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import {
   getCurrentTopicTab,
   topicDetailsTabs,
@@ -61,7 +60,6 @@ const TopicDetailsPage: FunctionComponent = () => {
   const showToast = useToastContext();
   const history = useHistory();
 
-  const [tagList, setTagList] = useState<Array<string>>([]);
   const { topicFQN, tab } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [topicId, setTopicId] = useState<string>('');
@@ -114,12 +112,6 @@ const TopicDetailsPage: FunctionComponent = () => {
       topicId,
       jsonPatch
     ) as unknown as Promise<AxiosResponse>;
-  };
-
-  const fetchTags = () => {
-    getTagCategories().then((res) => {
-      setTagList(getTaglist(res.data));
-    });
   };
 
   const fetchTopicDetail = (topicFQN: string) => {
@@ -307,10 +299,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     fetchTopicDetail(topicFQN);
   }, [topicFQN]);
 
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
   return (
     <>
       {isLoading ? (
@@ -339,7 +327,6 @@ const TopicDetailsPage: FunctionComponent = () => {
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
           slashedTopicName={slashedTopicName}
-          tagList={tagList}
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           topicDetails={topicDetails}

@@ -23,10 +23,8 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ResultList;
 
 public class ChangeEventRepository {
   private final CollectionDAO dao;
@@ -36,7 +34,7 @@ public class ChangeEventRepository {
   }
 
   @Transaction
-  public ResultList<ChangeEvent> list(
+  public List<ChangeEvent> list(
       long timestamp, List<String> entityCreatedList, List<String> entityUpdatedList, List<String> entityDeletedList)
       throws IOException, GeneralSecurityException {
     List<String> jsons = new ArrayList<>();
@@ -49,6 +47,6 @@ public class ChangeEventRepository {
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
     }
-    return new ChangeEventList(changeEvents, null, null, changeEvents.size()); // TODO
+    return changeEvents;
   }
 }

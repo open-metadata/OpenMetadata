@@ -39,7 +39,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   retentionSize,
   schemaText,
   schemaType,
-  tagList,
   topicTags,
   activeTab,
   entityName,
@@ -286,7 +285,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
           owner={owner}
-          tagList={tagList}
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}

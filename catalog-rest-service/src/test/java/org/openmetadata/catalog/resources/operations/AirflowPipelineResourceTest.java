@@ -32,6 +32,7 @@ import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -96,6 +97,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         false,
         true,
         false,
+        true,
         true);
   }
 
@@ -148,7 +150,6 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         createRequest.getDescription(),
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
-    assertEquals(createRequest.getDisplayName(), ingestion.getDisplayName());
     assertEquals(createRequest.getConcurrency(), ingestion.getConcurrency());
     validatePipelineConfig(createRequest.getPipelineConfig(), ingestion.getPipelineConfig());
   }
@@ -204,9 +205,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
   @Test
   void post_AirflowPipelineWithoutRequiredService_4xx(TestInfo test) {
     CreateAirflowPipeline create = createRequest(test).withService(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
   }
 
   @Test

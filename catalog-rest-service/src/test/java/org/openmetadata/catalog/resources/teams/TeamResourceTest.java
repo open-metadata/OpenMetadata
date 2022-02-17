@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -66,7 +65,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false, false);
   }
 
   @Test
@@ -116,14 +115,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team team = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Empty query field .../teams?fields=
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(team.getId(), "test", ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("test"));
+    assertResponse(
+        () -> getEntity(team.getId(), "test", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidField("test"));
 
     // .../teams?fields=invalidField
-    exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(team.getId(), "invalidField", ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
+    assertResponse(
+        () -> getEntity(team.getId(), "invalidField", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**
@@ -152,10 +153,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(team);
     team.setDisplayName("newDisplayName");
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(
+        () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -250,7 +251,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateCommonEntityFields(
         getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
-    assertEquals(createRequest.getDisplayName(), team.getDisplayName());
     assertEquals(createRequest.getProfile(), team.getProfile());
 
     List<EntityReference> expectedUsers = new ArrayList<>();

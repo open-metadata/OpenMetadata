@@ -45,10 +45,19 @@ def check() -> None:
 @click.option(
     "--debug/--no-debug", default=lambda: os.environ.get("METADATA_DEBUG", False)
 )
-def metadata(debug: bool) -> None:
+@click.option(
+    "--log-level",
+    "-l",
+    type=click.Choice(["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]),
+    help="Log level",
+    required=False,
+)
+def metadata(debug: bool, log_level: str) -> None:
     if debug:
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("metadata").setLevel(logging.DEBUG)
+    elif log_level:
+        logging.getLogger().setLevel(log_level)
     else:
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger("metadata").setLevel(logging.INFO)
