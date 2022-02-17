@@ -103,13 +103,11 @@ class MetricsTest(TestCase):
         res = composed_profiler.execute()
         assert res.get(Metrics.NULL_RATIO.name) == 0.5
 
-        print(res)
-
     def test_table_count(self):
         """
         Check Table Metric run
         """
-        table_count = Metrics.TABLE_COUNT()
+        table_count = Metrics.ROW_NUMBER()
         profiler = SingleProfiler(table_count, session=self.session, table=User)
         res = profiler.execute()
-        assert res.get(Metrics.TABLE_COUNT.name) == 2
+        assert res.get(Metrics.ROW_NUMBER.name) == 2
