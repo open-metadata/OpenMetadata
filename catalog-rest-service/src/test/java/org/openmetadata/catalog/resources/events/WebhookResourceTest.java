@@ -64,7 +64,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   public WebhookResourceTest() {
-    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false, false);
+    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false, false, false);
     supportsPatch = false;
   }
 
@@ -76,11 +76,12 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     String webhookName = getEntityName(test);
     LOG.info("creating webhook in disabled state");
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
-    CreateWebhook create = createRequest(webhookName, "", "", null).withEnabled(false).withEndpoint(URI.create(uri));
+    CreateWebhook create =
+        createRequest(webhookName, "", "", null).withEnabled(false).withEndpoint(URI.create(uri)).withBatchSize(10);
     Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, webhook.getStatus());
+    assertEquals(Status.DISABLED, webhook.getStatus());
     Webhook getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
     EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
 
@@ -92,14 +93,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(false).withNewValue(true));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.NOT_STARTED).withNewValue(Status.STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.DISABLED).withNewValue(Status.ACTIVE));
     change.getFieldsUpdated().add(new FieldChange().withName("batchSize").withOldValue(10).withNewValue(50));
     create.withEnabled(true).withBatchSize(50);
 
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    assertEquals(Status.STARTED, webhook.getStatus());
+    assertEquals(Status.ACTIVE, webhook.getStatus());
     getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.STARTED, getWebhook.getStatus());
+    assertEquals(Status.ACTIVE, getWebhook.getStatus());
 
     // Ensure the call back notification has started
     details = waitForFirstEvent(webhookName, 25, 100);
@@ -119,15 +120,15 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.STARTED).withNewValue(Status.NOT_STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.ACTIVE).withNewValue(Status.DISABLED));
 
-    // Disabled webhook state is NOT_STARTED
+    // Disabled webhook state is DISABLED
     getWebhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
 
     // Disabled webhook state also records last successful time when event was sent
     getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
     assertEquals(details.getFirstEventTime(), getWebhook.getFailureDetails().getLastSuccessfulAt());
 
     // Ensure callback back notification is disabled with no new events
@@ -172,7 +173,44 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
                 .withNewValue(create.getEndpoint()));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.ACTIVE));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_updateWebhookFilter(TestInfo test) throws IOException {
+    String endpoint =
+        "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/counter/" + test.getDisplayName();
+    EventFilter f1 = new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of("*"));
+    EventFilter f2 = new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of("*"));
+    EventFilter f3 = new EventFilter().withEventType(EventType.ENTITY_DELETED).withEntities(List.of("*"));
+    EventFilter f4 = new EventFilter().withEventType(EventType.ENTITY_SOFT_DELETED).withEntities(List.of("*"));
+
+    CreateWebhook create =
+        createRequest("filterUpdate", "", "", null)
+            .withEnabled(false)
+            .withEndpoint(URI.create(endpoint))
+            .withEventFilters(List.of(f1));
+    Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Now update the filter to include entity updated and deleted events
+    create.setEventFilters(List.of(f1, f2, f3));
+    ChangeDescription change = getChangeDescription(webhook.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("eventFilters").withNewValue(List.of(f2, f3, f4)));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Now remove the filter for entityCreated
+    create.setEventFilters(List.of(f2, f3));
+    change = getChangeDescription(webhook.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f1)));
+    webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Now remove the filter for entityDeleted
+    create.setEventFilters(List.of(f2));
+    change = getChangeDescription(webhook.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("eventFilters").withOldValue(List.of(f3, f4)));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
@@ -223,7 +261,24 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   public void validateGetWithDifferentFields(Webhook entity, boolean byName) throws HttpResponseException {}
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("eventFilters")) {
+      List<EventFilter> expectedFilters = (List<EventFilter>) expected;
+      List<EventFilter> actualFilters = JsonUtils.readObjects(actual.toString(), EventFilter.class);
+      assertEquals(expectedFilters, actualFilters);
+    } else if (fieldName.equals("endPoint")) {
+      URI expectedEndpoint = (URI) expected;
+      URI actualEndpoint = URI.create(actual.toString());
+      assertEquals(expectedEndpoint, actualEndpoint);
+    } else if (fieldName.equals("status")) {
+      assertEquals((Status) expected, Status.fromValue(actual.toString()));
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
 
   /**
    * Before a test for every entity resource, create a webhook subscription. At the end of the test, ensure all events
@@ -266,9 +321,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents);
     assertNotNull(callbackEvents.peek());
-    List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(actualEvents, callbackEvents, 15, 250);
+    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 15, 250);
     assertWebhookStatusSuccess("healthy");
   }
 
@@ -279,15 +332,13 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     List<ChangeEvent> callbackEvents =
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
     long timestamp = callbackEvents.get(0).getTimestamp();
-    List<ChangeEvent> events = getChangeEvents(entity, null, null, timestamp, ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+    waitAndCheckForEvents(entity, null, null, timestamp, callbackEvents, 30, 100);
 
     // For the entity all the webhooks registered for updated events have the right number of events
     callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
     timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
-    events = getChangeEvents(null, entity, null, timestamp, ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(callbackEvents, events, 30, 100);
+    waitAndCheckForEvents(null, entity, null, timestamp, callbackEvents, 30, 100);
 
     // TODO add delete event support
   }
@@ -311,9 +362,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     ConcurrentLinkedQueue<ChangeEvent> callbackEvents = details.getEvents();
     assertNotNull(callbackEvents.peek());
 
-    List<ChangeEvent> actualEvents =
-        getChangeEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), ADMIN_AUTH_HEADERS).getData();
-    waitAndCheckForEvents(actualEvents, callbackEvents, 30, 100);
+    waitAndCheckForEvents("*", "*", "*", callbackEvents.peek().getTimestamp(), callbackEvents, 30, 100);
 
     // Check all webhook status
     assertWebhookStatusSuccess("slowServer");
@@ -343,7 +392,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
 
   public void assertWebhookStatusSuccess(String name) throws HttpResponseException {
     Webhook webhook = getEntityByName(name, "", ADMIN_AUTH_HEADERS);
-    assertEquals(Status.STARTED, webhook.getStatus());
+    assertEquals(Status.ACTIVE, webhook.getStatus());
     assertNull(webhook.getFailureDetails());
   }
 
@@ -356,13 +405,23 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   public void waitAndCheckForEvents(
-      Collection<ChangeEvent> expected, Collection<ChangeEvent> received, int iteration, long sleepMillis)
-      throws InterruptedException {
+      String entityCreated,
+      String entityUpdated,
+      String entityDeleted,
+      long timestamp,
+      Collection<ChangeEvent> received,
+      int iteration,
+      long sleepMillis)
+      throws InterruptedException, HttpResponseException {
     int i = 0;
+    List<ChangeEvent> expected =
+        getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
     while (expected.size() < received.size() && i < iteration) {
       Thread.sleep(sleepMillis);
       i++;
     }
+    // Refresh the expected events again by getting list of events to compare with webhook received events
+    expected = getChangeEvents(entityCreated, entityUpdated, entityDeleted, timestamp, ADMIN_AUTH_HEADERS).getData();
     if (expected.size() != received.size()) {
       expected.forEach(
           c1 ->

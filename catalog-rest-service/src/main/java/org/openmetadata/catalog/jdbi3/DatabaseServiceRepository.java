@@ -84,20 +84,17 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     return entity;
   }
 
-  private List<EntityReference> getAirflowPipelines(DatabaseService databaseService) throws IOException {
-    if (databaseService == null) {
+  private List<EntityReference> getAirflowPipelines(DatabaseService service) throws IOException {
+    if (service == null) {
       return null;
     }
-    String databaseServiceId = databaseService.getId().toString();
     List<String> airflowPipelineIds =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                databaseServiceId,
-                Entity.DATABASE_SERVICE,
-                Relationship.CONTAINS.ordinal(),
-                Entity.AIRFLOW_PIPELINE,
-                toBoolean(toInclude(databaseService)));
+        findTo(
+            service.getId(),
+            Entity.DATABASE_SERVICE,
+            Relationship.CONTAINS,
+            Entity.AIRFLOW_PIPELINE,
+            toBoolean(toInclude(service)));
     List<EntityReference> airflowPipelines = new ArrayList<>();
     for (String airflowPipelineId : airflowPipelineIds) {
       airflowPipelines.add(
@@ -178,6 +175,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return entity.getOwner();
     }
@@ -245,6 +247,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

@@ -103,15 +103,13 @@
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "maxLength": 128
     },
     "tableName": {
-      "description": "Local name (not fully qualified name) of a table.",
+      "description": "Local name (not fully qualified name) of a table. Dots will be escaped automatically",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "maxLength": 128
     },
     "fullyQualifiedColumnName": {
       "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
@@ -126,6 +124,10 @@
       "properties": {
         "name": {
           "$ref": "#/definitions/columnName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this column name.",
+          "type": "string"
         },
         "dataType": {
           "description": "Data type of the column (int, date etc.).",

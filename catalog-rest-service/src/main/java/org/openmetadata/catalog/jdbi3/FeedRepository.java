@@ -19,17 +19,16 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink.LinkType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
@@ -47,8 +46,8 @@ public class FeedRepository {
   @Transaction
   public Thread create(Thread thread) throws IOException, ParseException {
     // Validate user creating thread
-    UUID fromUser = thread.getPosts().get(0).getFrom();
-    dao.userDAO().findEntityById(fromUser);
+    String fromUser = thread.getPosts().get(0).getFrom();
+    dao.userDAO().findEntityByName(fromUser);
 
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -61,17 +60,16 @@ public class FeedRepository {
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
 
     // Add relationship User -- created --> Thread relationship
-    dao.relationshipDAO()
-        .insert(fromUser.toString(), thread.getId().toString(), "user", "thread", Relationship.CREATED.ordinal());
+    dao.relationshipDAO().insert(fromUser, thread.getId().toString(), "user", "thread", Relationship.CREATED.ordinal());
 
     // Add field relationship data asset Thread -- isAbout ---> entity/entityField
     // relationship
     dao.fieldRelationshipDAO()
         .insert(
-            thread.getId().toString(),
-            about.getFullyQualifiedFieldValue(),
-            "thread",
-            about.getFullyQualifiedFieldType(),
+            thread.getId().toString(), // from FQN
+            about.getFullyQualifiedFieldValue(), // to FQN
+            "thread", // From type
+            about.getFullyQualifiedFieldType(), // to Type
             Relationship.IS_ABOUT.ordinal());
 
     // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
@@ -111,8 +109,8 @@ public class FeedRepository {
   @Transaction
   public Thread addPostToThread(String id, Post post) throws IOException {
     // Query 1 - validate user creating thread
-    UUID fromUser = post.getFrom();
-    dao.userDAO().findEntityById(fromUser);
+    String fromUser = post.getFrom();
+    dao.userDAO().findEntityByName(fromUser);
 
     // Query 2 - Find the thread
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
@@ -133,12 +131,7 @@ public class FeedRepository {
     }
     if (!relationAlreadyExists) {
       dao.relationshipDAO()
-          .insert(
-              post.getFrom().toString(),
-              thread.getId().toString(),
-              "user",
-              "thread",
-              Relationship.REPLIED_TO.ordinal());
+          .insert(post.getFrom(), thread.getId().toString(), "user", "thread", Relationship.REPLIED_TO.ordinal());
     }
     return thread;
   }
@@ -150,9 +143,6 @@ public class FeedRepository {
       return JsonUtils.readObjects(dao.feedDAO().list(), Thread.class);
     }
     EntityLink entityLink = EntityLink.parse(link);
-    if (entityLink.getLinkType() != LinkType.ENTITY) {
-      throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityType}> is allowed");
-    }
     EntityReference reference = EntityUtil.validateEntityLink(entityLink);
     List<String> threadIds = new ArrayList<>();
     List<List<String>> result =
@@ -167,10 +157,11 @@ public class FeedRepository {
     // TODO remove hardcoding of thread
     // For a user entitylink get created or replied relationships to the thread
     if (reference.getType().equals(Entity.USER)) {
+      // TODO: Add user mentioned threads as well
       threadIds.addAll(
           dao.relationshipDAO()
               .findTo(
-                  reference.getId().toString(),
+                  reference.getName(),
                   reference.getType(),
                   Relationship.CREATED.ordinal(),
                   "thread",
@@ -178,7 +169,7 @@ public class FeedRepository {
       threadIds.addAll(
           dao.relationshipDAO()
               .findTo(
-                  reference.getId().toString(),
+                  reference.getName(),
                   reference.getType(),
                   Relationship.REPLIED_TO.ordinal(),
                   "thread",
@@ -187,10 +178,10 @@ public class FeedRepository {
       // Only data assets are added as about
       result =
           dao.fieldRelationshipDAO()
-              .listToByPrefix(
+              .listFromByAllPrefix(
                   entityLink.getFullyQualifiedFieldValue(),
-                  entityLink.getFullyQualifiedFieldType(),
                   "thread",
+                  entityLink.getFullyQualifiedFieldType(),
                   Relationship.IS_ABOUT.ordinal());
       result.forEach(l -> threadIds.add(l.get(1)));
     }
@@ -204,6 +195,8 @@ public class FeedRepository {
         threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));
       }
     }
+    // sort the list by thread updated timestamp before returning
+    threads.sort(Comparator.comparing(Thread::getUpdatedAt));
     return threads;
   }
 }

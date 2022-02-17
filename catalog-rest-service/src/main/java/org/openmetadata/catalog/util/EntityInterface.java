@@ -28,6 +28,8 @@ public interface EntityInterface<T> {
 
   String getDisplayName();
 
+  String getName();
+
   Boolean isDeleted();
 
   default EntityReference getOwner() {
@@ -71,6 +73,8 @@ public interface EntityInterface<T> {
   };
 
   void setDisplayName(String displayName);
+
+  void setName(String name);
 
   void setUpdateDetails(String updatedBy, long updatedAt);
 

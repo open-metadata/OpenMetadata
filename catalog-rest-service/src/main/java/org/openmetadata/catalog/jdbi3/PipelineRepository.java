@@ -163,6 +163,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(pipeline));
+    EntityUtil.escapeReservedChars(pipeline.getTasks());
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
@@ -188,17 +190,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void storeRelationships(Pipeline pipeline) {
     EntityReference service = pipeline.getService();
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            service.getId().toString(),
-            pipeline.getId().toString(),
-            service.getType(),
-            Entity.PIPELINE,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
 
     // Add owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    setOwner(pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);
@@ -247,6 +242,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -329,6 +329,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

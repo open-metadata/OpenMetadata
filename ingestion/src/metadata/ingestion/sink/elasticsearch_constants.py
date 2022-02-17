@@ -423,7 +423,7 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
-            },
+            }
           }
         }
     }
@@ -459,7 +459,7 @@ TEAM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
-            },
+            }
           }
         }
     }

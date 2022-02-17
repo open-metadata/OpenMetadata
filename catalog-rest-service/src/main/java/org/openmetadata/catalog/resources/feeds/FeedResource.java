@@ -96,8 +96,8 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Parameter(
               description = "Filter threads by entity link",
-              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityId}>"))
-          @QueryParam("entity")
+              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}>"))
+          @QueryParam("entityLink")
           String entityLink)
       throws IOException {
     return new ThreadList(addHref(uriInfo, dao.listThreads(entityLink)));

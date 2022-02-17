@@ -14,8 +14,8 @@ jest.mock('../../components/common/editor/MarkdownWithPreview', () => {
   return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
 });
 
-describe('Test RolesPage component', () => {
-  it('RolesPage component should render properly', async () => {
+describe('Test TagsPage form component', () => {
+  it('Form component should render properly', async () => {
     const { container } = render(
       <Form initialData={mockInitialData} saveData={mockFunction} />,
       {

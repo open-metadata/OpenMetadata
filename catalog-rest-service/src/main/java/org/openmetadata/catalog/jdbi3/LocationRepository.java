@@ -177,6 +177,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public void prepare(Location location) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(location));
     StorageService storageService = getService(location.getService().getId(), location.getService().getType());
     location.setService(
         new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
@@ -205,15 +206,9 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void storeRelationships(Location location) {
     // Add location owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), location.getId(), Entity.LOCATION, location.getOwner());
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            location.getService().getId().toString(),
-            location.getId().toString(),
-            location.getService().getType(),
-            Entity.LOCATION,
-            Relationship.CONTAINS.ordinal());
+    setOwner(location.getId(), Entity.LOCATION, location.getOwner());
+    EntityReference service = location.getService();
+    addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
 
     // Add tag to location relationship
     applyTags(location);
@@ -239,14 +234,7 @@ public class LocationRepository extends EntityRepository<Location> {
   public void setService(Location location, EntityReference service) throws IOException {
     if (service != null && location != null) {
       getService(service); // Populate service details
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              service.getId().toString(),
-              location.getId().toString(),
-              service.getType(),
-              Entity.LOCATION,
-              Relationship.CONTAINS.ordinal());
+      addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
       location.setService(service);
     }
   }
@@ -271,6 +259,11 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -358,6 +351,11 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

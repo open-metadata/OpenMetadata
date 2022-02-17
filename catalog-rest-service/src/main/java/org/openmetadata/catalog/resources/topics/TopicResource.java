@@ -434,6 +434,7 @@ public class TopicResource {
         .withRetentionSize(create.getRetentionSize())
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
+        .withTopicConfig(create.getTopicConfig())
         .withTags(create.getTags())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())

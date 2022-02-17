@@ -45,6 +45,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventFilter;
@@ -80,6 +81,7 @@ public final class EntityUtil {
   public static final Comparator<FieldChange> compareFieldChange = Comparator.comparing(FieldChange::getName);
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
+  public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
 
   //
   // Matchers used for matching two items in a list
@@ -87,7 +89,7 @@ public final class EntityUtil {
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
-      (ref1, ref2) -> ref1.getId().equals(ref2.getId());
+      (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN());
@@ -117,6 +119,10 @@ public final class EntityUtil {
       (failureDetails1, failureDetails2) ->
           Objects.equals(failureDetails2.getLastFailedAt(), failureDetails1.getLastFailedAt())
               && Objects.equals(failureDetails2.getLastSuccessfulAt(), failureDetails1.getLastSuccessfulAt());
+
+  public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
+      (filter1, filter2) ->
+          filter1.getEventType().equals(filter2.getEventType()) && filter1.getEntities().equals(filter2.getEntities());
 
   private EntityUtil() {}
 
@@ -236,7 +242,10 @@ public final class EntityUtil {
 
   public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
     String entityType = entityLink.getEntityType();
-    String fqn = entityLink.getEntityId();
+    String fqn = entityLink.getEntityFQN();
+
+    // TODO: add more validation for field name and array fields
+
     return Entity.getEntityReferenceByName(entityType, fqn);
   }
 
@@ -473,5 +482,33 @@ public final class EntityUtil {
                 new EventFilter()
                     .withEventType(EventType.ENTITY_SOFT_DELETED)
                     .withEntities(eventFilter.getEntities())));
+  }
+
+  public static void escapeReservedChars(EntityInterface entityInterface) {
+    entityInterface.setDisplayName(
+        entityInterface.getDisplayName() != null ? entityInterface.getDisplayName() : entityInterface.getName());
+    entityInterface.setName(entityInterface.getName().replace(".", "_DOT_"));
+  }
+
+  public static void escapeReservedChars(List<?> collection) {
+    if (collection == null || collection.isEmpty()) {
+      return;
+    }
+    for (Object object : collection) {
+      if (object instanceof Column) {
+        Column column = (Column) object;
+        column.setDisplayName(column.getDisplayName() != null ? column.getDisplayName() : column.getName());
+        column.setName(column.getName().replace(".", "_DOT_"));
+        escapeReservedChars(column.getChildren());
+      } else if (object instanceof TableConstraint) {
+        TableConstraint constraint = (TableConstraint) object;
+        constraint.setColumns(
+            constraint.getColumns().stream().map(s -> s.replace(".", "_DOT_")).collect(Collectors.toList()));
+      } else if (object instanceof Task) {
+        Task task = (Task) object;
+        task.setDisplayName(task.getDisplayName() != null ? task.getDisplayName() : task.getName());
+        task.setName(task.getName().replace(".", "_DOT_"));
+      }
+    }
   }
 }

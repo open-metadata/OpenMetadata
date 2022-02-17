@@ -19,6 +19,9 @@ from typing import Iterable
 
 from google.cloud import logging
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -30,7 +33,7 @@ logger = log.getLogger(__name__)
 
 
 class BigqueryUsageSource(Source[TableQuery]):
-    SERVICE_TYPE = "Bigquery"
+    SERVICE_TYPE = DatabaseServiceType.BigQuery.value
     scheme = "bigquery"
 
     def __init__(self, config, metadata_config, ctx):

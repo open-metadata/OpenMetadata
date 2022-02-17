@@ -65,11 +65,20 @@ public final class CatalogExceptionMessage {
     return "The Fernet Key is null";
   }
 
+  public static String invalidEntityLink() {
+    return "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
+  }
+
   public static String isNotTokenized() {
     return "The field is not tokenized";
   }
 
   public static String isAlreadyTokenized() {
     return "The field is already tokenized";
+  }
+
+  public static String glossaryTermMismatch(String parentId, String glossaryId) {
+    return String.format(
+        "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s", parentId, glossaryId);
   }
 }

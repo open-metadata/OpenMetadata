@@ -60,6 +60,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public void prepare(Chart chart) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(chart));
     DashboardService dashboardService = helper(chart).findEntity("service", DASHBOARD_SERVICE);
     chart.setService(helper(dashboardService).toEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
@@ -87,14 +88,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            service.getId().toString(),
-            chart.getId().toString(),
-            service.getType(),
-            Entity.CHART,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
     setOwner(chart, chart.getOwner());
     applyTags(chart);
   }
@@ -147,6 +141,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -227,6 +226,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

@@ -23,8 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -32,6 +32,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -82,7 +83,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false, false);
+    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS, false, false, false, false, false);
   }
 
   @Test
@@ -96,20 +97,19 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   void post_userWithoutEmail_400_badRequest(TestInfo test) {
     // Create user with mandatory email field null
     CreateUser create = createRequest(test).withEmail(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[email must not be null]");
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[email must not be null]");
 
     // Create user with mandatory email field empty
     create.withEmail("");
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "email size must be between 6 and 127");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "email size must be between 6 and 127");
 
     // Create user with mandatory email field with invalid email address
     create.withEmail("invalidEmail");
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
   }
 
   @Test
@@ -117,9 +117,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     CreateUser create =
         createRequest(test, 6).withDisplayName("displayName").withEmail("test@email.com").withIsAdmin(true);
 
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, null));
-    assertResponse(exception, UNAUTHORIZED, "Not authorized; User's Email is not present");
+    assertResponse(
+        () -> createAndCheckEntity(create, null), UNAUTHORIZED, "Not authorized; User's Email is not present");
   }
 
   @Test
@@ -171,9 +170,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withEmail("test@email.com")
             .withIsAdmin(true);
 
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(
+        () -> createAndCheckEntity(create, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -275,14 +275,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     User user = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
 
     // Empty query field .../users?fields=
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "test", ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
+    assertResponseContains(
+        () -> getEntity(user.getId(), "test", ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField
-    exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(user.getId(), "invalidField", ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
+    assertResponse(
+        () -> getEntity(user.getId(), "invalidField", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**
@@ -299,9 +299,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             authHeaders("test23@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setDisplayName("newName");
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, authHeaders("test100@email.com")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} does not have permissions");
+    assertResponse(
+        () -> patchUser(userJson, user, authHeaders("test100@email.com")),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test100'} does not have permissions");
   }
 
   @Test
@@ -313,9 +314,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             authHeaders("test2@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> patchUser(userJson, user, authHeaders("test100@email.com")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} is not admin");
+    assertResponse(
+        () -> patchUser(userJson, user, authHeaders("test100@email.com")),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test100'} is not admin");
   }
 
   @Test
@@ -469,11 +471,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), ADMIN_AUTH_HEADERS);
 
     // User can no longer follow other entities
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("user", user.getId()));
+    assertResponse(
+        () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("user", user.getId()));
 
     // TODO deactivated user can't be made owner
   }
@@ -490,7 +491,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
-  /** Validate returned fields GET .../users/{id}?fields="..." or GET .../users/name/{name}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
     // .../teams?fields=profile
@@ -545,6 +545,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (EntityReference ref : Optional.ofNullable(userBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
+
     if (!expectedOwnedEntities.isEmpty()) {
       assertEquals(expectedOwnedEntities.size(), userAfterDeletion.getOwns().size());
       for (EntityReference ref : expectedOwnedEntities) {
@@ -579,12 +580,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (UUID teamId : Optional.ofNullable(createRequest.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
-    if (!expectedTeams.isEmpty()) {
-      assertEquals(expectedTeams.size(), user.getTeams().size());
-      for (EntityReference team : expectedTeams) {
-        TestUtils.existsInEntityReferenceList(user.getTeams(), team.getId(), true);
-      }
-    }
+    TestUtils.assertEntityReferenceList(expectedTeams, user.getTeams());
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
     }

@@ -25,6 +25,9 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -220,7 +223,7 @@ class RedshiftConfig(SQLConnectionConfig):
     scheme = "redshift+psycopg2"
     where_clause: Optional[str] = None
     duration: int = 1
-    service_type = "Redshift"
+    service_type = DatabaseServiceType.Redshift.value
 
     def get_identifier(self, schema: str, table: str) -> str:
         """

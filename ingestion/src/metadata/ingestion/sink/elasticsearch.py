@@ -139,6 +139,7 @@ class ElasticsearchSink(Sink[Entity]):
             self._check_or_create_index(
                 self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
             )
+
         if self.config.index_topics:
             self._check_or_create_index(
                 self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING

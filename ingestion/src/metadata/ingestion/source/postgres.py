@@ -29,7 +29,7 @@ class PostgresConfig(SQLConnectionConfig):
     # defaults
     scheme = "postgresql+psycopg2"
     service_name = "postgres"
-    service_type = "Postgres"
+    service_type = DatabaseServiceType.Postgres.value
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -51,6 +51,21 @@ class PostgresSource(SQLSource):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def _is_partition(self, table_name: str, schema_name: str) -> bool:
+        cur = self.pgconn.cursor()
+        cur.execute(
+            """
+                SELECT relispartition as is_partition
+                FROM   pg_catalog.pg_class c
+                JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                WHERE  c.relname = %s
+                  AND  n.nspname = %s
+            """,
+            (table_name, schema_name),
+        )
+        is_partition = cur.fetchone()[0]
+        return is_partition
 
     def type_of_column_name(self, sa_type, table_name: str, column_name: str):
         cur = self.pgconn.cursor()

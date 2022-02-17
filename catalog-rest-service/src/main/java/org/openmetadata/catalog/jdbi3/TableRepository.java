@@ -212,9 +212,7 @@ public class TableRepository extends EntityRepository<Table> {
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
     daoCollection.relationshipDAO().deleteFrom(tableId.toString(), TABLE, Relationship.HAS.ordinal(), LOCATION);
-    daoCollection
-        .relationshipDAO()
-        .insert(tableId.toString(), locationId.toString(), TABLE, LOCATION, Relationship.HAS.ordinal());
+    addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
   }
@@ -304,6 +302,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(table));
+    EntityUtil.escapeReservedChars(table.getColumns());
+    EntityUtil.escapeReservedChars(table.getTableConstraints());
     Database database = helper(table).findEntity("database", DATABASE);
     table.setDatabase(helper(database).toEntityReference());
     DatabaseService databaseService = helper(database).findEntity("service", DATABASE_SERVICE);
@@ -365,12 +366,10 @@ public class TableRepository extends EntityRepository<Table> {
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     String databaseId = table.getDatabase().getId().toString();
-    daoCollection
-        .relationshipDAO()
-        .insert(databaseId, table.getId().toString(), DATABASE, TABLE, Relationship.CONTAINS.ordinal());
+    addRelationship(table.getDatabase().getId(), table.getId(), DATABASE, TABLE, Relationship.CONTAINS);
 
     // Add table owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), table.getId(), TABLE, table.getOwner());
+    setOwner(table.getId(), TABLE, table.getOwner());
 
     // Add tag to table relationship
     applyTags(table);
@@ -395,6 +394,7 @@ public class TableRepository extends EntityRepository<Table> {
     return new Column()
         .withDescription(column.getDescription())
         .withName(column.getName())
+        .withDisplayName(column.getDisplayName())
         .withFullyQualifiedName(column.getFullyQualifiedName())
         .withArrayDataType(column.getArrayDataType())
         .withConstraint(column.getConstraint())
@@ -664,6 +664,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -746,6 +751,11 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override
