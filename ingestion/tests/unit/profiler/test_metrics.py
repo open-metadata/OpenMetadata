@@ -14,18 +14,18 @@ Test Metrics behavior
 """
 from unittest import TestCase
 
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
-from metadata.orm_profiler.metrics.registry import StaticMetrics, ComposedMetrics
+from metadata.orm_profiler.metrics.registry import ComposedMetrics, StaticMetrics
 from metadata.orm_profiler.profiles.core import SingleProfiler
 
 Base = declarative_base()
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
     fullname = Column(String(256))
@@ -37,6 +37,7 @@ class MetricsTest(TestCase):
     """
     Run checks on different metrics
     """
+
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
     session = create_and_bind_session(engine)
 
@@ -96,7 +97,9 @@ class MetricsTest(TestCase):
         # Build the ratio based on the other two metrics
         null_ratio = ComposedMetrics.NULL_RATIO(col=User.nickname)
 
-        composed_profiler = SingleProfiler(count, null_count, null_ratio, session=self.session, table=User)
+        composed_profiler = SingleProfiler(
+            count, null_count, null_ratio, session=self.session, table=User
+        )
         res = composed_profiler.execute()
         assert res.get(ComposedMetrics.NULL_RATIO.name) == 0.5
 

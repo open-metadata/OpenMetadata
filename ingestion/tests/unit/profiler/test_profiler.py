@@ -14,7 +14,7 @@ Test Profiler behavior
 """
 from unittest import TestCase
 
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
@@ -24,7 +24,7 @@ Base = declarative_base()
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
     fullname = Column(String(256))
@@ -36,6 +36,7 @@ class ProfilerTest(TestCase):
     """
     Run checks on different metrics
     """
+
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
     session = create_and_bind_session(engine)
 
@@ -57,6 +58,13 @@ class ProfilerTest(TestCase):
         """
         Check our pre-cooked profiler
         """
-        simple = SimpleProfiler(self.session, User.age)
+        simple = SimpleProfiler(session=self.session, col=User.age, table=User)
         simple.execute()
-        assert simple.results == {'MIN': 30, 'COUNT': 2, 'STDDEV': 0.25, 'NULLCOUNT': 0, 'NULLRATIO': 0.0}
+        assert simple.results == {
+            "MIN": 30,
+            "COUNT": 2,
+            "STDDEV": 0.25,
+            "NULLCOUNT": 0,
+            "NULLRATIO": 0.0,
+            "TABLECOUNT": 2,
+        }
