@@ -13,6 +13,7 @@ import csv
 import json
 import logging
 import os
+import random
 import uuid
 from collections import namedtuple
 from dataclasses import dataclass, field
@@ -34,6 +35,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -265,6 +267,7 @@ class SampleDataSource(Source[Entity]):
         self.models = json.load(
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
+        self.user_entity = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -276,6 +279,7 @@ class SampleDataSource(Source[Entity]):
         pass
 
     def next_record(self) -> Iterable[Entity]:
+        yield from self.ingest_users()
         yield from self.ingest_locations()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
@@ -284,7 +288,6 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_dashboards()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
-        yield from self.ingest_users()
         yield from self.ingest_mlmodels()
 
     def ingest_locations(self) -> Iterable[Location]:
@@ -338,7 +341,19 @@ class SampleDataSource(Source[Entity]):
                 id=self.database_service.id, type=self.config.service_type
             ),
         )
+        resp = self.metadata.list_entities(entity=User, limit=5)
+        self.user_entity = resp.entities
         for table in self.tables["tables"]:
+            for sql_object in table["tableQueries"]:
+                user_entity = self.user_entity[random.choice(range(5))]
+                user_dict = {
+                    "id": user_entity.id,
+                    "name": user_entity.name.__root__,
+                    "displayName": user_entity.displayName,
+                    "href": user_entity.href,
+                    "description": user_entity.description,
+                }
+                sql_object["user"] = EntityReference(**user_dict, type="user")
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned("table", table_metadata.name.__root__)
