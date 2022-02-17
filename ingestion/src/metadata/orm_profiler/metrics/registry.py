@@ -24,6 +24,7 @@ from metadata.orm_profiler.metrics.static.count import Count
 from metadata.orm_profiler.metrics.static.min import Min
 from metadata.orm_profiler.metrics.static.null_count import NullCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
+from metadata.orm_profiler.metrics.static.table_count import TableCount
 from metadata.orm_profiler.registry import MetricRegistry
 
 
@@ -34,6 +35,7 @@ class StaticMetrics(MetricRegistry):
     custom implementations
     """
 
+    TABLE_COUNT = TableCount
     MIN = Min
     COUNT = Count
     NULL_COUNT = NullCount

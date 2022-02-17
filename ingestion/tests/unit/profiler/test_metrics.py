@@ -59,7 +59,7 @@ class MetricsTest(TestCase):
         Check the Min metric
         """
         min_age = StaticMetrics.MIN(col=User.age)
-        min_profiler = SingleProfiler(self.session, min_age)
+        min_profiler = SingleProfiler(min_age, session=self.session, table=User)
         res = min_profiler.execute()
 
         # Note how we can get the result value by passing the metrics name
@@ -70,7 +70,7 @@ class MetricsTest(TestCase):
         Check STD metric
         """
         std_age = StaticMetrics.STDDEV(col=User.age)
-        std_profiler = SingleProfiler(self.session, std_age)
+        std_profiler = SingleProfiler(std_age, session=self.session, table=User)
         res = std_profiler.execute()
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
@@ -81,18 +81,32 @@ class MetricsTest(TestCase):
         Check null count
         """
         null_count = StaticMetrics.NULL_COUNT(col=User.nickname)
-        nc_profiler = SingleProfiler(self.session, null_count)
+        nc_profiler = SingleProfiler(null_count, session=self.session, table=User)
         res = nc_profiler.execute()
 
         assert res.get(StaticMetrics.NULL_COUNT.name) == 1
 
     def test_null_ratio(self):
+        """
+        Check composed metric run
+        """
         count = StaticMetrics.COUNT(col=User.nickname)
         null_count = StaticMetrics.NULL_COUNT(col=User.nickname)
 
         # Build the ratio based on the other two metrics
         null_ratio = ComposedMetrics.NULL_RATIO(col=User.nickname)
 
-        composed_profiler = SingleProfiler(self.session, count, null_count, null_ratio)
+        composed_profiler = SingleProfiler(count, null_count, null_ratio, session=self.session, table=User)
         res = composed_profiler.execute()
         assert res.get(ComposedMetrics.NULL_RATIO.name) == 0.5
+
+        print(res)
+
+    def test_table_count(self):
+        """
+        Check Table Metric run
+        """
+        table_count = StaticMetrics.TABLE_COUNT()
+        profiler = SingleProfiler(table_count, session=self.session, table=User)
+        res = profiler.execute()
+        assert res.get(StaticMetrics.TABLE_COUNT.name) == 2
