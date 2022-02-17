@@ -60,6 +60,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public void prepare(Chart chart) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(chart));
     DashboardService dashboardService = helper(chart).findEntity("service", DASHBOARD_SERVICE);
     chart.setService(helper(dashboardService).toEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
@@ -143,6 +144,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -220,6 +226,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

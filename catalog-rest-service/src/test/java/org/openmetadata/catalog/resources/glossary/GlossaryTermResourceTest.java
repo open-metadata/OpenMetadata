@@ -76,6 +76,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         false,
         false,
         true,
+        false,
         false);
   }
 

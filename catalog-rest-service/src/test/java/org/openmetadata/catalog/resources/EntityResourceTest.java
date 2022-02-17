@@ -147,6 +147,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   private final boolean supportsFollowers;
   private final boolean supportsOwner;
   private final boolean supportsTags;
+  private final boolean supportsDots;
   protected boolean supportsPatch = true;
   protected boolean supportsSoftDelete = true;
   private final boolean supportsAuthorizedMetadataOperations;
@@ -205,7 +206,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       boolean supportsFollowers,
       boolean supportsOwner,
       boolean supportsTags,
-      boolean supportsAuthorizedMetadataOperations) {
+      boolean supportsAuthorizedMetadataOperations,
+      boolean supportsDots) {
+
     this.entityType = entityTYpe;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
@@ -215,6 +218,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     this.supportsOwner = supportsOwner;
     this.supportsTags = supportsTags;
     this.supportsAuthorizedMetadataOperations = supportsAuthorizedMetadataOperations;
+    this.supportsDots = supportsDots;
     ENTITY_RESOURCE_TEST_MAP.put(entityTYpe, this);
   }
 
@@ -735,6 +739,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, ENTITY_ALREADY_EXISTS);
   }
 
+  @Test
+  void post_entityWithDots_200(TestInfo test) throws HttpResponseException {
+    if (!supportsDots) {
+      return;
+    }
+    String name = String.format("%s_%s_foo.bar", entityType, test.getDisplayName());
+    final K request = createRequest(name, null, null, null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    assertEquals(name, entityInterface.getDisplayName());
+    String[] split = entityInterface.getFullyQualifiedName().split("\\.");
+    String actualName = split[split.length - 1];
+    assertTrue(actualName.contains("foo_DOT_bar"));
+    assertTrue(!actualName.contains("foo.bar"));
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1030,6 +1050,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     entity = getEntity(entityInterface.getId(), ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
+    String oldDisplayName = entityInterface.getDisplayName();
 
     //
     // Add displayName, description, owner, and tags when previously they were null
@@ -1043,7 +1064,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Field changes
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
-    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
     if (supportsOwner) {
       entityInterface.setOwner(TEAM_OWNER1);
       change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(TEAM_OWNER1));
@@ -1052,6 +1072,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       entityInterface.setTags(new ArrayList<>());
       entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
       change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(entityInterface.getTags()));
+    }
+    if (supportsDots) {
+      change
+          .getFieldsUpdated()
+          .add(new FieldChange().withName("displayName").withOldValue(oldDisplayName).withNewValue("displayName"));
+    } else {
+      change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
     }
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1099,14 +1126,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<TagLabel> removedTags = entityInterface.getTags();
 
     entityInterface.setDescription(null);
-    entityInterface.setDisplayName(null);
+    if (!supportsDots) {
+      entityInterface.setDisplayName(null);
+    }
     entityInterface.setOwner(null);
     entityInterface.setTags(null);
 
     // Field changes
     change = getChangeDescription(entityInterface.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
-    change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
+    if (!supportsDots) {
+      change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
+    }
     if (supportsOwner) {
       change.getFieldsDeleted().add(new FieldChange().withName("owner").withOldValue(USER_OWNER1));
     }

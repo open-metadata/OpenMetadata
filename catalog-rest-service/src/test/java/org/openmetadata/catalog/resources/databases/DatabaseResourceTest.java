@@ -57,6 +57,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         false,
         true,
         false,
+        true,
         true);
   }
 

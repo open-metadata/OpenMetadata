@@ -16,6 +16,10 @@
       "minLength": 1,
       "maxLength": 128
     },
+    "displayName": {
+      "description": "Display Name that identifies this webhook.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the application.",
       "type": "string"

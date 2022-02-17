@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -77,6 +78,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         true,
         true,
         true,
+        true,
         true);
   }
 
@@ -119,11 +121,26 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         createRequest.getDescription(),
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
-    assertEquals(createRequest.getDisplayName(), pipeline.getDisplayName());
     assertNotNull(pipeline.getServiceType());
     assertService(createRequest.getService(), pipeline.getService());
-    assertEquals(createRequest.getTasks(), pipeline.getTasks());
+    validateTasks(createRequest.getTasks(), pipeline.getTasks());
     TestUtils.validateTags(createRequest.getTags(), pipeline.getTags());
+  }
+
+  private void validateTasks(List<Task> expected, List<Task> actual) {
+    if (expected == null || actual == null) {
+      assertEquals(expected, actual);
+      return;
+    }
+    assertEquals(expected.size(), actual.size());
+    int i = 0;
+    for (Task expectedTask : expected) {
+      Task actualTask = actual.get(i);
+      assertTrue(
+          expectedTask.getName().equals(actualTask.getName())
+              || expectedTask.getName().equals(actualTask.getDisplayName()));
+      i++;
+    }
   }
 
   @Override
@@ -142,7 +159,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertService(expected.getService(), updated.getService());
-    assertEquals(expected.getTasks(), updated.getTasks());
+    validateTasks(expected.getTasks(), updated.getTasks());
     TestUtils.validateTags(expected.getTags(), updated.getTags());
   }
 
@@ -160,7 +177,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       @SuppressWarnings("unchecked")
       List<Task> expectedTasks = (List<Task>) expected;
       List<Task> actualTasks = JsonUtils.readObjects(actual.toString(), Task.class);
-      assertEquals(expectedTasks, actualTasks);
+      validateTasks(expectedTasks, actualTasks);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -207,6 +224,17 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         assertEquals(service.getName(), db.getService().getName());
       }
     }
+  }
+
+  @Test
+  void post_pipelineWithTasksWithDots(TestInfo test) throws IOException, URISyntaxException {
+    CreatePipeline create = createRequest(test);
+    Task task = new Task().withName("ta.sk").withDescription("description").withTaskUrl(new URI("http://localhost:0"));
+    create.setTasks(List.of(task));
+    Pipeline created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Task actualTask = created.getTasks().get(0);
+    assertTrue(actualTask.getName().equals("ta_DOT_sk"));
+    assertTrue(actualTask.getDisplayName().contains("ta.sk"));
   }
 
   @Test

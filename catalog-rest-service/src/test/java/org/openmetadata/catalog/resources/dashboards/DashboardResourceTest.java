@@ -68,6 +68,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
         true,
         true,
         true,
+        true,
         true);
   }
 

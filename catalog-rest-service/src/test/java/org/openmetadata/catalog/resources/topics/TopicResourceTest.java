@@ -51,7 +51,7 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   public TopicResourceTest() {
-    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true, true);
+    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true, true, true);
   }
 
   @Test

@@ -73,6 +73,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void prepare(Database database) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(database));
     populateService(database);
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(
@@ -211,6 +212,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -280,6 +286,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

@@ -64,6 +64,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         false,
         true,
         false,
+        false,
         false);
     supportsPatch = false;
   }

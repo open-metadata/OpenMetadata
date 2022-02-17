@@ -302,6 +302,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(table));
+    EntityUtil.escapeReservedChars(table.getColumns());
+    EntityUtil.escapeReservedChars(table.getTableConstraints());
     Database database = helper(table).findEntity("database", DATABASE);
     table.setDatabase(helper(database).toEntityReference());
     DatabaseService databaseService = helper(database).findEntity("service", DATABASE_SERVICE);
@@ -391,6 +394,7 @@ public class TableRepository extends EntityRepository<Table> {
     return new Column()
         .withDescription(column.getDescription())
         .withName(column.getName())
+        .withDisplayName(column.getDisplayName())
         .withFullyQualifiedName(column.getFullyQualifiedName())
         .withArrayDataType(column.getArrayDataType())
         .withConstraint(column.getConstraint())
@@ -660,6 +664,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -742,6 +751,11 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

@@ -163,6 +163,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(pipeline));
+    EntityUtil.escapeReservedChars(pipeline.getTasks());
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
@@ -240,6 +242,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -322,6 +329,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

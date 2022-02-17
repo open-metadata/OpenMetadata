@@ -476,4 +476,32 @@ public final class EntityUtil {
                     .withEventType(EventType.ENTITY_SOFT_DELETED)
                     .withEntities(eventFilter.getEntities())));
   }
+
+  public static void escapeReservedChars(EntityInterface entityInterface) {
+    entityInterface.setDisplayName(
+        entityInterface.getDisplayName() != null ? entityInterface.getDisplayName() : entityInterface.getName());
+    entityInterface.setName(entityInterface.getName().replace(".", "_DOT_"));
+  }
+
+  public static void escapeReservedChars(List<?> collection) {
+    if (collection == null || collection.isEmpty()) {
+      return;
+    }
+    for (Object object : collection) {
+      if (object instanceof Column) {
+        Column column = (Column) object;
+        column.setDisplayName(column.getDisplayName() != null ? column.getDisplayName() : column.getName());
+        column.setName(column.getName().replace(".", "_DOT_"));
+        escapeReservedChars(column.getChildren());
+      } else if (object instanceof TableConstraint) {
+        TableConstraint constraint = (TableConstraint) object;
+        constraint.setColumns(
+            constraint.getColumns().stream().map(s -> s.replace(".", "_DOT_")).collect(Collectors.toList()));
+      } else if (object instanceof Task) {
+        Task task = (Task) object;
+        task.setDisplayName(task.getDisplayName() != null ? task.getDisplayName() : task.getName());
+        task.setName(task.getName().replace(".", "_DOT_"));
+      }
+    }
+  }
 }

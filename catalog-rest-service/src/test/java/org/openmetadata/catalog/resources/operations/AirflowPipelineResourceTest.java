@@ -97,6 +97,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         false,
         true,
         false,
+        true,
         true);
   }
 
@@ -149,7 +150,6 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         createRequest.getDescription(),
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
-    assertEquals(createRequest.getDisplayName(), ingestion.getDisplayName());
     assertEquals(createRequest.getConcurrency(), ingestion.getConcurrency());
     validatePipelineConfig(createRequest.getPipelineConfig(), ingestion.getPipelineConfig());
   }

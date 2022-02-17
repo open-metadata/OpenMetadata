@@ -139,7 +139,8 @@
       "description": "Name that identifies this database service.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^[^.]*$"
     },
     "displayName": {
       "description": "Display Name that identifies this database service.",

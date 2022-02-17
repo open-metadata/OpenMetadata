@@ -68,6 +68,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(topic));
     MessagingService messagingService = helper(topic).findEntity("service", MESSAGING_SERVICE);
     topic.setService(helper(messagingService).toEntityReference());
     topic.setServiceType(messagingService.getServiceType());
@@ -157,6 +158,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
+    public String getName() {
+      return entity.getName();
+    }
+
+    @Override
     public Boolean isDeleted() {
       return entity.getDeleted();
     }
@@ -234,6 +240,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

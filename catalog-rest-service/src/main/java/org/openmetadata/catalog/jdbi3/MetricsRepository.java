@@ -75,6 +75,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void prepare(Metrics metrics) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(metrics));
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
@@ -137,6 +138,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -217,6 +223,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override
