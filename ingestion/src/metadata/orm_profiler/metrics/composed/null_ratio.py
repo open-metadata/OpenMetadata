@@ -38,7 +38,7 @@ class NullRatio(ComposedMetric):
     def fn(self, res: Dict[str, Any]) -> Optional[float]:
         """
         Safely compute null ratio based on the profiler
-        response of other Metrics
+        results of other Metrics
         """
         res_count = res.get(Count.name())
         res_null = res.get(NullCount.name())

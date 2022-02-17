@@ -58,6 +58,9 @@ class StdDev(StaticMetric):
     Given a column, return the Standard Deviation value.
     """
 
+    def metric_type(self):
+        return float
+
     @_label
     def fn(self):
         if self.col.type.__class__ not in SQLALCHEMY_NUMERIC:

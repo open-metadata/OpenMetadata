@@ -32,6 +32,9 @@ class NullCount(StaticMetric):
     ```
     """
 
+    def metric_type(self):
+        return int
+
     @_label
     def fn(self):
         return func.sum(case([(self.col.is_(None), 1)], else_=0))
