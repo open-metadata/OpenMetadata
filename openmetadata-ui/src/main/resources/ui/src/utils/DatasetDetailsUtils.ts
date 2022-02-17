@@ -28,7 +28,7 @@ export const datasetTableTabs = [
     field: TabSpecificField.SAMPLE_DATA,
   },
   {
-    name: 'Table Queries',
+    name: 'Queries',
     path: 'table_queries',
     field: TabSpecificField.TABLE_QUERIES,
   },

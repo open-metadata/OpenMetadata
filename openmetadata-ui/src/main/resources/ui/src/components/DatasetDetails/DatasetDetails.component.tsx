@@ -154,7 +154,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 2,
     },
     {
-      name: 'Table Queries',
+      name: 'Queries',
       icon: {
         alt: 'table_queries',
         name: 'table_queries',

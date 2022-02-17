@@ -36,10 +36,11 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
         className
       )}>
       <div
-        className={classNames('tw-overflow-hidden tw-h-20 tw-relative', {
+        className={classNames('tw-overflow-hidden tw-relative', {
           'tw-h-full': displayMoreText,
         })}>
         <SchemaEditor
+          className="Custom"
           mode={{ name: CSMode.SQL }}
           options={{
             lineNumbers: false,

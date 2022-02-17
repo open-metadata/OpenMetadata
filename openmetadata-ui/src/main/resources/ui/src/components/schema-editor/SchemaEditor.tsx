@@ -77,6 +77,7 @@ const SchemaEditor = ({
   return (
     <div className={className}>
       <CodeMirror
+        className={className}
         options={defaultOptions}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
