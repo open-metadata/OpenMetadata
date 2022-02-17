@@ -17,9 +17,9 @@ from sqlalchemy import func
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
-class TableCount(StaticMetric):
+class RowNumber(StaticMetric):
     """
-    TABLE_COUNT Metric
+    ROW_NUMBER Metric
 
     Count all rows on a table
     """
