@@ -4,8 +4,6 @@ import uuid
 from typing import Any, Generic, Iterable, List
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -25,11 +23,12 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class DynamoDBSourceConfig(AWSClientConfigModel):
-    service_type = "DynamoDB"
+    service_type = DatabaseServiceType.DynamoDB.value
     service_name: str
     endpoint_url: str
     host_port: str = ""
     db_name = "DynamoDB"
+    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -76,6 +75,12 @@ class DynamodbSource(Source[Entity]):
         try:
             tables = list(self.dynamodb.tables.all())
             for table in tables:
+                if not self.config.table_filter_pattern.included(table.name):
+                    self.status.filter(
+                        "{}".format(table.name),
+                        "Table pattern not allowed",
+                    )
+                    continue
                 database_entity = Database(
                     name=self.config.db_name,
                     service=EntityReference(id=self.service.id, type="databaseService"),
@@ -102,7 +107,7 @@ class DynamodbSource(Source[Entity]):
             logger.error(err)
 
     def get_columns(self, column_data):
-        for index, column in enumerate(column_data):
+        for column in column_data:
             try:
                 if "S" in column["AttributeType"].lower():
                     column["AttributeType"] = column["AttributeType"].replace(" ", "")
@@ -114,7 +119,6 @@ class DynamodbSource(Source[Entity]):
                     parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
                     parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
-                parsed_string["ordinalPosition"] = index
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                 yield Column(**parsed_string)
             except Exception as err:

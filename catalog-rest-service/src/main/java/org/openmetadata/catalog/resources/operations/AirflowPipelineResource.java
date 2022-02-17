@@ -64,7 +64,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -85,10 +84,6 @@ public class AirflowPipelineResource {
   private final Authorizer authorizer;
   private AirflowRESTClient airflowRESTClient;
   private CatalogApplicationConfig config;
-
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, ref.getId()));
-  }
 
   public static ResultList<AirflowPipeline> addHref(UriInfo uriInfo, ResultList<AirflowPipeline> ingestions) {
     Optional.ofNullable(ingestions.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));

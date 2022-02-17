@@ -80,7 +80,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   });
                 }}>
                 {entity.database
-                  ? `${entity.database}/${entity.name}`
+                  ? `${entity.database}.${entity.name}`
                   : entity.name}
               </span>
             </div>

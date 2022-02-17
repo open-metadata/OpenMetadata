@@ -39,6 +39,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -82,14 +83,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Transaction
   private EntityReference getLocationForPolicy(Policy policy) throws IOException {
     List<String> result =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                policy.getId().toString(),
-                Entity.POLICY,
-                Relationship.APPLIED_TO.ordinal(),
-                Entity.LOCATION,
-                toBoolean(toInclude(policy)));
+        findTo(policy.getId(), Entity.POLICY, Relationship.APPLIED_TO, Entity.LOCATION, toBoolean(toInclude(policy)));
     // There is at most one location for a policy.
     return result.size() == 1
         ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
@@ -265,14 +259,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (location == null || location.getId() == null) {
       return;
     }
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            policy.getId().toString(),
-            policy.getLocation().getId().toString(),
-            Entity.POLICY,
-            Entity.LOCATION,
-            Relationship.APPLIED_TO.ordinal());
+    addRelationship(
+        policy.getId(), policy.getLocation().getId(), Entity.POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
   }
 
   public static class PolicyEntityInterface implements EntityInterface<Policy> {
@@ -295,6 +283,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -367,6 +360,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     @Override
+    public void setName(String name) {
+      entity.setName(name);
+    }
+
+    @Override
     public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
@@ -435,14 +433,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
       // insert updated Policy --> Location relationship.
       if (updatedPolicy.getLocation() != null && updatedPolicy.getLocation().getId() != null) {
-        daoCollection
-            .relationshipDAO()
-            .insert(
-                updatedPolicy.getId().toString(),
-                updatedPolicy.getLocation().getId().toString(),
-                Entity.POLICY,
-                Entity.LOCATION,
-                Relationship.APPLIED_TO.ordinal());
+        addRelationship(
+            updatedPolicy.getId(),
+            updatedPolicy.getLocation().getId(),
+            Entity.POLICY,
+            Entity.LOCATION,
+            Relationship.APPLIED_TO);
       }
       recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
     }

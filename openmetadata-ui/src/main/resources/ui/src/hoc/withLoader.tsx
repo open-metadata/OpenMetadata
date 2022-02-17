@@ -22,7 +22,11 @@ export interface ComponentProps<T> {
 export function withLoader<T>(Component: ComponentType<T>) {
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const WithLoader = (props: T & PropsWithChildren<ComponentProps<any>>) => {
-    return props.isLoading ? <Loader /> : <Component {...(props as T)} />;
+    return props.isLoading ? (
+      <Loader size={props.size} />
+    ) : (
+      <Component {...(props as T)} />
+    );
   };
 
   WithLoader.displayName =

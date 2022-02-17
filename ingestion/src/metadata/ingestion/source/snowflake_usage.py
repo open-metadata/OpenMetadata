@@ -14,6 +14,9 @@ Snowflake usage module
 
 from typing import Any, Dict, Iterable, Iterator, Union
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 
 # This import verifies that the dependencies are available.
@@ -64,7 +67,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
     CLUSTER_KEY = "cluster_key"
     USE_CATALOG_AS_CLUSTER_NAME = "use_catalog_as_cluster_name"
     DATABASE_KEY = "database_key"
-    SERVICE_TYPE = "Snowflake"
+    SERVICE_TYPE = DatabaseServiceType.Snowflake.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
     def __init__(self, config, metadata_config, ctx):

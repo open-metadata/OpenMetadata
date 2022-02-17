@@ -74,7 +74,9 @@ class MetadataUsageBulkSink(BulkSink):
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
             if "." in table_usage.table:
-                table_usage.table = table_usage.table.split(".")[1]
+                table_usage.database, table_usage.table = table_usage.table.split(".")[
+                    -2:
+                ]
             self.service_name = table_usage.service_name
             table_entity = self.__get_table_entity(
                 table_usage.database, table_usage.table

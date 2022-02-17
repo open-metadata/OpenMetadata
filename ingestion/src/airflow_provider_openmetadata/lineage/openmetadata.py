@@ -22,63 +22,11 @@ from airflow_provider_openmetadata.lineage.config import (
     get_lineage_config,
     get_metadata_config,
 )
-from airflow_provider_openmetadata.lineage.utils import (
-    get_xlets,
-    parse_lineage_to_openmetadata,
-)
+from airflow_provider_openmetadata.lineage.utils import get_xlets, parse_lineage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 if TYPE_CHECKING:
     from airflow.models.baseoperator import BaseOperator
-
-
-allowed_task_keys = [
-    "_downstream_task_ids",
-    "_inlets",
-    "_outlets",
-    "_task_type",
-    "_task_module",
-    "depends_on_past",
-    "email",
-    "label",
-    "execution_timeout",
-    "end_date",
-    "start_date",
-    "sla",
-    "sql",
-    "task_id",
-    "trigger_rule",
-    "wait_for_downstream",
-]
-allowed_flow_keys = [
-    "_access_control",
-    "_concurrency",
-    "_default_view",
-    "catchup",
-    "fileloc",
-    "is_paused_upon_creation",
-    "start_date",
-    "tags",
-    "timezone",
-]
-
-
-# pylint: disable=import-outside-toplevel, unused-import
-def is_airflow_version_1() -> bool:
-    """
-    Manage airflow submodule import based airflow version
-
-    Returns
-        bool
-    """
-    try:
-        from airflow.hooks.base import BaseHook
-
-        return False
-    except ModuleNotFoundError:
-        from airflow.hooks.base_hook import BaseHook
-
-        return True
 
 
 # pylint: disable=too-few-public-methods
@@ -110,8 +58,8 @@ class OpenMetadataLineageBackend(LineageBackend):
         _ = get_lineage_config()
 
     # pylint: disable=protected-access
-    @staticmethod
     def send_lineage(
+        self,
         operator: "BaseOperator",
         inlets: Optional[List] = None,
         outlets: Optional[List] = None,
@@ -137,9 +85,7 @@ class OpenMetadataLineageBackend(LineageBackend):
             op_inlets = get_xlets(operator, "_inlets")
             op_outlets = get_xlets(operator, "_outlets")
 
-            parse_lineage_to_openmetadata(
-                config, context, operator, op_inlets, op_outlets, client
-            )
+            parse_lineage(config, context, operator, op_inlets, op_outlets, client)
         except Exception as exc:  # pylint: disable=broad-except
             operator.log.error(traceback.format_exc())
             operator.log.error(exc)

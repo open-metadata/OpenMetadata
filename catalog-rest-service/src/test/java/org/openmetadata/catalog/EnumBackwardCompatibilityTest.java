@@ -16,7 +16,7 @@ package org.openmetadata.catalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
-import org.openmetadata.catalog.jdbi3.Relationship;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.TagLabel.State;
@@ -31,8 +31,8 @@ public class EnumBackwardCompatibilityTest {
    */
   @Test
   void testRelationshipEnumBackwardCompatible() {
-    assertEquals(15, Relationship.values().length);
-    assertEquals(14, Relationship.APPLIED_TO.ordinal());
+    assertEquals(17, Relationship.values().length);
+    assertEquals(16, Relationship.REVIEWS.ordinal());
   }
 
   /**

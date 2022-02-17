@@ -44,7 +44,6 @@ import { PipeLineDetailsProp } from './PipelineDetails.interface';
 const PipelineDetails = ({
   entityName,
   owner,
-  tagList,
   tier,
   slashedPipelineName,
   pipelineTags,
@@ -290,7 +289,6 @@ const PipelineDetails = ({
             hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
             owner={owner}
-            tagList={tagList}
             tags={pipelineTags}
             tagsHandler={onTagUpdate}
             tier={tier}

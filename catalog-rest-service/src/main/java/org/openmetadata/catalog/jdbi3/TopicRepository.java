@@ -30,6 +30,7 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -67,6 +68,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(topic));
     MessagingService messagingService = helper(topic).findEntity("service", MESSAGING_SERVICE);
     topic.setService(helper(messagingService).toEntityReference());
     topic.setServiceType(messagingService.getServiceType());
@@ -128,14 +130,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public void setService(Topic topic, EntityReference service) {
     if (service != null && topic != null) {
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              service.getId().toString(),
-              topic.getId().toString(),
-              service.getType(),
-              Entity.TOPIC,
-              Relationship.CONTAINS.ordinal());
+      addRelationship(service.getId(), topic.getId(), service.getType(), Entity.TOPIC, Relationship.CONTAINS);
       topic.setService(service);
     }
   }
@@ -160,6 +155,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -243,6 +243,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
+    public void setName(String name) {
+      entity.setName(name);
+    }
+
+    @Override
     public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
@@ -298,6 +303,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("retentionSize", origTopic.getRetentionSize(), updatedTopic.getRetentionSize());
       recordChange("schemaText", origTopic.getSchemaText(), updatedTopic.getSchemaText());
       recordChange("schemaType", origTopic.getSchemaType(), updatedTopic.getSchemaType());
+      recordChange("topicConfig", origTopic.getTopicConfig(), updatedTopic.getTopicConfig());
       updateCleanupPolicies(origTopic, updatedTopic);
     }
 

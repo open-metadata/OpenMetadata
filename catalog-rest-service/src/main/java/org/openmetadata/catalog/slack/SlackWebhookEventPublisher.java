@@ -1,7 +1,10 @@
 package org.openmetadata.catalog.slack;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.Client;
@@ -35,7 +38,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     clientBuilder.readTimeout(12, TimeUnit.SECONDS);
     client = clientBuilder.build();
     target = client.target(slackWebhookURL).request();
-    openMetadataUrl = config.getOpenMetadataUrl();
+    openMetadataUrl = refineUri(config.getOpenMetadataUrl());
   }
 
   @Override
@@ -246,5 +249,21 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         event.getEntityType(),
         event.getEntityFullyQualifiedName(),
         event.getEntityFullyQualifiedName());
+  }
+
+  private String refineUri(String url) {
+    URI urlInstance = null;
+    try {
+      urlInstance = new URI(url);
+    } catch (URISyntaxException e) {
+      LOG.error("Slack URL is not in url format - {}", url);
+    }
+
+    if (Objects.nonNull(urlInstance)) {
+      String scheme = urlInstance.getScheme();
+      String host = urlInstance.getHost();
+      return String.format("%s://%s", scheme, host);
+    }
+    return url;
   }
 }

@@ -12,7 +12,7 @@
  */
 
 export const button = {
-  base: `tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer 
+  base: `button-comp tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer 
     tw-leading-5 tw-transition-colors tw-duration-150 tw-font-medium focus:tw-outline-none`,
   block: 'tw-block tw-w-full',
   size: {
@@ -46,7 +46,7 @@ export const button = {
     primary: {
       base: 'tw-text-primary tw-border-primary tw-border dark:tw-text-blue-300 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-bg-primary hover:tw-text-white focus:tw-bg-primary 
-      active:tw-bg-primary active:tw-text-white focus:tw-ring focus:tw-ring-purple-300`,
+      focus:tw-text-white active:tw-bg-primary active:tw-text-white focus:tw-ring focus:tw-ring-purple-300`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
   },

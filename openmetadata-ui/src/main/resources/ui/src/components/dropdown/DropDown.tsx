@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import AnchorDropDownList from './AnchorDropDownList';
@@ -21,6 +21,7 @@ import { DropDownListItem, DropDownProp, DropDownType } from './types';
 
 const DropDown: React.FC<DropDownProp> = ({
   className = '',
+  disabled = false,
   label,
   type,
   icon: Icon,
@@ -31,6 +32,11 @@ const DropDown: React.FC<DropDownProp> = ({
   isLableVisible = true,
 }: DropDownProp) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isDisabled, setIsDisabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsDisabled(disabled || dropDownList.length === 0);
+  }, [disabled, dropDownList]);
 
   const renderList = (type: string) => {
     switch (type) {
@@ -66,13 +72,16 @@ const DropDown: React.FC<DropDownProp> = ({
           <button
             aria-expanded="true"
             aria-haspopup="true"
-            className={`tw-inline-flex tw-px-2 tw-py-2 focus:tw-outline-none ${
+            className={classNames(
+              'tw-inline-flex tw-px-2 tw-py-1 focus:tw-outline-none',
               type === DropDownType.CHECKBOX
-                ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full`
-                : `tw-justify-center tw-nav`
-            } ${className}`}
+                ? 'tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full'
+                : 'tw-justify-center tw-nav',
+              { 'tw-cursor-not-allowed': isDisabled },
+              className
+            )}
             data-testid="menu-button"
-            disabled={dropDownList.length === 0}
+            disabled={isDisabled}
             id={`menu-button-${label}`}
             type="button"
             onClick={() => setIsOpen((isOpen) => !isOpen)}>
@@ -81,19 +90,18 @@ const DropDown: React.FC<DropDownProp> = ({
                 {!selectedItems?.length ? (
                   label
                 ) : (
-                  <span className="tw-flex tw-flex-wrap">
+                  <span className="tw-flex tw-flex-wrap tw--my-0.5">
                     {dropDownList.map((item: DropDownListItem) => {
                       if (selectedItems?.includes(item.value as string)) {
                         return (
                           <p
                             className={classNames(
-                              'tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-truncate tw-align-middle',
+                              'tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-truncate tw-align-middle tw-m-0.5',
                               {
                                 'tw-w-52': (item.name as string)?.length > 32,
                               }
                             )}
                             key={item.value}
-                            style={{ margin: '2px' }}
                             title={item.name as string}>
                             {item.name}
                           </p>

@@ -30,7 +30,6 @@ import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -62,6 +61,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -75,7 +75,6 @@ import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
 import org.openmetadata.common.utils.CommonUtil;
 
-@Slf4j
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
  * Create, Retrieve, Update, and Delete entities.
@@ -107,6 +106,7 @@ import org.openmetadata.common.utils.CommonUtil;
  * relationship table when required to ensure, the data stored is efficiently and consistently, and relationship
  * information does not become stale.
  */
+@Slf4j
 public abstract class EntityRepository<T> {
   private final String collectionPath;
   private final Class<T> entityClass;
@@ -426,10 +426,7 @@ public abstract class EntityRepository<T> {
     }
 
     // Add relationship
-    int added =
-        daoCollection
-            .relationshipDAO()
-            .insert(userId.toString(), entityId.toString(), Entity.USER, entityType, Relationship.FOLLOWS.ordinal());
+    int added = addRelationship(userId, entityId, Entity.USER, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
@@ -560,21 +557,18 @@ public abstract class EntityRepository<T> {
     }
   }
 
+  public static final Fields FIELDS_OWNER = new Fields(List.of("owner"), "owner");
+
   public final EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
-    final String FIELDS = "owner";
-    final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, FIELDS);
-    EntityReference owner = null;
     // Try to find the owner if entity exists
     try {
       String fqn = getFullyQualifiedName(entity);
-      entity = getByName(null, fqn, fields);
-      owner = helper(entity).validateOwnerOrNull();
+      entity = getByName(null, fqn, FIELDS_OWNER);
+      return helper(entity).validateOwnerOrNull();
     } catch (EntityNotFoundException e) {
-      // If entity is not found, we can return null for owner and ignore
-      // this exception
+      // If entity is not found, we can return null for owner and ignore this exception
     }
-    return owner;
+    return null;
   }
 
   protected EntityReference getOwner(T entity) throws IOException, ParseException {
@@ -584,7 +578,7 @@ public abstract class EntityRepository<T> {
   protected void setOwner(T entity, EntityReference owner) {
     if (supportsOwner) {
       EntityInterface<T> entityInterface = getEntityInterface(entity);
-      EntityUtil.setOwner(daoCollection.relationshipDAO(), entityInterface.getId(), entityType, owner);
+      setOwner(entityInterface.getId(), entityType, owner);
       entityInterface.setOwner(owner);
     }
   }
@@ -600,7 +594,7 @@ public abstract class EntityRepository<T> {
   }
 
   protected List<TagLabel> getTags(String fqn) {
-    return !supportsOwner ? null : daoCollection.tagDAO().getTags(fqn);
+    return !supportsTags ? null : daoCollection.tagDAO().getTags(fqn);
   }
 
   protected List<EntityReference> getFollowers(T entity) throws IOException {
@@ -837,6 +831,40 @@ public abstract class EntityRepository<T> {
       }
       return Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, Include.ALL);
     }
+  }
+
+  public int addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
+    return daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  }
+
+  public void setOwner(UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
+    // Add relationship owner --- owns ---> ownedEntity
+    if (owner != null) {
+      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
+      addRelationship(owner.getId(), ownedEntityId, owner.getType(), ownedEntityType, Relationship.OWNS);
+    }
+  }
+
+  public List<String> findBoth(
+      UUID entity1, String entityType1, Relationship relationship, String entity2, Boolean deleted) {
+    List<String> ids = new ArrayList<>();
+    ids.addAll(findFrom(entity1, entityType1, relationship, entity2, deleted));
+    ids.addAll(findTo(entity1, entityType1, relationship, entity2, deleted));
+    return ids;
+  }
+
+  public List<String> findFrom(
+      UUID toId, String toEntity, Relationship relationship, String fromEntity, Boolean deleted) {
+    return daoCollection
+        .relationshipDAO()
+        .findFrom(toId.toString(), toEntity, relationship.ordinal(), fromEntity, deleted);
+  }
+
+  public List<String> findTo(
+      UUID fromId, String fromEntity, Relationship relationship, String toEntity, Boolean deleted) {
+    return daoCollection
+        .relationshipDAO()
+        .findTo(fromId.toString(), fromEntity, relationship.ordinal(), toEntity, deleted);
   }
 
   enum Operation {

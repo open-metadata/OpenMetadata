@@ -55,6 +55,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.entity.data.PipelineStatus;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -110,7 +111,7 @@ public class PipelineResource {
     }
   }
 
-  static final String FIELDS = "owner,tasks,followers,tags,usageSummary";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -363,6 +364,30 @@ public class PipelineResource {
     PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/status")
+  @Operation(
+      summary = "Add status data",
+      tags = "pipelines",
+      description = "Add status data to the pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The pipeline with a the new status",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Pipeline addPipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
+      PipelineStatus pipelineStatus)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
+    return addHref(uriInfo, pipeline);
   }
 
   @PUT

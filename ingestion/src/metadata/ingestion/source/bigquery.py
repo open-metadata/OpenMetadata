@@ -23,6 +23,9 @@ from sqlalchemy_bigquery._types import (
     _get_transitive_schema_fields,
 )
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -72,7 +75,7 @@ class BigQueryConfig(SQLConnectionConfig):
     username: Optional[str] = None
     project_id: Optional[str] = None
     duration: int = 1
-    service_type = "BigQuery"
+    service_type = DatabaseServiceType.BigQuery.value
     enable_policy_tags: bool = False
     tag_category_name: str = "BigqueryPolicyTags"
 

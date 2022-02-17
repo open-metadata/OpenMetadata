@@ -14,6 +14,9 @@ from typing import Optional
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import ischema_names
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -31,7 +34,7 @@ class SnowflakeConfig(SQLConnectionConfig):
     warehouse: str
     role: Optional[str]
     duration: Optional[int]
-    service_type = "Snowflake"
+    service_type = DatabaseServiceType.Snowflake.value
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()

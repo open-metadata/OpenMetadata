@@ -10,6 +10,9 @@
 #  limitations under the License.
 """MSSQL source module"""
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -20,7 +23,7 @@ class MssqlConfig(SQLConnectionConfig):
 
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
-    service_type = "MSSQL"
+    service_type = DatabaseServiceType.MSSQL.value
     use_pymssql: bool = False
     use_pyodbc: bool = False
     uri_string: str = ""

@@ -45,7 +45,9 @@ const CheckBoxDropDownList = ({
                 key={index}
                 onClick={(e) => onSelect && onSelect(e, item.value as string)}>
                 <input
-                  checked={selectedItems?.includes(item.value as string)}
+                  checked={Boolean(
+                    selectedItems?.includes(item.value as string)
+                  )}
                   className="tw-ml-3 tw-mr-2 tw-align-middle custom-checkbox"
                   type="checkbox"
                   onChange={() => {

@@ -34,6 +34,7 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -120,20 +121,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void setService(Dashboard dashboard, EntityReference service) {
     if (service != null && dashboard != null) {
       // TODO remove this
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              service.getId().toString(),
-              dashboard.getId().toString(),
-              service.getType(),
-              Entity.DASHBOARD,
-              Relationship.CONTAINS.ordinal());
+      addRelationship(service.getId(), dashboard.getId(), service.getType(), Entity.DASHBOARD, Relationship.CONTAINS);
       dashboard.setService(service);
     }
   }
 
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(dashboard));
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
@@ -162,16 +157,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     setService(dashboard, dashboard.getService());
 
     // Add relationship from dashboard to chart
-    String dashboardId = dashboard.getId().toString();
     if (dashboard.getCharts() != null) {
       for (EntityReference chart : dashboard.getCharts()) {
-        daoCollection
-            .relationshipDAO()
-            .insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
+        addRelationship(dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
       }
     }
     // Add owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
+    setOwner(dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
 
     // Add tag to dashboard relationship
     applyTags(dashboard);
@@ -186,16 +178,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard == null) {
       return null;
     }
-    String dashboardId = dashboard.getId().toString();
     List<String> chartIds =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                dashboardId,
-                Entity.DASHBOARD,
-                Relationship.HAS.ordinal(),
-                Entity.CHART,
-                toBoolean(toInclude(dashboard)));
+        findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART, toBoolean(toInclude(dashboard)));
     List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
       charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
@@ -230,9 +214,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     // Add relationship from dashboard to chart
     if (updated.getCharts() != null) {
       for (EntityReference chart : updated.getCharts()) {
-        daoCollection
-            .relationshipDAO()
-            .insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
+        addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
       }
     }
     List<UUID> origChartIds = EntityUtil.getIDList(original.getCharts());
@@ -260,6 +242,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -346,6 +333,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
+    public void setName(String name) {
+      entity.setName(name);
+    }
+
+    @Override
     public void setUpdateDetails(String updatedBy, long updatedAt) {
       entity.setUpdatedBy(updatedBy);
       entity.setUpdatedAt(updatedAt);
@@ -408,9 +400,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       List<EntityReference> origCharts =
           Optional.ofNullable(original.getEntity().getCharts()).orElse(Collections.emptyList());
       for (EntityReference chart : updatedCharts) {
-        daoCollection
-            .relationshipDAO()
-            .insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS.ordinal());
+        addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
       }
 
       List<EntityReference> added = new ArrayList<>();

@@ -18,7 +18,6 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface TopicDetailsProps {
-  tagList: Array<string>;
   version?: string;
   schemaText: string;
   schemaType: string;

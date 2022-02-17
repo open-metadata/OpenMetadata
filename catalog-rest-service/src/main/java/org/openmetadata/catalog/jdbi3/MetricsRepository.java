@@ -27,6 +27,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -74,6 +75,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void prepare(Metrics metrics) throws IOException {
+    EntityUtil.escapeReservedChars(getEntityInterface(metrics));
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
@@ -98,14 +100,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void storeRelationships(Metrics metrics) {
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            metrics.getService().getId().toString(),
-            metrics.getId().toString(),
-            metrics.getService().getType(),
-            Entity.METRICS,
-            Relationship.CONTAINS.ordinal());
+    EntityReference service = metrics.getService();
+    addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
     setOwner(metrics, metrics.getOwner());
     applyTags(metrics);
   }
@@ -142,6 +138,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -222,6 +223,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

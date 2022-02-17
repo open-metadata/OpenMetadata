@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
@@ -66,7 +65,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false, false);
   }
 
   @Test
@@ -116,14 +115,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team team = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Empty query field .../teams?fields=
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(team.getId(), "test", ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("test"));
+    assertResponse(
+        () -> getEntity(team.getId(), "test", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidField("test"));
 
     // .../teams?fields=invalidField
-    exception =
-        assertThrows(HttpResponseException.class, () -> getEntity(team.getId(), "invalidField", ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
+    assertResponse(
+        () -> getEntity(team.getId(), "invalidField", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**
@@ -152,10 +153,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(team);
     team.setDisplayName("newDisplayName");
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(
+        () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -193,13 +194,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(expectedUpdatedBy, team.getUpdatedBy());
     assertEquals(expectedDisplayName, team.getDisplayName());
     assertEquals(expectedProfile, team.getProfile());
-    if (expectedUsers != null && !expectedUsers.isEmpty()) {
-      assertEquals(expectedUsers.size(), team.getUsers().size());
-      for (EntityReference user : team.getUsers()) {
-        TestUtils.validateEntityReference(user);
-        TestUtils.existsInEntityReferenceList(expectedUsers, user.getId(), true);
-      }
-    }
+    TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
     TestUtils.validateEntityReference(team.getOwns());
   }
 
@@ -256,22 +251,14 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateCommonEntityFields(
         getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
-    assertEquals(createRequest.getDisplayName(), team.getDisplayName());
     assertEquals(createRequest.getProfile(), team.getProfile());
 
     List<EntityReference> expectedUsers = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(createRequest.getUsers()).orElse(Collections.emptyList())) {
       expectedUsers.add(new EntityReference().withId(teamId).withType(Entity.USER));
     }
-    List<EntityReference> actualUsers = Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList());
-    actualUsers.forEach(actual -> TestUtils.validateEntityReference(actual));
-
-    if (!expectedUsers.isEmpty()) {
-      assertEquals(expectedUsers.size(), actualUsers.size());
-      for (EntityReference user : expectedUsers) {
-        TestUtils.existsInEntityReferenceList(actualUsers, user.getId(), true);
-      }
-    }
+    expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
+    TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
     TestUtils.validateEntityReference(team.getOwns());
   }
 
@@ -290,12 +277,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     for (EntityReference ref : Optional.ofNullable(teamBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
-    if (!expectedOwnedEntities.isEmpty()) {
-      assertEquals(expectedOwnedEntities.size(), teamAfterDeletion.getOwns().size());
-      for (EntityReference ref : expectedOwnedEntities) {
-        TestUtils.existsInEntityReferenceList(teamAfterDeletion.getOwns(), ref.getId(), true);
-      }
-    }
+    TestUtils.assertEntityReferenceList(expectedOwnedEntities, teamAfterDeletion.getOwns());
   }
 
   @Override

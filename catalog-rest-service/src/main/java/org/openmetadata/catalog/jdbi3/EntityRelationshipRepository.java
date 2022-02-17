@@ -26,6 +26,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityRelationship;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.common.utils.CommonUtil;
 
@@ -72,7 +73,7 @@ public class EntityRelationshipRepository {
           entityRelationship.getToId(),
           entityRelationship.getFromEntity(),
           entityRelationship.getToEntity(),
-          Relationship.valueOf(entityRelationship.getRelation()));
+          entityRelationship.getRelationshipType());
       return;
     }
     if (entityRelationship.getFromFQN() != null
@@ -91,7 +92,7 @@ public class EntityRelationshipRepository {
           entityRelationship.getToFQN(),
           entityRelationship.getFromEntity(),
           entityRelationship.getToEntity(),
-          Relationship.valueOf(entityRelationship.getRelation()));
+          entityRelationship.getRelationshipType());
     }
   }
 

@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.helper;
-import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
@@ -56,6 +55,7 @@ import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableData;
@@ -212,9 +212,7 @@ public class TableRepository extends EntityRepository<Table> {
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
     daoCollection.relationshipDAO().deleteFrom(tableId.toString(), TABLE, Relationship.HAS.ordinal(), LOCATION);
-    daoCollection
-        .relationshipDAO()
-        .insert(tableId.toString(), locationId.toString(), TABLE, LOCATION, Relationship.HAS.ordinal());
+    addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
   }
@@ -304,6 +302,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException, ParseException {
+    EntityUtil.escapeReservedChars(getEntityInterface(table));
+    EntityUtil.escapeReservedChars(table.getColumns());
+    EntityUtil.escapeReservedChars(table.getTableConstraints());
     Database database = helper(table).findEntity("database", DATABASE);
     table.setDatabase(helper(database).toEntityReference());
     DatabaseService databaseService = helper(database).findEntity("service", DATABASE_SERVICE);
@@ -365,12 +366,10 @@ public class TableRepository extends EntityRepository<Table> {
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     String databaseId = table.getDatabase().getId().toString();
-    daoCollection
-        .relationshipDAO()
-        .insert(databaseId, table.getId().toString(), DATABASE, TABLE, Relationship.CONTAINS.ordinal());
+    addRelationship(table.getDatabase().getId(), table.getId(), DATABASE, TABLE, Relationship.CONTAINS);
 
     // Add table owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), table.getId(), TABLE, table.getOwner());
+    setOwner(table.getId(), TABLE, table.getOwner());
 
     // Add tag to table relationship
     applyTags(table);
@@ -395,6 +394,7 @@ public class TableRepository extends EntityRepository<Table> {
     return new Column()
         .withDescription(column.getDescription())
         .withName(column.getName())
+        .withDisplayName(column.getDisplayName())
         .withFullyQualifiedName(column.getFullyQualifiedName())
         .withArrayDataType(column.getArrayDataType())
         .withConstraint(column.getConstraint())
@@ -432,13 +432,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   // Validate if a given column exists in the table
   private void validateColumn(Table table, String columnName) {
-    boolean validColumn = false;
-    for (Column column : table.getColumns()) {
-      if (column.getName().equals(columnName)) {
-        validColumn = true;
-        break;
-      }
-    }
+    boolean validColumn = table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
     if (!validColumn) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
     }
@@ -500,7 +494,12 @@ public class TableRepository extends EntityRepository<Table> {
       String json =
           daoCollection
               .fieldRelationshipDAO()
-              .find(fromColumnFQN, toColumnFQN, "table.columns.column", "table.columns.column", JOINED_WITH.ordinal());
+              .find(
+                  fromColumnFQN,
+                  toColumnFQN,
+                  "table.columns.column",
+                  "table.columns.column",
+                  Relationship.JOINED_WITH.ordinal());
 
       DailyCount dailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
       List<DailyCount> dailyCountList;
@@ -555,7 +554,7 @@ public class TableRepository extends EntityRepository<Table> {
               toColumnFQN,
               "table.columns.column",
               "table.columns.column",
-              JOINED_WITH.ordinal(),
+              Relationship.JOINED_WITH.ordinal(),
               "dailyCount",
               json);
     }
@@ -571,12 +570,18 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection
             .fieldRelationshipDAO()
             .listToByPrefix(
-                table.getFullyQualifiedName(), "table.columns.column", "table.columns.column", JOINED_WITH.ordinal());
+                table.getFullyQualifiedName(),
+                "table.columns.column",
+                "table.columns.column",
+                Relationship.JOINED_WITH.ordinal());
     list.addAll(
         daoCollection
             .fieldRelationshipDAO()
             .listFromByPrefix(
-                table.getFullyQualifiedName(), "table.columns.column", "table.columns.column", JOINED_WITH.ordinal()));
+                table.getFullyQualifiedName(),
+                "table.columns.column",
+                "table.columns.column",
+                Relationship.JOINED_WITH.ordinal()));
 
     if (list.isEmpty()) { // No join information found. Return empty list
       return tableJoins;
@@ -656,6 +661,11 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     public String getDisplayName() {
       return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
+      return entity.getName();
     }
 
     @Override
@@ -741,6 +751,11 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override

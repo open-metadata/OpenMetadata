@@ -13,8 +13,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.eventFilterMatch;
 import static org.openmetadata.catalog.util.EntityUtil.failureDetailsMatch;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.LifecycleAware;
@@ -45,6 +47,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.Webhook;
@@ -84,9 +87,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public void prepare(Webhook entity) throws IOException {
-    // Nothing to prepare
-  }
+  public void prepare(Webhook entity) throws IOException {}
 
   @Override
   public void storeEntity(Webhook entity, boolean update) throws IOException {
@@ -115,7 +116,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
   public void addWebhookPublisher(Webhook webhook) {
     if (Boolean.FALSE.equals(webhook.getEnabled())) { // Only add webhook that is enabled for publishing events
-      webhook.setStatus(Status.NOT_STARTED);
+      webhook.setStatus(Status.DISABLED);
       return;
     }
     WebhookPublisher publisher = new WebhookPublisher(webhook);
@@ -138,7 +139,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       // Update the existing publisher
       Status status = previousPublisher.getWebhook().getStatus();
       previousPublisher.updateWebhook(webhook);
-      if (status != Status.STARTED && status != Status.AWAITING_RETRY) {
+      if (status != Status.ACTIVE && status != Status.AWAITING_RETRY) {
         // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
         BatchEventProcessor<ChangeEventHolder> processor = EventPubSub.addEventHandler(previousPublisher);
         previousPublisher.setProcessor(processor);
@@ -185,6 +186,11 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public String getName() {
       return entity.getName();
     }
 
@@ -250,7 +256,12 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public void setDisplayName(String displayName) {
-      /* No display name */
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setName(String name) {
+      entity.setName(name);
     }
 
     @Override
@@ -357,8 +368,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         if (response.getStatus() >= 200 && response.getStatus() < 300) { // All 2xx responses
           batch.clear();
           webhook.getFailureDetails().setLastSuccessfulAt(changeEventHolder.get().getTimestamp());
-          if (webhook.getStatus() != Status.STARTED) {
-            setStatus(Status.STARTED, null, null, null, null);
+          if (webhook.getStatus() != Status.ACTIVE) {
+            setStatus(Status.ACTIVE, null, null, null, null);
           }
           // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
         } else if (response.getStatus() >= 300 && response.getStatus() < 400) {
@@ -491,6 +502,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       recordChange("status", origWebhook.getStatus(), updatedWebhook.getStatus());
       recordChange("endPoint", origWebhook.getEndpoint(), updatedWebhook.getEndpoint());
       recordChange("batchSize", origWebhook.getBatchSize(), updatedWebhook.getBatchSize());
+      recordChange("timeout", origWebhook.getTimeout(), updatedWebhook.getTimeout());
+      updateEventFilters();
       if (fieldsChanged()) {
         // If updating the other fields, opportunistically use it to capture failure details
         WebhookPublisher publisher = WebhookRepository.this.getPublisher(origWebhook.getId());
@@ -499,7 +512,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
               .withStatus(publisher.getWebhook().getStatus())
               .withFailureDetails(publisher.getWebhook().getFailureDetails());
           if (Boolean.FALSE.equals(updatedWebhook.getEnabled())) {
-            updatedWebhook.setStatus(Status.NOT_STARTED);
+            updatedWebhook.setStatus(Status.DISABLED);
           }
         }
         recordChange(
@@ -508,6 +521,24 @@ public class WebhookRepository extends EntityRepository<Webhook> {
             updatedWebhook.getFailureDetails(),
             true,
             failureDetailsMatch);
+      }
+    }
+
+    private void updateEventFilters() throws JsonProcessingException {
+      Webhook origWebhook = original.getEntity();
+      Webhook updatedWebhook = updated.getEntity();
+      List<EventFilter> origFilter = origWebhook.getEventFilters();
+      List<EventFilter> updatedFilter = updatedWebhook.getEventFilters();
+      List<EventFilter> added = new ArrayList<>();
+      List<EventFilter> deleted = new ArrayList<>();
+      recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);
+    }
+
+    private void sort(List<EventFilter> eventFilters) {
+      for (EventFilter filter : eventFilters) {
+        if (filter != null && filter.getEntities() != null) {
+          filter.getEntities().sort(String.CASE_INSENSITIVE_ORDER);
+        }
       }
     }
   }

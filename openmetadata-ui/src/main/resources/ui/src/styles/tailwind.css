@@ -135,7 +135,7 @@
     @apply tw-text-base tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
   .show-more,
-  a[href],
+  a[href]:not(.button-comp),
   .link-text {
     @apply tw-text-primary-hover hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
@@ -245,7 +245,6 @@
   .custom-checkbox:disabled {
     @apply tw-opacity-50;
   }
-
   .custom-checkbox:checked ~ .custom-checkbox-label {
     @apply tw-text-primary tw-font-normal;
   }
