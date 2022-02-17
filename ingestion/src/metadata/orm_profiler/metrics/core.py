@@ -15,7 +15,7 @@ Metric Core definitions
 
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
@@ -58,9 +58,12 @@ class Metric(ABC):
     - StaticMetric
     - TimeMetric
     - CustomMetric
+
+    Table Metrics do not require a column.
+    If not specified, it is a Table metric.
     """
 
-    def __init__(self, col: InstrumentedAttribute):
+    def __init__(self, col: Optional[InstrumentedAttribute] = None):
         self.col = col
 
     @classmethod
@@ -145,3 +148,26 @@ class ComposedMetric(Metric, ABC):
         This metric computes its value based on
         the results already present in the Profiler
         """
+
+
+class RuleMetric(Metric, ABC):
+    """
+    Useful when we need to take into consideration the
+    state of more than one column at a time.
+
+    E.g., the validation would be:
+    if `state` is `delivered`, `payment` should be informed.
+
+    This Metric is based on a target column, the one we will
+    use to inform the results, and the filters, which will
+    define the domain.
+
+    TODO: Figure out the filters signature. We might need
+          to come back here after defining the validations.
+    """
+
+    def __init__(
+        self, target_col: InstrumentedAttribute, *filters: InstrumentedAttribute
+    ):
+        super().__init__(col=target_col)
+        self._filters = filters
