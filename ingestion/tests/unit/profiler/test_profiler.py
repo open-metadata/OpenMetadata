@@ -66,5 +66,5 @@ class ProfilerTest(TestCase):
             "STDDEV": 0.25,
             "NULLCOUNT": 0,
             "NULLRATIO": 0.0,
-            "TABLECOUNT": 2,
+            "ROWNUMBER": 2,
         }
