@@ -3,10 +3,12 @@ import { ServicesData } from 'Models';
 import React, { useState } from 'react';
 import { ONLY_NUMBER_REGEX } from '../../constants/constants';
 import {
-  DashboardServiceType,
-  MessagingServiceType,
+  // DashboardServiceType,
+  // MessagingServiceType,
   ServiceCategory,
 } from '../../enums/service.enum';
+import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
+import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import useToastContext from '../../hooks/useToastContext';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import {
@@ -118,7 +120,7 @@ const ServiceConfig = ({
   const [env, setEnv] = useState(data?.env || '');
 
   const getBrokerUrlPlaceholder = (): string => {
-    return data?.serviceType === MessagingServiceType.PULSAR
+    return data?.serviceType === MessagingServiceType.Pulsar
       ? 'hostname:port'
       : 'hostname1:port1, hostname2:port2';
   };
@@ -215,7 +217,7 @@ const ServiceConfig = ({
 
       case ServiceCategory.DASHBOARD_SERVICES: {
         switch (data?.serviceType) {
-          case DashboardServiceType.REDASH:
+          case DashboardServiceType.Redash:
             setShowErrorMsg({
               ...showErrorMsg,
               dashboardUrl: !dashboardUrl,
@@ -224,7 +226,7 @@ const ServiceConfig = ({
 
             return Boolean(dashboardUrl && apiKey);
 
-          case DashboardServiceType.TABLEAU:
+          case DashboardServiceType.Tableau:
             setShowErrorMsg({
               ...showErrorMsg,
               dashboardUrl: !dashboardUrl,
@@ -286,14 +288,14 @@ const ServiceConfig = ({
         return {
           ...data,
           brokers:
-            data?.serviceType === MessagingServiceType.PULSAR
+            data?.serviceType === MessagingServiceType.Pulsar
               ? [brokers]
               : brokers.split(',').map((broker) => broker.trim()),
           schemaRegistry: schemaRegistry,
         };
       case ServiceCategory.DASHBOARD_SERVICES: {
         switch (data?.serviceType) {
-          case DashboardServiceType.REDASH:
+          case DashboardServiceType.Redash:
             return {
               ...data,
               dashboardUrl: dashboardUrl,
@@ -301,7 +303,7 @@ const ServiceConfig = ({
               api_key: apiKey,
             };
 
-          case DashboardServiceType.TABLEAU:
+          case DashboardServiceType.Tableau:
             return {
               ...data,
               dashboardUrl: dashboardUrl,
@@ -742,7 +744,7 @@ const ServiceConfig = ({
   const getDashboardFields = (): JSX.Element => {
     let elemFields: JSX.Element;
     switch (data?.serviceType) {
-      case DashboardServiceType.REDASH: {
+      case DashboardServiceType.Redash: {
         elemFields = (
           <>
             <Field>
@@ -794,7 +796,7 @@ const ServiceConfig = ({
 
         break;
       }
-      case DashboardServiceType.TABLEAU: {
+      case DashboardServiceType.Tableau: {
         elemFields = (
           <>
             <Field>
