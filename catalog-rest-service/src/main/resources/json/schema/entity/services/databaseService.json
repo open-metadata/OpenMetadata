@@ -26,6 +26,7 @@
         "Druid",
         "Db2",
         "ClickHouse",
+        "Databricks",
         "DynamoDB",
         "AzureSQL",
         "SingleStore"
@@ -81,6 +82,9 @@
         },
         {
           "name": "ClickHouse"
+        },
+        {
+          "name": "Databricks"
         },
         {
           "name": "AzureSQL"
