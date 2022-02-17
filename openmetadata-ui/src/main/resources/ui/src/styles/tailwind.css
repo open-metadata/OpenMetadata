@@ -182,6 +182,9 @@
     @apply tw-w-full tw-text-grey-body tw-rounded tw-border tw-border-main
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
+  input:disabled {
+    @apply tw-cursor-not-allowed;
+  }
 
   /* Dropdown CSS start */
   .dropdown-list {

@@ -17,7 +17,9 @@ import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import {
   CreateWebhook,
@@ -45,17 +47,75 @@ const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
 };
 
+const getEntitiesList = () => {
+  const retVal: Array<{ name: string; value: string }> = [
+    EntityType.TABLE,
+    EntityType.TOPIC,
+    EntityType.DASHBOARD,
+    EntityType.PIPELINE,
+  ].map((item) => {
+    return {
+      name: startCase(item),
+      value: item,
+    };
+  });
+  retVal.unshift({ name: 'All entities', value: WILD_CARD_CHAR });
+
+  return retVal;
+};
+
+const getHiddenEntitiesList = (entities: Array<string> = []) => {
+  if (entities.includes(WILD_CARD_CHAR)) {
+    return entities.filter((item) => item !== WILD_CARD_CHAR);
+  } else {
+    return undefined;
+  }
+};
+
+const getSelectedEvents = (prev: EventFilter, value: string) => {
+  let entities = prev.entities || [];
+  if (entities.includes(value)) {
+    if (value === WILD_CARD_CHAR) {
+      entities = [];
+    } else {
+      if (entities.includes(WILD_CARD_CHAR)) {
+        const allIndex = entities.indexOf(WILD_CARD_CHAR);
+        entities.splice(allIndex, 1);
+      }
+      const index = entities.indexOf(value);
+      entities.splice(index, 1);
+    }
+  } else {
+    if (value === WILD_CARD_CHAR) {
+      entities = getEntitiesList().map((item) => item.value);
+    } else {
+      entities.push(value);
+    }
+  }
+
+  return { ...prev, entities };
+};
+
 const getEventFilterByType = (
   filters: Array<EventFilter>,
   type: EventType
 ): EventFilter => {
-  return filters.find((item) => item.eventType === type) || ({} as EventFilter);
+  let eventFilter =
+    filters.find((item) => item.eventType === type) || ({} as EventFilter);
+  if (eventFilter.entities?.includes(WILD_CARD_CHAR)) {
+    eventFilter = getSelectedEvents(
+      { ...eventFilter, entities: [] },
+      WILD_CARD_CHAR
+    );
+  }
+
+  return eventFilter;
 };
 
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   data,
   header,
-  mode = 'add',
+  mode = FormSubmitType.ADD,
   saveState = 'initial',
   deleteState = 'initial',
   allowAccess = true,
@@ -114,6 +174,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
+    if (!allowAccess) {
+      return;
+    }
     const value = event.target.value;
     const eleName = event.target.name;
     let { name, endpointUrl, invalidEndpointUrl } = cloneDeep(showErrorMsg);
@@ -149,6 +212,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const generateSecret = () => {
+    if (!allowAccess) {
+      return;
+    }
     const apiKey = cryptoRandomString({ length: 50, type: 'alphanumeric' });
     setGeneratingSecret(true);
     setTimeout(() => {
@@ -163,56 +229,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     setSecretKey('');
   };
 
-  const getEntitiesList = () => {
-    const retVal: Array<{ name: string; value: string }> = [
-      EntityType.TABLE,
-      EntityType.TOPIC,
-      EntityType.DASHBOARD,
-      EntityType.PIPELINE,
-    ].map((item) => {
-      return {
-        name: startCase(item),
-        value: item,
-      };
-    });
-    retVal.unshift({ name: 'All entities', value: '*' });
-
-    return retVal;
-  };
-
-  const getHiddenEntitiesList = (entities: Array<string> = []) => {
-    if (entities.includes('*')) {
-      return entities.filter((item) => item !== '*');
-    } else {
-      return undefined;
-    }
-  };
-
-  const getSelectedEvents = (prev: EventFilter, value: string) => {
-    let entities = prev.entities || [];
-    if (entities.includes(value)) {
-      if (value === '*') {
-        entities = [];
-      } else {
-        if (entities.includes('*')) {
-          const allIndex = entities.indexOf('*');
-          entities.splice(allIndex, 1);
-        }
-        const index = entities.indexOf(value);
-        entities.splice(index, 1);
-      }
-    } else {
-      if (value === '*') {
-        entities = getEntitiesList().map((item) => item.value);
-      } else {
-        entities.push(value);
-      }
-    }
-
-    return { ...prev, entities };
-  };
-
   const toggleEventFilters = (type: EventType, value: boolean) => {
+    if (!allowAccess) {
+      return;
+    }
     let setter;
     switch (type) {
       case EventType.EntityCreated: {
@@ -275,20 +295,20 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const getEventFiltersData = () => {
     const eventFilters: Array<EventFilter> = [];
     if (!isEmpty(createEvents)) {
-      const event = createEvents.entities?.includes('*')
-        ? { ...createEvents, entities: ['*'] }
+      const event = createEvents.entities?.includes(WILD_CARD_CHAR)
+        ? { ...createEvents, entities: [WILD_CARD_CHAR] }
         : createEvents;
       eventFilters.push(event);
     }
     if (!isEmpty(updateEvents)) {
-      const event = updateEvents.entities?.includes('*')
-        ? { ...updateEvents, entities: ['*'] }
+      const event = updateEvents.entities?.includes(WILD_CARD_CHAR)
+        ? { ...updateEvents, entities: [WILD_CARD_CHAR] }
         : updateEvents;
       eventFilters.push(event);
     }
     if (!isEmpty(deleteEvents)) {
-      const event = deleteEvents.entities?.includes('*')
-        ? { ...deleteEvents, entities: ['*'] }
+      const event = deleteEvents.entities?.includes(WILD_CARD_CHAR)
+        ? { ...deleteEvents, entities: [WILD_CARD_CHAR] }
         : deleteEvents;
       eventFilters.push(event);
     }
@@ -478,6 +498,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </label>
           <MarkdownWithPreview
             data-testid="description"
+            readonly={!allowAccess}
             ref={markdownRef}
             value={description}
           />
@@ -489,6 +510,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
             data-testid="endpoint-url"
+            disabled={!allowAccess}
             id="endpoint-url"
             name="endpoint-url"
             placeholder="http(s)://www.example.com"
@@ -509,7 +531,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               className={classNames('toggle-switch', { open: active })}
               data-testid="active"
               onClick={() => {
-                setActive((prev) => !prev);
+                allowAccess && setActive((prev) => !prev);
               }}>
               <div className="switch" />
             </div>
@@ -530,6 +552,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 checked={!isEmpty(createEvents)}
                 className="tw-mr-1 custom-checkbox"
                 data-testid="checkbox"
+                disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
                   toggleEventFilters(EventType.EntityCreated, e.target.checked);
@@ -544,7 +567,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </div>
           <DropDown
             className="tw-bg-white"
-            disabled={isEmpty(createEvents)}
+            disabled={!allowAccess || isEmpty(createEvents)}
             dropDownList={getEntitiesList()}
             hiddenItems={getHiddenEntitiesList(createEvents.entities)}
             label="select entities"
@@ -564,6 +587,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 checked={!isEmpty(updateEvents)}
                 className="tw-mr-1 custom-checkbox"
                 data-testid="checkbox"
+                disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
                   toggleEventFilters(EventType.EntityUpdated, e.target.checked);
@@ -578,7 +602,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </div>
           <DropDown
             className="tw-bg-white"
-            disabled={isEmpty(updateEvents)}
+            disabled={!allowAccess || isEmpty(updateEvents)}
             dropDownList={getEntitiesList()}
             hiddenItems={getHiddenEntitiesList(updateEvents.entities)}
             label="select entities"
@@ -598,6 +622,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 checked={!isEmpty(deleteEvents)}
                 className="tw-mr-1 custom-checkbox"
                 data-testid="checkbox"
+                disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
                   toggleEventFilters(EventType.EntityDeleted, e.target.checked);
@@ -612,7 +637,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </div>
           <DropDown
             className="tw-bg-white"
-            disabled={isEmpty(deleteEvents)}
+            disabled={!allowAccess || isEmpty(deleteEvents)}
             dropDownList={getEntitiesList()}
             hiddenItems={getHiddenEntitiesList(deleteEvents.entities)}
             label="select entities"
@@ -657,6 +682,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   <input
                     className="tw-form-inputs tw-px-3 tw-py-1"
                     data-testid="batch-size"
+                    disabled={!allowAccess}
                     id="batch-size"
                     name="batch-size"
                     placeholder="10"
@@ -674,6 +700,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   <input
                     className="tw-form-inputs tw-px-3 tw-py-1"
                     data-testid="connection-timeout"
+                    disabled={!allowAccess}
                     id="connection-timeout"
                     name="connection-timeout"
                     placeholder="10"
@@ -685,97 +712,99 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               </div>
             </Field>
             <Field>
-              {!data ? (
-                <>
-                  <label
-                    className="tw-block tw-form-label tw-my-0"
-                    htmlFor="secret-key">
-                    Secret Key:
-                  </label>
+              {allowAccess ? (
+                !data ? (
+                  <>
+                    <label
+                      className="tw-block tw-form-label tw-my-0"
+                      htmlFor="secret-key">
+                      Secret Key:
+                    </label>
+                    <div className="tw-flex tw-items-center">
+                      <input
+                        readOnly
+                        className="tw-form-inputs tw-px-3 tw-py-1"
+                        data-testid="connection-timeout"
+                        id="connection-timeout"
+                        name="connection-timeout"
+                        placeholder="secret key"
+                        type="text"
+                        value={secretKey}
+                      />
+                      <Button
+                        className="tw-w-8 tw-h-8 tw--ml-8 tw-rounded-md"
+                        data-testid="generate-secret"
+                        size="custom"
+                        theme="default"
+                        variant="text"
+                        onClick={generateSecret}>
+                        {generatingSecret ? (
+                          <Loader size="small" type="default" />
+                        ) : (
+                          <i className="fas fa-sync-alt" />
+                        )}
+                      </Button>
+                      {secretKey ? (
+                        <>
+                          <CopyToClipboard
+                            text={secretKey}
+                            onCopy={() => setCopiedSecret(true)}>
+                            <Button
+                              className="tw-h-8 tw-ml-4"
+                              data-testid="copy-secret"
+                              size="custom"
+                              theme="default"
+                              variant="text">
+                              <SVGIcons
+                                alt="Copy"
+                                icon={Icons.COPY}
+                                width="16px"
+                              />
+                            </Button>
+                          </CopyToClipboard>
+                          <Button
+                            className="tw-h-8 tw-ml-4"
+                            data-testid="clear-secret"
+                            size="custom"
+                            theme="default"
+                            variant="text"
+                            onClick={resetSecret}>
+                            <SVGIcons
+                              alt="Delete"
+                              icon={Icons.DELETE}
+                              width="16px"
+                            />
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
+                  </>
+                ) : data.secretKey ? (
                   <div className="tw-flex tw-items-center">
                     <input
                       readOnly
                       className="tw-form-inputs tw-px-3 tw-py-1"
-                      data-testid="connection-timeout"
-                      id="connection-timeout"
-                      name="connection-timeout"
+                      data-testid="secret-key"
+                      id="secret-key"
+                      name="secret-key"
                       placeholder="secret key"
                       type="text"
                       value={secretKey}
                     />
-                    <Button
-                      className="tw-w-8 tw-h-8 tw--ml-8 tw-rounded-md"
-                      data-testid="generate-secret"
-                      size="custom"
-                      theme="default"
-                      variant="text"
-                      onClick={generateSecret}>
-                      {generatingSecret ? (
-                        <Loader size="small" type="default" />
-                      ) : (
-                        <i className="fas fa-sync-alt" />
-                      )}
-                    </Button>
-                    {secretKey ? (
-                      <>
-                        <CopyToClipboard
-                          text={secretKey}
-                          onCopy={() => setCopiedSecret(true)}>
-                          <Button
-                            className="tw-h-8 tw-ml-4"
-                            data-testid="copy-secret"
-                            size="custom"
-                            theme="default"
-                            variant="text">
-                            <SVGIcons
-                              alt="Copy"
-                              icon={Icons.COPY}
-                              width="16px"
-                            />
-                          </Button>
-                        </CopyToClipboard>
-                        <Button
-                          className="tw-h-8 tw-ml-4"
-                          data-testid="clear-secret"
-                          size="custom"
-                          theme="default"
-                          variant="text"
-                          onClick={resetSecret}>
-                          <SVGIcons
-                            alt="Delete"
-                            icon={Icons.DELETE}
-                            width="16px"
-                          />
-                        </Button>
-                      </>
-                    ) : null}
+                    <CopyToClipboard
+                      text={secretKey}
+                      onCopy={() => setCopiedSecret(true)}>
+                      <Button
+                        className="tw-h-8 tw-ml-4"
+                        data-testid="copy-secret"
+                        size="custom"
+                        theme="default"
+                        variant="text">
+                        <SVGIcons alt="Copy" icon={Icons.COPY} width="16px" />
+                      </Button>
+                    </CopyToClipboard>
                   </div>
-                </>
-              ) : data.secretKey ? (
-                <div className="tw-flex tw-items-center">
-                  <input
-                    readOnly
-                    className="tw-form-inputs tw-px-3 tw-py-1"
-                    data-testid="secret-key"
-                    id="secret-key"
-                    name="secret-key"
-                    placeholder="secret key"
-                    type="text"
-                    value={secretKey}
-                  />
-                  <CopyToClipboard
-                    text={secretKey}
-                    onCopy={() => setCopiedSecret(true)}>
-                    <Button
-                      className="tw-h-8 tw-ml-4"
-                      data-testid="copy-secret"
-                      size="custom"
-                      theme="default"
-                      variant="text">
-                      <SVGIcons alt="Copy" icon={Icons.COPY} width="16px" />
-                    </Button>
-                  </CopyToClipboard>
-                </div>
+                ) : null
               ) : null}
               {copiedSecret && validMsg('Copied to the clipboard.')}
             </Field>

@@ -24,6 +24,7 @@ import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
+import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
@@ -110,7 +111,7 @@ const EditWebhookPage: FunctionComponent = () => {
           data={webhookData}
           deleteState={deleteStatus}
           header="Edit Webhook"
-          mode="edit"
+          mode={FormSubmitType.EDIT}
           saveState={status}
           onCancel={handleCancel}
           onDelete={handleDelete}

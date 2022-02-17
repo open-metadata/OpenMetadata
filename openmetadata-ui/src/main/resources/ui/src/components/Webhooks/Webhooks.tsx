@@ -148,14 +148,18 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
         <p className="tw-text-center">No webhooks found</p>
         <p className="tw-text-center">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <button
-              className="link-text tw-underline"
+            <Button
+              className={classNames('tw-h-8 tw-rounded tw-my-3', {
+                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              })}
               data-testid="add-webhook-button"
+              size="small"
+              theme="primary"
+              variant="contained"
               onClick={onAddWebhook}>
-              Click here
-            </button>
-          </NonAdminAction>{' '}
-          to add new Webhook
+              Add New Webhook
+            </Button>
+          </NonAdminAction>
         </p>
       </ErrorPlaceHolder>
     </PageLayout>

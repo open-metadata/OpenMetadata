@@ -29,10 +29,11 @@ type EditorContentRef = {
 
 type Props = {
   value: string;
+  readonly?: boolean;
 };
 
 const MarkdownWithPreview = forwardRef<editorRef, Props>(
-  ({ value }: Props, ref) => {
+  ({ value, readonly }: Props, ref) => {
     const [activeTab, setActiveTab] = useState<number>(1);
     const [preview, setPreview] = useState<string>('');
     const [initValue, setInitValue] = useState<string>(value ?? '');
@@ -106,6 +107,7 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
             <RichTextEditor
               format={isValidJSONString(initValue) ? 'json' : 'markdown'}
               initvalue={initValue}
+              readonly={readonly}
               ref={editorRef}
             />
           )}
