@@ -18,6 +18,26 @@ public class RolesPage {
   By accessValue = By.xpath("//tbody[@data-testid='table-body']/tr/td[2]/p");
   By deleteRuleButton = By.cssSelector("[data-testid='image'][title='Delete']");
   By rolesDisplayName = By.name("displayName");
+  By errorMessage = By.xpath("//strong[@data-testid='error-message']");
+  By addRule = By.xpath("//button[@data-testid='add-new-rule-button']");
+  By operation = By.xpath("(//td[@class='tableBody-cell'])[1]");
+  By access = By.xpath("(//td[@class='tableBody-cell'])[2]");
+
+  public By getOperation() {
+    return operation;
+  }
+
+  public By getAccess() {
+    return access;
+  }
+
+  public By getAddRuleButton() {
+    return addRule;
+  }
+
+  public By getErrorMessage() {
+    return errorMessage;
+  }
 
   public By addRoleButton() {
     return addRoleButton;
