@@ -28,26 +28,19 @@ from metadata.orm_profiler.metrics.static.table_count import TableCount
 from metadata.orm_profiler.registry import MetricRegistry
 
 
-class StaticMetrics(MetricRegistry):
+class Metrics(MetricRegistry):
     """
     Set of all supported metrics and our metric
     definition using SQLAlchemy functions or
     custom implementations
     """
 
+    # Static Metrics
     TABLE_COUNT = TableCount
     MIN = Min
     COUNT = Count
     NULL_COUNT = NullCount
     STDDEV = StdDev
 
-
-class ComposedMetrics(MetricRegistry):
-    """
-    Set of all supported Composed Metrics, meaning
-    that they are based on existing metrics results'.
-
-    They will be executed last in the Profiler.
-    """
-
+    # Composed Metrics
     NULL_RATIO = NullRatio
