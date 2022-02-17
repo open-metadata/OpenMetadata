@@ -19,6 +19,7 @@ and we can easily access the desired values.
 """
 
 from enum import Enum
+from typing import Optional
 
 from sqlalchemy.sql.sqltypes import TypeDecorator
 
@@ -47,6 +48,8 @@ class MetricRegistry(Enum):
     def __call__(self, *args, **kwargs):
         """
         Allow to __init__ the mapped class directly
+
+        We run this as Metrics.MIN(col)
         """
         return self.value(*args, **kwargs)
 
@@ -58,11 +61,27 @@ class MetricRegistry(Enum):
 
         name is a classmethod on Metrics, so
         we do not need to __init__ here.
+
+        We run this as Metrics.MIN.name
         """
         return self.value.name()
 
     def __str__(self):
         return self.value.name()
+
+    @classmethod
+    def get(cls, key: str) -> Optional[Metric]:
+        """
+        Safely retrieve an element
+        from the Registry.
+
+        Added at class level. Execute from Metrics directly,
+        e.g., Metrics.get("MIN")
+        """
+        try:
+            return cls[key].value
+        except KeyError:
+            return None
 
 
 class TypeRegistry(Enum):
