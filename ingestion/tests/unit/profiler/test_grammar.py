@@ -29,6 +29,9 @@ def test_simple_parsing():
     res = parse("something_else > random", visitor)
     assert res == [{"metric": "something_else", "operation": ">", "value": "random"}]
 
+    res = parse("something_else <= random", visitor)
+    assert res == [{"metric": "something_else", "operation": "<=", "value": "random"}]
+
     # No spaces are needed
     res = parse("hello!=99", visitor)
     assert res == [{"metric": "hello", "operation": "!=", "value": "99"}]
@@ -54,6 +57,14 @@ def test_multiple_parsing():
     # No spaces are needed
     res = parse("metric_a<value1&metric_b==value2&metric_c!=value3", visitor)
     assert res == expected
+
+
+def test_complex_values():
+    """
+    Check all the values we can cover
+    """
+    res = parse("ratio < 0.1", visitor)
+    assert res == [{"metric": "ratio", "operation": "<", "value": "0.1"}]
 
 
 def test_parse_error():

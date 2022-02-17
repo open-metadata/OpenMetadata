@@ -26,7 +26,7 @@ The job of the grammar is to make it as easy as possible
 for users to define their tests and link that logic
 to the profiler objects.
 """
-from typing import Dict
+from typing import Dict, List
 
 from parsimonious import NodeVisitor
 from parsimonious.grammar import Grammar
@@ -36,7 +36,9 @@ from parsimonious.grammar import Grammar
 #     1. ws: define the whitespace regex
 #     2. operand: set of supported operands. Only one can match
 #     3. operation: [space]operand[space] or just operand. Spaces are optional
-#     4. value: what do we match in the expression. It can be any word, e.g., 100, Food, Seat500
+#     4. value: what do we match in the expression. It can be any word, e.g., 100, Food, Seat500, 0.3
+#               Note that we need to start checking the number. Otherwise, `would` match but leave
+#               unparsed string in decimals.
 #     5. metric: letters and underscores. We will match them to Metrics afterwards
 grammar = Grammar(
     """
@@ -45,10 +47,12 @@ grammar = Grammar(
     rule       = metric operation value
     sep        = ws? "&" ws?
     metric     = ~r"[a-zA-Z_]+"
-    value      = ~r"[-\w]+"
+    value      = number / word
     
+    word       = ~r"[-\w]+"
+    number     = ~r"\d+.?(\d+)?"
     operation  = ws? operand ws? 
-    operand    = "<" / ">" / "==" / "!="
+    operand    = "==" / "!=" / "<=" / ">=" / "<" / ">"
     
     ws         = ~"\s*"
     """
@@ -98,7 +102,7 @@ class ExpVisitor(NodeVisitor):
         return visited_children or node
 
 
-def parse(expression: str, visitor: ExpVisitor) -> Dict[str, str]:
+def parse(expression: str, visitor: ExpVisitor) -> List[Dict[str, str]]:
     """
     Given an expression, parse it with
     our grammar and return the visiting
