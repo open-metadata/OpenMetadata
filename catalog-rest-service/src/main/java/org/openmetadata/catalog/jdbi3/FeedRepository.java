@@ -29,7 +29,6 @@ import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink.LinkType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
@@ -61,8 +60,7 @@ public class FeedRepository {
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
 
     // Add relationship User -- created --> Thread relationship
-    dao.relationshipDAO()
-        .insert(fromUser.toString(), thread.getId().toString(), "user", "thread", Relationship.CREATED.ordinal());
+    dao.relationshipDAO().insert(fromUser, thread.getId().toString(), "user", "thread", Relationship.CREATED.ordinal());
 
     // Add field relationship data asset Thread -- isAbout ---> entity/entityField
     // relationship
@@ -133,12 +131,7 @@ public class FeedRepository {
     }
     if (!relationAlreadyExists) {
       dao.relationshipDAO()
-          .insert(
-              post.getFrom().toString(),
-              thread.getId().toString(),
-              "user",
-              "thread",
-              Relationship.REPLIED_TO.ordinal());
+          .insert(post.getFrom(), thread.getId().toString(), "user", "thread", Relationship.REPLIED_TO.ordinal());
     }
     return thread;
   }
@@ -168,7 +161,7 @@ public class FeedRepository {
       threadIds.addAll(
           dao.relationshipDAO()
               .findTo(
-                  reference.getId().toString(),
+                  reference.getName(),
                   reference.getType(),
                   Relationship.CREATED.ordinal(),
                   "thread",
@@ -176,7 +169,7 @@ public class FeedRepository {
       threadIds.addAll(
           dao.relationshipDAO()
               .findTo(
-                  reference.getId().toString(),
+                  reference.getName(),
                   reference.getType(),
                   Relationship.REPLIED_TO.ordinal(),
                   "thread",
