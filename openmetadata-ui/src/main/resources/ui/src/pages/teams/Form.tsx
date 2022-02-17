@@ -87,6 +87,7 @@ const Form: React.FC<FormProp> = forwardRef(
               <input
                 autoComplete="off"
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="name"
                 name="name"
                 placeholder="Name"
                 type="text"
@@ -102,6 +103,7 @@ const Form: React.FC<FormProp> = forwardRef(
               <input
                 autoComplete="off"
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="displayName"
                 name="displayName"
                 placeholder="Display name"
                 type="text"

@@ -4,30 +4,36 @@ import { MemoryRouter } from 'react-router-dom';
 import Form from './Form';
 
 const mockFunction = jest.fn();
-const mockInitialData = {
-  categoryType: 'Descriptive',
-  description: '',
-  name: '',
-};
 
 jest.mock('../../components/common/editor/MarkdownWithPreview', () => {
   return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
 });
 
-describe('Test TagsPage form component', () => {
+describe('Test TeamsPage Form component', () => {
   it('Form component should render properly', async () => {
     const { container } = render(
-      <Form initialData={mockInitialData} saveData={mockFunction} />,
+      <Form
+        initialData={{
+          id: '',
+          name: '',
+          displayName: '',
+          description: '',
+          href: '',
+          users: [],
+          owns: [],
+        }}
+        saveData={mockFunction}
+      />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const categoryType = await findByTestId(container, 'category-type');
     const name = await findByTestId(container, 'name');
+    const displayName = await findByTestId(container, 'displayName');
 
-    expect(categoryType).toBeInTheDocument();
     expect(name).toBeInTheDocument();
+    expect(displayName).toBeInTheDocument();
     expect(
       await findByText(container, /MarkdownWithPreview component/i)
     ).toBeInTheDocument();
