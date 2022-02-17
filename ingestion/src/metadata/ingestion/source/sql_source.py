@@ -203,6 +203,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         "Table pattern not allowed",
                     )
                     continue
+                if self._is_partition(table_name, schema):
+                    self.status.filter(
+                        f"{self.config.get_service_name()}.{table_name}",
+                        "Table is partition",
+                    )
+                    continue
                 description = _get_table_description(schema, table_name, inspector)
                 fqn = f"{self.config.service_name}.{schema}.{table_name}"
                 self.database_source_state.add(fqn)
@@ -316,6 +322,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         for table in database_state:
             if table.fullyQualifiedName not in self.database_source_state:
                 yield DeleteTable(table=table)
+
+    def _is_partition(self, table_name: str, schema: str) -> bool:
+        return False
 
     def _parse_data_model(self):
         """
