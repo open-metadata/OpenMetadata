@@ -41,6 +41,8 @@ _OPERATOR_MAP = {
     ">": op.gt,
     "==": op.eq,
     "!=": op.ne,
+    "<=": op.le,
+    ">=": op.ge,
 }
 
 
@@ -52,9 +54,9 @@ class Validation(BaseModel):
     the grammar.
     """
 
-    metric: Metric
+    metric: str
     operator: Callable
-    value: Union[str, int]
+    value: Union[str, float]  # Use float, which will handle ints as well
     valid: bool = None
 
     @validator("value")
@@ -68,21 +70,29 @@ class Validation(BaseModel):
         arbitrary_types_allowed = True
 
 
-def to_validation(raw_validation: Dict[str, str]):
+def to_validation(raw_validation: Dict[str, str]) -> Validation:
     """
     Given the results of the grammar parser, convert
     them to a Validation class with the assigned Metric,
     the right operator and the casted value.
     """
 
-    metric = Metrics.get(raw_validation["metric"])
+    raw_metric = raw_validation.get("metric")
+    if not raw_metric:
+        raise ValidationConversionException(
+            f"Missing metric information in {raw_validation}."
+        )
+
+    metric = Metrics.get(raw_metric.upper())
     if not metric:
         logger.error("Error trying to get Metric from Registry.")
         raise ValidationConversionException(
             f"Cannot find metric from {raw_validation} in the Registry."
         )
 
-    operator = _OPERATOR_MAP.get(raw_validation.get("operator"))
+    metric_name = metric.name()
+
+    operator = _OPERATOR_MAP.get(raw_validation.get("operation"))
     if not operator:
         logger.error("Invalid Operator when converting to validation.")
         raise ValidationConversionException(
@@ -96,10 +106,16 @@ def to_validation(raw_validation: Dict[str, str]):
             f"Missing or empty value in {raw_validation}."
         )
 
-    value = int(raw_value) if raw_value.isdigit() else raw_value
+    if raw_value.isdigit():
+        value = int(raw_value)  # Check if int
+    else:
+        try:
+            value = float(raw_value)  # Otherwise, might be float
+        except ValueError:
+            value = raw_value  # If not, leave as string
 
     try:
-        validation = Validation(metric=metric, operator=operator, value=value)
+        validation = Validation(metric=metric_name, operator=operator, value=value)
     except ValidationError as err:
         logger.error("Error trying to convert a RAW validation to a Validation model")
         raise err
@@ -119,11 +135,11 @@ def validate(validation: Validation, results: Dict[str, Any]) -> Validation:
     with a properly informed `valid` field,
     containing the result of the validation.
     """
-    computed_metric = results.get(validation.metric.name())
+    computed_metric = results.get(validation.metric)
 
     if not computed_metric:
         raise MissingMetricException(
-            f"The required metric {validation.metric.name()} is not available"
+            f"The required metric {validation.metric} is not available"
             + f" in the profiler results: {results}."
         )
 
