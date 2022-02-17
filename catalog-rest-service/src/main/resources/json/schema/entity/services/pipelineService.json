@@ -18,6 +18,9 @@
         },
         {
           "name": "Glue"
+        },
+        {
+          "name": "Generic"
         }
       ]
     }
