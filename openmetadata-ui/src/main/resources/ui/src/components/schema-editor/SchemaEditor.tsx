@@ -40,6 +40,7 @@ const SchemaEditor = ({
     json: true,
   },
   options,
+  editorClass,
 }: {
   value: string;
   className?: string;
@@ -47,6 +48,7 @@ const SchemaEditor = ({
   options?: {
     [key: string]: string | boolean | Array<string>;
   };
+  editorClass?: string;
 }) => {
   const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
@@ -77,7 +79,7 @@ const SchemaEditor = ({
   return (
     <div className={className}>
       <CodeMirror
-        className={className}
+        className={editorClass}
         options={defaultOptions}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
