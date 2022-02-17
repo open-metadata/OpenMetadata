@@ -56,11 +56,11 @@ class PostgresSource(SQLSource):
         cur = self.pgconn.cursor()
         cur.execute(
             """
-                SELECT relispartition is_partition
+                SELECT relispartition as is_partition
                 FROM   pg_catalog.pg_class c
                 JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                 WHERE  c.relname = %s
-                  AND    n.nspname = %s
+                  AND  n.nspname = %s
             """,
             (table_name, schema_name),
         )
