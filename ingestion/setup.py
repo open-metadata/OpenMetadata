@@ -45,6 +45,7 @@ base_requirements = {
     "Jinja2>=2.11.3, <3.0",
     "PyYAML",
     "jsonschema",
+    "parsimonious==0.8.1",
 }
 
 report_requirements = {
