@@ -24,7 +24,6 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -40,7 +39,6 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     ChangeDescription,
     DashboardESDocument,
-    GlossaryESDocument,
     PipelineESDocument,
     TableESDocument,
     TeamESDocument,
@@ -51,7 +49,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
-    GLOSSARY_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
     TEAM_ELASTICSEARCH_INDEX_MAPPING,
@@ -73,13 +70,11 @@ class ElasticSearchConfig(ConfigModel):
     es_password: Optional[str] = None
     index_tables: Optional[bool] = True
     index_topics: Optional[bool] = True
-    index_glossary: Optional[bool] = True
     index_dashboards: Optional[bool] = True
     index_pipelines: Optional[bool] = True
     index_users: Optional[bool] = True
     index_teams: Optional[bool] = True
     table_index_name: str = "table_search_index"
-    glossary_index_name: str = "glossary_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
@@ -144,10 +139,7 @@ class ElasticsearchSink(Sink[Entity]):
             self._check_or_create_index(
                 self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
             )
-        if self.config.index_glossary:
-            self._check_or_create_index(
-                self.config.glossary_index_name, GLOSSARY_ELASTICSEARCH_INDEX_MAPPING
-            )
+
         if self.config.index_topics:
             self._check_or_create_index(
                 self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING
@@ -209,13 +201,6 @@ class ElasticsearchSink(Sink[Entity]):
                 id=str(table_doc.table_id),
                 body=table_doc.json(),
                 request_timeout=self.config.timeout,
-            )
-        if isinstance(record, Glossary):
-            glossary_doc = self._create_glossary_es_doc(record)
-            self.elasticsearch_client.index(
-                index=self.config.glossary_index_name,
-                id=str(glossary_doc.glossary_id),
-                body=glossary_doc.json(),
             )
         if isinstance(record, Topic):
             topic_doc = self._create_topic_es_doc(record)
@@ -553,61 +538,6 @@ class ElasticsearchSink(Sink[Entity]):
         )
 
         return team_doc
-
-    def _create_glossary_es_doc(self, glossary: Glossary):
-        fqdn = glossary.fullyQualifiedName
-        suggest = [
-            {
-                "input": [
-                    glossary.displayName if glossary.displayName else glossary.name
-                ],
-                "weight": 10,
-            }
-        ]
-        tags = set()
-        timestamp = time.time()
-        glossary_owner = (
-            str(glossary.owner.id.__root__) if glossary.owner is not None else ""
-        )
-        glossary_followers = []
-        if glossary.followers:
-            for follower in glossary.followers.__root__:
-                glossary_followers.append(str(follower.id.__root__))
-        tier = None
-        for glossary_tag in glossary.tags:
-            if "Tier" in glossary_tag.tagFQN:
-                tier = glossary_tag.tagFQN
-            else:
-                tags.add(glossary_tag.tagFQN)
-        # tasks: List[Task] = glossary.tasks  # TODO Handle Glossary words
-        # task_names = []
-        # task_descriptions = []
-        # for task in tasks:
-        #     task_names.append(task.displayName)
-        #     if task.description is not None:
-        #         task_descriptions.append(task.description)
-        #     if tags in task and len(task.tags) > 0:
-        #         for col_tag in task.tags:
-        #             tags.add(col_tag.tagFQN)
-
-        glossary_doc = GlossaryESDocument(
-            glossary_id=str(glossary.id.__root__),
-            glossary_name=glossary.displayName
-            if glossary.displayName
-            else glossary.name,
-            # task_names=task_names,   # TODO Handle Glossary words
-            # task_descriptions=task_descriptions,
-            suggest=suggest,
-            description=glossary.description,
-            last_updated_timestamp=timestamp,
-            tier=tier,
-            tags=list(tags),
-            fqdn=fqdn,
-            owner=glossary_owner,
-            followers=glossary_followers,
-        )
-
-        return glossary_doc
 
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []
