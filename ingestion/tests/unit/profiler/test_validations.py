@@ -14,7 +14,7 @@ and check results
 """
 import pytest
 import operator as op
-from metadata.orm_profiler.validations.core import to_validation, Validation, ValidationConversionException
+from metadata.orm_profiler.validations.core import to_validation, Validation, ValidationConversionException, validate
 
 from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
 
@@ -83,3 +83,32 @@ def test_model_conversion_exceptions():
     # Empty value
     with pytest.raises(ValidationConversionException):
         to_validation({"metric": "min", "operation": "==", "value": ""})
+
+
+def test_validate():
+    """
+    Make sure that we are properly flagging validation results
+    """
+    results = {"COUNT": 100}
+
+    raw_validation = parse("count == 100", visitor)[0]
+    validation = to_validation(raw_validation)
+
+    assert validate(validation, results).valid
+
+    raw_validation = parse("count != 100", visitor)[0]
+    validation = to_validation(raw_validation)
+
+    assert not validate(validation, results).valid
+
+    results = {"NULLRATIO": 0.2}
+
+    raw_validation = parse("Null_Ratio < 0.3", visitor)[0]
+    validation = to_validation(raw_validation)
+
+    assert validate(validation, results).valid
+
+    raw_validation = parse("Null_Ratio >= 0.3", visitor)[0]
+    validation = to_validation(raw_validation)
+
+    assert not validate(validation, results).valid

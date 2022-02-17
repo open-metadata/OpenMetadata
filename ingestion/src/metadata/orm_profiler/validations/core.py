@@ -15,7 +15,7 @@ Core Validation definitions
 import operator as op
 from typing import Any, Callable, Dict, Union
 
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, StrictStr, ValidationError, validator
 
 from metadata.orm_profiler.metrics.core import Metric
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -54,20 +54,13 @@ class Validation(BaseModel):
     the grammar.
     """
 
-    metric: str
+    metric: StrictStr
     operator: Callable
-    value: Union[str, float]  # Use float, which will handle ints as well
+    value: Union[float, int, str]
     valid: bool = None
 
-    @validator("value")
-    def empty_string(cls, val):  # Named `cls` as per pydantic docs
-        if not val:
-            raise ValueError(f"Empty strings are not allowed")
-
-        return val
-
     class Config:
-        arbitrary_types_allowed = True
+        smart_union = True  # Otherwise, we have undesired type coercion
 
 
 def to_validation(raw_validation: Dict[str, str]) -> Validation:
@@ -144,9 +137,9 @@ def validate(validation: Validation, results: Dict[str, Any]) -> Validation:
         )
 
     is_valid = validation.operator(
-        validation.value, computed_metric  # Expected value  # Real value
+        computed_metric, validation.value  # Order matters. Real value vs. expected
     )
 
-    validation.valid = is_valid
+    validation.valid = is_valid  # Either True / False
 
     return validation
