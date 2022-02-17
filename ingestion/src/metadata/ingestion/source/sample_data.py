@@ -341,18 +341,17 @@ class SampleDataSource(Source[Entity]):
                 id=self.database_service.id, type=self.config.service_type
             ),
         )
-        self.user_entity = self.metadata.list_entities(entity=User, limit=5).json()
+        resp = self.metadata.list_entities(entity=User, limit=5)
+        self.user_entity = resp.entities
         for table in self.tables["tables"]:
             for sql_object in table["tableQueries"]:
-                user_entity = json.loads(self.user_entity)["entities"][
-                    random.choice(range(5))
-                ]
+                user_entity = self.user_entity[random.choice(range(5))]
                 user_dict = {
-                    "id": user_entity["id"],
-                    "name": user_entity["name"],
-                    "displayName": user_entity["displayName"],
-                    "href": user_entity["href"],
-                    "description": user_entity["description"],
+                    "id": user_entity.id,
+                    "name": user_entity.name.__root__,
+                    "displayName": user_entity.displayName,
+                    "href": user_entity.href,
+                    "description": user_entity.description,
                 }
                 sql_object["user"] = EntityReference(**user_dict, type="user")
             table_metadata = Table(**table)
