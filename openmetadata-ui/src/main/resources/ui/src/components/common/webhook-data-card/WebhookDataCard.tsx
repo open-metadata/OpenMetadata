@@ -32,7 +32,7 @@ const WebhookDataCard: FunctionComponent<Props> = ({
   onClick,
 }: Props) => {
   const handleLinkClick = () => {
-    onClick && onClick(name);
+    onClick?.(name);
   };
 
   return (
