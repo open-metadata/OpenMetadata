@@ -17,7 +17,6 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -130,9 +129,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_PolicyWithoutPolicyType_400_badRequest(TestInfo test) {
     CreatePolicy create = createRequest(test).withPolicyType(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[policyType must not be null]");
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[policyType must not be null]");
   }
 
   @Test
@@ -160,10 +157,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     rules.add(
         PolicyUtils.accessControlRule("rule21", null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponseContains(
-        exception,
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
             "Found invalid rule rule21 within policy %s. Please ensure that at least one among the user "
@@ -184,37 +179,41 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         PolicyUtils.accessControlRule(
             "rule3", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponseContains(
-        exception,
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
-            "Found multiple rules with operation UpdateTags within policy %s. Please ensure that operation across all rules within the policy are distinct",
+            "Found multiple rules with operation UpdateTags within policy %s. "
+                + "Please ensure that operation across all rules within the policy are distinct",
             getEntityName(test)));
   }
 
   @Test
   void get_PolicyListWithInvalidLimitOffset_4xx() {
     // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listPolicies(null, -1, null, null, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(
+        () -> listPolicies(null, -1, null, null, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, () -> listPolicies(null, 0, null, null, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(
+        () -> listPolicies(null, 0, null, null, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
 
-    exception =
-        assertThrows(HttpResponseException.class, () -> listPolicies(null, 1000001, null, null, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
+    assertResponse(
+        () -> listPolicies(null, 1000001, null, null, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be less than or equal to 1000000]");
   }
 
   @Test
   void get_PolicyListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listPolicies(null, 1, "", "", ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+    assertResponse(
+        () -> listPolicies(null, 1, "", "", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Only one of before or after query parameter allowed");
   }
 
   @Test

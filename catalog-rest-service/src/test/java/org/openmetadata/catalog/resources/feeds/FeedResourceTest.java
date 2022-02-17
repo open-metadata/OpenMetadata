@@ -17,10 +17,12 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -86,9 +88,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   void post_feedWithoutAbout_4xx() {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getId()).withAbout(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders(USER.getEmail())));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[about must not be null]");
+    assertResponse(() -> createThread(create, authHeaders(USER.getEmail())), BAD_REQUEST, "[about must not be null]");
   }
 
   @Test
@@ -96,57 +96,56 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getId()).withAbout("<>"); // Invalid EntityLink
     Map<String, String> authHeaders = authHeaders(USER.getEmail());
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+    assertResponseContains(
+        () -> createThread(create, authHeaders), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
 
     create.withAbout("<#E/>"); // Invalid EntityLink - missing entityType and entityId
-    exception = assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+    assertResponseContains(
+        () -> createThread(create, authHeaders), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
 
     create.withAbout("<#E/table/>"); // Invalid EntityLink - missing entityId
-    exception = assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+    assertResponseContains(
+        () -> createThread(create, authHeaders), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
 
     create.withAbout("<#E/table/tableName"); // Invalid EntityLink - missing closing bracket ">"
-    exception = assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+    assertResponseContains(
+        () -> createThread(create, authHeaders), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
   }
 
   @Test
   void post_feedWithoutMessage_4xx() {
     // Create thread without message field in the request
     CreateThread create = create().withFrom(USER.getId()).withMessage(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders(USER.getEmail())));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[message must not be null]");
+    assertResponseContains(
+        () -> createThread(create, authHeaders(USER.getEmail())), BAD_REQUEST, "[message must not be null]");
   }
 
   @Test
   void post_feedWithoutFrom_4xx() {
     // Create thread without from field in the request
     CreateThread create = create().withFrom(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders(USER.getEmail())));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[from must not be null]");
+    assertResponseContains(
+        () -> createThread(create, authHeaders(USER.getEmail())), BAD_REQUEST, "[from must not be null]");
   }
 
   @Test
   void post_feedWithNonExistentFrom_404() {
     // Create thread with non-existent from
-    CreateThread create = create().withFrom(TestUtils.NON_EXISTENT_ENTITY);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders(USER.getEmail())));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.USER, TestUtils.NON_EXISTENT_ENTITY));
+    CreateThread create = create().withFrom(NON_EXISTENT_ENTITY);
+    assertResponse(
+        () -> createThread(create, authHeaders(USER.getEmail())),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
   void post_feedWithNonExistentAbout_404() {
     // Create thread with non-existent addressed To entity
     CreateThread create = create().withAbout("<#E/table/invalidTableName>");
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createThread(create, authHeaders(USER.getEmail())));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TABLE, "invalidTableName"));
+    assertResponse(
+        () -> createThread(create, authHeaders(USER.getEmail())),
+        NOT_FOUND,
+        entityNotFound(Entity.TABLE, "invalidTableName"));
   }
 
   @Test
@@ -178,27 +177,26 @@ public class FeedResourceTest extends CatalogApplicationTest {
   void post_addPostWithoutMessage_4xx() {
     // Add post to a thread without message field
     Post post = createPost().withMessage(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> addPost(THREAD.getId(), post, authHeaders(USER.getEmail())));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[message must not be null]");
+    assertResponseContains(
+        () -> addPost(THREAD.getId(), post, authHeaders(USER.getEmail())), BAD_REQUEST, "[message must not be null]");
   }
 
   @Test
   void post_addPostWithoutFrom_4xx() {
     // Add post to a thread without from field
     Post post = createPost().withFrom(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> addPost(THREAD.getId(), post, authHeaders(USER.getEmail())));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "[from must not be null]");
+    assertResponseContains(
+        () -> addPost(THREAD.getId(), post, authHeaders(USER.getEmail())), BAD_REQUEST, "[from must not be null]");
   }
 
   @Test
   void post_addPostWithNonExistentFrom_404() {
     // Add post to a thread with non-existent from user
-    Post post = createPost().withFrom(TestUtils.NON_EXISTENT_ENTITY);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> addPost(THREAD.getId(), post, authHeaders(USER.getEmail())));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.USER, TestUtils.NON_EXISTENT_ENTITY));
+    Post post = createPost().withFrom(NON_EXISTENT_ENTITY);
+    assertResponse(
+        () -> addPost(THREAD.getId(), post, authHeaders(USER.getEmail())),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test

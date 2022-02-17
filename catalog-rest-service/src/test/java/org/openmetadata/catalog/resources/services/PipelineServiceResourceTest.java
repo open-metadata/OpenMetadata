@@ -16,8 +16,9 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
@@ -74,18 +75,16 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Test
   void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create pipeline with mandatory serviceType field empty
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
+    assertResponse(
+        () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[serviceType must not be null]");
 
     // Create pipeline with mandatory `brokers` field empty
-    exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> createEntity(createRequest(test).withPipelineUrl(null), ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[pipelineUrl must not be null]");
+    assertResponse(
+        () -> createEntity(createRequest(test).withPipelineUrl(null), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[pipelineUrl must not be null]");
   }
 
   @Test
@@ -105,31 +104,27 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
 
     // Invalid format
     create.withIngestionSchedule(schedule.withRepeatFrequency("INVALID"));
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
 
     // Duration that contains years, months and seconds are not allowed
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponse(
-        exception,
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
+        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponse(
-        exception,
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
+        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponse(
-        exception,
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, " + "and Minutes - example P{d}DT{h}H{m}M");
+        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
   }
 
   @Test
@@ -151,15 +146,16 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     CreatePipelineService create = createRequest(test).withIngestionSchedule(schedule);
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M")); // Repeat every 0 seconds
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(
-        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must be more than 60 minutes");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Ingestion repeatFrequency is too short and must be more than 60 minutes");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M")); // Repeat every 50 minutes 59 seconds
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponse(
-        exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " + "be more than 60 minutes");
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Ingestion repeatFrequency is too short and must be more than 60 minutes");
   }
 
   @Test

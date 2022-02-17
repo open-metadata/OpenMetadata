@@ -15,7 +15,6 @@ package org.openmetadata.catalog.resources.topics;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -70,23 +69,22 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   @Test
   void post_topicWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[service must not be null]");
+    assertResponse(
+        () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[service must not be null]");
 
     // Partitions is required field
-    exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
+    assertResponse(
+        () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[partitions must not be null]");
 
     // Partitions must be >= 1
-    exception =
-        assertThrows(
-            HttpResponseException.class, () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
+    assertResponse(
+        () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[partitions must be greater than or equal to 1]");
   }
 
   @Test

@@ -18,10 +18,10 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import io.dropwizard.db.DataSourceFactory;
@@ -91,9 +91,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
     // No jdbc connection set
     CreateDatabaseService create = createRequest(test).withDatabaseConnection(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "databaseConnection must not be null");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "databaseConnection must not be null");
   }
 
   @Test

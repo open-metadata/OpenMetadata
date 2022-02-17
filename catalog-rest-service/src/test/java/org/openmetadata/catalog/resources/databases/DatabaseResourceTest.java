@@ -16,10 +16,11 @@ package org.openmetadata.catalog.resources.databases;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -70,7 +71,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     CreateDatabase create = createRequest(test);
     EntityReference invalidService = new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("invalid");
     create.withService(invalidService);
-    TestUtils.assertResponse(
+    assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.invalidServiceEntity("invalid", Entity.DATABASE, Entity.DATABASE_SERVICE));
@@ -99,9 +100,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   @Test
   void post_databaseWithoutRequiredService_4xx(TestInfo test) {
     CreateDatabase create = createRequest(test).withService(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
   }
 
   @Test
