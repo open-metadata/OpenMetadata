@@ -15,7 +15,6 @@ package org.openmetadata.catalog.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -84,10 +83,10 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(role);
     role.setDisplayName("newDisplayName");
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(
+        () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   private static void validateRole(

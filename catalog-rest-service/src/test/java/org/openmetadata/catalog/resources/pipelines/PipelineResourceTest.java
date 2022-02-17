@@ -18,10 +18,10 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
@@ -184,9 +184,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Test
   void post_PipelineWithoutRequiredService_4xx(TestInfo test) {
     CreatePipeline create = createRequest(test).withService(null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
   }
 
   @Test
@@ -362,11 +360,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             .withExecutionDate(format.parse("2022-01-16").getTime())
             .withTaskStatus(taskStatus);
 
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid task name invalidTask");
+    assertResponseContains(
+        () -> putPipelineStatusData(pipeline.getId(), pipelineStatus, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid task name invalidTask");
   }
 
   @Test

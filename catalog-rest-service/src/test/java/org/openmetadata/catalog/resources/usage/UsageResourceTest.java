@@ -16,8 +16,9 @@ package org.openmetadata.catalog.resources.usage;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityTypeNotFound;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -47,7 +48,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.type.DailyCount;
@@ -76,39 +76,37 @@ public class UsageResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_usageWithNonExistentEntityId_4xx() {
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(TABLE, NON_EXISTENT_ENTITY));
+    assertResponse(
+        () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(TABLE, NON_EXISTENT_ENTITY));
   }
 
   @Test
   public void post_usageInvalidEntityName_4xx() {
     String invalidEntityType = "invalid";
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityTypeNotFound(invalidEntityType));
+    assertResponse(
+        () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityTypeNotFound(invalidEntityType));
   }
 
   @Test
   public void post_usageWithNegativeCountName_4xx() {
     DailyCount dailyCount = usageReport().withCount(-1); // Negative usage count
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[count must be greater than or equal to 0]");
+    assertResponse(
+        () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[count must be greater than or equal to 0]");
   }
 
   @Test
   public void post_usageWithoutDate_4xx() {
     DailyCount usageReport = usageReport().withDate(null); // Negative usage count
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[date must not be null]");
+    assertResponse(
+        () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[date must not be null]");
   }
 
   @Test

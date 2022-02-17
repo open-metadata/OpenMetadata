@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidServiceEntity;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -107,10 +106,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   @Test
   void post_DashboardWithInvalidService_4xx(TestInfo test) {
     CreateDashboard create = createRequest(test).withService(SUPERSET_INVALID_SERVICE_REFERENCE);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponse(
-        exception,
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         invalidServiceEntity(SUPERSET_INVALID_SERVICE_REFERENCE.getType(), Entity.DASHBOARD, Entity.DASHBOARD_SERVICE));
   }

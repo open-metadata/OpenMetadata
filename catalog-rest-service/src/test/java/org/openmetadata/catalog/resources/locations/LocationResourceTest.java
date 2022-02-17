@@ -16,7 +16,6 @@ package org.openmetadata.catalog.resources.locations;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -177,16 +176,16 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
 
   @Test
   void post_locationWithoutRequiredFields_4xx(TestInfo test) {
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
+    assertResponse(
+        () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[name must not be null]");
 
     // Service is required field
-    exception =
-        assertThrows(
-            HttpResponseException.class, () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[service must not be null]");
+    assertResponse(
+        () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[service must not be null]");
   }
 
   @Test

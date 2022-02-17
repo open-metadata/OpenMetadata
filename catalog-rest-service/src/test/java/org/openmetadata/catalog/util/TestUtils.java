@@ -140,19 +140,6 @@ public final class TestUtils {
         expectedReason + " not in actual " + exception.getReasonPhrase());
   }
 
-  public static void assertResponse(HttpResponseException exception, Status expectedCode, String expectedReason) {
-    assertEquals(expectedCode.getStatusCode(), exception.getStatusCode());
-    assertEquals(expectedReason, exception.getReasonPhrase());
-  }
-
-  public static void assertResponseContains(
-      HttpResponseException exception, Status expectedCode, String expectedReason) {
-    assertEquals(expectedCode.getStatusCode(), exception.getStatusCode());
-    assertTrue(
-        exception.getReasonPhrase().contains(expectedReason),
-        expectedReason + " not in actual " + exception.getReasonPhrase());
-  }
-
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {
     assertFalse(actual.getData().isEmpty());
     if (actual.getPaging().getAfter() != null && actual.getPaging().getBefore() != null) {

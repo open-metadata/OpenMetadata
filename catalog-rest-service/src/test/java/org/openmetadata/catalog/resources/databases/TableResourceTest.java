@@ -21,7 +21,8 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidColumnFQN;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
@@ -40,6 +41,8 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
+import static org.openmetadata.catalog.util.TestUtils.put;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
@@ -73,7 +76,6 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
@@ -129,10 +131,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     for (ColumnDataType dataType : columnDataTypes) {
       create.getColumns().get(0).withDataType(dataType);
-      HttpResponseException exception =
-          assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
       assertResponse(
-          exception, BAD_REQUEST, "For column data types char, varchar, binary, varbinary dataLength must not be null");
+          () -> createEntity(create, ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
   }
 
@@ -141,15 +143,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // No arrayDataType passed for array
     List<Column> columns = singletonList(getColumn("c1", ARRAY, "array<int>", null));
     CreateTable create = createRequest(test).withColumns(columns);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "For column data type array, arrayDataType must not be null");
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "For column data type array, arrayDataType must not be null");
 
     // No dataTypeDisplay passed for array
     columns.get(0).withArrayDataType(INT).withDataTypeDisplay(null);
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
     assertResponse(
-        exception, BAD_REQUEST, "For column data type array, dataTypeDisplay must be of type array<arrayDataType>");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "For column data type array, dataTypeDisplay must be of type array<arrayDataType>");
   }
 
   @Test
@@ -160,9 +164,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         Arrays.asList(
             getColumn(repeatedColumnName, ARRAY, "array<int>", null), getColumn(repeatedColumnName, INT, null));
     CreateTable create = createRequest(test).withColumns(columns);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, String.format("Column name %s is repeated", repeatedColumnName));
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        String.format("Column name %s is repeated", repeatedColumnName));
   }
 
   @Test
@@ -303,9 +308,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void post_tableWithInvalidDatabase_404(TestInfo test) {
     EntityReference database = new EntityReference().withId(NON_EXISTENT_ENTITY).withType(Entity.DATABASE);
     CreateTable create = createRequest(test).withDatabase(database);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -613,33 +619,31 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String columnFQN = "invalidDB";
     JoinedWith joinedWith = new JoinedWith().withFullyQualifiedName(columnFQN);
     joins.get(0).withJoinedWith(singletonList(joinedWith));
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidColumnFQN(columnFQN));
+    assertResponse(
+        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(columnFQN));
 
     // Invalid table name
     columnFQN = table2.getDatabase().getName() + ".invalidTable";
     joinedWith = new JoinedWith().withFullyQualifiedName(columnFQN);
     joins.get(0).withJoinedWith(singletonList(joinedWith));
-    exception =
-        assertThrows(HttpResponseException.class, () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidColumnFQN(columnFQN));
+    assertResponse(
+        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(columnFQN));
 
     // Invalid column name
     columnFQN = table2.getFullyQualifiedName() + ".invalidColumn";
     joinedWith = new JoinedWith().withFullyQualifiedName(columnFQN);
     joins.get(0).withJoinedWith(singletonList(joinedWith));
-    exception =
-        assertThrows(HttpResponseException.class, () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidColumnFQN(columnFQN));
+    assertResponse(
+        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(columnFQN));
 
     // Invalid date older than 30 days
     joinedWith = new JoinedWith().withFullyQualifiedName(table2.getFullyQualifiedName() + ".c1");
     joins.get(0).withJoinedWith(singletonList(joinedWith));
     tableJoins.withStartDate(RestUtil.today(-30)); // 30 days older than today
-    exception =
-        assertThrows(HttpResponseException.class, () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "Date range can only include past 30 days starting today");
+    assertResponse(
+        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Date range can only include past 30 days starting today");
   }
 
   public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) throws ParseException {
@@ -686,25 +690,28 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<String> columns = Arrays.asList("c1", "c2", "invalidColumn"); // Invalid column name
     List<List<Object>> rows = singletonList(Arrays.asList("c1Value1", 1, true)); // Valid sample data
     tableData.withColumns(columns).withRows(rows);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid column name invalidColumn");
+    assertResponseContains(
+        () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name invalidColumn");
 
     // Send sample data that has more samples than the number of columns
     columns = Arrays.asList("c1", "c2", "c3"); // Invalid column name
     rows = singletonList(Arrays.asList("c1Value1", 1, true, "extra value")); // Extra value
     tableData.withColumns(columns).withRows(rows);
-    exception =
-        assertThrows(HttpResponseException.class, () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Number of columns is 3 but row " + "has 4 sample values");
+    assertResponseContains(
+        () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Number of columns is 3 but row " + "has 4 sample values");
 
     // Send sample data that has fewer samples than the number of columns
     columns = Arrays.asList("c1", "c2", "c3"); // Invalid column name
     rows = singletonList(Arrays.asList("c1Value1", 1 /* Missing Value */));
     tableData.withColumns(columns).withRows(rows);
-    exception =
-        assertThrows(HttpResponseException.class, () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Number of columns is 3 but row h" + "as 2 sample values");
+    assertResponseContains(
+        () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Number of columns is 3 but row h" + "as 2 sample values");
   }
 
   @Test
@@ -737,10 +744,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             + "select * from spectrum.sales\n"
             + "with no schema binding;\n";
     createTable.setViewDefinition(query);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(
-        exception,
+    assertResponseContains(
+        () -> createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "ViewDefinition can only be set on " + "TableType View, SecureView or MaterializedView");
   }
@@ -810,10 +815,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnCount(3.0)
             .withColumnProfile(columnProfiles)
             .withProfileDate("2021-09-09");
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid column name invalidColumn");
+    assertResponseContains(
+        () -> putTableProfileData(table.getId(), tableProfile, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name invalidColumn");
   }
 
   @Test

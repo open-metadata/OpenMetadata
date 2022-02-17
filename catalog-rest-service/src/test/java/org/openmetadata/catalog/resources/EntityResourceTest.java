@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
@@ -43,6 +43,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
@@ -96,7 +97,6 @@ import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
@@ -562,10 +562,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       ResultList<T> listBeforeDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       // Delete non-empty container entity and ensure deletion is not allowed
       EntityResourceTest<?, ?> containerTest = ENTITY_RESOURCE_TEST_MAP.get(container.getType());
-      HttpResponseException exception =
-          assertThrows(
-              HttpResponseException.class, () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS));
-      assertResponse(exception, BAD_REQUEST, container.getType() + " is not empty");
+      assertResponse(
+          () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          container.getType() + " is not empty");
 
       // Now delete the container with recursive flag on
       containerTest.deleteEntity(container.getId(), true, ADMIN_AUTH_HEADERS);
@@ -582,24 +582,29 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   @Test
   void get_entityListWithInvalidLimit_4xx() {
     // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listEntities(null, -1, null, null, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(
+        () -> listEntities(null, -1, null, null, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, () -> listEntities(null, 0, null, null, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(
+        () -> listEntities(null, 0, null, null, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be greater than or equal to 1]");
 
-    exception =
-        assertThrows(HttpResponseException.class, () -> listEntities(null, 1000001, null, null, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
+    assertResponse(
+        () -> listEntities(null, 1000001, null, null, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limit must be less than or equal to 1000000]");
   }
 
   @Test
   void get_entityListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> listEntities(null, 1, "", "", ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+    assertResponse(
+        () -> listEntities(null, 1, "", "", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Only one of before or after query parameter allowed");
   }
 
   @Test
@@ -669,19 +674,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(request, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
+    assertResponse(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(request1, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponse(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
 
     // Create an entity with mandatory name field too long
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
-    exception = assertThrows(HttpResponseException.class, () -> createEntity(request2, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponse(() -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
   }
 
   @Test
@@ -691,9 +692,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
     EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
     K create = createRequest(getEntityName(test), "", "", owner);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "type must not be null");
   }
 
   @Test
@@ -703,9 +702,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
     EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
     K create = createRequest(getEntityName(test), "", "", owner);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -834,10 +832,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
     K updateRequest = createRequest(getEntityName(test), "newDescription", "displayName", null);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS));
-    TestUtils.assertResponse(
-        exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
+    assertResponse(
+        () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
   }
 
   @Test
@@ -964,18 +962,16 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     UUID entityId = getEntityInterface(entity).getId();
 
     // Add non-existent user as follower to the entity
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
+    assertResponse(
+        () -> addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
 
     // Delete non-existent user as follower to the entity
-    exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
+    assertResponse(
+        () -> deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1131,10 +1127,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     String json = JsonUtils.pojoToJson(entity);
     entityInterface.setDeleted(true);
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class, () -> patchEntity(entityInterface.getId(), json, entity, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute(entityType, "deleted"));
+    assertResponse(
+        () -> patchEntity(entityInterface.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        readOnlyAttribute(entityType, "deleted"));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1142,9 +1138,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   void delete_nonExistentEntity_404() {
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteEntity(NON_EXISTENT_ENTITY, ADMIN_AUTH_HEADERS));
-    assertResponse(exception, NOT_FOUND, entityNotFound(entityType, NON_EXISTENT_ENTITY));
+    assertResponse(
+        () -> deleteEntity(NON_EXISTENT_ENTITY, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(entityType, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -1158,9 +1155,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    HttpResponseException exception =
-        assertThrows(HttpResponseException.class, () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(
+        () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */
@@ -1186,25 +1184,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   @Test
   void testInvalidEntityList() {
     // Invalid entityCreated list
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> getChangeEvents("invalidEntity", entityType, null, System.currentTimeMillis(), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityCreated");
+    assertResponse(
+        () -> getChangeEvents("invalidEntity", entityType, null, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid entity invalidEntity in query param entityCreated");
 
     // Invalid entityUpdated list
-    exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> getChangeEvents(null, "invalidEntity", entityType, System.currentTimeMillis(), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityUpdated");
+    assertResponse(
+        () -> getChangeEvents(null, "invalidEntity", entityType, System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid entity invalidEntity in query param entityUpdated");
 
     // Invalid entityDeleted list
-    exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS));
-    assertResponse(exception, BAD_REQUEST, "Invalid entity invalidEntity in query param entityDeleted");
+    assertResponse(
+        () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid entity invalidEntity in query param entityDeleted");
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1469,14 +1464,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     entityInterface.setDescription(newDescription);
 
     if (shouldThrowException) {
-      HttpResponseException exception =
-          assertThrows(
-              HttpResponseException.class,
-              () ->
-                  patchEntity(
-                      entityInterface.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")));
       assertResponse(
-          exception,
+          () ->
+              patchEntity(entityInterface.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
           String.format(
               "Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateDescription", userName));
