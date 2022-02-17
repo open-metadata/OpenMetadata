@@ -110,14 +110,8 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   @Override
   public void storeRelationships(AirflowPipeline airflowPipeline) {
     EntityReference service = airflowPipeline.getService();
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            service.getId().toString(),
-            airflowPipeline.getId().toString(),
-            service.getType(),
-            Entity.AIRFLOW_PIPELINE,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(
+        service.getId(), airflowPipeline.getId(), service.getType(), Entity.AIRFLOW_PIPELINE, Relationship.CONTAINS);
     setOwner(airflowPipeline, airflowPipeline.getOwner());
     applyTags(airflowPipeline);
   }

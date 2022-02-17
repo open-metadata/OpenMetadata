@@ -129,14 +129,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public void setService(Topic topic, EntityReference service) {
     if (service != null && topic != null) {
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              service.getId().toString(),
-              topic.getId().toString(),
-              service.getType(),
-              Entity.TOPIC,
-              Relationship.CONTAINS.ordinal());
+      addRelationship(service.getId(), topic.getId(), service.getType(), Entity.TOPIC, Relationship.CONTAINS);
       topic.setService(service);
     }
   }
