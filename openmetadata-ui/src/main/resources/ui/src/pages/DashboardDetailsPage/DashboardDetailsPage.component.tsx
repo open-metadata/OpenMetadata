@@ -487,6 +487,7 @@ const DashboardDetailsPage = () => {
 
   useEffect(() => {
     fetchDashboardDetail(dashboardFQN);
+    setEntityLineage({} as EntityLineage);
   }, [dashboardFQN]);
 
   return (
