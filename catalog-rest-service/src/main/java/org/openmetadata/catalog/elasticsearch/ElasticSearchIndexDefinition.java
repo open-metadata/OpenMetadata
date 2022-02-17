@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -32,7 +31,6 @@ import org.elasticsearch.client.indices.PutMappingRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -69,8 +67,7 @@ public class ElasticSearchIndexDefinition {
     DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/dashboard_index_mapping.json"),
     PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
     USER_SEARCH_INDEX("user_search_index", "/elasticsearch/user_index_mapping.json"),
-    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
-    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json");
+    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -200,8 +197,6 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.USER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TEAM)) {
       return ElasticSearchIndexType.TEAM_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
-      return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }
@@ -855,63 +850,5 @@ class TeamESIndex {
             .users(users);
 
     return teamESIndexBuilder;
-  }
-}
-
-@EqualsAndHashCode(callSuper = true)
-@Getter
-@SuperBuilder(builderMethodName = "internalBuilder")
-@Value
-@JsonInclude(JsonInclude.Include.NON_NULL)
-class GlossaryESIndex extends ElasticSearchIndex {
-  @JsonProperty("glossary_id")
-  String glossaryId;
-
-  public static GlossaryESIndexBuilder builder(Glossary glossary, int responseCode) {
-    List<String> tags = new ArrayList<>();
-    List<String> taskNames = new ArrayList<>();
-    List<String> taskDescriptions = new ArrayList<>();
-    List<ElasticSearchSuggest> suggest = new ArrayList<>();
-    suggest.add(ElasticSearchSuggest.builder().input(glossary.getName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(glossary.getDisplayName()).weight(10).build());
-
-    if (glossary.getTags() != null) {
-      glossary.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-    }
-
-    Long updatedTimestamp = glossary.getUpdatedAt();
-    ParseTags parseTags = new ParseTags(tags);
-    String description = glossary.getDescription() != null ? glossary.getDescription() : "";
-    String displayName = glossary.getDisplayName() != null ? glossary.getDisplayName() : "";
-    GlossaryESIndexBuilder builder =
-        internalBuilder()
-            .glossaryId(glossary.getId().toString())
-            .name(glossary.getDisplayName())
-            .displayName(description)
-            .description(displayName)
-            .fqdn(glossary.getName())
-            .lastUpdatedTimestamp(updatedTimestamp)
-            .entityType("glossary")
-            .suggest(suggest)
-            .tags(parseTags.tags)
-            .tier(parseTags.tierTag);
-
-    if (glossary.getOwner() != null) {
-      builder.owner(glossary.getOwner().getId().toString());
-    }
-
-    ESChangeDescription esChangeDescription = null;
-    if (glossary.getChangeDescription() != null) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(glossary.getUpdatedBy()).build();
-      esChangeDescription.setFieldsAdded(glossary.getChangeDescription().getFieldsAdded());
-      esChangeDescription.setFieldsDeleted(glossary.getChangeDescription().getFieldsDeleted());
-      esChangeDescription.setFieldsUpdated(glossary.getChangeDescription().getFieldsUpdated());
-    } else if (responseCode == Response.Status.CREATED.getStatusCode()) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(glossary.getUpdatedBy()).build();
-    }
-    builder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
-    return builder;
   }
 }

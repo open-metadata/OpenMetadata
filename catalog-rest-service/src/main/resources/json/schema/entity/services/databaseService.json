@@ -28,6 +28,7 @@
         "ClickHouse",
         "Databricks",
         "DynamoDB",
+        "AzureSQL",
         "SingleStore"
       ],
       "javaEnums": [
@@ -84,6 +85,9 @@
         },
         {
           "name": "Databricks"
+        },
+        }
+          "name": "AzureSQL"
         },
         {
           "name": "DynamoDB"

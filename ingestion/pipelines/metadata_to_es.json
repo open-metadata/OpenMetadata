@@ -5,7 +5,6 @@
       "include_tables": "true",
       "include_topics": "true",
       "include_dashboards": "true",
-      "include_glossary": "true",
       "limit_records": 10
     }
   },
@@ -15,7 +14,6 @@
       "index_tables": "true",
       "index_topics": "true",
       "index_dashboards": "true",
-      "index_glossary": "true",
       "es_host": "localhost",
       "es_port": 9200
     }

@@ -87,14 +87,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            service.getId().toString(),
-            chart.getId().toString(),
-            service.getType(),
-            Entity.CHART,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
     setOwner(chart, chart.getOwner());
     applyTags(chart);
   }

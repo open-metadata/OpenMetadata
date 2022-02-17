@@ -63,6 +63,7 @@ base_plugins = {
 plugins: Dict[str, Set[str]] = {
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
+    "azuresql": {"pyodbc"},
     "bigquery": {
         "sqlalchemy-bigquery==1.2.2",
         "pyarrow~=6.0.1",

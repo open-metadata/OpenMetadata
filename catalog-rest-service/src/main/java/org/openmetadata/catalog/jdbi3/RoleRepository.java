@@ -65,14 +65,7 @@ public class RoleRepository extends EntityRepository<Role> {
 
   private EntityReference getPolicyForRole(@NonNull Role role) throws IOException {
     List<String> result =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                role.getId().toString(),
-                Entity.ROLE,
-                Relationship.CONTAINS.ordinal(),
-                Entity.POLICY,
-                toBoolean(toInclude(role)));
+        findTo(role.getId(), Entity.ROLE, Relationship.CONTAINS, Entity.POLICY, toBoolean(toInclude(role)));
     if (result.size() != 1) {
       LOG.warn(
           "A role must have exactly one policy that is applicable to the role. Got {} policies for role {}",
@@ -178,14 +171,7 @@ public class RoleRepository extends EntityRepository<Role> {
 
   @Override
   public void storeRelationships(Role role) {
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            role.getId().toString(),
-            role.getPolicy().getId().toString(),
-            Entity.ROLE,
-            Entity.POLICY,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(role.getId(), role.getPolicy().getId(), Entity.ROLE, Entity.POLICY, Relationship.CONTAINS);
   }
 
   @Override
