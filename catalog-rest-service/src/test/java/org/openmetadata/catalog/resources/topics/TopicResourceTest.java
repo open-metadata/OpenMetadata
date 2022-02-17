@@ -111,6 +111,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
+    Map<String, Object> topicConfig = new HashMap<>();
+
     CreateTopic createTopic =
         createRequest(test)
             .withOwner(USER_OWNER1)

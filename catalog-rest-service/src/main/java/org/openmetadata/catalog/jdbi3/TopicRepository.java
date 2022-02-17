@@ -303,6 +303,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("retentionSize", origTopic.getRetentionSize(), updatedTopic.getRetentionSize());
       recordChange("schemaText", origTopic.getSchemaText(), updatedTopic.getSchemaText());
       recordChange("schemaType", origTopic.getSchemaType(), updatedTopic.getSchemaType());
+      recordChange("topicConfig", origTopic.getTopicConfig(), updatedTopic.getTopicConfig());
       updateCleanupPolicies(origTopic, updatedTopic);
     }
 
