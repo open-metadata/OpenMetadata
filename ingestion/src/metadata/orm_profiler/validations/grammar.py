@@ -63,19 +63,15 @@ class ExpVisitor(NodeVisitor):
 
     @staticmethod
     def visit_test_def(_, visited_children):
-        """ Returns the overall output. """
+        """Returns the overall output."""
 
-        validations = [
-            child[0] for child in visited_children if child[0]
-        ]
+        validations = [child[0] for child in visited_children if child[0]]
 
         return validations
 
     @staticmethod
     def visit_rule(_, visited_children):
-        rule = {
-            key: value for key, value in visited_children
-        }
+        rule = {key: value for key, value in visited_children}
         return rule
 
     @staticmethod
@@ -102,14 +98,11 @@ class ExpVisitor(NodeVisitor):
         return visited_children or node
 
 
-def parse(expression: str) -> Dict[str, str]:
+def parse(expression: str, visitor: ExpVisitor) -> Dict[str, str]:
     """
     Given an expression, parse it with
     our grammar and return the visiting
     result
     """
     tree = grammar.parse(expression)
-
-    # Start a new clean visitor
-    visitor = ExpVisitor()
     return visitor.visit(tree)

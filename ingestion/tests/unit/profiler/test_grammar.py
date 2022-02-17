@@ -14,43 +14,45 @@ Test the Test Definition grammar
 import pytest
 from parsimonious import ParseError
 
-from metadata.orm_profiler.validations.grammar import parse
+from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
+
+visitor = ExpVisitor()
 
 
 def test_simple_parsing():
     """
     Play with simple expressions
     """
-    res = parse("row_count == 100")
-    assert res == [{'metric': 'row_count', 'operation': '==', 'value': '100'}]
+    res = parse("row_count == 100", visitor)
+    assert res == [{"metric": "row_count", "operation": "==", "value": "100"}]
 
-    res = parse("something_else > random")
-    assert res == [{'metric': 'something_else', 'operation': '>', 'value': 'random'}]
+    res = parse("something_else > random", visitor)
+    assert res == [{"metric": "something_else", "operation": ">", "value": "random"}]
 
     # No spaces are needed
-    res = parse("hello!=99")
-    assert res == [{'metric': 'hello', 'operation': '!=', 'value': '99'}]
+    res = parse("hello!=99", visitor)
+    assert res == [{"metric": "hello", "operation": "!=", "value": "99"}]
 
-    res = parse("random==Seat500")
-    assert res == [{'metric': 'random', 'operation': '==', 'value': 'Seat500'}]
+    res = parse("random==Seat500", visitor)
+    assert res == [{"metric": "random", "operation": "==", "value": "Seat500"}]
 
 
 def test_multiple_parsing():
     """
     We can also evaluate multiple test definitions
     """
-    res = parse("metric_a < value1 & metric_b == value2 & metric_c != value3")
+    res = parse("metric_a < value1 & metric_b == value2 & metric_c != value3", visitor)
 
     expected = [
-        {'metric': 'metric_a', 'operation': '<', 'value': 'value1'},
-        {'metric': 'metric_b', 'operation': '==', 'value': 'value2'},
-        {'metric': 'metric_c', 'operation': '!=', 'value': 'value3'},
+        {"metric": "metric_a", "operation": "<", "value": "value1"},
+        {"metric": "metric_b", "operation": "==", "value": "value2"},
+        {"metric": "metric_c", "operation": "!=", "value": "value3"},
     ]
 
     assert res == expected
 
     # No spaces are needed
-    res = parse("metric_a<value1&metric_b==value2&metric_c!=value3")
+    res = parse("metric_a<value1&metric_b==value2&metric_c!=value3", visitor)
     assert res == expected
 
 
@@ -61,13 +63,10 @@ def test_parse_error():
     """
 
     with pytest.raises(ParseError):
-        parse("wont match")
+        parse("wont match", visitor)
 
     with pytest.raises(ParseError):
-        parse("ok not_an_operand ok")
+        parse("ok not_an_operand ok", visitor)
 
     with pytest.raises(ParseError):
-        parse("ok == !!!")
-
-
-
+        parse("ok == !!!", visitor)
