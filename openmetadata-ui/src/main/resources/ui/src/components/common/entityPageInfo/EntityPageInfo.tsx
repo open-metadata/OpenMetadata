@@ -23,6 +23,7 @@ import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getFollowerDetail } from '../../../utils/TableUtils';
+import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import Tags from '../../tags/tags';
 import Avatar from '../avatar/Avatar';
@@ -41,7 +42,6 @@ type Props = {
   tier: TagLabel;
   tags: Array<EntityTags>;
   isTagEditable?: boolean;
-  tagList?: Array<string>;
   owner?: TableDetail['owner'];
   hasEditAccess?: boolean;
   followersList: Array<User>;
@@ -63,7 +63,6 @@ const EntityPageInfo = ({
   tier,
   tags,
   isTagEditable = false,
-  tagList = [],
   owner,
   hasEditAccess,
   tagsHandler,
@@ -81,6 +80,8 @@ const EntityPageInfo = ({
     tagsHandler?.(selectedTags?.map((tag) => tag.tagFQN));
     setIsEditable(false);
   };
+  const [tagList, setTagList] = useState<Array<string>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const getSelectedTags = () => {
     return tier?.tagFQN
@@ -174,6 +175,16 @@ const EntityPageInfo = ({
         </span>
       </div>
     );
+  };
+  const fetchTags = () => {
+    setIsTagLoading(true);
+    getTagCategories()
+      .then((res) => {
+        setTagList(getTaglist(res.data));
+      })
+      .finally(() => {
+        setIsTagLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -349,11 +360,16 @@ const EntityPageInfo = ({
             trigger="click">
             <div
               className="tw-inline-block"
-              onClick={() => setIsEditable(true)}>
+              onClick={() => {
+                fetchTags();
+                setIsEditable(true);
+              }}>
               <TagsContainer
                 editable={isEditable}
+                isLoading={isTagLoading}
                 selectedTags={getSelectedTags()}
                 showTags={!isTagEditable}
+                size="small"
                 tagList={tagList}
                 onCancel={() => {
                   handleTagSelection();

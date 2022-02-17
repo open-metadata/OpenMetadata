@@ -72,7 +72,6 @@ import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 type ChartType = {
   displayName: string;
 } & Chart;
@@ -81,7 +80,6 @@ const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
   const showToast = useToastContext();
-  const [tagList, setTagList] = useState<Array<string>>([]);
   const { dashboardFQN, tab } = useParams() as Record<string, string>;
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
@@ -146,14 +144,6 @@ const DashboardDetailsPage = () => {
       dashboardId,
       jsonPatch
     ) as unknown as Promise<AxiosResponse>;
-  };
-
-  const fetchTags = () => {
-    getTagCategories().then((res) => {
-      if (res.data) {
-        setTagList(getTaglist(res.data));
-      }
-    });
   };
 
   const fetchCharts = async (charts: Dashboard['charts']) => {
@@ -499,10 +489,6 @@ const DashboardDetailsPage = () => {
     fetchDashboardDetail(dashboardFQN);
   }, [dashboardFQN]);
 
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
   return (
     <>
       {isLoading ? (
@@ -539,7 +525,6 @@ const DashboardDetailsPage = () => {
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
           slashedDashboardName={slashedDashboardName}
-          tagList={tagList}
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}

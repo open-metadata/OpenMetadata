@@ -27,6 +27,7 @@
         "Db2",
         "ClickHouse",
         "DynamoDB",
+        "AzureSQL",
         "SingleStore"
       ],
       "javaEnums": [
@@ -80,6 +81,9 @@
         },
         {
           "name": "ClickHouse"
+        },
+        {
+          "name": "AzureSQL"
         },
         {
           "name": "DynamoDB"

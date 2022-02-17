@@ -78,9 +78,9 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
     CreateWebhook create = createRequest(webhookName, "", "", null).withEnabled(false).withEndpoint(URI.create(uri));
     Webhook webhook = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, webhook.getStatus());
+    assertEquals(Status.DISABLED, webhook.getStatus());
     Webhook getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
     EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
     assertNull(details);
 
@@ -92,14 +92,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(false).withNewValue(true));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.NOT_STARTED).withNewValue(Status.STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.DISABLED).withNewValue(Status.ACTIVE));
     change.getFieldsUpdated().add(new FieldChange().withName("batchSize").withOldValue(10).withNewValue(50));
     create.withEnabled(true).withBatchSize(50);
 
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    assertEquals(Status.STARTED, webhook.getStatus());
+    assertEquals(Status.ACTIVE, webhook.getStatus());
     getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.STARTED, getWebhook.getStatus());
+    assertEquals(Status.ACTIVE, getWebhook.getStatus());
 
     // Ensure the call back notification has started
     details = waitForFirstEvent(webhookName, 25, 100);
@@ -119,15 +119,15 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.STARTED).withNewValue(Status.NOT_STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.ACTIVE).withNewValue(Status.DISABLED));
 
-    // Disabled webhook state is NOT_STARTED
+    // Disabled webhook state is DISABLED
     getWebhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
 
     // Disabled webhook state also records last successful time when event was sent
     getWebhook = getEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
-    assertEquals(Status.NOT_STARTED, getWebhook.getStatus());
+    assertEquals(Status.DISABLED, getWebhook.getStatus());
     assertEquals(details.getFirstEventTime(), getWebhook.getFailureDetails().getLastSuccessfulAt());
 
     // Ensure callback back notification is disabled with no new events
@@ -172,7 +172,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
                 .withNewValue(create.getEndpoint()));
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.STARTED));
+        .add(new FieldChange().withName("status").withOldValue(Status.FAILED).withNewValue(Status.ACTIVE));
     webhook = updateAndCheckEntity(create, Response.Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     deleteEntity(webhook.getId(), ADMIN_AUTH_HEADERS);
@@ -343,7 +343,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
 
   public void assertWebhookStatusSuccess(String name) throws HttpResponseException {
     Webhook webhook = getEntityByName(name, "", ADMIN_AUTH_HEADERS);
-    assertEquals(Status.STARTED, webhook.getStatus());
+    assertEquals(Status.ACTIVE, webhook.getStatus());
     assertNull(webhook.getFailureDetails());
   }
 

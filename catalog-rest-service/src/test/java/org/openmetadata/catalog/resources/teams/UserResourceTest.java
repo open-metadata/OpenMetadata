@@ -490,7 +490,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
-  /** Validate returned fields GET .../users/{id}?fields="..." or GET .../users/name/{name}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
     // .../teams?fields=profile

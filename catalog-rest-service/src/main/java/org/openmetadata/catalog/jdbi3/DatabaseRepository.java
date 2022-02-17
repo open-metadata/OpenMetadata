@@ -101,31 +101,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void storeRelationships(Database database) {
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            database.getService().getId().toString(),
-            database.getId().toString(),
-            database.getService().getType(),
-            Entity.DATABASE,
-            Relationship.CONTAINS.ordinal());
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
+    EntityReference service = database.getService();
+    addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
+    setOwner(database.getId(), Entity.DATABASE, database.getOwner());
   }
 
   private List<EntityReference> getTables(Database database) throws IOException {
     if (database == null) {
       return null;
     }
-    String databaseId = database.getId().toString();
     List<String> tableIds =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                databaseId,
-                Entity.DATABASE,
-                Relationship.CONTAINS.ordinal(),
-                Entity.TABLE,
-                toBoolean(toInclude(database)));
+        findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.TABLE, toBoolean(toInclude(database)));
     List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
       tables.add(daoCollection.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
@@ -162,16 +148,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (database == null) {
       return null;
     }
-    String databaseId = database.getId().toString();
     List<String> result =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                databaseId,
-                Entity.DATABASE,
-                Relationship.HAS.ordinal(),
-                Entity.LOCATION,
-                toBoolean(toInclude(database)));
+        findTo(database.getId(), Entity.DATABASE, Relationship.HAS, Entity.LOCATION, toBoolean(toInclude(database)));
     if (result.size() == 1) {
       String locationId = result.get(0);
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
@@ -206,10 +184,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     daoCollection
         .relationshipDAO()
         .deleteFrom(databaseId.toString(), Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            databaseId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
+    addRelationship(databaseId, locationId, Entity.DATABASE, Entity.LOCATION, Relationship.HAS);
     return CREATED;
   }
 

@@ -72,4 +72,9 @@ public final class CatalogExceptionMessage {
   public static String isAlreadyTokenized() {
     return "The field is already tokenized";
   }
+
+  public static String glossaryTermMismatch(String parentId, String glossaryId) {
+    return String.format(
+        "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s", parentId, glossaryId);
+  }
 }

@@ -163,15 +163,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<String> roleIds =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                user.getId().toString(),
-                Entity.USER,
-                Relationship.HAS.ordinal(),
-                Entity.ROLE,
-                toBoolean(toInclude(user)));
+    List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE, toBoolean(toInclude(user)));
     List<EntityReference> roles = new ArrayList<>(roleIds.size());
     for (String roleId : roleIds) {
       roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
@@ -182,14 +174,7 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(
-                user.getId().toString(),
-                Entity.USER,
-                Relationship.HAS.ordinal(),
-                Entity.TEAM,
-                toBoolean(toInclude(user)));
+        findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM, toBoolean(toInclude(user)));
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       teams.add(daoCollection.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
@@ -200,10 +185,7 @@ public class UserRepository extends EntityRepository<User> {
   private void assignRoles(User user, List<EntityReference> roles) {
     roles = Optional.ofNullable(roles).orElse(Collections.emptyList());
     for (EntityReference role : roles) {
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              user.getId().toString(), role.getId().toString(), Entity.USER, Entity.ROLE, Relationship.HAS.ordinal());
+      addRelationship(user.getId(), role.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
     }
   }
 
@@ -211,10 +193,7 @@ public class UserRepository extends EntityRepository<User> {
     // Query - add team to the user
     teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
     for (EntityReference team : teams) {
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              team.getId().toString(), user.getId().toString(), Entity.TEAM, Entity.USER, Relationship.HAS.ordinal());
+      addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
     }
   }
 
