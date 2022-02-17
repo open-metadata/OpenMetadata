@@ -150,9 +150,6 @@ public class FeedRepository {
       return JsonUtils.readObjects(dao.feedDAO().list(), Thread.class);
     }
     EntityLink entityLink = EntityLink.parse(link);
-    if (entityLink.getLinkType() != LinkType.ENTITY) {
-      throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityFQN}> is allowed");
-    }
     EntityReference reference = EntityUtil.validateEntityLink(entityLink);
     List<String> threadIds = new ArrayList<>();
     List<List<String>> result =
