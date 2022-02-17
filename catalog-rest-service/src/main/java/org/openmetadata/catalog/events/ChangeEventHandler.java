@@ -17,6 +17,10 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
@@ -24,10 +28,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.FeedRepository;
+import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -35,9 +44,11 @@ import org.openmetadata.catalog.util.RestUtil;
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
   private CollectionDAO dao;
+  private FeedRepository feedDao;
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
+    this.feedDao = new FeedRepository(dao);
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -58,6 +69,15 @@ public class ChangeEventHandler implements EventHandler {
           changeEvent.setEntity(JsonUtils.pojoToJson(entity));
         }
         dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+
+        // Add a new thread to the entity for every change event
+        // for the event to appear in activity feeds
+        List<Thread> threads = getThreads(responseContext);
+        if (threads != null) {
+          for (var thread : threads) {
+            feedDao.create(thread);
+          }
+        }
       }
     } catch (Exception e) {
       LOG.error("Failed to capture change event for method {} due to ", method, e);
@@ -91,7 +111,7 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     // PUT or PATCH operation didn't result in any change
-    if (changeType == null) {
+    if (changeType == null || RestUtil.ENTITY_NO_CHANGE.equals(changeType)) {
       return null;
     }
 
@@ -148,6 +168,95 @@ public class ChangeEventHandler implements EventHandler {
         .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())
         .withCurrentVersion(changeEvent.getCurrentVersion());
+  }
+
+  private enum CHANGE_TYPE {
+    UPDATE,
+    ADD,
+    DELETE
+  }
+
+  private List<Thread> getThreads(ContainerResponseContext responseContext) {
+    Object entity = responseContext.getEntity();
+    if (entity == null) {
+      return null; // Response has no entity to produce change event from
+    }
+
+    var entityInterface = Entity.getEntityInterface(entity);
+
+    List<FieldChange> fieldsUpdated = entityInterface.getChangeDescription().getFieldsUpdated();
+    List<Thread> threads = new ArrayList<>(getThreads(fieldsUpdated, entity, CHANGE_TYPE.UPDATE));
+
+    List<FieldChange> fieldsAdded = entityInterface.getChangeDescription().getFieldsAdded();
+    threads.addAll(getThreads(fieldsAdded, entity, CHANGE_TYPE.ADD));
+
+    List<FieldChange> fieldsDeleted = entityInterface.getChangeDescription().getFieldsDeleted();
+    threads.addAll(getThreads(fieldsDeleted, entity, CHANGE_TYPE.DELETE));
+    return threads;
+  }
+
+  private List<Thread> getThreads(List<FieldChange> fields, Object entity, CHANGE_TYPE changeType) {
+    List<Thread> threads = new ArrayList<>();
+    var entityInterface = Entity.getEntityInterface(entity);
+    EntityReference entityReference = Entity.getEntityReference(entity);
+    String entityType = entityReference.getType();
+    String entityFQN = entityReference.getName();
+    for (var field : fields) {
+      // if field name has dots, then it is an array field
+      String fieldName = field.getName();
+      String arrayFieldName = null;
+      String arrayFieldValue = null;
+      String newFieldValue = field.getNewValue().toString();
+      if (fieldName.contains(".")) {
+        String[] fieldNameParts = fieldName.split("\\.");
+        // For array type, it should have 3 ex: columns.comment.description
+        fieldName = fieldNameParts[0];
+        if (fieldNameParts.length == 3) {
+          arrayFieldName = fieldNameParts[1];
+          arrayFieldValue = fieldNameParts[2];
+        }
+      }
+
+      MessageParser.EntityLink link =
+          new MessageParser.EntityLink(entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
+
+      // Create an automated post
+      String message = null;
+      switch (changeType) {
+        case ADD:
+          message =
+              String.format("Added %s: `*%s*`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
+          break;
+        case UPDATE:
+          message =
+              String.format(
+                  "Updated %s to `*%s*`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
+          break;
+        case DELETE:
+          message = String.format("Deleted %s", arrayFieldValue != null ? arrayFieldValue : fieldName);
+          break;
+        default:
+          break;
+      }
+
+      Post post =
+          new Post()
+              .withFrom(entityInterface.getUpdatedBy())
+              .withMessage(message)
+              .withPostTs(System.currentTimeMillis());
+
+      threads.add(
+          new Thread()
+              .withId(UUID.randomUUID())
+              .withThreadTs(System.currentTimeMillis())
+              .withCreatedBy(entityInterface.getUpdatedBy())
+              .withAbout(link.getLinkString())
+              .withUpdatedBy(entityInterface.getUpdatedBy())
+              .withUpdatedAt(System.currentTimeMillis())
+              .withPosts(Collections.singletonList(post)));
+    }
+
+    return threads;
   }
 
   public void close() {

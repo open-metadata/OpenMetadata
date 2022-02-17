@@ -96,7 +96,7 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Parameter(
               description = "Filter threads by entity link",
-              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityId}>"))
+              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}>"))
           @QueryParam("entity")
           String entityLink)
       throws IOException {
