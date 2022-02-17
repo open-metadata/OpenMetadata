@@ -20,8 +20,8 @@
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "from": {
-          "description": "ID of User (regular user or a bot) posting the message.",
-          "$ref": "../../type/basic.json#/definitions/uuid"
+          "description": "Name of the User posting the message",
+          "type": "string"
         }
       },
       "required": ["message", "from"]

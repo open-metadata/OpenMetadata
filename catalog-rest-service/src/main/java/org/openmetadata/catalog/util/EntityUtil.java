@@ -242,7 +242,10 @@ public final class EntityUtil {
 
   public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
     String entityType = entityLink.getEntityType();
-    String fqn = entityLink.getEntityId();
+    String fqn = entityLink.getEntityFQN();
+
+    // TODO: add more validation for field name and array fields
+
     return Entity.getEntityReferenceByName(entityType, fqn);
   }
 

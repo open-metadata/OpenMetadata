@@ -33,11 +33,11 @@ public class MessageParserTest {
             + // Invalid entity link
             "<#E/table/tableFQN> "
             + "<#E/table/tableFQN/description> "
-            + "<#E/table/tableFQN/columns/c1> ";
+            + "<#E/table/tableFQN/columns/c1/description> ";
     List<EntityLink> links = MessageParser.getEntityLinks(s);
     assertEquals(3, links.size());
-    assertEquals(new EntityLink("table", "tableFQN", null, null), links.get(0));
-    assertEquals(new EntityLink("table", "tableFQN", "description", null), links.get(1));
-    assertEquals(new EntityLink("table", "tableFQN", "columns", "c1"), links.get(2));
+    assertEquals(new EntityLink("table", "tableFQN", null, null, null), links.get(0));
+    assertEquals(new EntityLink("table", "tableFQN", "description", null, null), links.get(1));
+    assertEquals(new EntityLink("table", "tableFQN", "columns", "c1", "description"), links.get(2));
   }
 }

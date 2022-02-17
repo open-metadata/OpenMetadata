@@ -10,8 +10,8 @@
       "type": "string"
     },
     "from": {
-      "description": "ID of User (regular user or bot) posting the message",
-      "$ref": "../../type/basic.json#/definitions/uuid"
+      "description": "Name of the User (regular user or bot) posting the message",
+      "type": "string"
     },
     "addressedTo": {
       "description": "User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
