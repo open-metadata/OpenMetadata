@@ -188,17 +188,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void storeRelationships(Pipeline pipeline) {
     EntityReference service = pipeline.getService();
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            service.getId().toString(),
-            pipeline.getId().toString(),
-            service.getType(),
-            Entity.PIPELINE,
-            Relationship.CONTAINS.ordinal());
+    addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
 
     // Add owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    setOwner(pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);

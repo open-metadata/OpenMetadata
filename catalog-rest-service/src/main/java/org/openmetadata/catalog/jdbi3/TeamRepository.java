@@ -116,9 +116,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void storeRelationships(Team team) {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
-      daoCollection
-          .relationshipDAO()
-          .insert(team.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
+      addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
     }
   }
 
@@ -128,11 +126,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(Team team) throws IOException {
-    List<String> userIds =
-        daoCollection
-            .relationshipDAO()
-            .findTo(
-                team.getId().toString(), Entity.TEAM, Relationship.HAS.ordinal(), "user", toBoolean(toInclude(team)));
+    List<String> userIds = findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.USER, toBoolean(toInclude(team)));
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
       users.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(userId)));
@@ -284,10 +278,7 @@ public class TeamRepository extends EntityRepository<Team> {
             .deleteFrom(origTeam.getId().toString(), Entity.TEAM, Relationship.HAS.ordinal(), "user");
         // Add relationships
         for (EntityReference user : updatedUsers) {
-          daoCollection
-              .relationshipDAO()
-              .insert(
-                  updatedTeam.getId().toString(), user.getId().toString(), "team", "user", Relationship.HAS.ordinal());
+          addRelationship(updatedTeam.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
         }
 
         updatedUsers.sort(EntityUtil.compareEntityReference);

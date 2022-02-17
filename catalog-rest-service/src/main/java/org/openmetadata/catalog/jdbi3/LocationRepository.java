@@ -205,15 +205,9 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void storeRelationships(Location location) {
     // Add location owner relationship
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), location.getId(), Entity.LOCATION, location.getOwner());
-    daoCollection
-        .relationshipDAO()
-        .insert(
-            location.getService().getId().toString(),
-            location.getId().toString(),
-            location.getService().getType(),
-            Entity.LOCATION,
-            Relationship.CONTAINS.ordinal());
+    setOwner(location.getId(), Entity.LOCATION, location.getOwner());
+    EntityReference service = location.getService();
+    addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
 
     // Add tag to location relationship
     applyTags(location);
@@ -239,14 +233,7 @@ public class LocationRepository extends EntityRepository<Location> {
   public void setService(Location location, EntityReference service) throws IOException {
     if (service != null && location != null) {
       getService(service); // Populate service details
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              service.getId().toString(),
-              location.getId().toString(),
-              service.getType(),
-              Entity.LOCATION,
-              Relationship.CONTAINS.ordinal());
+      addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
       location.setService(service);
     }
   }

@@ -183,18 +183,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeRelationships(MlModel mlModel) {
-
-    EntityUtil.setOwner(daoCollection.relationshipDAO(), mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
+    setOwner(mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
 
     setDashboard(mlModel, mlModel.getDashboard());
 
     if (mlModel.getDashboard() != null) {
-      // Add relationship from MlModel to Dashboard
-      String dashboardId = mlModel.getDashboard().getId().toString();
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              dashboardId, mlModel.getId().toString(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
+      // Add relationship from MlModel --- uses ---> Dashboard
+      addRelationship(
+          mlModel.getId(), mlModel.getDashboard().getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
     }
 
     applyTags(mlModel);
@@ -207,20 +203,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
     if (mlModel != null) {
-      List<EntityReference> ids =
-          daoCollection
-              .relationshipDAO()
-              .findTo(
-                  mlModel.getId().toString(),
-                  Entity.MLMODEL,
-                  Relationship.USES.ordinal(),
-                  toBoolean(toInclude(mlModel)));
+      List<String> ids =
+          findTo(mlModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD, toBoolean(toInclude(mlModel)));
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
       }
       if (!ids.isEmpty()) {
-        UUID dashboardId = ids.get(0).getId();
-        return daoCollection.dashboardDAO().findEntityReferenceById(dashboardId);
+        return daoCollection.dashboardDAO().findEntityReferenceById(UUID.fromString(ids.get(0)));
       }
     }
     return null;
@@ -228,21 +217,15 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   public void setDashboard(MlModel mlModel, EntityReference dashboard) {
     if (dashboard != null) {
-      daoCollection
-          .relationshipDAO()
-          .insert(
-              mlModel.getId().toString(),
-              mlModel.getDashboard().getId().toString(),
-              Entity.MLMODEL,
-              Entity.DASHBOARD,
-              Relationship.USES.ordinal());
+      addRelationship(
+          mlModel.getId(), mlModel.getDashboard().getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
     }
   }
 
   public void removeDashboard(MlModel mlModel) {
     daoCollection
         .relationshipDAO()
-        .deleteFrom(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal(), Entity.DASHBOARD);
+        .deleteTo(mlModel.getId().toString(), Entity.MLMODEL, Relationship.USES.ordinal(), Entity.DASHBOARD);
   }
 
   public static class MlModelEntityInterface implements EntityInterface<MlModel> {
@@ -463,19 +446,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         // Remove the dashboard associated with the model, if any
         String modelId = updatedModel.getId().toString();
         if (origModel.getDashboard() != null) {
-          daoCollection.relationshipDAO().deleteFrom(modelId, Entity.MLMODEL, Relationship.USES.ordinal(), "dashboard");
+          daoCollection.relationshipDAO().deleteTo(modelId, Entity.MLMODEL, Relationship.USES.ordinal(), "dashboard");
         }
 
-        // Add relationship from model to dashboard
+        // Add relationship from model -- uses --> dashboard
         if (updatedDashboard != null) {
-          daoCollection
-              .relationshipDAO()
-              .insert(
-                  modelId,
-                  updatedDashboard.getId().toString(),
-                  Entity.MLMODEL,
-                  Entity.DASHBOARD,
-                  Relationship.USES.ordinal());
+          addRelationship(
+              updatedModel.getId(), updatedDashboard.getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
         }
       }
     }
