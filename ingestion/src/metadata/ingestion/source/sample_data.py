@@ -267,6 +267,7 @@ class SampleDataSource(Source[Entity]):
         self.models = json.load(
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
+        self.user_entity = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -340,16 +341,24 @@ class SampleDataSource(Source[Entity]):
                 id=self.database_service.id, type=self.config.service_type
             ),
         )
+        self.user_entity = self.metadata.list_entities(entity=User, limit=5).json()
         for table in self.tables["tables"]:
-            resp = self.metadata.list_entities(entity=User, limit=5).json()
             for sql_object in table["tableQueries"]:
-                id = json.loads(resp).get("entities")[random.choice(range(5))]["id"]
-                sql_object["user"] = EntityReference(id=id, type="user")
-                print(table["tableQueries"])
-                table_metadata = Table(**table)
-                table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
-                self.status.scanned("table", table_metadata.name.__root__)
-                yield table_and_db
+                user_entity = json.loads(self.user_entity)["entities"][
+                    random.choice(range(5))
+                ]
+                user_dict = {
+                    "id": user_entity["id"],
+                    "name": user_entity["name"],
+                    "displayName": user_entity["displayName"],
+                    "href": user_entity["href"],
+                    "description": user_entity["description"],
+                }
+                sql_object["user"] = EntityReference(**user_dict, type="user")
+            table_metadata = Table(**table)
+            table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
+            self.status.scanned("table", table_metadata.name.__root__)
+            yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         for topic in self.topics["topics"]:
