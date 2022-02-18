@@ -511,7 +511,7 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE id = :id")
     String findById(@Bind("id") String id);
 
-    @SqlQuery("SELECT json FROM thread_entity")
+    @SqlQuery("SELECT json FROM thread_entity ORDER BY updatedAt DESC")
     List<String> list();
 
     @SqlUpdate("UPDATE thread_entity SET json = :json where id = :id")
@@ -558,6 +558,16 @@ public interface CollectionDAO {
             + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
     @RegisterRowMapper(FromFieldMapper.class)
     List<List<String>> listFromByPrefix(
+        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("fromType") String fromType,
+        @Bind("toType") String toType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
+            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType LIKE CONCAT(:toType, '%') AND relation = :relation")
+    @RegisterRowMapper(FromFieldMapper.class)
+    List<List<String>> listFromByAllPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,

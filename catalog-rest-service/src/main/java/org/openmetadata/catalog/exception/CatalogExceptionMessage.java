@@ -65,6 +65,10 @@ public final class CatalogExceptionMessage {
     return "The Fernet Key is null";
   }
 
+  public static String invalidEntityLink() {
+    return "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
+  }
+
   public static String isNotTokenized() {
     return "The field is not tokenized";
   }

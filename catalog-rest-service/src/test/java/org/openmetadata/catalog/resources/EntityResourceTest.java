@@ -197,6 +197,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   public static List<Column> COLUMNS;
 
+  // Run webhook related tests randomly. This will ensure these tests are not run for every entity evey time junit
+  // tests are run to save time. But over the course of development of a release, when tests are run enough times,
+  // the webhook tests are run for all the entities.
+  public static boolean runWebhookTests;
+
   public EntityResourceTest(
       String entityTYpe,
       Class<T> entityClass,
@@ -224,10 +229,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
-    webhookCallbackResource.clearEvents();
-    WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-    webhookResourceTest.startWebhookSubscription();
-    webhookResourceTest.startWebhookEntitySubscriptions(entityType);
+    runWebhookTests = new Random().nextBoolean();
+    if (runWebhookTests) {
+      webhookCallbackResource.clearEvents();
+      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+      webhookResourceTest.startWebhookSubscription();
+      webhookResourceTest.startWebhookEntitySubscriptions(entityType);
+    }
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = userResourceTest.createEntity(userResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
@@ -324,15 +332,16 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
 
     // Create AWS storage service, S3
+    StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
     CreateStorageService createService =
         new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
-    StorageService service = new StorageServiceResourceTest().createEntity(createService, ADMIN_AUTH_HEADERS);
+    StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     AWS_STORAGE_SERVICE_REFERENCE =
         new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
 
     // Create GCP storage service, GCS
     createService.withName("gs").withServiceType(StorageServiceType.GCS);
-    service = new StorageServiceResourceTest().createEntity(createService, ADMIN_AUTH_HEADERS);
+    service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE =
         new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
 
@@ -384,9 +393,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
-    webhookResourceTest.validateWebhookEvents();
-    webhookResourceTest.validateWebhookEntityEvents(entityType);
+    if (runWebhookTests) {
+      WebhookResourceTest webhookResourceTest = new WebhookResourceTest();
+      webhookResourceTest.validateWebhookEvents();
+      webhookResourceTest.validateWebhookEntityEvents(entityType);
+    }
     delete_recursiveTest();
   }
 

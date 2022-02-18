@@ -13,20 +13,25 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidEntityLink;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class MessageParser {
 
   private MessageParser() {}
 
   // Pattern to match the following markdown entity links:
-  // <#E/{entityType}/{entityId}
-  // <#E/{entityType}/{entityId}/{fieldName}
-  // <#E/{entityType}/{entityId}/{fieldName}/{fieldValue}
+  // <#E/{entityType}/{entityFQN}>  -- <#E/table/bigquery_gcp.shopify.raw_product_catalog>
+  // <#E/{entityType}/{entityFQN}/{fieldName}> -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/description>
+  // <#E/{entityType}/{entityFQN}/{fieldName}/{arrayFieldName}/{arrayFieldValue}>
+  // -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/columns/comment/description>
   private static final Pattern ENTITY_LINK_PATTERN =
       Pattern.compile(
           "<#E/"
@@ -34,19 +39,22 @@ public final class MessageParser {
               "([^<>]+?)"
               + // Non-greedy collection group 1 for {entityType}
               "/([^<>]+?)"
-              + // Non-greedy collection group 2 for {entityId}
+              + // Non-greedy collection group 2 for {entityFQN}
               "(/([^<>]+?))?"
               + // Non-greedy collection group 3 for optional /{fieldName} and 4 for fieldName
               "(/([^<>]+?))?"
-              + // Non-greedy collection group 5 for optional /{fieldValue} and 6 for fieldValue
+              + // Non-greedy collection group 5 for optional /{arrayFieldName} // and 6 for arrayFieldName
+              "(/([^<>]+?))?"
+              + // Non-greedy collection group 7 for optional /{arrayFieldValue} // and 8 for arrayFieldValue
               ">"); // Match for end of link name
 
   public static class EntityLink {
     private final LinkType linkType;
     private final String entityType;
-    private final String entityId;
+    private final String entityFQN;
     private final String fieldName;
-    private final String fieldValue;
+    private final String arrayFieldName;
+    private final String arrayFieldValue;
     private final String fullyQualifiedFieldType;
     private final String fullyQualifiedFieldValue;
 
@@ -56,28 +64,51 @@ public final class MessageParser {
       ENTITY_ARRAY_FIELD
     }
 
-    public EntityLink(String entityType, String entityId, String fieldName, String fieldValue) {
-      if (entityType == null || entityId == null) {
-        throw new IllegalArgumentException("Entity link must have both {entityType} and {entityId}");
+    public EntityLink(
+        String entityType, String entityFqn, String fieldName, String arrayFieldName, String arrayFieldValue) {
+      if (entityType == null || entityFqn == null) {
+        throw new IllegalArgumentException("Entity link must have both {entityType} and {entityFQN}");
       }
       this.entityType = entityType;
-      this.entityId = entityId;
+      this.entityFQN = entityFqn;
       this.fieldName = fieldName;
-      this.fieldValue = fieldValue;
+      this.arrayFieldName = arrayFieldName;
+      this.arrayFieldValue = arrayFieldValue;
 
-      if (fieldValue != null) {
+      if (arrayFieldValue != null) {
+        if (arrayFieldName == null) {
+          throw new IllegalArgumentException(invalidEntityLink());
+        }
         this.linkType = LinkType.ENTITY_ARRAY_FIELD;
         this.fullyQualifiedFieldType = String.format("%s.%s.member", entityType, fieldName);
-        this.fullyQualifiedFieldValue = String.format("%s.%s", entityId, fieldValue);
+        this.fullyQualifiedFieldValue = String.format("%s.%s.%s", entityFqn, arrayFieldName, arrayFieldValue);
       } else if (fieldName != null) {
+        if (arrayFieldName != null) {
+          // Only array field name is not supported
+          throw new IllegalArgumentException(invalidEntityLink());
+        }
         this.fullyQualifiedFieldType = String.format("%s.%s", entityType, fieldName);
-        this.fullyQualifiedFieldValue = String.format("%s.%s", entityId, fieldName);
+        this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, fieldName);
+
         this.linkType = LinkType.ENTITY_REGULAR_FIELD;
       } else {
         this.fullyQualifiedFieldType = entityType;
-        this.fullyQualifiedFieldValue = entityId;
+        this.fullyQualifiedFieldValue = entityFqn;
         this.linkType = LinkType.ENTITY;
       }
+    }
+
+    public String getLinkString() {
+      StringBuilder builder = new StringBuilder();
+      builder.append("<#E/").append(entityType).append("/").append(entityFQN);
+      if (linkType == LinkType.ENTITY_REGULAR_FIELD || linkType == LinkType.ENTITY_ARRAY_FIELD) {
+        builder.append("/").append(fieldName);
+      }
+      if (linkType == LinkType.ENTITY_ARRAY_FIELD) {
+        builder.append("/").append(arrayFieldName).append("/").append(arrayFieldValue);
+      }
+      builder.append(">");
+      return builder.toString();
     }
 
     public static EntityLink parse(String link) {
@@ -85,7 +116,8 @@ public final class MessageParser {
       EntityLink entityLink = null;
       while (matcher.find()) {
         if (entityLink == null) {
-          entityLink = new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6));
+          entityLink =
+              new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6), matcher.group(8));
         } else {
           throw new IllegalArgumentException("Unexpected multiple entity links in " + link);
         }
@@ -104,16 +136,20 @@ public final class MessageParser {
       return entityType;
     }
 
-    public String getEntityId() {
-      return entityId;
+    public String getEntityFQN() {
+      return entityFQN;
     }
 
     public String getFieldName() {
       return fieldName;
     }
 
-    public String getFieldValue() {
-      return fieldValue;
+    public String getArrayFieldName() {
+      return arrayFieldName;
+    }
+
+    public String getArrayFieldValue() {
+      return arrayFieldValue;
     }
 
     public String getFullyQualifiedFieldType() {
@@ -127,8 +163,8 @@ public final class MessageParser {
     @Override
     public String toString() {
       return String.format(
-          "EntityLink { type = %s, entityType = %s, entityId = %s, fieldName = %s, fieldValue = %s}",
-          linkType, entityType, entityType, fieldName, fieldName);
+          "EntityLink { type = %s, entityType = %s, entityFQN = %s, fieldName = %s, arrayFieldName = %s, arrayFieldValue = %s}",
+          linkType, entityType, entityType, fieldName, arrayFieldName, arrayFieldValue);
     }
 
     @Override
@@ -142,14 +178,15 @@ public final class MessageParser {
       EntityLink that = (EntityLink) o;
       return linkType == that.linkType
           && Objects.equals(entityType, that.entityType)
-          && Objects.equals(entityId, that.entityId)
+          && Objects.equals(entityFQN, that.entityFQN)
           && Objects.equals(fieldName, that.fieldName)
-          && Objects.equals(fieldValue, that.fieldValue);
+          && Objects.equals(arrayFieldName, that.arrayFieldName)
+          && Objects.equals(arrayFieldValue, that.arrayFieldValue);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(linkType, entityType, entityId, fieldName, fieldValue);
+      return Objects.hash(linkType, entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
     }
   }
 
@@ -158,7 +195,8 @@ public final class MessageParser {
     List<EntityLink> links = new ArrayList<>();
     Matcher matcher = ENTITY_LINK_PATTERN.matcher(message);
     while (matcher.find()) {
-      EntityLink link = new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6));
+      EntityLink link =
+          new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6), matcher.group(8));
       links.add(link);
     }
     return links;
