@@ -203,11 +203,6 @@ def test_tests_def():
 
     test_workflow = ProfilerWorkflow.create(test_config)
 
-    # We cannot do a 1:1 general assertion because we are dynamically
-    # creating the Validation classes. Then, the internal IDs don't match
-    # and the assertion fails. However, and for visual representation,
-    # the resulting class looks like follows:
-
     tests = test_workflow.config.tests
 
     assert tests.name == "my_tests"
@@ -226,6 +221,11 @@ def test_tests_def():
     assert tests.column_tests[0].columns[0].column == "column_name_1"
     assert tests.column_tests[0].columns[0].expression[0].metric == "MIN"
     assert tests.column_tests[0].columns[0].enabled
+
+    # We cannot do a 1:1 general assertion because we are dynamically
+    # creating the Validation classes. Then, the internal IDs don't match
+    # and the assertion fails. However, and for visual representation,
+    # the resulting class looks like follows:
 
     # TestDef(
     #     name="my_tests",
