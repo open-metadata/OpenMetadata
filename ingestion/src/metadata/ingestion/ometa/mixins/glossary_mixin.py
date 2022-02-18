@@ -8,8 +8,6 @@ from typing import Type, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.glossary import Glossary
-
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 logger = logging.getLogger(__name__)
 
