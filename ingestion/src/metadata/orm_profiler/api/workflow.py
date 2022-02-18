@@ -51,7 +51,7 @@ from metadata.orm_profiler.profiles.core import Profiler, SingleProfiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
 from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 from metadata.orm_profiler.utils import logger
-from metadata.orm_profiler.validations.core import Validation, to_validation
+from metadata.orm_profiler.validations.core import Validation
 from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
 from metadata.orm_profiler.validations.models import TestDef
 
@@ -265,7 +265,7 @@ class ProfilerWorkflow:
         even in the same test definition.
         """
         raw_validation: List[Dict[str, str]] = parse(expression, self.visitor)
-        return [to_validation(val) for val in raw_validation]
+        return [Validation.create(val) for val in raw_validation]
 
     def get_validations(self, table: Table) -> TestResult:
         """
