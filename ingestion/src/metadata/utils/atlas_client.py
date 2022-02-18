@@ -17,6 +17,7 @@ class AtlasSourceConfig(ConfigModel):
     service_name: str
     service_type: str = "Hive"
     host_port: str
+    atlas_name: str
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
