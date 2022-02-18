@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     DataModel,
     ModelType,
     Table,
+    TableConstraint,
     TableData,
     TableProfile,
 )
@@ -441,17 +442,20 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Prepare column constraints for the Table Entity
         """
         constraint = None
+        if len(pk_columns) <= 1:
+            if column["nullable"]:
+                constraint = Constraint.NULL
+            elif not column["nullable"]:
+                constraint = Constraint.NOT_NULL
 
-        if column["nullable"]:
-            constraint = Constraint.NULL
-        elif not column["nullable"]:
-            constraint = Constraint.NOT_NULL
-
-        if column["name"] in pk_columns:
-            constraint = Constraint.PRIMARY_KEY
-        elif column["name"] in unique_columns:
-            constraint = Constraint.UNIQUE
-
+            if column["name"] in pk_columns:
+                constraint = Constraint.PRIMARY_KEY
+            elif column["name"] in unique_columns:
+                constraint = Constraint.UNIQUE
+        else:
+            constraint = TableConstraint(
+                constraintType=Constraint.PRIMARY_KEY.value, columns=pk_columns
+            )
         return constraint
 
     def _get_columns(
