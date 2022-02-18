@@ -22,7 +22,12 @@ export interface CreateThread {
    */
   about: string;
   /**
-   * ID of User (regular user or bot) posting the message
+   * User or team this thread is addressed to in format
+   * <#E/{entities}/{entityName}/{field}/{fieldValue}.
+   */
+  addressedTo?: string;
+  /**
+   * Name of the User (regular user or bot) posting the message
    */
   from: string;
   /**
