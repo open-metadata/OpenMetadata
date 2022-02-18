@@ -185,7 +185,7 @@ class TableauSource(Source[Entity]):
             )
         ]
 
-    def get_lineage(self, datasource_list, dashboard_name):
+    def get_lineage(self, datasource_list, dashboard_name) -> AddLineageRequest:
         for datasource in datasource_list:
             try:
                 table_fqdn = datasource.split("(")[1].split(")")[0]
@@ -209,9 +209,7 @@ class TableauSource(Source[Entity]):
                         )
                     )
                     yield lineage
-            except IndexError:
-                continue
-            except Exception as err:
+            except (Exception, IndexError) as err:
                 logger.error(err)
 
     def _get_tableau_dashboard(self) -> Dashboard:
