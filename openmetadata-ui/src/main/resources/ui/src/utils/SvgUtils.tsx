@@ -47,7 +47,6 @@ import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
-import IconCopyLined from '../assets/svg/ic-copy.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
@@ -240,7 +239,6 @@ export const Icons = {
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_WHITE: 'icon-announcement-white',
   CHEVRON_DOWN: 'icon-chevron-down',
-  COPY_LINED: 'icon-copy-lined',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -691,10 +689,6 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.CHEVRON_DOWN:
       IconComponent = IconChevronDown;
-
-      break;
-    case Icons.COPY_LINED:
-      IconComponent = IconCopyLined;
 
       break;
 
