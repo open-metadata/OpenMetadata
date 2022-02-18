@@ -30,6 +30,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
+import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
@@ -200,10 +201,91 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTableConstraints(List.of(constraint));
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Column column = created.getColumns().get(0);
-    assertTrue(column.getName().equals("col_DOT_umn"));
+    assertEquals("col_DOT_umn", column.getName());
     assertTrue(column.getDisplayName().contains("col.umn"));
     assertTrue(column.getFullyQualifiedName().contains("col_DOT_umn"));
     assertEquals("col_DOT_umn", created.getTableConstraints().get(0).getColumns().get(0));
+  }
+
+  @Test
+  void put_tableWithColumnWithOrdinalPositionAndWithoutOrdinalPosition(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test);
+    List<Column> columns = new ArrayList<>();
+    Column column1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("column1");
+    Column column2 = getColumn("column2", INT, null).withOrdinalPosition(2).withDescription("column2");
+    List<Column> origColumns = new ArrayList<>();
+    origColumns.add(column1);
+    origColumns.add(column2);
+    // add 2 columns
+    columns.add(column1);
+    columns.add(column2);
+    TableConstraint constraint =
+        new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(columns.get(0).getName()));
+    create.setColumns(columns);
+    create.setTableConstraints(List.of(constraint));
+    Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Column column = created.getColumns().get(0);
+    assertEquals("column1", column.getName());
+    assertEquals("column1", column.getDescription());
+
+    // keep original ordinalPosition add a column at the end and do not pass descriptions for the first 2 columns
+    // we should retain the original description
+
+    Column updateColumn1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("");
+    Column updateColumn2 = getColumn("column2", INT, null).withOrdinalPosition(2).withDescription("");
+    Column column3 =
+        getColumn("column3", STRING, null)
+            .withOrdinalPosition(3)
+            .withDescription("column3")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL));
+    columns = new ArrayList<>();
+    columns.add(updateColumn1);
+    columns.add(updateColumn2);
+    columns.add(column3);
+    create.setColumns(columns);
+    create.setTableConstraints(List.of(constraint));
+
+    // Update the table with constraints and ensure minor version change
+    ChangeDescription change = getChangeDescription(created.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(column3)));
+    Table updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    origColumns.add(column3);
+    assertColumns(origColumns, updatedTable.getColumns());
+    TestUtils.validateUpdate(created.getVersion(), updatedTable.getVersion(), MINOR_UPDATE);
+    // keep ordinalPosition and add a column in between
+    updateColumn1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("");
+    Column updateColumn4 = getColumn("column4", STRING, null).withOrdinalPosition(2).withDescription("column4");
+    updateColumn2 = getColumn("column2", INT, null).withOrdinalPosition(3).withDescription("");
+    Column updateColumn3 = getColumn("column3", STRING, null).withOrdinalPosition(4).withDescription("");
+    columns = new ArrayList<>();
+    columns.add(updateColumn1);
+    columns.add(updateColumn2);
+    columns.add(updateColumn4);
+    columns.add(updateColumn3);
+    create.setColumns(columns);
+    create.setTableConstraints(List.of(constraint));
+
+    Double prevVersion = updatedTable.getVersion();
+    updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    TestUtils.validateUpdate(prevVersion, updatedTable.getVersion(), MINOR_UPDATE);
+    origColumns.add(2, updateColumn4);
+    assertColumns(origColumns, updatedTable.getColumns());
+
+    // Change data type to cause major update
+    updateColumn3 = getColumn("column3", INT, null).withOrdinalPosition(4).withDescription("");
+    columns = new ArrayList<>();
+    columns.add(updateColumn1);
+    columns.add(updateColumn2);
+    columns.add(updateColumn4);
+    columns.add(updateColumn3);
+    create.setColumns(columns);
+    create.setTableConstraints(List.of(constraint));
+    prevVersion = updatedTable.getVersion();
+    updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    TestUtils.validateUpdate(prevVersion, updatedTable.getVersion(), MAJOR_UPDATE);
+    origColumns.remove(3);
+    origColumns.add(3, column3.withDataType(INT));
+    assertColumns(origColumns, updatedTable.getColumns());
   }
 
   public static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
