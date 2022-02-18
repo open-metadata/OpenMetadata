@@ -153,18 +153,10 @@ class BigqueryUsageSource(Source[TableQuery]):
                                         source_entity = metadata.get_by_name(
                                             entity=Table, fqdn=source_fqdn
                                         )
-                                        lineage = AddLineageRequest(
-                                            edge=EntitiesEdge(
-                                                fromEntity=EntityReference(
-                                                    id=source_entity.id.__root__,
-                                                    type="table",
-                                                ),
-                                                toEntity=EntityReference(
-                                                    id=intermediate_entity.id.__root__,
-                                                    type="table",
-                                                ),
-                                            )
+                                        lineage = self.create_lineage(
+                                            source_entity, intermediate_entity
                                         )
+
                                         yield lineage
 
                                     for target_table in result.target_tables:
@@ -175,17 +167,8 @@ class BigqueryUsageSource(Source[TableQuery]):
                                         target_entity = metadata.get_by_name(
                                             entity=Table, fqdn=target_fqdn
                                         )
-                                        lineage = AddLineageRequest(
-                                            edge=EntitiesEdge(
-                                                toEntity=EntityReference(
-                                                    id=target_entity.id.__root__,
-                                                    type="table",
-                                                ),
-                                                fromEntity=EntityReference(
-                                                    id=intermediate_entity.id.__root__,
-                                                    type="table",
-                                                ),
-                                            )
+                                        lineage = self.create_lineage(
+                                            target_entity, intermediate_entity
                                         )
                                         yield lineage
 
@@ -205,17 +188,8 @@ class BigqueryUsageSource(Source[TableQuery]):
                                         source_entity = metadata.get_by_name(
                                             entity=Table, fqdn=source_fqdn
                                         )
-                                        lineage = AddLineageRequest(
-                                            edge=EntitiesEdge(
-                                                fromEntity=EntityReference(
-                                                    id=source_entity.id.__root__,
-                                                    type="table",
-                                                ),
-                                                toEntity=EntityReference(
-                                                    id=target_entity.id.__root__,
-                                                    type="table",
-                                                ),
-                                            )
+                                        lineage = self.create_lineage(
+                                            source_entity, target_entity
                                         )
                                         yield lineage
 
@@ -229,3 +203,18 @@ class BigqueryUsageSource(Source[TableQuery]):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
+
+    def create_lineage(from_entity, to_entity):
+        lineage = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=from_entity.id.__root__,
+                    type="table",
+                ),
+                toEntity=EntityReference(
+                    id=to_entity.id.__root__,
+                    type="table",
+                ),
+            )
+        )
+        return lineage
