@@ -288,3 +288,17 @@ You need not make any changes to the fields defined for `sink` in the template c
     "config": {}
 },
 ```
+
+## Metadata Server Settings
+
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into the service settings. This part of your configuration file should be as follows.
+
+```json
+"metadata_server": {
+    "type": "metadata-server",
+    "config": {
+        "api_endpoint": "http://localhost:8585/api",
+        "auth_provider_type": "no-auth"
+    }
+}
+```
