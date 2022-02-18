@@ -215,6 +215,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 description = _get_table_description(schema, table_name, inspector)
                 fqn = f"{self.config.service_name}.{schema}.{table_name}"
                 self.database_source_state.add(fqn)
+                self.table_constraints = None
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
                     id=uuid.uuid4(),
@@ -227,7 +228,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.table_constraints:
                     table_entity.tableConstraints = self.table_constraints
                 try:
-                    if self.sql_config.generate_sample_data:
+                    if not self.sql_config.generate_sample_data:
                         table_data = self.fetch_sample_data(schema, table_name)
                         table_entity.sampleData = table_data
                 # Catch any errors during the ingestion and continue
@@ -376,7 +377,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     model_fqdn = f"{schema}.{model_name}"
                 except Exception as err:
-                    print(err)
+                    logger.error(err)
                 self.data_models[model_fqdn] = model
 
     def _parse_data_model_upstream(self, mnode):
@@ -449,6 +450,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             constraint = Constraint.NULL
         elif not column["nullable"]:
             constraint = Constraint.NOT_NULL
+
         if column["name"] in pk_columns:
             if len(pk_columns) > 1:
                 return None
@@ -524,16 +526,18 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             data_type_display = column["type"]
                     if parsed_string is None:
                         col_type = ColumnTypeParser.get_column_type(column["type"])
+
                         col_constraint = self._get_column_constraints(
                             column, pk_columns, unique_columns
                         )
-                        if col_constraint and len(pk_columns) > 1:
-                            self.table_constraints = [
-                                TableConstraint(
-                                    constraintType=ConstraintType.PRIMARY_KEY.value,
-                                    columns=pk_columns,
-                                )
-                            ]
+                        if not col_constraint:
+                            if len(pk_columns) > 1:
+                                self.table_constraints = [
+                                    TableConstraint(
+                                        constraintType=ConstraintType.PRIMARY_KEY,
+                                        columns=pk_columns,
+                                    )
+                                ]
                         col_data_length = self._check_col_length(
                             col_type, column["type"]
                         )

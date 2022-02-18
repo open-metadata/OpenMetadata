@@ -147,6 +147,7 @@ class MetadataRestSink(Sink[Entity]):
                 columns=db_and_table.table.columns,
                 description=db_and_table.table.description,
                 database=db_ref,
+                tableConstraints=db_and_table.table.tableConstraints,
             )
             if db_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
