@@ -32,17 +32,21 @@ import React, {
 import { ONLY_NUMBER_REGEX } from '../../../constants/constants';
 import { serviceTypes } from '../../../constants/services.const';
 import {
-  DashboardServiceType,
-  MessagingServiceType,
+  // DashboardServiceType,
+  // MessagingServiceType,
   ServiceCategory,
 } from '../../../enums/service.enum';
 import {
   CreateAirflowPipeline,
   Schema,
 } from '../../../generated/api/operations/pipelines/createAirflowPipeline';
+import { DashboardServiceType } from '../../../generated/entity/services/dashboardService';
 // import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
-import { MessagingService } from '../../../generated/entity/services/messagingService';
+import {
+  MessagingService,
+  MessagingServiceType,
+} from '../../../generated/entity/services/messagingService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../../generated/operations/pipelines/airflowPipeline';
 import {
@@ -335,7 +339,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const markdownRef = useRef<EditorContentRef>();
 
   const getBrokerUrlPlaceholder = (): string => {
-    return selectService === MessagingServiceType.PULSAR
+    return selectService === MessagingServiceType.Pulsar
       ? 'hostname:port'
       : 'hostname1:port1, hostname2:port2';
   };
@@ -460,7 +464,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           dataObj = {
             ...dataObj,
             brokers:
-              selectService === MessagingServiceType.PULSAR
+              selectService === MessagingServiceType.Pulsar
                 ? [brokers]
                 : brokers.split(',').map((broker) => broker.trim()),
             schemaRegistry: schemaRegistry,
@@ -471,7 +475,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       case ServiceCategory.DASHBOARD_SERVICES:
         {
           switch (selectService) {
-            case DashboardServiceType.REDASH:
+            case DashboardServiceType.Redash:
               {
                 dataObj = {
                   ...dataObj,
@@ -482,7 +486,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               }
 
               break;
-            case DashboardServiceType.TABLEAU:
+            case DashboardServiceType.Tableau:
               {
                 dataObj = {
                   ...dataObj,
@@ -638,7 +642,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       case ServiceCategory.DASHBOARD_SERVICES:
         {
           switch (selectService) {
-            case DashboardServiceType.REDASH:
+            case DashboardServiceType.Redash:
               {
                 setMsg = {
                   ...setMsg,
@@ -650,7 +654,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               isValid = Boolean(dashboardUrl && apiKey);
 
               break;
-            case DashboardServiceType.TABLEAU:
+            case DashboardServiceType.Tableau:
               {
                 setMsg = {
                   ...setMsg,
@@ -1010,7 +1014,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const getDashboardFields = (): JSX.Element => {
     let elemFields: JSX.Element;
     switch (selectService) {
-      case DashboardServiceType.REDASH: {
+      case DashboardServiceType.Redash: {
         elemFields = (
           <>
             <Field>
@@ -1048,7 +1052,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
         break;
       }
-      case DashboardServiceType.TABLEAU: {
+      case DashboardServiceType.Tableau: {
         elemFields = (
           <>
             <Field>
@@ -1358,7 +1362,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
       case ServiceCategory.DASHBOARD_SERVICES:
         switch (selectService) {
-          case DashboardServiceType.REDASH:
+          case DashboardServiceType.Redash:
             data = [
               {
                 key: 'Dashboard Url',
@@ -1394,7 +1398,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
             break;
 
-          case DashboardServiceType.TABLEAU:
+          case DashboardServiceType.Tableau:
             data = [
               {
                 key: 'Site Name',

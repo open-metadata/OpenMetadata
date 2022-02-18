@@ -18,41 +18,6 @@ export enum ServiceCategory {
   PIPELINE_SERVICES = 'pipelineServices',
 }
 
-export enum DatabaseServiceType {
-  MYSQL = 'MySQL',
-  REDSHIFT = 'Redshift',
-  BIGQUERY = 'BigQuery',
-  HIVE = 'Hive',
-  POSTGRES = 'Postgres',
-  ORACLE = 'Oracle',
-  SNOWFLAKE = 'Snowflake',
-  MSSQL = 'MSSQL',
-  ATHENA = 'Athena',
-  PRESTO = 'Presto',
-  TRINO = 'Trino',
-  GLUE = 'Glue',
-  MARIADB = 'MariaDB',
-  VERTICA = 'Vertica',
-}
-
-export enum MessagingServiceType {
-  KAFKA = 'Kafka',
-  PULSAR = 'Pulsar',
-}
-
-export enum DashboardServiceType {
-  SUPERSET = 'Superset',
-  LOOKER = 'Looker',
-  TABLEAU = 'Tableau',
-  REDASH = 'Redash',
-  METABASE = 'Metabase',
-}
-
-export enum PipelineServiceType {
-  AIRFLOW = 'Airflow',
-  PREFECT = 'Prefect',
-}
-
 export enum IngestionType {
   BIGQUERY = 'bigquery',
   BIGQUERY_USAGE = 'bigquery-usage',

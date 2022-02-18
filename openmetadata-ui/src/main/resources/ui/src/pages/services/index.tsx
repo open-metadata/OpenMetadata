@@ -269,7 +269,9 @@ const ServicesPage = () => {
                 data.status === 'rejected' &&
                   showToast({
                     variant: 'error',
-                    body: data.reason || 'Something went wrong!',
+                    body:
+                      data.reason?.response?.data?.message ||
+                      'Something went wrong!',
                   });
               });
               setIsModalOpen(false);
