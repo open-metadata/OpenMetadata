@@ -22,7 +22,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <properties>
-    <dropwizard.swagger.version>1.2.4-2</dropwizard.swagger.version>
+    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
   </properties>
 
   <artifactId>common</artifactId>
@@ -83,14 +83,14 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.18.2</version>
+      <version>3.18.3</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.20.0</version>
+      <version>0.20.2</version>
     </dependency>
 
     <!--test dependencies-->
@@ -107,7 +107,7 @@
     <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
-      <version>1.0.64</version>
+      <version>1.0.66</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
