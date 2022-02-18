@@ -12,14 +12,15 @@
 import pathlib
 from datetime import timedelta
 
-from airflow_provider_openmetadata import DAG
+from airflow import DAG
 
 try:
-    from airflow_provider_openmetadata.operators.python import PythonOperator
+    from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
-    from airflow_provider_openmetadata.operators.python_operator import PythonOperator
+    from airflow.operators.python_operator import PythonOperator
 
-from airflow_provider_openmetadata.utils.dates import days_ago
+from airflow.utils.dates import days_ago
+
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 
