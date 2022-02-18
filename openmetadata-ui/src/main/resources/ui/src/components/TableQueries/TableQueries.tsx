@@ -40,7 +40,7 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
   };
 
   return (
-    <div className={classNames('tw-bg-white tw-p-3 tw-mb-3', className)}>
+    <div className={classNames('tw-bg-white tw-py-3 tw-mb-3', className)}>
       <div
         className="tw-cursor-pointer"
         onClick={() => setExpanded((pre) => !pre)}>
@@ -62,14 +62,12 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
             )}
           </button>
         </div>
-        {/* <hr className="tw-border-main tw-my-2 tw--mx-3" /> */}
       </div>
-
-      <div
-        className={classNames('tw-overflow-hidden tw-h-10 tw-relative', {
-          'tw-h-full': expanded,
-        })}>
-        {expanded ? (
+      <div className="tw-border tw-border-main tw-rounded-md tw-p-px">
+        <div
+          className={classNames('tw-overflow-hidden tw-relative', {
+            'tw-max-h-10': !expanded,
+          })}>
           <CopyToClipboard
             text={query.query ?? ''}
             onCopy={(_text, result) => {
@@ -77,7 +75,7 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
               if (result) copiedTextHandler();
             }}>
             <Button
-              className="tw-h-8 tw-ml-4 tw-absolute tw-right-4 tw-z-9999"
+              className="tw-h-8 tw-ml-4 tw-absolute tw-right-4 tw-z-9999 tw--mt-px"
               data-testid="copy-query"
               size="custom"
               theme="default"
@@ -91,11 +89,9 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
               <i className="far fa-copy tw-text-lg" />
             </Button>
           </CopyToClipboard>
-        ) : null}
 
-        <div className="tw-border tw-border-main tw-rounded-md tw-p-px">
           <SchemaEditor
-            editorClass={classNames({ 'table-query-editor': !expanded })}
+            editorClass={classNames('table-query-editor')}
             mode={{ name: CSMode.SQL }}
             options={{
               styleActiveLine: false,
@@ -113,17 +109,7 @@ const TableQueries: FC<TableQueriesProp> = ({ queries, className }) => {
     <div className={className}>
       <div className="tw-my-6">
         {queries?.map((query, index) => (
-          <QueryCard
-            key={index}
-            query={{
-              ...query,
-              query:
-                index === 0
-                  ? // eslint-disable-next-line
-                    'with customers as (\n\n    select * from "dev"."jaffle_shop"."stg_customers"\n\n),\n\norders as (\n\n    select * from "dev"."jaffle_shop"."stg_orders"\n\n),\n\npayments as (\n\n    select * from "dev"."jaffle_shop"."stg_payments"\n\n),\n\ncustomer_orders as (\n\n        select\n        customer_id,\n\n        min(order_date) as first_order,\n        max(order_date) as most_recent_order,\n        count(order_id) as number_of_orders\n    from orders\n\n    group by customer_id\n\n),\n\ncustomer_payments as (\n\n    select\n        orders.customer_id,\n        sum(amount) as total_amount\n\n    from payments\n\n    left join orders on\n         payments.order_id = orders.order_id\n\n    group by orders.customer_id\n\n),\n\nfinal as (\n\n    select\n        customers.customer_id,\n        customers.first_name,\n        customers.last_name,\n        customer_orders.first_order,\n        customer_orders.most_recent_order,\n        customer_orders.number_of_orders,\n        customer_payments.total_amount as customer_lifetime_value\n\n    from customers\n\n    left join customer_orders\n        on customers.customer_id = customer_orders.customer_id\n\n    left join customer_payments\n        on  customers.customer_id = customer_payments.customer_id\n\n)\n\nselect * from final'
-                  : query.query,
-            }}
-          />
+          <QueryCard key={index} query={query} />
         ))}
       </div>
     </div>
