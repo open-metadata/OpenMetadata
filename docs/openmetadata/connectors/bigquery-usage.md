@@ -104,6 +104,10 @@ Copy and paste the configuration template below into the `bigquery_usage.json` f
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
+When adding the details for the credentials path, you can either choose to pass the `credentials file`, or add the `credentials_path`, or use a secure way to pass the credentials path using the environment variables, i.e., `Application Default Credentials` (ADC).
+
+#### 3.1 Using Credentials File or Credentials Path
+
 {% code title="bigquery-creds.json (boilerplate)" %}
 ```javascript
 {
@@ -167,6 +171,16 @@ You can optionally add the `query-parser` processor, `table-usage` stage and `me
 }
 ```
 {% endcode %}
+
+#### 3.2 Using Application Default Credentials (ADC)
+
+{% code title="env variables" %}
+```
+export GOOGLE_APPLICATION_CREDENTIALS=<path-to-your-credentials-file>
+```
+{% endcode %}
+
+Users can export the path to the credentials file. Using this option, you can export the env in terminal and run BigQuery Usage config without providing `credentials_path`.
 
 ### **4. Configure service settings**
 
