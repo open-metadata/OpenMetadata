@@ -110,7 +110,9 @@ class Validation:
         try:
             validation = cls(metric=metric_name, operator=operator, value=value)
         except ValidationError as err:
-            logger.error("Error trying to convert a RAW validation to a Validation model")
+            logger.error(
+                "Error trying to convert a RAW validation to a Validation model"
+            )
             raise err
 
         return validation
