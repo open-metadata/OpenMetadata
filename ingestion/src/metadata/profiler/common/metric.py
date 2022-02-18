@@ -16,25 +16,26 @@ class Metric:
     AVG_LENGTH = "avg_length"
     DISTINCT = "distinct"
     DUPLICATE_COUNT = "duplicate_count"
-    FREQUENT_VALUES = "frequent_values"
+    FREQUENT_VALUES = "frequent_values"  # might skip it
     HISTOGRAM = "histogram"
-    INVALID_COUNT = "invalid_count"
+    INVALID_COUNT = "invalid_count"  # counts matching to a regex
     INVALID_PERCENTAGE = "invalid_percentage"
     MAX = "max"
     MAX_LENGTH = "max_length"
     MIN = "min"
     MIN_LENGTH = "min_length"
-    MISSING_COUNT = "missing_count"
-    MISSING_PERCENTAGE = "missing_percentage"
+    MISSING_COUNT = "missing_count"  # null count ok
+    MISSING_PERCENTAGE = "missing_percentage"  # no
     STDDEV = "stddev"
     SUM = "sum"
     UNIQUENESS = "uniqueness"
     UNIQUE_COUNT = "unique_count"
-    VALID_COUNT = "valid_count"
-    VALID_PERCENTAGE = "valid_percentage"
-    VALUES_COUNT = "values_count"
-    VALUES_PERCENTAGE = "values_percentage"
-    VARIANCE = "variance"
+
+    VALID_COUNT = "valid_count"  # no
+    VALID_PERCENTAGE = "valid_percentage"  # no
+    VALUES_COUNT = "values_count"  # no
+    VALUES_PERCENTAGE = "values_percentage"  # no
+    VARIANCE = "variance"  # std ^ 2
 
     METRIC_TYPES = [
         ROW_COUNT,
