@@ -449,16 +449,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             constraint = Constraint.NULL
         elif not column["nullable"]:
             constraint = Constraint.NOT_NULL
-        if len(pk_columns) > 1:
-            SQLSource().table_constraints = [
-                TableConstraint(
-                    constraintType=ConstraintType.PRIMARY_KEY, columns=pk_columns
-                )
-            ]
-        else:
-            if column["name"] in pk_columns:
-                constraint = Constraint.PRIMARY_KEY
-        if column["name"] in unique_columns:
+        if column["name"] in pk_columns:
+            if len(pk_columns) > 1:
+                return None
+            constraint = Constraint.PRIMARY_KEY
+        elif column["name"] in unique_columns:
             constraint = Constraint.UNIQUE
         return constraint
 
@@ -532,6 +527,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_constraint = self._get_column_constraints(
                             column, pk_columns, unique_columns
                         )
+                        if col_constraint and len(pk_columns) > 1:
+                            self.table_constraints = [
+                                TableConstraint(
+                                    constraintType=ConstraintType.PRIMARY_KEY.value,
+                                    columns=pk_columns,
+                                )
+                            ]
                         col_data_length = self._check_col_length(
                             col_type, column["type"]
                         )
