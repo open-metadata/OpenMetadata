@@ -20,6 +20,7 @@ const CheckBoxDropDownList = ({
   setIsOpen,
   onSelect,
   selectedItems,
+  disabledItems,
 }: DropDownListProp) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
 
@@ -37,11 +38,11 @@ const CheckBoxDropDownList = ({
               tw-right-0 tw-w-full tw-mt-1 tw-shadow-lg tw-border tw-border-main
               tw-bg-white tw-rounded focus:tw-outline-none"
         role="menu">
-        <div className="py-1" role="none">
+        <div className="tw-py-1" role="none">
           {dropDownList.map((item: DropDownListItem, index: number) =>
             !item.isAdminOnly || isAuthDisabled || isAdminUser ? (
               <div
-                className="tw-cursor-pointer"
+                className="tw-cursor-pointer tw-py-1"
                 key={index}
                 onClick={(e) => onSelect && onSelect(e, item.value as string)}>
                 <input
@@ -49,6 +50,9 @@ const CheckBoxDropDownList = ({
                     selectedItems?.includes(item.value as string)
                   )}
                   className="tw-ml-3 tw-mr-2 tw-align-middle custom-checkbox"
+                  disabled={Boolean(
+                    disabledItems?.includes(item.value as string)
+                  )}
                   type="checkbox"
                   onChange={() => {
                     return;

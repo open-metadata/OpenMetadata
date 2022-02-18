@@ -43,6 +43,8 @@ export type DropDownListProp = {
   listGroups?: Array<string>;
   searchString?: string;
   selectedItems?: Array<string>;
+  disabledItems?: Array<string>;
+  hiddenItems?: Array<string>;
   showSearchBar?: boolean;
   value?: string;
   onSelect?: (

@@ -11,13 +11,4 @@
  *  limitations under the License.
  */
 
-import { Paging } from 'Models';
-import { Webhook } from '../../generated/entity/events/webhook';
-
-export interface WebhooksProps {
-  data: Array<Webhook>;
-  paging: Paging;
-  onAddWebhook: () => void;
-  onClickWebhook: (name: string) => void;
-  onPageChange: (type: string) => void;
-}
+export const WILD_CARD_CHAR = '*';

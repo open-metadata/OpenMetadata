@@ -28,6 +28,8 @@ const DropDown: React.FC<DropDownProp> = ({
   dropDownList,
   onSelect,
   selectedItems,
+  disabledItems,
+  hiddenItems = [],
   isDropDownIconVisible = true,
   isLableVisible = true,
 }: DropDownProp) => {
@@ -50,6 +52,7 @@ const DropDown: React.FC<DropDownProp> = ({
       case DropDownType.CHECKBOX:
         return (
           <CheckBoxDropDownList
+            disabledItems={disabledItems}
             dropDownList={dropDownList}
             selectedItems={selectedItems}
             setIsOpen={setIsOpen}
@@ -92,7 +95,11 @@ const DropDown: React.FC<DropDownProp> = ({
                 ) : (
                   <span className="tw-flex tw-flex-wrap tw--my-0.5">
                     {dropDownList.map((item: DropDownListItem) => {
-                      if (selectedItems?.includes(item.value as string)) {
+                      if (
+                        selectedItems
+                          ?.filter((item) => !hiddenItems.includes(item))
+                          .includes(item.value as string)
+                      ) {
                         return (
                           <p
                             className={classNames(

@@ -91,10 +91,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
-      <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
       <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
       {isAuthDisabled || isAdminUser ? (
         <>
+          <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
           <Route exact component={RolesPage} path={ROUTES.ROLES} />
           <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
         </>

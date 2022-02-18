@@ -19,10 +19,13 @@ import { addWebhook } from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import { ROUTES } from '../../constants/constants';
+import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 
 const AddWebhookPage: FunctionComponent = () => {
+  const { isAuthDisabled, isAdminUser } = useAuth();
   const history = useHistory();
   const showToast = useToastContext();
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -57,7 +60,9 @@ const AddWebhookPage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <AddWebhook
+        allowAccess={isAdminUser || isAuthDisabled}
         header="Add Webhook"
+        mode={FormSubmitType.ADD}
         saveState={status}
         onCancel={handleCancel}
         onSave={handleSave}
