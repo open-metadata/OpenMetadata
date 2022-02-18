@@ -39,6 +39,8 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -833,6 +835,21 @@ public class TableRepository extends EntityRepository<Table> {
       List<Column> deletedColumns = new ArrayList<>();
       List<Column> addedColumns = new ArrayList<>();
       recordListChange(fieldName, origColumns, updatedColumns, addedColumns, deletedColumns, columnMatch);
+      // carry forward tags and description if deletedColumns matches added column
+      Map<String, Column> addedColumnMap =
+          addedColumns.stream().collect(Collectors.toMap(Column::getName, Function.identity()));
+
+      for (Column deleted : deletedColumns) {
+        if (addedColumnMap.containsKey(deleted.getName())) {
+          Column addedColumn = addedColumnMap.get(deleted.getName());
+          if (addedColumn.getDescription().isEmpty() && !deleted.getDescription().isEmpty()) {
+            addedColumn.setDescription(deleted.getDescription());
+          }
+          if (addedColumn.getTags().isEmpty() && !deleted.getTags().isEmpty()) {
+            addedColumn.setTags(deleted.getTags());
+          }
+        }
+      }
 
       // Delete tags related to deleted columns
       deletedColumns.forEach(deleted -> EntityUtil.removeTags(daoCollection.tagDAO(), deleted.getFullyQualifiedName()));
