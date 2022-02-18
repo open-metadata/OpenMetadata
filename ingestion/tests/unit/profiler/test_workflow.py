@@ -15,6 +15,7 @@ Validate workflow configs and filters
 import uuid
 from copy import deepcopy
 
+from ingestion.build.lib.metadata.orm_profiler.validations.core import Validation
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -188,7 +189,7 @@ def test_tests_def():
                     {
                         "name": "another_col_test",
                         "column": "column_name_1",
-                        "expression": "min > 5 & max < 10",
+                        "expression": "min > 5 & min < 10",
                     },
                     {
                         "name": "second_col_test",
@@ -202,45 +203,67 @@ def test_tests_def():
 
     test_workflow = ProfilerWorkflow.create(test_config)
 
-    test_definition = TestDef(
-        name="my_tests",
-        table_tests=[
-            # I can have multiple tests on the same table
-            TableTest(
-                name="first_test",
-                table="service.db.name",
-                expression="row_number > 100",  # This will be one Validation
-                enabled=False,
-            ),
-            TableTest(
-                name="another_test",
-                table="service.db.name",
-                expression="row_number > 1000 & row_number < 2000",  # This will be two Validations
-            ),
-        ],
-        column_tests=[
-            ColumnTest(
-                table="service.db.name",
-                name="set_of_col_tests",
-                columns=[
-                    ColumnTestExpression(
-                        name="first_col_test",
-                        column="column_name_1",
-                        expression="min > 5",  # One Validation
-                    ),
-                    ColumnTestExpression(
-                        name="another_col_test",
-                        column="column_name_1",
-                        expression="min > 5 & max < 10",  # Two Validations
-                    ),
-                    ColumnTestExpression(
-                        name="second_col_test",
-                        column="column_name_2",
-                        expression="null_ratio < 0.1",  # One Validation
-                    ),
-                ],
-            )
-        ],
-    )
+    # We cannot do a 1:1 general assertion because we are dynamically
+    # creating the Validation classes. Then, the internal IDs don't match
+    # and the assertion fails. However, and for visual representation,
+    # the resulting class looks like follows:
 
-    assert test_workflow.config.tests == test_definition
+    tests = test_workflow.config.tests
+
+    assert tests.name == "my_tests"
+
+    # Check cardinality
+    assert len(tests.table_tests) == 2
+    assert len(tests.column_tests) == 1
+    assert len(tests.column_tests[0].columns) == 3
+
+    assert tests.table_tests[0].name == "first_test"
+    assert tests.table_tests[0].table == "service.db.name"
+    assert tests.table_tests[0].expression[0].metric == "ROWNUMBER"
+    assert not tests.table_tests[0].enabled
+
+    assert tests.column_tests[0].columns[0].name == "first_col_test"
+    assert tests.column_tests[0].columns[0].column == "column_name_1"
+    assert tests.column_tests[0].columns[0].expression[0].metric == "MIN"
+    assert tests.column_tests[0].columns[0].enabled
+
+    # TestDef(
+    #     name="my_tests",
+    #     table_tests=[
+    #         # I can have multiple tests on the same table
+    #         TableTest(
+    #             name="first_test",
+    #             table="service.db.name",
+    #             expression="row_number > 100",  # This will be one Validation
+    #             enabled=False,
+    #         ),
+    #         TableTest(
+    #             name="another_test",
+    #             table="service.db.name",
+    #             expression="row_number > 1000 & row_number < 2000",  # This will be two Validations
+    #         ),
+    #     ],
+    #     column_tests=[
+    #         ColumnTest(
+    #             table="service.db.name",
+    #             name="set_of_col_tests",
+    #             columns=[
+    #                 ColumnTestExpression(
+    #                     name="first_col_test",
+    #                     column="column_name_1",
+    #                     expression="min > 5",  # One Validation
+    #                 ),
+    #                 ColumnTestExpression(
+    #                     name="another_col_test",
+    #                     column="column_name_1",
+    #                     expression="min > 5 & min < 10",  # Two Validations
+    #                 ),
+    #                 ColumnTestExpression(
+    #                     name="second_col_test",
+    #                     column="column_name_2",
+    #                     expression="null_ratio < 0.1",  # One Validation
+    #                 ),
+    #             ],
+    #         )
+    #     ],
+    # )

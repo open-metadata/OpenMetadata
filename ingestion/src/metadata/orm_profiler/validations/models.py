@@ -15,29 +15,65 @@ JSON workflows to the profiler
 """
 from typing import List
 
-from pydantic import BaseModel
+from parsimonious import ParseError
+
+from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
+
+from metadata.orm_profiler.validations.core import Validation
+from pydantic import BaseModel, validator
+from metadata.orm_profiler.utils import logger
 
 
-class TableTest(BaseModel):
+logger = logger()
+visitor = ExpVisitor()
+
+
+class ExpressionModel(BaseModel):
+    """
+    We use this model to convert expression to Validations
+    on the fly while we are parsing the JSON configuration.
+
+    It is a comfortable and fast way to know if we'll be
+    able to parse the tests with our grammar.
+    """
+
+    expression: List[Validation]
+    enabled: bool = True
+
+    @validator("expression", pre=True)
+    def convert_expression(cls, value):  # cls as per pydantic docs
+        """
+        Make sure that we can parse the expression to a
+        validation
+        """
+        try:
+            raw_validation = parse(value, visitor)
+        except ParseError as err:
+            logger.error(f"Cannot parse expression properly: {value}")
+            raise err
+
+        return [Validation.create(val) for val in raw_validation]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class TableTest(ExpressionModel):
     """
     Incoming table test definition from the workflow
     """
 
     name: str
     table: str  # fullyQualifiedName
-    expression: str
-    enabled: bool = True
 
 
-class ColumnTestExpression(BaseModel):
+class ColumnTestExpression(ExpressionModel):
     """
     Column test expression definition
     """
 
     name: str
     column: str
-    expression: str
-    enabled: bool = True
 
 
 class ColumnTest(BaseModel):
