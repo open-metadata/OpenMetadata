@@ -13,8 +13,8 @@
 
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
-    <testng.version>7.4.0</testng.version>
-    <selenium.version>4.1.1</selenium.version>
+    <testng.version>7.5</testng.version>
+    <selenium.version>4.1.2</selenium.version>
   </properties>
 
   <dependencies>
@@ -73,7 +73,7 @@
     <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
-      <version>4.4.0</version>
+      <version>4.5.1</version>
       <scope>test</scope>
     </dependency>
 
