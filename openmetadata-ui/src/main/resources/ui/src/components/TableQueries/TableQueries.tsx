@@ -17,7 +17,6 @@ import CopyToClipboard from 'react-copy-to-clipboard';
 import { CSMode } from '../../enums/codemirror.enum';
 import { SQLQuery, Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 
@@ -41,26 +40,21 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
   };
 
   return (
-    <div
-      className={classNames(
-        'tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-mb-3',
-        className
-      )}>
-      <div className="tw-mb-2">
+    <div className={classNames('tw-bg-white tw-p-3 tw-mb-3', className)}>
+      <div
+        className="tw-cursor-pointer"
+        onClick={() => setExpanded((pre) => !pre)}>
         <div className="tw-flex tw-py-1 tw-justify-between">
-          <div className="tw-flex tw-gap-x-2">
-            <p className="tw-flex">
-              <span className="tw-text-grey-muted tw-mr-1">Last run by:</span>
-              <span>{query.user?.displayName ?? query.user?.name}</span>
-            </p>
-            <span className="tw-inline-block tw-text-gray-400">|</span>
-            <p className="tw-flex">
-              <span className="tw-text-grey-muted tw-mr-1">Duration:</span>
-              <span>{query.duration} seconds</span>
-            </p>
-          </div>
+          <p>
+            Last run by{' '}
+            <span className="tw-font-medium">
+              {query.user?.displayName ?? query.user?.name}
+            </span>{' '}
+            and took{' '}
+            <span className="tw-font-medium">{query.duration} seconds</span>
+          </p>
 
-          <button onClick={() => setExpanded((pre) => !pre)}>
+          <button>
             {expanded ? (
               <i className="fas fa-angle-up tw-mr-4 tw-text-lg" />
             ) : (
@@ -68,34 +62,36 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
             )}
           </button>
         </div>
-        <hr className="tw-border-main tw-my-2 tw--mx-3" />
+        {/* <hr className="tw-border-main tw-my-2 tw--mx-3" /> */}
       </div>
 
       <div
         className={classNames('tw-overflow-hidden tw-h-10 tw-relative', {
           'tw-h-full': expanded,
         })}>
-        <CopyToClipboard
-          text={query.query ?? ''}
-          onCopy={(_text, result) => {
-            setIsCopied(result);
-            if (result) copiedTextHandler();
-          }}>
-          <Button
-            className="tw-h-8 tw-ml-4 tw-absolute tw-right-4 tw--mt-px tw-z-9999"
-            data-testid="copy-query"
-            size="custom"
-            theme="default"
-            title="Copy"
-            variant="text">
-            {showCopiedText ? (
-              <span className="tw-mr-1 tw-text-success tw-bg-success-lite tw-px-1 tw-rounded-md">
-                Copied!
-              </span>
-            ) : null}
-            <SVGIcons alt="Copy" icon={Icons.COPY} width="14px" />
-          </Button>
-        </CopyToClipboard>
+        {expanded ? (
+          <CopyToClipboard
+            text={query.query ?? ''}
+            onCopy={(_text, result) => {
+              setIsCopied(result);
+              if (result) copiedTextHandler();
+            }}>
+            <Button
+              className="tw-h-8 tw-ml-4 tw-absolute tw-right-4 tw-z-9999"
+              data-testid="copy-query"
+              size="custom"
+              theme="default"
+              title="Copy"
+              variant="text">
+              {showCopiedText ? (
+                <span className="tw-mr-1 tw-text-success tw-bg-success-lite tw-px-1 tw-rounded-md">
+                  Copied!
+                </span>
+              ) : null}
+              <i className="far fa-copy tw-text-lg" />
+            </Button>
+          </CopyToClipboard>
+        ) : null}
 
         <div className="tw-border tw-border-main tw-rounded-md tw-p-px">
           <SchemaEditor
