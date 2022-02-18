@@ -16,7 +16,6 @@ import logging as log
 import os
 from datetime import datetime
 from typing import Iterable
-from unittest import result
 
 from google.cloud import logging
 from sqllineage.runner import LineageRunner
@@ -168,11 +167,6 @@ class BigqueryUsageSource(Source[TableQuery]):
                                         )
                                         yield lineage
 
-                                for intermediate_table in result.intermediate_tables:
-                                    intermediate_fqdn = f"{self.config.service_name}.{intermediate_table}"
-                                    intermediate_entity = metadata.get_by_name(
-                                        entity=Table, fqdn=intermediate_fqdn
-                                    )
                                     for target_table in result.target_tables:
 
                                         target_fqdn = (
