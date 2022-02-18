@@ -16,10 +16,13 @@ import logging as log
 import os
 from datetime import datetime
 from typing import Iterable
+from unittest import result
 
 from google.cloud import logging
+from sqllineage.runner import LineageRunner
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -27,6 +30,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
@@ -42,7 +46,7 @@ class BigqueryUsageSource(Source[TableQuery]):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         self.temp_credentials = None
-
+        self.metadata_config = metadata_config
         self.config = config
         self.project_id = self.config.project_id
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
@@ -133,12 +137,96 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 service_name=self.config.service_name,
                             )
                             yield tq
-                            yield self.ingest_lineage(queryConfig["query"])
+
+                            result = LineageRunner(tq.sql)
+                            metadata = OpenMetadata(self.metadata_config)
+                            if result.target_tables and result.intermediate_tables:
+                                for intermediate_table in result.intermediate_tables:
+                                    intermediate_fqdn = f"{self.config.service_name}.{intermediate_table}"
+                                    intermediate_entity = metadata.get_by_name(
+                                        entity=Table, fqdn=intermediate_fqdn
+                                    )
+                                    for source_table in result.source_tables:
+
+                                        source_fqdn = (
+                                            f"{self.config.service_name}.{source_table}"
+                                        )
+                                        source_entity = metadata.get_by_name(
+                                            entity=Table, fqdn=source_fqdn
+                                        )
+                                        lineage = AddLineageRequest(
+                                            edge=EntitiesEdge(
+                                                fromEntity=EntityReference(
+                                                    id=source_entity.id.__root__,
+                                                    type="table",
+                                                ),
+                                                toEntity=EntityReference(
+                                                    id=intermediate_entity.id.__root__,
+                                                    type="table",
+                                                ),
+                                            )
+                                        )
+                                        yield lineage
+
+                                for intermediate_table in result.intermediate_tables:
+                                    intermediate_fqdn = f"{self.config.service_name}.{intermediate_table}"
+                                    intermediate_entity = metadata.get_by_name(
+                                        entity=Table, fqdn=intermediate_fqdn
+                                    )
+                                    for target_table in result.target_tables:
+
+                                        target_fqdn = (
+                                            f"{self.config.service_name}.{target_table}"
+                                        )
+                                        target_entity = metadata.get_by_name(
+                                            entity=Table, fqdn=target_fqdn
+                                        )
+                                        lineage = AddLineageRequest(
+                                            edge=EntitiesEdge(
+                                                toEntity=EntityReference(
+                                                    id=target_entity.id.__root__,
+                                                    type="table",
+                                                ),
+                                                fromEntity=EntityReference(
+                                                    id=intermediate_entity.id.__root__,
+                                                    type="table",
+                                                ),
+                                            )
+                                        )
+                                        yield lineage
+
+                            if result.target_tables:
+                                for target_table in result.target_tables:
+                                    target_fqdn = (
+                                        f"{self.config.service_name}.{target_table}"
+                                    )
+                                    target_entity = metadata.get_by_name(
+                                        entity=Table, fqdn=target_fqdn
+                                    )
+                                    for source_table in result.source_tables:
+
+                                        source_fqdn = (
+                                            f"{self.config.service_name}.{source_table}"
+                                        )
+                                        source_entity = metadata.get_by_name(
+                                            entity=Table, fqdn=source_fqdn
+                                        )
+                                        lineage = AddLineageRequest(
+                                            edge=EntitiesEdge(
+                                                fromEntity=EntityReference(
+                                                    id=source_entity.id.__root__,
+                                                    type="table",
+                                                ),
+                                                toEntity=EntityReference(
+                                                    id=target_entity.id.__root__,
+                                                    type="table",
+                                                ),
+                                            )
+                                        )
+                                        yield lineage
+
         except Exception as err:
             logger.error(repr(err))
-
-    def close(self):
-        pass
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -147,13 +235,3 @@ class BigqueryUsageSource(Source[TableQuery]):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
-
-    def ingest_lineage(self, query):
-
-        from_entity_ref = query["source"]
-        to_entity_ref = query["target"]
-
-        lineage = AddLineageRequest(
-            edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
-        )
-        return lineage
