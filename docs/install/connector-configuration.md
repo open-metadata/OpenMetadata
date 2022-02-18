@@ -4,7 +4,7 @@ description: This page provides details on shared configuration settings for con
 
 # Connector Configuration
 
-OpenMetadata connectors require a configuration file with a number of fields to specify settings for the service, data profiler, data filters, sample data, DBT, and security. See below for a simple example of a connector file.&#x20;
+OpenMetadata connectors require a configuration file with a number of fields to specify settings for the service, data profiler, data filters, sample data, DBT, and security. See below for a simple example of a connector file.
 
 ```json
 {
@@ -44,13 +44,13 @@ In the sections below we describe all configuration fields and their settings.
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. We reference this field through the service connector documentation.
 {% endhint %}
 
-## Service Settings&#x20;
+## Service Settings
 
-Use service settings to configure your connector to read from the desired service and, optionally, database.&#x20;
+Use service settings to configure your connector to read from the desired service and, optionally, database.
 
 #### host\_port
 
-Use `source.config.host_port` to send the endpoint for your data service. Use the `host:port` format illustrated in the example below.&#x20;
+Use `source.config.host_port` to send the endpoint for your data service. Use the `host:port` format illustrated in the example below.
 
 ```json
 "host_port": "cluster.name.region.redshift.amazonaws.com:5439"
@@ -80,7 +80,7 @@ Edit the value for `source.config.password` with the password for your service u
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value  for `source.config.service_name` with a name that distinguishes this deployment from other services from which you ingest metadata.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services from which you ingest metadata.
 
 ```json
 "service_name": "aws_redshift"
@@ -88,7 +88,7 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the  `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases the specified user is authorized to read.&#x20;
+If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases the specified user is authorized to read.
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
@@ -100,7 +100,7 @@ If you want to ingest metadata from two or more databases in a services but not 
 
 ## Data Profiler Settings
 
-The data profiler ingests usage information for tables. This enables you to assess frequency of use, reliability, and other details.&#x20;
+The data profiler ingests usage information for tables. This enables you to assess frequency of use, reliability, and other details.
 
 #### data\_profiler\_enabled
 
@@ -112,7 +112,7 @@ You may disable the data profiler by including the following field in the `sourc
 "data_profiler_enabled": "false"
 ```
 
-If you want to enable the data profiler, update your configuration file as follows.&#x20;
+If you want to enable the data profiler, update your configuration file as follows.
 
 ```json
 "data_profiler_enabled": "true"
@@ -122,9 +122,9 @@ If you want to enable the data profiler, update your configuration file as follo
 Note: The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`.
 {% endhint %}
 
-#### data\_profiler\_offset (optional)&#x20;
+#### data\_profiler\_offset (optional)
 
-Use `source.config.data_profiler_offset` to specify the row offset at which the profiler should begin scanning each table. See below for an example.&#x20;
+Use `source.config.data_profiler_offset` to specify the row offset at which the profiler should begin scanning each table. See below for an example.
 
 ```
 "data_profiler_offset": "1000"
@@ -138,16 +138,16 @@ Note: The key source.config.data\_profiler\_offset value is set to "0" by defaul
 Note: The source.config.data\_profiler\_offset field will be removed in a future release of OpenMetadata.
 {% endhint %}
 
-#### data\_profiler\_limit (optional)&#x20;
+#### data\_profiler\_limit (optional)
 
-Use `source.config.data_profiler_limit` to specify the row limit at which the profiler should conclude scanning each table. You may specify the profiler row limit by including a key-value pair such as the following in the source.config field of your configuration file.&#x20;
+Use `source.config.data_profiler_limit` to specify the row limit at which the profiler should conclude scanning each table. You may specify the profiler row limit by including a key-value pair such as the following in the source.config field of your configuration file.
 
 ```
 "data_profiler_limit": "50000" 
 ```
 
 {% hint style="info" %}
-Note: The value for source.config.data\_profiler\_limit is set to 50000 by default.&#x20;
+Note: The value for source.config.data\_profiler\_limit is set to 50000 by default.
 {% endhint %}
 
 {% hint style="info" %}
@@ -198,7 +198,7 @@ Note: `source.config.include_tables` is set to `true` by default.
 
 #### table\_filter\_pattern (optional)
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.&#x20;
+Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
 
 Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
 
@@ -276,4 +276,15 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ```json
 "dbt_catalog_file": "./dbt/catalog.json"
+```
+
+## Sink Settings
+
+You need not make any changes to the fields defined for `sink` in the template code you copied into the service settings. This part of your configuration file should be as follows.
+
+```json
+"sink": {
+    "type": "metadata-rest",
+    "config": {}
+},
 ```
