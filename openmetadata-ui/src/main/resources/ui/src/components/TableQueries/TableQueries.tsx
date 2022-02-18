@@ -17,6 +17,7 @@ import CopyToClipboard from 'react-copy-to-clipboard';
 import { CSMode } from '../../enums/codemirror.enum';
 import { SQLQuery, Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 
@@ -56,9 +57,19 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
 
           <button>
             {expanded ? (
-              <i className="fas fa-angle-up tw-mr-4 tw-text-lg" />
+              <SVGIcons
+                alt="copy"
+                className="tw-mr-4"
+                icon={Icons.ICON_UP}
+                width="16px"
+              />
             ) : (
-              <i className="fas fa-angle-down tw-mr-4 tw-text-lg" />
+              <SVGIcons
+                alt="copy"
+                className="tw-mr-4"
+                icon={Icons.ICON_DOWN}
+                width="16px"
+              />
             )}
           </button>
         </div>
@@ -86,7 +97,7 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
                   Copied!
                 </span>
               ) : null}
-              <i className="far fa-copy tw-text-lg" />
+              <SVGIcons alt="copy" icon={Icons.COPY} width="16px" />
             </Button>
           </CopyToClipboard>
 
