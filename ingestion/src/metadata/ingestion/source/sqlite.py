@@ -29,7 +29,7 @@ class SQLiteConfig(SQLConnectionConfig):
     connector_type = "sqlite"
 
     def get_connection_url(self):
-        return super().get_connKection_url()
+        return super().get_connection_url()
 
 
 class SqliteSource(SQLSource):
