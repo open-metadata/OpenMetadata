@@ -18,7 +18,6 @@ export interface WebhooksProps {
   data: Array<Webhook>;
   paging: Paging;
   onAddWebhook: () => void;
-  onDeleteWebhook: (id: string) => void;
-  onEditWebhook: (name: string) => void;
+  onClickWebhook: (name: string) => void;
   onPageChange: (type: string) => void;
 }

@@ -42,9 +42,10 @@ base_requirements = {
     "sql-metadata~=2.0.0",
     "requests~=2.26",
     "cryptography",
-    "Jinja2>=2.11.3, <3.0",
+    "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
+    "parsimonious==0.8.1",
 }
 
 report_requirements = {

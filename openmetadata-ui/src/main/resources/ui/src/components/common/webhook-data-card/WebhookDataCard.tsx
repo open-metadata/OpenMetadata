@@ -12,11 +12,8 @@
  */
 
 import React, { FunctionComponent } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
 import { Status } from '../../../generated/entity/events/webhook';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
 import WebhookDataCardBody from './WebhookDataCardBody';
 
 type Props = {
@@ -24,18 +21,20 @@ type Props = {
   description?: string;
   endpoint: string;
   status?: Status;
-  onDelete: () => void;
-  onEdit: () => void;
+  onClick?: (name: string) => void;
 };
 
 const WebhookDataCard: FunctionComponent<Props> = ({
   name,
   description,
   endpoint,
-  status = Status.NotStarted,
-  onDelete,
-  onEdit,
+  status = Status.Disabled,
+  onClick,
 }: Props) => {
+  const handleLinkClick = () => {
+    onClick?.(name);
+  };
+
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
@@ -43,36 +42,13 @@ const WebhookDataCard: FunctionComponent<Props> = ({
       <div>
         <div className="tw-flex tw-items-center">
           <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
-            <span className="tw-text-grey-body tw-font-medium">
+            <button
+              className="tw-text-grey-body tw-font-medium"
+              data-testid="webhook-link"
+              onClick={handleLinkClick}>
               {stringToHTML(name)}
-            </span>
+            </button>
           </h6>
-          <div className="tw-flex tw-flex-auto tw-justify-end">
-            <NonAdminAction position="top" title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <button
-                className="focus:tw-outline-none tw-ml-2"
-                data-testid={`edit-webhook-${name}`}
-                onClick={onEdit}>
-                <SVGIcons
-                  alt="edit"
-                  icon={Icons.EDIT}
-                  title="Edit"
-                  width="12px"
-                />
-              </button>
-              <button
-                className="focus:tw-outline-none tw-ml-2"
-                data-testid={`delete-webhook-${name}`}
-                onClick={onDelete}>
-                <SVGIcons
-                  alt="delete"
-                  icon={Icons.DELETE}
-                  title="Delete"
-                  width="12px"
-                />
-              </button>
-            </NonAdminAction>
-          </div>
         </div>
       </div>
       <div className="tw-pt-3">

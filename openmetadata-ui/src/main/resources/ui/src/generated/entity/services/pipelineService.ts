@@ -178,6 +178,7 @@ export interface EntityReference {
  */
 export enum PipelineServiceType {
   Airflow = 'Airflow',
+  Generic = 'Generic',
   Glue = 'Glue',
   Prefect = 'Prefect',
 }

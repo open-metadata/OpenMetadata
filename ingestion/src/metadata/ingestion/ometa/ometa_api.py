@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -47,6 +48,7 @@ from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
@@ -62,7 +64,6 @@ from metadata.ingestion.ometa.openmetadata_rest import (
 from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str
 
 logger = logging.getLogger(__name__)
-
 
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
@@ -103,6 +104,7 @@ class OpenMetadata(
     OMetaTableMixin,
     OMetaVersionMixin,
     OMetaTagMixin,
+    GlossaryMixin,
     Generic[T, C],
 ):
     """
@@ -220,6 +222,9 @@ class OpenMetadata(
 
         if issubclass(entity, (Tag, TagCategory)):
             return "/tags"
+
+        if issubclass(entity, Glossary):
+            return "/glossaries"
 
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
             return "/roles"

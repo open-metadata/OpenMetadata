@@ -16,7 +16,7 @@ import noDataFound from '../assets/img/no-data-placeholder.png';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
 import athena from '../assets/img/service-icon-athena.png';
-import serviceDefault from '../assets/img/service-icon-generic.png';
+import databaseDefault from '../assets/img/service-icon-generic.png';
 import glue from '../assets/img/service-icon-glue.png';
 import hive from '../assets/img/service-icon-hive.png';
 import kafka from '../assets/img/service-icon-kafka.png';
@@ -38,7 +38,14 @@ import superset from '../assets/img/service-icon-superset.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
+import dashboardDefault from '../assets/svg/dashboard.svg';
+import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
+import topicDefault from '../assets/svg/topic.svg';
+import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 
 export const NoDataFoundPlaceHolder = noDataFound;
 export const MYSQL = mysql;
@@ -65,31 +72,19 @@ export const METABASE = metabase;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
-export const SERVICE_DEFAULT = serviceDefault;
+export const DATABASE_DEFAULT = databaseDefault;
+export const TOPIC_DEFAULT = topicDefault;
+export const DASHBOARD_DEFAULT = dashboardDefault;
+export const PIPELINE_DEFAULT = pipelineDefault;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
 
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: [
-    'BigQuery',
-    'MySQL',
-    'Redshift',
-    'Snowflake',
-    'Postgres',
-    'MSSQL',
-    'Hive',
-    'Oracle',
-    'Athena',
-    'Presto',
-    'Trino',
-    'Glue',
-    'MariaDB',
-    'Vertica',
-  ],
-  messagingServices: ['Kafka'],
-  dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash', 'Metabase'],
-  pipelineServices: ['Airflow', 'Prefect', 'Glue'],
+  databaseServices: Object.values(DatabaseServiceType),
+  messagingServices: Object.values(MessagingServiceType),
+  dashboardServices: Object.values(DashboardServiceType),
+  pipelineServices: Object.values(PipelineServiceType),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [

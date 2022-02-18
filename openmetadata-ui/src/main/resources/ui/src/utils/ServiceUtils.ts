@@ -28,6 +28,8 @@ import {
   arrServiceTypes,
   ATHENA,
   BIGQUERY,
+  DASHBOARD_DEFAULT,
+  DATABASE_DEFAULT,
   GLUE,
   HIVE,
   KAFKA,
@@ -37,6 +39,7 @@ import {
   MSSQL,
   MYSQL,
   ORACLE,
+  PIPELINE_DEFAULT,
   POSTGRES,
   PREFECT,
   PRESTO,
@@ -44,96 +47,105 @@ import {
   REDASH,
   REDSHIFT,
   serviceTypes,
-  SERVICE_DEFAULT,
   SNOWFLAKE,
   SUPERSET,
   TABLEAU,
+  TOPIC_DEFAULT,
   TRINO,
   VERTICA,
 } from '../constants/services.const';
-import {
-  DashboardServiceType,
-  DatabaseServiceType,
-  IngestionType,
-  MessagingServiceType,
-  PipelineServiceType,
-  ServiceCategory,
-} from '../enums/service.enum';
+import { IngestionType, ServiceCategory } from '../enums/service.enum';
+import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { PipelineType } from '../generated/operations/pipelines/airflowPipeline';
 import { ApiData } from '../pages/services';
 
 export const serviceTypeLogo = (type: string) => {
   switch (type) {
-    case DatabaseServiceType.MYSQL:
+    case DatabaseServiceType.MySQL:
       return MYSQL;
 
-    case DatabaseServiceType.REDSHIFT:
+    case DatabaseServiceType.Redshift:
       return REDSHIFT;
 
-    case DatabaseServiceType.BIGQUERY:
+    case DatabaseServiceType.BigQuery:
       return BIGQUERY;
 
-    case DatabaseServiceType.HIVE:
+    case DatabaseServiceType.Hive:
       return HIVE;
 
-    case DatabaseServiceType.POSTGRES:
+    case DatabaseServiceType.Postgres:
       return POSTGRES;
 
-    case DatabaseServiceType.ORACLE:
+    case DatabaseServiceType.Oracle:
       return ORACLE;
 
-    case DatabaseServiceType.SNOWFLAKE:
+    case DatabaseServiceType.Snowflake:
       return SNOWFLAKE;
 
-    case DatabaseServiceType.MSSQL:
+    case DatabaseServiceType.Mssql:
       return MSSQL;
 
-    case DatabaseServiceType.ATHENA:
+    case DatabaseServiceType.Athena:
       return ATHENA;
 
-    case DatabaseServiceType.PRESTO:
+    case DatabaseServiceType.Presto:
       return PRESTO;
 
-    case DatabaseServiceType.TRINO:
+    case DatabaseServiceType.Trino:
       return TRINO;
 
-    case DatabaseServiceType.GLUE:
+    case DatabaseServiceType.Glue:
       return GLUE;
 
-    case DatabaseServiceType.MARIADB:
+    case DatabaseServiceType.MariaDB:
       return MARIADB;
 
-    case DatabaseServiceType.VERTICA:
+    case DatabaseServiceType.Vertica:
       return VERTICA;
 
-    case MessagingServiceType.KAFKA:
+    case MessagingServiceType.Kafka:
       return KAFKA;
 
-    case MessagingServiceType.PULSAR:
+    case MessagingServiceType.Pulsar:
       return PULSAR;
 
-    case DashboardServiceType.SUPERSET:
+    case DashboardServiceType.Superset:
       return SUPERSET;
 
-    case DashboardServiceType.LOOKER:
+    case DashboardServiceType.Looker:
       return LOOKER;
 
-    case DashboardServiceType.TABLEAU:
+    case DashboardServiceType.Tableau:
       return TABLEAU;
 
-    case DashboardServiceType.REDASH:
+    case DashboardServiceType.Redash:
       return REDASH;
 
-    case DashboardServiceType.METABASE:
+    case DashboardServiceType.Metabase:
       return METABASE;
 
-    case PipelineServiceType.AIRFLOW:
+    case PipelineServiceType.Airflow:
       return AIRFLOW;
 
-    case PipelineServiceType.PREFECT:
+    case PipelineServiceType.Prefect:
       return PREFECT;
-    default:
-      return SERVICE_DEFAULT;
+    default: {
+      let logo;
+      if (serviceTypes.messagingServices.includes(type)) {
+        logo = TOPIC_DEFAULT;
+      } else if (serviceTypes.dashboardServices.includes(type)) {
+        logo = DASHBOARD_DEFAULT;
+      } else if (serviceTypes.pipelineServices.includes(type)) {
+        logo = PIPELINE_DEFAULT;
+      } else if (serviceTypes.databaseServices.includes(type)) {
+        logo = DATABASE_DEFAULT;
+      }
+
+      return logo;
+    }
   }
 };
 
@@ -254,44 +266,14 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
     pipelineCount: 0,
   };
   buckets?.forEach((bucket) => {
-    switch (bucket.key) {
-      case DatabaseServiceType.ATHENA:
-      case DatabaseServiceType.BIGQUERY:
-      case DatabaseServiceType.HIVE:
-      case DatabaseServiceType.MSSQL:
-      case DatabaseServiceType.MYSQL:
-      case DatabaseServiceType.ORACLE:
-      case DatabaseServiceType.POSTGRES:
-      case DatabaseServiceType.PRESTO:
-      case DatabaseServiceType.TRINO:
-      case DatabaseServiceType.GLUE:
-      case DatabaseServiceType.MARIADB:
-      case DatabaseServiceType.VERTICA:
-      case DatabaseServiceType.REDSHIFT:
-      case DatabaseServiceType.SNOWFLAKE:
-        entityCounts.tableCount += bucket.doc_count;
-
-        break;
-      case MessagingServiceType.KAFKA:
-      case MessagingServiceType.PULSAR:
-        entityCounts.topicCount += bucket.doc_count;
-
-        break;
-      case DashboardServiceType.SUPERSET:
-      case DashboardServiceType.LOOKER:
-      case DashboardServiceType.TABLEAU:
-      case DashboardServiceType.REDASH:
-      case DashboardServiceType.METABASE:
-        entityCounts.dashboardCount += bucket.doc_count;
-
-        break;
-      case PipelineServiceType.AIRFLOW:
-      case PipelineServiceType.PREFECT:
-        entityCounts.pipelineCount += bucket.doc_count;
-
-        break;
-      default:
-        break;
+    if (serviceTypes.databaseServices.includes(bucket.key)) {
+      entityCounts.tableCount += bucket.doc_count;
+    } else if (serviceTypes.messagingServices.includes(bucket.key)) {
+      entityCounts.topicCount += bucket.doc_count;
+    } else if (serviceTypes.dashboardServices.includes(bucket.key)) {
+      entityCounts.dashboardCount += bucket.doc_count;
+    } else if (serviceTypes.pipelineServices.includes(bucket.key)) {
+      entityCounts.pipelineCount += bucket.doc_count;
     }
   });
 
@@ -313,52 +295,52 @@ export const getIngestionTypeList = (
 ): Array<string> | undefined => {
   let ingestionType: Array<string> | undefined;
   switch (serviceType) {
-    case DatabaseServiceType.BIGQUERY:
+    case DatabaseServiceType.BigQuery:
       ingestionType = onlyMetaData
         ? [IngestionType.BIGQUERY]
         : [IngestionType.BIGQUERY, IngestionType.BIGQUERY_USAGE];
 
       break;
-    case DatabaseServiceType.HIVE:
+    case DatabaseServiceType.Hive:
       ingestionType = [IngestionType.HIVE];
 
       break;
 
-    case DatabaseServiceType.MSSQL:
+    case DatabaseServiceType.Mssql:
       ingestionType = [IngestionType.MSSQL];
 
       break;
 
-    case DatabaseServiceType.MYSQL:
+    case DatabaseServiceType.MySQL:
       ingestionType = [IngestionType.MYSQL];
 
       break;
 
-    case DatabaseServiceType.POSTGRES:
+    case DatabaseServiceType.Postgres:
       ingestionType = [IngestionType.POSTGRES];
 
       break;
 
-    case DatabaseServiceType.REDSHIFT:
+    case DatabaseServiceType.Redshift:
       ingestionType = onlyMetaData
         ? [IngestionType.REDSHIFT]
         : [IngestionType.REDSHIFT, IngestionType.REDSHIFT_USAGE];
 
       break;
 
-    case DatabaseServiceType.TRINO:
+    case DatabaseServiceType.Trino:
       ingestionType = [IngestionType.TRINO];
 
       break;
 
-    case DatabaseServiceType.SNOWFLAKE:
+    case DatabaseServiceType.Snowflake:
       ingestionType = onlyMetaData
         ? [IngestionType.SNOWFLAKE]
         : [IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE];
 
       break;
 
-    case DatabaseServiceType.VERTICA:
+    case DatabaseServiceType.Vertica:
       ingestionType = [IngestionType.VERTICA];
 
       break;
@@ -378,17 +360,17 @@ export const getAirflowPipelineTypes = (
     return [PipelineType.Metadata];
   }
   switch (serviceType) {
-    case DatabaseServiceType.REDSHIFT:
-    case DatabaseServiceType.BIGQUERY:
-    case DatabaseServiceType.SNOWFLAKE:
+    case DatabaseServiceType.Redshift:
+    case DatabaseServiceType.BigQuery:
+    case DatabaseServiceType.Snowflake:
       return [PipelineType.Metadata, PipelineType.QueryUsage];
 
-    case DatabaseServiceType.HIVE:
-    case DatabaseServiceType.MSSQL:
-    case DatabaseServiceType.MYSQL:
-    case DatabaseServiceType.POSTGRES:
-    case DatabaseServiceType.TRINO:
-    case DatabaseServiceType.VERTICA:
+    case DatabaseServiceType.Hive:
+    case DatabaseServiceType.Mssql:
+    case DatabaseServiceType.MySQL:
+    case DatabaseServiceType.Postgres:
+    case DatabaseServiceType.Trino:
+    case DatabaseServiceType.Vertica:
       return [PipelineType.Metadata];
 
     default:

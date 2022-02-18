@@ -35,8 +35,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.2.0</mockito.version>
-    <slf4j.version>1.7.31</slf4j.version>
+    <mockito.version>4.3.1</mockito.version>
+    <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.1</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
@@ -56,29 +56,29 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.26.0</jdbi3.version>
+    <jdbi3.version>3.27.1</jdbi3.version>
     <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
-    <flyway.version>8.0.4</flyway.version>
-    <redshift-jdbc.version>2.1.0.3</redshift-jdbc.version>
-    <gson.version>2.8.9</gson.version>
-    <mysql.connector.version>8.0.27</mysql.connector.version>
+    <flyway.version>8.1.0</flyway.version>
+    <redshift-jdbc.version>2.1.0.4</redshift-jdbc.version>
+    <gson.version>2.9.0</gson.version>
+    <mysql.connector.version>8.0.28</mysql.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.22</lombok.version>
     <tomcat-jdbc.version>10.0.8</tomcat-jdbc.version>
-    <elasticsearch.version>7.13.2</elasticsearch.version>
+    <elasticsearch.version>7.17.0</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.1.12</openapiswagger.version>
+    <openapiswagger.version>2.1.13</openapiswagger.version>
     <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.13</httpclient.version>
-    <spring.version>5.3.14</spring.version>
+    <spring.version>5.3.16</spring.version>
     <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
-    <fernet.version>1.4.2</fernet.version>
+    <fernet.version>1.5.0</fernet.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -393,7 +393,7 @@
       <dependency>
         <groupId>org.apache.johnzon</groupId>
         <artifactId>johnzon-core</artifactId>
-        <version>1.2.15</version>
+        <version>1.2.16</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -538,7 +538,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>9.2.1</version>
+              <version>9.3</version>
             </dependency>
           </dependencies>
         </plugin>

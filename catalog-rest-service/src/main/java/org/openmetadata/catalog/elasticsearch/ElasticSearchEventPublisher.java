@@ -27,10 +27,10 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptType;
+import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.catalog.entity.data.Dashboard;
@@ -146,6 +146,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
+        @SuppressWarnings("unchecked")
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
         List<String> newFollowers = new ArrayList<>();
         for (EntityReference follower : entityReferences) {
@@ -158,6 +159,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
+        @SuppressWarnings("unchecked")
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
         for (EntityReference follower : entityReferences) {
           fieldAddParams.put(fieldChange.getName(), follower.getId().toString());

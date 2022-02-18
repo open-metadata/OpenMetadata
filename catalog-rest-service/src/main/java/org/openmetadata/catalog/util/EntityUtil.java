@@ -102,8 +102,7 @@ public final class EntityUtil {
       (column1, column2) ->
           column1.getName().equals(column2.getName())
               && column1.getDataType() == column2.getDataType()
-              && column1.getArrayDataType() == column2.getArrayDataType()
-              && Objects.equals(column1.getOrdinalPosition(), column2.getOrdinalPosition());
+              && column1.getArrayDataType() == column2.getArrayDataType();
 
   public static final BiPredicate<Column, Column> columnNameMatch =
       (column1, column2) -> column1.getName().equals(column2.getName());
