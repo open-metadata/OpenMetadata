@@ -18,7 +18,7 @@ from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
-from metadata.orm_profiler.profiles.simple import SimpleProfiler
+from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 
 Base = declarative_base()
 
@@ -66,5 +66,12 @@ class ProfilerTest(TestCase):
             "STDDEV": 0.25,
             "NULLCOUNT": 0,
             "NULLRATIO": 0.0,
-            "ROWNUMBER": 2,
         }
+
+    def test_simple_table_profiler(self):
+        """
+        Check the default table profiler
+        """
+        simple = SimpleTableProfiler(session=self.session, table=User)
+        simple.execute()
+        assert simple.results == {"ROWNUMBER": 2}

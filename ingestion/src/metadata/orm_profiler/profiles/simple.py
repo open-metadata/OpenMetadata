@@ -34,6 +34,15 @@ class SimpleProfiler(SingleProfiler):
             Metrics.STDDEV(col),
             Metrics.NULL_COUNT(col),
             Metrics.NULL_RATIO(col),
-            Metrics.ROW_NUMBER(),
         ]
+        super().__init__(*_metrics, session=session, table=table)
+
+
+class SimpleTableProfiler(SingleProfiler):
+    """
+    Default set of table metrics to run
+    """
+
+    def __init__(self, session: Session, table):
+        _metrics = [Metrics.ROW_NUMBER()]
         super().__init__(*_metrics, session=session, table=table)
