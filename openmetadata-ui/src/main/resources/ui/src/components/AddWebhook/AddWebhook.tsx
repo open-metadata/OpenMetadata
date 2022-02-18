@@ -17,7 +17,9 @@ import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import {
   CreateWebhook,
@@ -38,24 +40,87 @@ import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AddWebhookProps } from './AddWebhook.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
 };
 
+const getEntitiesList = () => {
+  const retVal: Array<{ name: string; value: string }> = [
+    EntityType.TABLE,
+    EntityType.TOPIC,
+    EntityType.DASHBOARD,
+    EntityType.PIPELINE,
+  ].map((item) => {
+    return {
+      name: startCase(item),
+      value: item,
+    };
+  });
+  retVal.unshift({ name: 'All entities', value: WILD_CARD_CHAR });
+
+  return retVal;
+};
+
+const getHiddenEntitiesList = (entities: Array<string> = []) => {
+  if (entities.includes(WILD_CARD_CHAR)) {
+    return entities.filter((item) => item !== WILD_CARD_CHAR);
+  } else {
+    return undefined;
+  }
+};
+
+const getSelectedEvents = (prev: EventFilter, value: string) => {
+  let entities = prev.entities || [];
+  if (entities.includes(value)) {
+    if (value === WILD_CARD_CHAR) {
+      entities = [];
+    } else {
+      if (entities.includes(WILD_CARD_CHAR)) {
+        const allIndex = entities.indexOf(WILD_CARD_CHAR);
+        entities.splice(allIndex, 1);
+      }
+      const index = entities.indexOf(value);
+      entities.splice(index, 1);
+    }
+  } else {
+    if (value === WILD_CARD_CHAR) {
+      entities = getEntitiesList().map((item) => item.value);
+    } else {
+      entities.push(value);
+    }
+  }
+
+  return { ...prev, entities };
+};
+
 const getEventFilterByType = (
   filters: Array<EventFilter>,
   type: EventType
 ): EventFilter => {
-  return filters.find((item) => item.eventType === type) || ({} as EventFilter);
+  let eventFilter =
+    filters.find((item) => item.eventType === type) || ({} as EventFilter);
+  if (eventFilter.entities?.includes(WILD_CARD_CHAR)) {
+    eventFilter = getSelectedEvents(
+      { ...eventFilter, entities: [] },
+      WILD_CARD_CHAR
+    );
+  }
+
+  return eventFilter;
 };
 
 const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   data,
   header,
+  mode = FormSubmitType.ADD,
   saveState = 'initial',
+  deleteState = 'initial',
+  allowAccess = true,
   onCancel,
+  onDelete,
   onSave,
 }: AddWebhookProps) => {
   const markdownRef = useRef<EditorContentRef>();
@@ -93,13 +158,25 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     endpointUrl: false,
     eventFilters: false,
     invalidEndpointUrl: false,
+    invalidEventFilters: false,
   });
   const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+
+  const handleDelete = () => {
+    if (data) {
+      onDelete && onDelete(data.id);
+    }
+    setIsDelete(false);
+  };
 
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
+    if (!allowAccess) {
+      return;
+    }
     const value = event.target.value;
     const eleName = event.target.name;
     let { name, endpointUrl, invalidEndpointUrl } = cloneDeep(showErrorMsg);
@@ -135,6 +212,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const generateSecret = () => {
+    if (!allowAccess) {
+      return;
+    }
     const apiKey = cryptoRandomString({ length: 50, type: 'alphanumeric' });
     setGeneratingSecret(true);
     setTimeout(() => {
@@ -149,44 +229,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     setSecretKey('');
   };
 
-  const getEntitiesList = () => {
-    const retVal: Array<{ name: string; value: string }> = [
-      EntityType.TABLE,
-      EntityType.TOPIC,
-      EntityType.DASHBOARD,
-      EntityType.PIPELINE,
-    ].map((item) => {
-      return {
-        name: startCase(item),
-        value: item,
-      };
-    });
-    retVal.unshift({ name: 'All entities', value: '*' });
-
-    return retVal;
-  };
-
-  const getSelectedEvents = (prev: EventFilter, value: string) => {
-    let entities = prev.entities || [];
-    if (entities.includes(value)) {
-      const index = entities.indexOf(value);
-      entities.splice(index, 1);
-    } else {
-      if (value === '*') {
-        entities = [value];
-      } else {
-        if (value !== '*' && entities.includes('*')) {
-          const allIndex = entities.indexOf('*');
-          entities.splice(allIndex, 1);
-        }
-        entities.push(value);
-      }
-    }
-
-    return { ...prev, entities };
-  };
-
   const toggleEventFilters = (type: EventType, value: boolean) => {
+    if (!allowAccess) {
+      return;
+    }
     let setter;
     switch (type) {
       case EventType.EntityCreated: {
@@ -214,7 +260,34 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           : ({} as EventFilter)
       );
       setShowErrorMsg((prev) => {
-        return { ...prev, eventFilters: false };
+        return { ...prev, eventFilters: false, invalidEventFilters: false };
+      });
+    }
+  };
+
+  const handleEntitySelection = (type: EventType, value: string) => {
+    let setter;
+    switch (type) {
+      case EventType.EntityCreated: {
+        setter = setCreateEvents;
+
+        break;
+      }
+      case EventType.EntityUpdated: {
+        setter = setUpdateEvents;
+
+        break;
+      }
+      case EventType.EntityDeleted: {
+        setter = setDeleteEvents;
+
+        break;
+      }
+    }
+    if (setter) {
+      setter((prev) => getSelectedEvents(prev, value));
+      setShowErrorMsg((prev) => {
+        return { ...prev, eventFilters: false, invalidEventFilters: false };
       });
     }
   };
@@ -222,16 +295,40 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const getEventFiltersData = () => {
     const eventFilters: Array<EventFilter> = [];
     if (!isEmpty(createEvents)) {
-      eventFilters.push(createEvents);
+      const event = createEvents.entities?.includes(WILD_CARD_CHAR)
+        ? { ...createEvents, entities: [WILD_CARD_CHAR] }
+        : createEvents;
+      eventFilters.push(event);
     }
     if (!isEmpty(updateEvents)) {
-      eventFilters.push(updateEvents);
+      const event = updateEvents.entities?.includes(WILD_CARD_CHAR)
+        ? { ...updateEvents, entities: [WILD_CARD_CHAR] }
+        : updateEvents;
+      eventFilters.push(event);
     }
     if (!isEmpty(deleteEvents)) {
-      eventFilters.push(deleteEvents);
+      const event = deleteEvents.entities?.includes(WILD_CARD_CHAR)
+        ? { ...deleteEvents, entities: [WILD_CARD_CHAR] }
+        : deleteEvents;
+      eventFilters.push(event);
     }
 
     return eventFilters;
+  };
+
+  const validateEventFilters = () => {
+    let isValid = false;
+    if (!isEmpty(createEvents)) {
+      isValid = Boolean(createEvents.entities?.length);
+    }
+    if (!isEmpty(updateEvents)) {
+      isValid = Boolean(updateEvents.entities?.length);
+    }
+    if (!isEmpty(deleteEvents) && deleteEvents.entities?.length) {
+      isValid = Boolean(deleteEvents.entities?.length);
+    }
+
+    return isValid;
   };
 
   const validateForm = () => {
@@ -244,6 +341,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         ...deleteEvents,
       }),
       invalidEndpointUrl: !isValidUrl(endpointUrl.trim()),
+      invalidEventFilters: !validateEventFilters(),
     };
     setShowErrorMsg(errMsg);
 
@@ -264,6 +362,73 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       };
       onSave(oData);
     }
+  };
+
+  const getDeleteButton = () => {
+    return allowAccess ? (
+      <>
+        {deleteState === 'waiting' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="text">
+            <Loader size="small" type="default" />
+          </Button>
+        ) : (
+          <Button
+            className={classNames({
+              'tw-opacity-40': !allowAccess,
+            })}
+            data-testid="delete-webhook"
+            size="regular"
+            theme="primary"
+            variant="text"
+            onClick={() => setIsDelete(true)}>
+            Delete
+          </Button>
+        )}
+      </>
+    ) : null;
+  };
+
+  const getSaveButton = () => {
+    return allowAccess ? (
+      <>
+        {saveState === 'waiting' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <Loader size="small" type="white" />
+          </Button>
+        ) : saveState === 'success' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <i aria-hidden="true" className="fa fa-check" />
+          </Button>
+        ) : (
+          <Button
+            className={classNames('tw-w-16 tw-h-10', {
+              'tw-opacity-40': !allowAccess,
+            })}
+            data-testid="save-webhook"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={handleSave}>
+            Save
+          </Button>
+        )}
+      </>
+    ) : null;
   };
 
   const fetchRightPanel = () => {
@@ -333,6 +498,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </label>
           <MarkdownWithPreview
             data-testid="description"
+            readonly={!allowAccess}
             ref={markdownRef}
             value={description}
           />
@@ -344,6 +510,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
             data-testid="endpoint-url"
+            disabled={!allowAccess}
             id="endpoint-url"
             name="endpoint-url"
             placeholder="http(s)://www.example.com"
@@ -364,7 +531,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               className={classNames('toggle-switch', { open: active })}
               data-testid="active"
               onClick={() => {
-                setActive((prev) => !prev);
+                allowAccess && setActive((prev) => !prev);
               }}>
               <div className="switch" />
             </div>
@@ -385,6 +552,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 checked={!isEmpty(createEvents)}
                 className="tw-mr-1 custom-checkbox"
                 data-testid="checkbox"
+                disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
                   toggleEventFilters(EventType.EntityCreated, e.target.checked);
@@ -399,15 +567,14 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </div>
           <DropDown
             className="tw-bg-white"
-            disabled={isEmpty(createEvents)}
+            disabled={!allowAccess || isEmpty(createEvents)}
             dropDownList={getEntitiesList()}
+            hiddenItems={getHiddenEntitiesList(createEvents.entities)}
             label="select entities"
             selectedItems={createEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
-              setCreateEvents((prev) =>
-                getSelectedEvents(prev, value as string)
-              )
+              handleEntitySelection(EventType.EntityCreated, value as string)
             }
           />
         </Field>
@@ -420,6 +587,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 checked={!isEmpty(updateEvents)}
                 className="tw-mr-1 custom-checkbox"
                 data-testid="checkbox"
+                disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
                   toggleEventFilters(EventType.EntityUpdated, e.target.checked);
@@ -434,15 +602,14 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </div>
           <DropDown
             className="tw-bg-white"
-            disabled={isEmpty(updateEvents)}
+            disabled={!allowAccess || isEmpty(updateEvents)}
             dropDownList={getEntitiesList()}
+            hiddenItems={getHiddenEntitiesList(updateEvents.entities)}
             label="select entities"
             selectedItems={updateEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
-              setUpdateEvents((prev) =>
-                getSelectedEvents(prev, value as string)
-              )
+              handleEntitySelection(EventType.EntityUpdated, value as string)
             }
           />
         </Field>
@@ -455,6 +622,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 checked={!isEmpty(deleteEvents)}
                 className="tw-mr-1 custom-checkbox"
                 data-testid="checkbox"
+                disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
                   toggleEventFilters(EventType.EntityDeleted, e.target.checked);
@@ -469,19 +637,21 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </div>
           <DropDown
             className="tw-bg-white"
-            disabled={isEmpty(deleteEvents)}
+            disabled={!allowAccess || isEmpty(deleteEvents)}
             dropDownList={getEntitiesList()}
+            hiddenItems={getHiddenEntitiesList(deleteEvents.entities)}
             label="select entities"
             selectedItems={deleteEvents.entities}
             type="checkbox"
             onSelect={(_e, value) =>
-              setDeleteEvents((prev) =>
-                getSelectedEvents(prev, value as string)
-              )
+              handleEntitySelection(EventType.EntityDeleted, value as string)
             }
           />
-          {showErrorMsg.eventFilters &&
-            errorMsg('Webhook event filters are required.')}
+          {showErrorMsg.eventFilters
+            ? errorMsg('Webhook event filters are required.')
+            : showErrorMsg.invalidEventFilters
+            ? errorMsg('Webhook event filters are invalid.')
+            : null}
         </Field>
         <Field>
           <div className="tw-flex tw-justify-end tw-pt-1">
@@ -512,6 +682,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   <input
                     className="tw-form-inputs tw-px-3 tw-py-1"
                     data-testid="batch-size"
+                    disabled={!allowAccess}
                     id="batch-size"
                     name="batch-size"
                     placeholder="10"
@@ -529,6 +700,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   <input
                     className="tw-form-inputs tw-px-3 tw-py-1"
                     data-testid="connection-timeout"
+                    disabled={!allowAccess}
                     id="connection-timeout"
                     name="connection-timeout"
                     placeholder="10"
@@ -540,143 +712,146 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               </div>
             </Field>
             <Field>
-              {!data ? (
-                <>
-                  <label
-                    className="tw-block tw-form-label tw-my-0"
-                    htmlFor="secret-key">
-                    Secret Key:
-                  </label>
+              {allowAccess ? (
+                !data ? (
+                  <>
+                    <label
+                      className="tw-block tw-form-label tw-my-0"
+                      htmlFor="secret-key">
+                      Secret Key:
+                    </label>
+                    <div className="tw-flex tw-items-center">
+                      <input
+                        readOnly
+                        className="tw-form-inputs tw-px-3 tw-py-1"
+                        data-testid="connection-timeout"
+                        id="connection-timeout"
+                        name="connection-timeout"
+                        placeholder="secret key"
+                        type="text"
+                        value={secretKey}
+                      />
+                      <Button
+                        className="tw-w-8 tw-h-8 tw--ml-8 tw-rounded-md"
+                        data-testid="generate-secret"
+                        size="custom"
+                        theme="default"
+                        variant="text"
+                        onClick={generateSecret}>
+                        {generatingSecret ? (
+                          <Loader size="small" type="default" />
+                        ) : (
+                          <i className="fas fa-sync-alt" />
+                        )}
+                      </Button>
+                      {secretKey ? (
+                        <>
+                          <CopyToClipboard
+                            text={secretKey}
+                            onCopy={() => setCopiedSecret(true)}>
+                            <Button
+                              className="tw-h-8 tw-ml-4"
+                              data-testid="copy-secret"
+                              size="custom"
+                              theme="default"
+                              variant="text">
+                              <SVGIcons
+                                alt="Copy"
+                                icon={Icons.COPY}
+                                width="16px"
+                              />
+                            </Button>
+                          </CopyToClipboard>
+                          <Button
+                            className="tw-h-8 tw-ml-4"
+                            data-testid="clear-secret"
+                            size="custom"
+                            theme="default"
+                            variant="text"
+                            onClick={resetSecret}>
+                            <SVGIcons
+                              alt="Delete"
+                              icon={Icons.DELETE}
+                              width="16px"
+                            />
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
+                  </>
+                ) : data.secretKey ? (
                   <div className="tw-flex tw-items-center">
                     <input
                       readOnly
                       className="tw-form-inputs tw-px-3 tw-py-1"
-                      data-testid="connection-timeout"
-                      id="connection-timeout"
-                      name="connection-timeout"
+                      data-testid="secret-key"
+                      id="secret-key"
+                      name="secret-key"
                       placeholder="secret key"
                       type="text"
                       value={secretKey}
                     />
-                    <Button
-                      className="tw-w-8 tw-h-8 tw--ml-8 tw-rounded-md"
-                      data-testid="generate-secret"
-                      size="custom"
-                      theme="default"
-                      variant="text"
-                      onClick={generateSecret}>
-                      {generatingSecret ? (
-                        <Loader size="small" type="default" />
-                      ) : (
-                        <i className="fas fa-sync-alt" />
-                      )}
-                    </Button>
-                    {secretKey ? (
-                      <>
-                        <CopyToClipboard
-                          text={secretKey}
-                          onCopy={() => setCopiedSecret(true)}>
-                          <Button
-                            className="tw-h-8 tw-ml-4"
-                            data-testid="copy-secret"
-                            size="custom"
-                            theme="default"
-                            variant="text">
-                            <SVGIcons
-                              alt="Copy"
-                              icon={Icons.COPY}
-                              width="16px"
-                            />
-                          </Button>
-                        </CopyToClipboard>
-                        <Button
-                          className="tw-h-8 tw-ml-4"
-                          data-testid="clear-secret"
-                          size="custom"
-                          theme="default"
-                          variant="text"
-                          onClick={resetSecret}>
-                          <SVGIcons
-                            alt="Delete"
-                            icon={Icons.DELETE}
-                            width="16px"
-                          />
-                        </Button>
-                      </>
-                    ) : null}
+                    <CopyToClipboard
+                      text={secretKey}
+                      onCopy={() => setCopiedSecret(true)}>
+                      <Button
+                        className="tw-h-8 tw-ml-4"
+                        data-testid="copy-secret"
+                        size="custom"
+                        theme="default"
+                        variant="text">
+                        <SVGIcons alt="Copy" icon={Icons.COPY} width="16px" />
+                      </Button>
+                    </CopyToClipboard>
                   </div>
-                </>
-              ) : data.secretKey ? (
-                <div className="tw-flex tw-items-center">
-                  <input
-                    readOnly
-                    className="tw-form-inputs tw-px-3 tw-py-1"
-                    data-testid="secret-key"
-                    id="secret-key"
-                    name="secret-key"
-                    placeholder="secret key"
-                    type="text"
-                    value={secretKey}
-                  />
-                  <CopyToClipboard
-                    text={secretKey}
-                    onCopy={() => setCopiedSecret(true)}>
-                    <Button
-                      className="tw-h-8 tw-ml-4"
-                      data-testid="copy-secret"
-                      size="custom"
-                      theme="default"
-                      variant="text">
-                      <SVGIcons alt="Copy" icon={Icons.COPY} width="16px" />
-                    </Button>
-                  </CopyToClipboard>
-                </div>
+                ) : null
               ) : null}
-              {copiedSecret && validMsg('Copied to clipboard.')}
+              {copiedSecret && validMsg('Copied to the clipboard.')}
             </Field>
           </>
         ) : null}
         <Field>
-          <div className="tw-flex tw-justify-end">
-            <Button
-              data-testid="cancel-webhook"
-              size="regular"
-              theme="primary"
-              variant="text"
-              onClick={onCancel}>
-              Discard
-            </Button>
-            {saveState === 'waiting' ? (
+          {data && mode === 'edit' ? (
+            <div className="tw-flex tw-justify-between">
               <Button
-                disabled
-                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                data-testid="cancel-webhook"
                 size="regular"
                 theme="primary"
-                variant="contained">
-                <Loader size="small" type="white" />
+                variant="outlined"
+                onClick={onCancel}>
+                <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />{' '}
+                <span>Back</span>
               </Button>
-            ) : saveState === 'success' ? (
+              <div className="tw-flex tw-justify-end">
+                {getDeleteButton()}
+                {getSaveButton()}
+              </div>
+            </div>
+          ) : (
+            <div className="tw-flex tw-justify-end">
               <Button
-                disabled
-                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                data-testid="cancel-webhook"
                 size="regular"
                 theme="primary"
-                variant="contained">
-                <i aria-hidden="true" className="fa fa-check" />
+                variant="text"
+                onClick={onCancel}>
+                Discard
               </Button>
-            ) : (
-              <Button
-                className="tw-w-16 tw-h-10"
-                data-testid="save-webhook"
-                size="regular"
-                theme="primary"
-                variant="contained"
-                onClick={handleSave}>
-                Save
-              </Button>
-            )}
-          </div>
+              {getSaveButton()}
+            </div>
+          )}
         </Field>
+        {data && isDelete && (
+          <ConfirmationModal
+            bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
+            cancelText="Discard"
+            confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
+            confirmText="Delete"
+            header="Are you sure?"
+            onCancel={() => setIsDelete(false)}
+            onConfirm={handleDelete}
+          />
+        )}
       </div>
     </PageLayout>
   );

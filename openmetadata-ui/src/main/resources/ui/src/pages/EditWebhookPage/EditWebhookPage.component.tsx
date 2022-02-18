@@ -15,22 +15,30 @@ import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getWebhookByName, updateWebhook } from '../../axiosAPIs/webhookAPI';
+import {
+  deleteWebhook,
+  getWebhookByName,
+  updateWebhook,
+} from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
+import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
+  const { isAuthDisabled, isAdminUser } = useAuth();
   const history = useHistory();
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [webhookData, setWebhookData] = useState<Webhook>();
   const [status, setStatus] = useState<LoadingState>('initial');
+  const [deleteStatus, setDeleteStatus] = useState<LoadingState>('initial');
 
   const fetchWebhook = () => {
     setIsLoading(true);
@@ -75,6 +83,22 @@ const EditWebhookPage: FunctionComponent = () => {
       });
   };
 
+  const handleDelete = (id: string) => {
+    setDeleteStatus('waiting');
+    deleteWebhook(id)
+      .then(() => {
+        setDeleteStatus('initial');
+        goToWebhooks();
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message || 'Something went wrong!',
+        });
+        setDeleteStatus('initial');
+      });
+  };
+
   useEffect(() => {
     fetchWebhook();
   }, []);
@@ -83,10 +107,14 @@ const EditWebhookPage: FunctionComponent = () => {
     <PageContainerV1>
       {!isLoading ? (
         <AddWebhook
+          allowAccess={isAdminUser || isAuthDisabled}
           data={webhookData}
+          deleteState={deleteStatus}
           header="Edit Webhook"
+          mode={FormSubmitType.EDIT}
           saveState={status}
           onCancel={handleCancel}
+          onDelete={handleDelete}
           onSave={handleSave}
         />
       ) : (

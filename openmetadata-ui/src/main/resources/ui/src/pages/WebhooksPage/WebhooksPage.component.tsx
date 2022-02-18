@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { Paging } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { deleteWebhook, getWebhooks } from '../../axiosAPIs/webhookAPI';
+import { getWebhooks } from '../../axiosAPIs/webhookAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Webhooks from '../../components/Webhooks/Webhooks';
@@ -68,22 +68,8 @@ const WebhooksPage: FunctionComponent = () => {
     history.push(ROUTES.ADD_WEBHOOK);
   };
 
-  const handleEditWebhook = (name: string) => {
+  const handleClickWebhook = (name: string) => {
     history.push(getEditWebhookPath(name));
-  };
-
-  const handleDeleteWebhook = (id: string) => {
-    setIsLoading(true);
-    deleteWebhook(id)
-      .then(() => {
-        fetchData();
-      })
-      .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Something went wrong!',
-        });
-      });
   };
 
   useEffect(() => {
@@ -97,8 +83,7 @@ const WebhooksPage: FunctionComponent = () => {
           data={data}
           paging={paging}
           onAddWebhook={handleAddWebhook}
-          onDeleteWebhook={handleDeleteWebhook}
-          onEditWebhook={handleEditWebhook}
+          onClickWebhook={handleClickWebhook}
           onPageChange={handlePageChange}
         />
       ) : (

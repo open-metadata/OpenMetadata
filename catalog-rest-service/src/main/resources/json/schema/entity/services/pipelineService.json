@@ -8,7 +8,7 @@
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
-      "enum": ["Airflow", "Prefect", "Glue"],
+      "enum": ["Airflow", "Prefect", "Glue", "Generic"],
       "javaEnums": [
         {
           "name": "Airflow"
@@ -18,6 +18,9 @@
         },
         {
           "name": "Glue"
+        },
+        {
+          "name": "Generic"
         }
       ]
     }
