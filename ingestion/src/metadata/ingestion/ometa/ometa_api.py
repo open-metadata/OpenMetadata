@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -63,7 +64,6 @@ from metadata.ingestion.ometa.openmetadata_rest import (
 from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str
 
 logger = logging.getLogger(__name__)
-
 
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
