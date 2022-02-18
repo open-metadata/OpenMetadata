@@ -48,10 +48,18 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
       )}>
       <div className="tw-mb-2">
         <div className="tw-flex tw-py-1 tw-justify-between">
-          <p className="tw-flex">
-            <span className="tw-text-grey-muted tw-mr-1">Duration:</span>
-            <span>{query.duration} seconds</span>
-          </p>
+          <div className="tw-flex tw-gap-x-2">
+            <p className="tw-flex">
+              <span className="tw-text-grey-muted tw-mr-1">Last run by:</span>
+              <span>{query.user?.displayName ?? query.user?.name}</span>
+            </p>
+            <span className="tw-inline-block tw-text-gray-400">|</span>
+            <p className="tw-flex">
+              <span className="tw-text-grey-muted tw-mr-1">Duration:</span>
+              <span>{query.duration} seconds</span>
+            </p>
+          </div>
+
           <button onClick={() => setExpanded((pre) => !pre)}>
             {expanded ? (
               <i className="fas fa-angle-up tw-mr-4 tw-text-lg" />
