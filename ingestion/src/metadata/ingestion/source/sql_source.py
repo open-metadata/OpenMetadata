@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
+    ConstraintType,
     DataModel,
     ModelType,
     Table,
@@ -94,6 +95,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
+        self.table_constraints = None
         self.database_source_state = set()
         if self.config.dbt_catalog_file is not None:
             with open(self.config.dbt_catalog_file, "r", encoding="utf-8") as catalog:
@@ -222,6 +224,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     fullyQualifiedName=fqn,
                     columns=table_columns,
                 )
+                if self.table_constraints:
+                    table_entity.tableConstraints = self.table_constraints
                 try:
                     if self.sql_config.generate_sample_data:
                         table_data = self.fetch_sample_data(schema, table_name)
@@ -441,21 +445,21 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Prepare column constraints for the Table Entity
         """
-        constraint = None
-        if len(pk_columns) <= 1:
-            if column["nullable"]:
-                constraint = Constraint.NULL
-            elif not column["nullable"]:
-                constraint = Constraint.NOT_NULL
-
+        if column["nullable"]:
+            constraint = Constraint.NULL
+        elif not column["nullable"]:
+            constraint = Constraint.NOT_NULL
+        if len(pk_columns) > 1:
+            SQLSource().table_constraints = [
+                TableConstraint(
+                    constraintType=ConstraintType.PRIMARY_KEY, columns=pk_columns
+                )
+            ]
+        else:
             if column["name"] in pk_columns:
                 constraint = Constraint.PRIMARY_KEY
-            elif column["name"] in unique_columns:
-                constraint = Constraint.UNIQUE
-        else:
-            constraint = TableConstraint(
-                constraintType=Constraint.PRIMARY_KEY.value, columns=pk_columns
-            )
+        if column["name"] in unique_columns:
+            constraint = Constraint.UNIQUE
         return constraint
 
     def _get_columns(

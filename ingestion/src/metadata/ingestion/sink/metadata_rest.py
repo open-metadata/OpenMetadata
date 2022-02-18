@@ -219,6 +219,7 @@ class MetadataRestSink(Sink[Entity]):
                     db_and_table.database.name.__root__,
                 )
             )
+            logger.debug(traceback.print_exc())
             logger.error(err)
             self.status.failure(f"Table: {db_and_table.table.name.__root__}")
 
