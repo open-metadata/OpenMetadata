@@ -44,7 +44,7 @@ class ProfilerDef(BaseModel):
     JSON workflow
     """
 
-    name: str
+    name: str  # Profiler name
     table_metrics: List[str]  # names of supported table metrics
     metrics: List[str]  # names of currently supported Static and Composed metrics
     time_metrics: List[TimeMetricDef] = None

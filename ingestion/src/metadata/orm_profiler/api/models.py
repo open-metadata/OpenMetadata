@@ -10,7 +10,10 @@
 #  limitations under the License.
 
 """
-Return types for Profiler workflow execution
+Return types for Profiler workflow execution.
+
+We need to define this class as we end up having
+multiple profilers per table and columns.
 """
 from typing import List
 
@@ -18,7 +21,6 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.orm_profiler.profiles.core import Profiler
-from metadata.orm_profiler.validations.core import Validation
 
 
 class WorkflowResult(BaseModel):
@@ -35,26 +37,3 @@ class ProfilerResult(WorkflowResult):
     table: Table  # Table Entity
     table_profiler: Profiler  # Profiler with table results
     column_profilers: List[ColumnProfiler]  # Profiler with col results
-
-
-class ColumnTest(WorkflowResult):
-    column: str
-    name: str  # Test Name
-    validations: List[Validation]
-
-
-class ColumnResult(WorkflowResult):
-    name: str
-    tests: List[ColumnTest]
-
-
-class TableResult(WorkflowResult):
-    name: str  # Test name
-    validations: List[Validation]
-
-
-class TestResult(WorkflowResult):
-    name: str  # Test suite name
-    table: Table  # Table Entity
-    table_results: List[TableResult] = None
-    column_results: List[ColumnResult] = None

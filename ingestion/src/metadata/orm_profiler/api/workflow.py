@@ -37,22 +37,13 @@ from metadata.ingestion.source.sql_source_common import (
     SQLConnectionConfig,
     SQLSourceStatus,
 )
-from metadata.orm_profiler.api.models import (
-    ColumnProfiler,
-    ColumnResult,
-    ColumnTest,
-    ProfilerResult,
-    TableResult,
-    TestResult,
-)
+from metadata.orm_profiler.api.models import ColumnProfiler, ProfilerResult
 from metadata.orm_profiler.engines import create_and_bind_session, get_engine
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.core import Profiler, SingleProfiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
 from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 from metadata.orm_profiler.utils import logger
-from metadata.orm_profiler.validations.core import Validation
-from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
 from metadata.orm_profiler.validations.models import TestDef
 
 logger = logger()
@@ -83,7 +74,6 @@ class ProfilerWorkflow:
     sink: Sink
     metadata: OpenMetadata
     session: Session
-    visitor: ExpVisitor
     report = {}
 
     def __init__(self, config: ProfilerWorkflowConfig):
@@ -125,9 +115,6 @@ class ProfilerWorkflow:
 
         # SQLAlchemy Session to run the profilers
         self.session: Session = create_and_bind_session(get_engine(self.source_config))
-
-        # Parse tree visitor to get information from test expressions
-        self.visitor = ExpVisitor()
 
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
@@ -256,70 +243,7 @@ class ProfilerWorkflow:
 
         return res
 
-    def parse_expression(self, expression: str) -> List[Validation]:
-        """
-        Given a test expression, parse it with our validation
-        grammar and convert it to a list of Validations.
-
-        Each expression can be composed of multiple validations,
-        even in the same test definition.
-        """
-        raw_validation: List[Dict[str, str]] = parse(expression, self.visitor)
-        return [Validation.create(val) for val in raw_validation]
-
-    def get_validations(self, table: Table) -> TestResult:
-        """
-        Given a table, check if there is any configured test we
-        should run against it.
-
-        We will return ValidationResult with the parsed
-        validations
-        """
-
-        # Iterate over all table tests and check if we have
-        # enabled tests for our table
-        table_results = (
-            [
-                TableResult(
-                    name=test.name, validations=self.parse_expression(test.expression)
-                )
-                for test in self.config.tests.table_tests
-                if test.table == table.fullyQualifiedName and test.enabled
-            ]
-            if self.config.tests.table_tests
-            else None
-        )
-
-        # Get all column tests if they are defined on
-        # our table and are enabled
-        column_results = (
-            [
-                ColumnResult(
-                    name=test_def.name,
-                    tests=[
-                        ColumnTest(
-                            column=col_test.column,
-                            name=col_test.name,
-                            validations=self.parse_expression(col_test.expression),
-                        )
-                        for col_test in test_def.columns
-                        if col_test.enabled
-                    ],
-                )
-                for test_def in self.config.tests.column_tests
-            ]
-            if self.config.tests.column_tests
-            else None
-        )
-
-        return TestResult(
-            name=self.config.tests.name,
-            table=table,
-            table_results=table_results,
-            column_results=column_results,
-        )
-
-    def validate_entity(self, orm, profiler_results: ProfilerResult) -> TestResult:
+    def validate_entity(self, orm, profiler_results: ProfilerResult) -> TestDef:
         """
         Given a table, check if it has any tests pending.
 
@@ -337,16 +261,16 @@ class ProfilerWorkflow:
             f"Checking validations for {profiler_results.table.fullyQualifiedName}..."
         )
 
-        # Convert all test expressions into validations
-        results: TestResult = self.get_validations(table=profiler_results.table)
+        # We have all validations parsed at read-time
+        test_def: TestDef = self.config.tests
 
         # Compute all validations against the profiler results
-        for test in results.table_results:
-            for validation in test.validations:
+        for test in test_def.table_tests:
+            for validation in test.expression:
                 validation.validate(profiler_results.table_profiler.results)
 
-        for column_res in results.column_results:
-            for test in column_res.tests:
+        for column_res in test_def.column_tests:
+            for test in column_res.columns:
                 profiler = next(
                     iter(
                         col_profiler.profiler
@@ -361,10 +285,10 @@ class ProfilerWorkflow:
                     )
                     continue
 
-                for validation in test.validations:
+                for validation in test.expression:
                     validation.validate(profiler.results)
 
-        return results
+        return test_def
 
     def execute(self):
         """
