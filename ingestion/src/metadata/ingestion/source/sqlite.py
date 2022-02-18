@@ -23,10 +23,11 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class SQLiteConfig(SQLConnectionConfig):
-    host_port = "/:memory:"
+    host_port = ""
     scheme = "sqlite+pysqlite"
     service_type = DatabaseServiceType.SQLite.value
     connector_type = "sqlite"
+    database = ":memory:"
 
     def get_connection_url(self):
         return super().get_connection_url()
