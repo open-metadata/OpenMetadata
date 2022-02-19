@@ -71,6 +71,8 @@ const DashboardDetailsProps = {
   addLineageHandler: jest.fn(),
   removeLineageHandler: jest.fn(),
   entityLineageHandler: jest.fn(),
+  entityThread: [],
+  isentityThreadLoading: false,
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {
