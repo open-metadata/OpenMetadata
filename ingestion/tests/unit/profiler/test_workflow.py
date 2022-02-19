@@ -15,19 +15,12 @@ Validate workflow configs and filters
 import uuid
 from copy import deepcopy
 
-from ingestion.build.lib.metadata.orm_profiler.validations.core import Validation
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.profiles.models import ProfilerDef
-from metadata.orm_profiler.validations.models import (
-    ColumnTest,
-    ColumnTestExpression,
-    TableTest,
-    TestDef,
-)
 
 config = {
     "source": {"type": "sqlite", "config": {"service_name": "my_service"}},
