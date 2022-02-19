@@ -47,6 +47,7 @@ import SchemaEditor from '../schema-editor/SchemaEditor';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
+import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -85,6 +86,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   entityLineageHandler,
   isLineageLoading,
   isSampleDataLoading,
+  isQueriesLoading,
+  tableQueries,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -151,6 +154,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 2,
     },
     {
+      name: 'Queries',
+      icon: {
+        alt: 'table_queries',
+        name: 'table_queries',
+        title: 'Table Queries',
+        selectedName: '',
+      },
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Profiler',
       icon: {
         alt: 'profiler',
@@ -159,7 +173,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-profilercolor',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Lineage',
@@ -170,7 +184,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 4,
+      position: 5,
     },
     {
       name: 'DBT',
@@ -182,7 +196,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: false,
       isHidden: !dataModel?.sql,
-      position: 5,
+      position: 6,
     },
     {
       name: 'Manage',
@@ -195,7 +209,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 6,
+      position: 7,
     },
   ];
 
@@ -472,6 +486,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 3 && (
               <div>
+                <TableQueries
+                  isLoading={isQueriesLoading}
+                  queries={tableQueries}
+                />
+              </div>
+            )}
+            {activeTab === 4 && (
+              <div>
                 <TableProfiler
                   columns={columns.map((col) => ({
                     constraint: col.constraint as string,
@@ -481,7 +503,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 4 && (
+            {activeTab === 5 && (
               <div
                 className={classNames(
                   location.pathname.includes(ROUTES.TOUR)
@@ -503,7 +525,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 5 && Boolean(dataModel?.sql) && (
+            {activeTab === 6 && Boolean(dataModel?.sql) && (
               <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
                 <SchemaEditor
                   className="tw-h-full"
@@ -512,7 +534,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 6 && !deleted && (
+            {activeTab === 7 && !deleted && (
               <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}

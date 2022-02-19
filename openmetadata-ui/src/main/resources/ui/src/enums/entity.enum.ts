@@ -43,4 +43,5 @@ export enum TabSpecificField {
   DATAMODEL = 'dataModel',
   CHARTS = 'charts',
   TASKS = 'tasks',
+  TABLE_QUERIES = 'tableQueries',
 }

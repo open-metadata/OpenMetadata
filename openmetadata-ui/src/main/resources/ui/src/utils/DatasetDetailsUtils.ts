@@ -28,6 +28,11 @@ export const datasetTableTabs = [
     field: TabSpecificField.SAMPLE_DATA,
   },
   {
+    name: 'Queries',
+    path: 'table_queries',
+    field: TabSpecificField.TABLE_QUERIES,
+  },
+  {
     name: 'Profiler',
     path: 'profiler',
   },
@@ -53,24 +58,28 @@ export const getCurrentDatasetTab = (tab: string) => {
       currentTab = 2;
 
       break;
-
-    case 'profiler':
+    case 'table_queries':
       currentTab = 3;
 
       break;
 
-    case 'lineage':
+    case 'profiler':
       currentTab = 4;
 
       break;
 
-    case 'dbt':
+    case 'lineage':
       currentTab = 5;
 
       break;
 
-    case 'manage':
+    case 'dbt':
       currentTab = 6;
+
+      break;
+
+    case 'manage':
+      currentTab = 7;
 
       break;
 
