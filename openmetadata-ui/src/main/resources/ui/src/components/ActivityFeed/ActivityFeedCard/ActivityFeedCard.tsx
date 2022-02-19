@@ -21,12 +21,14 @@ import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEdito
 interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   feed: Post;
   replies: number;
+  repliedUsers: Array<string>;
 }
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
   className,
   replies,
+  repliedUsers,
 }) => {
   return (
     <div className={classNames(className)}>
@@ -46,9 +48,21 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           markdown={feed.message}
         />
       </div>
-      <p className="tw-text-right link-text">
-        {replies > 1 ? `${replies} replies` : `${replies} reply`}
-      </p>
+      <div className="tw-ml-7 tw-mt-2">
+        <div className="tw-flex tw-group">
+          {repliedUsers.map((u, i) => (
+            <Avatar
+              className="tw-mt-0.5 tw-mx-0.5"
+              key={i}
+              name={u}
+              width="18"
+            />
+          ))}
+          <p className="tw-ml-1 link-text">
+            {replies > 1 ? `${replies} replies` : `${replies} reply`}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

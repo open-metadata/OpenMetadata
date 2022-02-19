@@ -57,12 +57,14 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               .map((feed, index) => {
                 const mainFeed = feed.posts?.[0];
                 const replies = feed.posts.length;
+                const repliedUsers = feed.posts.map((f) => f.from);
 
                 return (
                   <ActivityFeedCard
                     className="tw-mb-2"
                     feed={mainFeed}
                     key={index}
+                    repliedUsers={repliedUsers}
                     replies={replies}
                   />
                 );

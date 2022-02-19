@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import React from 'react';
+import { getRandomColor } from '../../../utils/CommonUtils';
 
 const Avatar = ({
   name,
@@ -25,19 +26,7 @@ const Avatar = ({
   textClass?: string;
   className?: string;
 }) => {
-  const getBgColorByCode = (code: number) => {
-    if (code >= 65 && code <= 71) {
-      return '#B02AAC40';
-    }
-    if (code >= 72 && code <= 78) {
-      return '#7147E840';
-    }
-    if (code >= 79 && code <= 85) {
-      return '#FFC34E40';
-    } else {
-      return '#1890FF40';
-    }
-  };
+  const { color, character } = getRandomColor(name);
 
   return (
     <div
@@ -49,11 +38,11 @@ const Avatar = ({
         height: `${width}px`,
         width: `${width}px`,
         borderRadius: '50%',
-        background: getBgColorByCode(name?.charCodeAt(0)),
+        background: color,
         color: 'black',
       }}>
       <p className={classNames('tw-self-center tw-capitalize', textClass)}>
-        {name?.[0]}
+        {character}
       </p>
     </div>
   );
