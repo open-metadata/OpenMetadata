@@ -42,10 +42,14 @@ CREATE TABLE IF NOT EXISTS glossary_term_entity (
 );
 
 
--- Set default as false for all existing roles, to avoid unintended manipulation of roles during migration.
+-- Set default as false for all existing roles except DataConsumer, to avoid unintended manipulation of roles during migration.
 
 UPDATE role_entity
 SET json = JSON_SET(json, '$.default', FALSE);
+
+UPDATE role_entity
+SET json = JSON_SET(json, '$.default', TRUE)
+WHERE name = 'DataConsumer';
 
 ALTER TABLE role_entity
 ADD COLUMN `default` BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.default')),
