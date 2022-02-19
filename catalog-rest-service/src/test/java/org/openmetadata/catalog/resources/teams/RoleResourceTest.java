@@ -17,13 +17,17 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import javax.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -37,7 +41,9 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -47,6 +53,44 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   public RoleResourceTest() {
     super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false, false);
+  }
+
+  @Test
+  void get_queryDefaultRole(TestInfo test) throws IOException {
+    Role defaultRole = createRolesAndSetDefault(test, 7);
+    List<Role> defaultRoles = getDefaultRoles();
+    assertEquals(1, defaultRoles.size());
+    assertEquals(defaultRole.getId(), defaultRoles.get(0).getId());
+  }
+
+  public List<Role> getDefaultRoles() throws HttpResponseException {
+    return listEntities(Map.of("default", "true"), ADMIN_AUTH_HEADERS).getData();
+  }
+
+  /**
+   * Creates the given number of roles and sets one of them as the default role.
+   *
+   * @return the default role
+   */
+  public Role createRolesAndSetDefault(TestInfo test, @Positive int numberOfRoles) throws IOException {
+    // Create a set of roles.
+    for (int i = 0; i < numberOfRoles; i++) {
+      CreateRole create = createRequest(test, i + 1);
+      createAndCheckRole(create, ADMIN_AUTH_HEADERS);
+    }
+
+    // Set one of the roles as default.
+    Role role =
+        getEntityByName(
+            getEntityName(test, new Random().nextInt(numberOfRoles)),
+            Collections.emptyMap(),
+            RoleResource.FIELDS,
+            ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(role);
+    role.setDefault(true);
+    ChangeDescription change = getChangeDescription(role.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("default").withOldValue(false).withNewValue(true));
+    return patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -78,7 +122,6 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Test
   void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create table without any attributes
     Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(role);

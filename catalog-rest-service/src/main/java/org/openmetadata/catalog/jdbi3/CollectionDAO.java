@@ -1061,6 +1061,12 @@ public interface CollectionDAO {
       return "name";
     }
 
+    @SqlQuery("SELECT id FROM role_entity WHERE `default` = TRUE")
+    List<String> getDefaultRolesIds();
+
+    @SqlQuery("SELECT json FROM role_entity WHERE `default` = TRUE")
+    List<String> getDefaultRoles();
+
     @Override
     default EntityReference getEntityReference(Role entity) {
       return new RoleEntityInterface(entity).getEntityReference();

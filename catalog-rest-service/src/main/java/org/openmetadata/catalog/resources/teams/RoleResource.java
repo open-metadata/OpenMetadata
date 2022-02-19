@@ -124,6 +124,9 @@ public class RoleResource {
   public ResultList<Role> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "List only default role(s)", schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("default")
+          boolean defaultParam,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -152,7 +155,10 @@ public class RoleResource {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Role> roles;
-    if (before != null) { // Reverse paging
+    if (defaultParam) {
+      // The number of default roles is usually 1, and hence does not require pagination.
+      roles = dao.getDefaultRolesResultList(uriInfo, fields);
+    } else if (before != null) { // Reverse paging
       roles = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
     } else { // Forward paging or first page
       roles = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
@@ -342,7 +348,6 @@ public class RoleResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PatchResponse<Role> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
