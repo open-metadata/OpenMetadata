@@ -228,7 +228,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.table_constraints:
                     table_entity.tableConstraints = self.table_constraints
                 try:
-                    if not self.sql_config.generate_sample_data:
+                    if self.sql_config.generate_sample_data:
                         table_data = self.fetch_sample_data(schema, table_name)
                         table_entity.sampleData = table_data
                 # Catch any errors during the ingestion and continue
