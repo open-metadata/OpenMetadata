@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -25,6 +26,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -62,7 +64,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import {
   defaultFields,
   getCurrentPipelineTab,
@@ -115,6 +117,10 @@ const PipelineDetailsPage = () => {
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
+
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -249,6 +255,23 @@ const PipelineDetailsPage = () => {
 
           break;
         }
+
+        break;
+      }
+      case TabSpecificField.ACTIVITY_FEED: {
+        setIsentityThreadLoading(true);
+        getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
+          .then((res: AxiosResponse) => {
+            const { data } = res.data;
+            setEntityThread(data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: 'Error while fetching entity feeds',
+            });
+          })
+          .finally(() => setIsentityThreadLoading(false));
 
         break;
       }
@@ -451,10 +474,12 @@ const PipelineDetailsPage = () => {
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}
+          entityThread={entityThread}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}

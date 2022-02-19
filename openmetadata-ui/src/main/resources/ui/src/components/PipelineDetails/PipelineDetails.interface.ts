@@ -14,6 +14,7 @@
 import { Operation } from 'fast-json-patch';
 import {
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -49,6 +50,8 @@ export interface PipeLineDetailsProp {
   tasks: Task[];
   deleted?: boolean;
   isLineageLoading?: boolean;
+  entityThread: EntityThread[];
+  isentityThreadLoading: boolean;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
