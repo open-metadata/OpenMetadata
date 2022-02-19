@@ -16,13 +16,11 @@ JSON workflows to the profiler
 from typing import List
 
 from parsimonious import ParseError
-
-from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
-
-from metadata.orm_profiler.validations.core import Validation
 from pydantic import BaseModel, validator
-from metadata.orm_profiler.utils import logger
 
+from metadata.orm_profiler.utils import logger
+from metadata.orm_profiler.validations.core import Validation
+from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
 
 logger = logger()
 visitor = ExpVisitor()

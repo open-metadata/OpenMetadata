@@ -15,9 +15,8 @@ Core Validation definitions
 import operator as op
 from typing import Any, Callable, Dict, Union
 
-from pydantic import BaseModel, StrictStr, ValidationError, validator
+from pydantic import ValidationError
 
-from metadata.orm_profiler.metrics.core import Metric
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.utils import logger
 
