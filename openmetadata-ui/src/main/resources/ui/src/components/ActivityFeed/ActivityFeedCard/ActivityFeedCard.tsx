@@ -41,7 +41,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           </span>
         </h6>
       </div>
-      <div className="tw-ml-7 tw-w-4/5">
+      <div className="tw-mx-7 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md">
         <RichTextEditorPreviewer
           className="activity-feed-card-text"
           enableSeeMoreVariant={false}
