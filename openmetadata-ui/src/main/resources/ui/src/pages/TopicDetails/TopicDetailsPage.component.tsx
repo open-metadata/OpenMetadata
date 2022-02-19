@@ -14,10 +14,11 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags, TableDetail } from 'Models';
+import { EntityTags, EntityThread, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -33,7 +34,7 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
@@ -44,6 +45,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -85,6 +87,9 @@ const TopicDetailsPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [currentVersion, setCurrentVersion] = useState<string>();
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -99,9 +104,28 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const fetchActivityFeed = () => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN))
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setEntityThread(data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feeds',
+        });
+      })
+      .finally(() => setIsentityThreadLoading(false));
+  };
+
   useEffect(() => {
     if (topicDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentTopicTab(tab));
+    }
+    if (TabSpecificField.ACTIVITY_FEED === tab) {
+      fetchActivityFeed();
     }
   }, [tab]);
 
@@ -315,8 +339,10 @@ const TopicDetailsPage: FunctionComponent = () => {
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityName={name}
+          entityThread={entityThread}
           followTopicHandler={followTopic}
           followers={followers}
+          isentityThreadLoading={isentityThreadLoading}
           maximumMessageSize={maximumMessageSize}
           owner={owner}
           partitions={partitions}

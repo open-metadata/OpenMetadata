@@ -21,6 +21,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
+import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -56,6 +57,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   version,
   versionHandler,
   deleted,
+  entityThread,
+  isentityThreadLoading,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -120,6 +123,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
+      name: 'Activity Feed',
+      icon: {
+        alt: 'activity_feed',
+        name: 'activity_feed',
+        title: 'Activity Feed',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Config',
       icon: {
         alt: 'config',
@@ -128,7 +142,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         selectedName: 'icon-configcolor',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
     {
       name: 'Manage',
@@ -141,7 +155,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 3,
+      position: 4,
     },
   ];
   const extraInfo = [
@@ -324,11 +338,24 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               </>
             )}
             {activeTab === 2 && (
+              <div
+                className="tw-py-4 tw-grid tw-grid-cols-3 entity-feed-list"
+                id="activityfeed">
+                <div />
+                <ActivityFeedList
+                  className=""
+                  feedList={entityThread}
+                  isLoading={isentityThreadLoading}
+                />
+                <div />
+              </div>
+            )}
+            {activeTab === 3 && (
               <div>
                 <SchemaEditor value={JSON.stringify(getConfigObject())} />
               </div>
             )}
-            {activeTab === 3 && !deleted && (
+            {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
                   currentTier={tier?.tagFQN}

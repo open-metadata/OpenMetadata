@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityTags, TableDetail } from 'Models';
+import { EntityTags, EntityThread, TableDetail } from 'Models';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -37,6 +37,8 @@ export interface TopicDetailsProps {
   topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   deleted?: boolean;
+  entityThread: EntityThread[];
+  isentityThreadLoading: boolean;
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;
