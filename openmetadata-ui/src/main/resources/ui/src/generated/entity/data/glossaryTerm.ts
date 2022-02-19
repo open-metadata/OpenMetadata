@@ -13,106 +13,83 @@
  */
 
 /**
- * This schema defines the Topic entity. A topic is a feed into which message are published
- * to by publishers and read from by consumers in a messaging service.
+ * This schema defines the Glossary term entities.
  */
-export interface Topic {
+export interface GlossaryTerm {
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
   /**
-   * Topic clean up policies. For Kafka - `cleanup.policy` configuration.
+   * Other glossary terms that are children of this glossary term.
    */
-  cleanupPolicies?: CleanupPolicy[];
+  children?: EntityReference[];
   /**
    * When `true` indicates the entity has been soft deleted.
    */
   deleted?: boolean;
   /**
-   * Description of the topic instance.
+   * Description of the glossary term.
    */
   description?: string;
   /**
-   * Display Name that identifies this topic. It could be title or label from the source
-   * services.
+   * Display Name that identifies this glossary.
    */
   displayName?: string;
   /**
-   * Followers of this table.
-   */
-  followers?: EntityReference[];
-  /**
-   * Name that uniquely identifies a topic in the format 'messagingServiceName.topicName'.
+   * A unique name that identifies a glossary term. It captures name hierarchy of glossary of
+   * terms in the form of `glossaryName.parentTerm.childTerm`.
    */
   fullyQualifiedName?: string;
+  /**
+   * Glosary that this term belongs to.
+   */
+  glossary: EntityReference;
   /**
    * Link to the resource corresponding to this entity.
    */
   href?: string;
   /**
-   * Unique identifier that identifies this topic instance.
+   * Unique identifier of a glossary term instance.
    */
   id: string;
   /**
-   * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
-   */
-  maximumMessageSize?: number;
-  /**
-   * Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas`
-   * configuration.
-   */
-  minimumInSyncReplicas?: number;
-  /**
-   * Name that identifies the topic.
+   * Preferred name for the glossary term.
    */
   name: string;
   /**
-   * Owner of this topic.
+   * Parent glossary term that this term is child of. When `null` this term is the root term
+   * of the glossary.
    */
-  owner?: EntityReference;
+  parent?: EntityReference;
   /**
-   * Number of partitions into which the topic is divided.
+   * Link to a reference from an external glossary.
    */
-  partitions: number;
+  references?: TermReference;
   /**
-   * Replication Factor in integer (more than 1).
+   * Other glossary terms that are related to this glossary term.
    */
-  replicationFactor?: number;
+  relatedTerms?: EntityReference[];
   /**
-   * Maximum size of a partition in bytes before old data is discarded. For Kafka -
-   * `retention.bytes` configuration.
+   * User names of the reviewers for this glossary.
    */
-  retentionSize?: number;
+  reviewers?: EntityReference[];
   /**
-   * Retention time in milliseconds. For Kafka - `retention.ms` configuration.
+   * SKOS data in JSON-LD format
    */
-  retentionTime?: number;
+  skos?: string;
   /**
-   * Schema used for message serialization. Optional as some topics may not have associated
-   * schemas.
+   * Status of the glossary term.
    */
-  schemaText?: string;
+  status?: Status;
   /**
-   * Schema used for message serialization.
+   * Alternate names that are synonyms or near-synonyms for the glossary term.
    */
-  schemaType?: SchemaType;
+  synonyms?: string[];
   /**
-   * Link to the messaging cluster/service where this topic is hosted in.
-   */
-  service: EntityReference;
-  /**
-   * Service type where this topic is hosted in.
-   */
-  serviceType?: MessagingServiceType;
-  /**
-   * Tags for this table.
+   * Tags for this glossary term.
    */
   tags?: TagLabel[];
-  /**
-   * Contains key/value pair of topic configuration.
-   */
-  topicConfig?: { [key: string]: any };
   /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
@@ -170,24 +147,17 @@ export interface FieldChange {
 }
 
 /**
- * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
- */
-export enum CleanupPolicy {
-  Compact = 'compact',
-  Delete = 'delete',
-}
-
-/**
- * Followers of this table.
+ * Other glossary terms that are children of this glossary term.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owner of this topic.
+ * Glosary that this term belongs to.
  *
- * Link to the messaging cluster/service where this topic is hosted in.
+ * Parent glossary term that this term is child of. When `null` this term is the root term
+ * of the glossary.
  */
 export interface EntityReference {
   /**
@@ -219,25 +189,26 @@ export interface EntityReference {
 }
 
 /**
- * Schema used for message serialization.
- *
- * Schema type used for the message.
+ * Link to a reference from an external glossary.
  */
-export enum SchemaType {
-  Avro = 'Avro',
-  JSON = 'JSON',
-  Other = 'Other',
-  Protobuf = 'Protobuf',
+export interface TermReference {
+  /**
+   * Name that identifies the source of an external glossary term. Example `HealthCare.gov`
+   */
+  endpoint?: string;
+  /**
+   * Name that identifies the source of an external glossary term. Example `HealthCare.gov`
+   */
+  name?: string;
 }
 
 /**
- * Service type where this topic is hosted in.
- *
- * Type of messaging service - Kafka or Pulsar.
+ * Status of the glossary term.
  */
-export enum MessagingServiceType {
-  Kafka = 'Kafka',
-  Pulsar = 'Pulsar',
+export enum Status {
+  Approved = 'Approved',
+  Deprecated = 'Deprecated',
+  Draft = 'Draft',
 }
 
 /**

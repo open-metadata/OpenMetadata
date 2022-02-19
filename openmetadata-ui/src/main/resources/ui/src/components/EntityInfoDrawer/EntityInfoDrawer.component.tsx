@@ -28,6 +28,7 @@ import useToastContext from '../../hooks/useToastContext';
 import { getHeaderLabel } from '../../utils/EntityLineageUtils';
 import { getEntityOverview, getEntityTags } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
 import Tags from '../tags/tags';
@@ -227,7 +228,7 @@ const EntityInfoDrawer = ({
             <span className="tw-text-grey-muted">Description</span>
             <div>
               {entityDetail.description?.trim() ? (
-                entityDetail.description
+                <RichTextEditorPreviewer markdown={entityDetail.description} />
               ) : (
                 <p className="tw-text-xs tw-text-grey-muted">
                   No description added

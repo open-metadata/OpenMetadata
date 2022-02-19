@@ -31,6 +31,10 @@ export interface Thread {
    */
   addressedTo?: string;
   /**
+   * User who created the thread.
+   */
+  createdBy?: string;
+  /**
    * Link to the resource corresponding to this entity.
    */
   href?: string;
@@ -40,9 +44,22 @@ export interface Thread {
   id: string;
   posts: Post[];
   /**
+   * When `true` indicates the thread has been resolved
+   */
+  resolved?: boolean;
+  /**
    * Timestamp of the when the first post created the thread in Unix epoch time milliseconds.
    */
   threadTs?: number;
+  /**
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
+   */
+  updatedAt?: number;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
 }
 
 /**
@@ -50,7 +67,7 @@ export interface Thread {
  */
 export interface Post {
   /**
-   * ID of User (regular user or a bot) posting the message.
+   * Name of the User posting the message
    */
   from: string;
   /**

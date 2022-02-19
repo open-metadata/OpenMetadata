@@ -13,91 +13,42 @@
  */
 
 /**
- * Create a topic entity request
+ * Create Glossary entity request
  */
-export interface CreateTopic {
+export interface CreateGlossary {
   /**
-   * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
-   */
-  cleanupPolicies?: CleanupPolicy[];
-  /**
-   * Description of the topic instance. What it has and how to use it.
+   * Description of the glossary instance.
    */
   description?: string;
   /**
-   * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
+   * Display Name that identifies this glossary.
    */
-  maximumMessageSize?: number;
+  displayName?: string;
   /**
-   * Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas`
-   * configuration.
-   */
-  minimumInSyncReplicas?: number;
-  /**
-   * Name that identifies this topic instance uniquely.
+   * Name that identifies this glossary.
    */
   name: string;
   /**
-   * Owner of this topic
+   * Owner of this glossary
    */
   owner?: EntityReference;
   /**
-   * Number of partitions into which the topic is divided.
+   * User names of the reviewers for this glossary.
    */
-  partitions: number;
+  reviewers?: string[];
   /**
-   * Replication Factor in integer (more than 1).
-   */
-  replicationFactor?: number;
-  /**
-   * Maximum size of a partition in bytes before old data is discarded. For Kafka -
-   * `retention.bytes` configuration.
-   */
-  retentionSize?: number;
-  /**
-   * Retention time in milliseconds. For Kafka - `retention.ms` configuration.
-   */
-  retentionTime?: number;
-  /**
-   * Schema used for message serialization. Optional as some topics may not have associated
-   * schemas.
-   */
-  schemaText?: string;
-  /**
-   * Schema used for message serialization.
-   */
-  schemaType?: SchemaType;
-  /**
-   * Link to the messaging service where this topic is hosted in
-   */
-  service: EntityReference;
-  /**
-   * Tags for this topic
+   * Tags for this glossary
    */
   tags?: TagLabel[];
-  /**
-   * Contains key/value pair of topic configuration.
-   */
-  topicConfig?: { [key: string]: any };
 }
 
 /**
- * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
- */
-export enum CleanupPolicy {
-  Compact = 'compact',
-  Delete = 'delete',
-}
-
-/**
- * Owner of this topic
+ * Owner of this glossary
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Link to the messaging service where this topic is hosted in
  */
 export interface EntityReference {
   /**
@@ -126,18 +77,6 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
-}
-
-/**
- * Schema used for message serialization.
- *
- * Schema type used for the message.
- */
-export enum SchemaType {
-  Avro = 'Avro',
-  JSON = 'JSON',
-  Other = 'Other',
-  Protobuf = 'Protobuf',
 }
 
 /**
