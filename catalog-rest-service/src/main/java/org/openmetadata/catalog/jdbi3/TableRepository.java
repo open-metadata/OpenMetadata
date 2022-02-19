@@ -842,10 +842,12 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if (addedColumn.getDescription().isEmpty() && !deleted.getDescription().isEmpty()) {
+          if ((addedColumn.getDescription() == null || addedColumn.getDescription().isEmpty())
+              && (deleted.getDescription() == null || !deleted.getDescription().isEmpty())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if (addedColumn.getTags().isEmpty() && !deleted.getTags().isEmpty()) {
+          if ((addedColumn.getTags() == null || addedColumn.getTags().isEmpty())
+              && (deleted.getTags() == null || !deleted.getTags().isEmpty())) {
             addedColumn.setTags(deleted.getTags());
           }
         }
