@@ -24,7 +24,6 @@ import click
 from pydantic import Field
 from sqlalchemy.orm import DeclarativeMeta, InstrumentedAttribute, Session
 
-from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.config.common import ConfigModel, DynamicTypedConfig
 from metadata.config.workflow import get_ingestion_source, get_sink
 from metadata.generated.schema.entity.data.database import Database
@@ -41,6 +40,7 @@ from metadata.ingestion.source.sql_source_common import (
 )
 from metadata.orm_profiler.api.models import ColumnProfiler, ProfilerResult
 from metadata.orm_profiler.engines import create_and_bind_session, get_engine
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.core import Profiler, SingleProfiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
