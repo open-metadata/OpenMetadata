@@ -446,6 +446,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Prepare column constraints for the Table Entity
         """
+        constraint = None
         if column["nullable"]:
             constraint = Constraint.NULL
         elif not column["nullable"]:
