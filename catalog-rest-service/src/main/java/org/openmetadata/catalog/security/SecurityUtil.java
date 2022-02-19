@@ -139,4 +139,14 @@ public final class SecurityUtil {
     }
     return target.request();
   }
+
+  /**
+   * Returns true if authentication is enabled.
+   *
+   * @param securityContext security context
+   * @return true if jwt filter based authentication is enabled, false otherwise
+   */
+  public static boolean isSecurityEnabled(SecurityContext securityContext) {
+    return !securityContext.getAuthenticationScheme().equals(SecurityContext.BASIC_AUTH);
+  }
 }

@@ -23,12 +23,18 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.ws.rs.core.SecurityContext;
+import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
+import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
@@ -44,10 +50,13 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException, ParseException {
-    // Validate user creating thread
+  public Thread create(Thread thread, SecurityContext securityContext) throws IOException, ParseException {
     String fromUser = thread.getPosts().get(0).getFrom();
-    dao.userDAO().findEntityByName(fromUser);
+
+    if (SecurityUtil.isSecurityEnabled(securityContext)) {
+      // Validate user creating thread if security is enabled
+      dao.userDAO().findEntityByName(fromUser);
+    }
 
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -137,6 +146,46 @@ public class FeedRepository {
   }
 
   @Transaction
+  public ThreadCount getThreadsCount(String link, boolean isResolved) throws IOException {
+    ThreadCount threadCount = new ThreadCount();
+    List<List<String>> result;
+    List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
+    AtomicInteger totalCount = new AtomicInteger(0);
+    if (link == null) {
+      // Get thread count of all entities
+      result =
+          dao.feedDAO()
+              .listCountByEntityLink(
+                  StringUtils.EMPTY, "thread", StringUtils.EMPTY, Relationship.IS_ABOUT.ordinal(), isResolved);
+    } else {
+      EntityLink entityLink = EntityLink.parse(link);
+      EntityReference reference = EntityUtil.validateEntityLink(entityLink);
+      if (reference.getType().equals(Entity.USER)) {
+        List<String> threadIds = new ArrayList<>(getUserThreadIds(reference));
+        result = dao.feedDAO().listCountByThreads(threadIds, isResolved);
+      } else {
+        result =
+            dao.feedDAO()
+                .listCountByEntityLink(
+                    entityLink.getFullyQualifiedFieldValue(),
+                    "thread",
+                    entityLink.getFullyQualifiedFieldType(),
+                    Relationship.IS_ABOUT.ordinal(),
+                    isResolved);
+      }
+    }
+    result.forEach(
+        l -> {
+          int count = Integer.parseInt(l.get(1));
+          entityLinkThreadCounts.add(new EntityLinkThreadCount().withEntityLink(l.get(0)).withCount(count));
+          totalCount.addAndGet(count);
+        });
+    threadCount.withTotalCount(totalCount.get());
+    threadCount.withCounts(entityLinkThreadCounts);
+    return threadCount;
+  }
+
+  @Transaction
   public List<Thread> listThreads(String link) throws IOException {
     if (link == null) {
       // Not listing thread by data asset or user
@@ -157,23 +206,7 @@ public class FeedRepository {
     // TODO remove hardcoding of thread
     // For a user entitylink get created or replied relationships to the thread
     if (reference.getType().equals(Entity.USER)) {
-      // TODO: Add user mentioned threads as well
-      threadIds.addAll(
-          dao.relationshipDAO()
-              .findTo(
-                  reference.getName(),
-                  reference.getType(),
-                  Relationship.CREATED.ordinal(),
-                  "thread",
-                  toBoolean(Include.NON_DELETED)));
-      threadIds.addAll(
-          dao.relationshipDAO()
-              .findTo(
-                  reference.getName(),
-                  reference.getType(),
-                  Relationship.REPLIED_TO.ordinal(),
-                  "thread",
-                  toBoolean(Include.NON_DELETED)));
+      threadIds.addAll(getUserThreadIds(reference));
     } else {
       // Only data assets are added as about
       result =
@@ -196,7 +229,29 @@ public class FeedRepository {
       }
     }
     // sort the list by thread updated timestamp before returning
-    threads.sort(Comparator.comparing(Thread::getUpdatedAt));
+    threads.sort(Comparator.comparing(Thread::getUpdatedAt, Comparator.reverseOrder()));
     return threads;
+  }
+
+  private List<String> getUserThreadIds(EntityReference user) {
+    List<String> threadIds = new ArrayList<>();
+    // TODO: Add user mentioned threads as well
+    threadIds.addAll(
+        dao.relationshipDAO()
+            .findTo(
+                user.getName(),
+                user.getType(),
+                Relationship.CREATED.ordinal(),
+                "thread",
+                toBoolean(Include.NON_DELETED)));
+    threadIds.addAll(
+        dao.relationshipDAO()
+            .findTo(
+                user.getName(),
+                user.getType(),
+                Relationship.REPLIED_TO.ordinal(),
+                "thread",
+                toBoolean(Include.NON_DELETED)));
+    return threadIds;
   }
 }

@@ -43,6 +43,8 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.feed.CreateThread;
+import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
+import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -196,6 +198,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
           listThreads(TABLE_COLUMN_LINK, userAuthHeaders).getData().size()); // About TABLE Column Description
       assertEquals(++totalThreadCount, listThreads(null, userAuthHeaders).getData().size()); // Overall threads
     }
+
+    // Test the /api/v1/feed/count API
+    assertEquals(userThreadCount, listThreadsCount(USER_LINK, userAuthHeaders).getTotalCount());
+    assertEquals(tableThreadCount, getThreadCount(TABLE_LINK, userAuthHeaders));
   }
 
   @Test
@@ -303,5 +309,19 @@ public class FeedResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("feed");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     return TestUtils.get(target, ThreadList.class, authHeaders);
+  }
+
+  public static ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("feed/count");
+    target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
+    return TestUtils.get(target, ThreadCount.class, authHeaders);
+  }
+
+  private int getThreadCount(String entityLink, Map<String, String> authHeaders) throws HttpResponseException {
+    List<EntityLinkThreadCount> linkThreadCount = listThreadsCount(entityLink, authHeaders).getCounts();
+    EntityLinkThreadCount threadCount =
+        linkThreadCount.stream().filter(l -> l.getEntityLink().equals(entityLink)).findFirst().orElseThrow();
+    return (int) threadCount.getCount();
   }
 }
