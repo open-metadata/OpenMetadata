@@ -138,7 +138,8 @@ class Profiler(ABC):
         allowed_metrics = [
             metric.fn()
             for metric in self.static_metrics
-            if metric.col is not None  # If metric is None, it is a table metric and gets executed in `sql_table_run`
+            if metric.col
+            is not None  # If metric is None, it is a table metric and gets executed in `sql_table_run`
             and metric.col.type.__class__ not in NOT_COMPUTE
         ]
 
