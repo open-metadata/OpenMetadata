@@ -204,7 +204,7 @@ class BigqueryUsageSource(Source[TableQuery]):
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
 
-    def create_lineage(from_entity, to_entity):
+    def create_lineage(self, from_entity, to_entity):
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
