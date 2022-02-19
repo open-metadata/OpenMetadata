@@ -15,10 +15,17 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import {
+  EntityTags,
+  EntityThread,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -66,7 +73,7 @@ import {
   defaultFields,
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -79,6 +86,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
   const [isTableQueriesLoading, setIsTableQueriesLoading] =
+    useState<boolean>(false);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
@@ -126,6 +135,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
   const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -300,6 +310,27 @@ const DatasetDetailsPage: FunctionComponent = () => {
               })
             )
             .finally(() => setIsTableQueriesLoading(false));
+
+          break;
+        }
+      }
+      case TabSpecificField.ACTIVITY_FEED: {
+        if (entityThread.length > 0) {
+          break;
+        } else {
+          setIsentityThreadLoading(true);
+          getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN))
+            .then((res: AxiosResponse) => {
+              const { data } = res.data;
+              setEntityThread(data);
+            })
+            .catch(() => {
+              showToast({
+                variant: 'error',
+                body: 'Error while fetching entity feeds',
+              });
+            })
+            .finally(() => setIsentityThreadLoading(false));
 
           break;
         }
@@ -514,12 +545,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={name}
+          entityThread={entityThread}
           followTableHandler={followTable}
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           isQueriesLoading={isTableQueriesLoading}
           isSampleDataLoading={isSampleDataLoading}
+          isentityThreadLoading={isentityThreadLoading}
           joins={joins}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

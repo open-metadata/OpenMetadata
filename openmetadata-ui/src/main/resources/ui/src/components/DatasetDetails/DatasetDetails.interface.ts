@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import {
+  EntityTags,
+  EntityThread,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
 import {
   EntityReference,
   Table,
@@ -52,10 +58,12 @@ export interface DatasetDetailsProps {
   followers: Array<User>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
+  entityThread: EntityThread[];
   deleted?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;
+  isentityThreadLoading: boolean;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;

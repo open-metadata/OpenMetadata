@@ -471,3 +471,10 @@ export const getInfoElements = (data: ExtraInfo) => {
     </>
   );
 };
+
+export const getEntityFeedLink: Function = (
+  type: string,
+  fqn: string
+): string => {
+  return `<#E/${type}/${fqn}>`;
+};

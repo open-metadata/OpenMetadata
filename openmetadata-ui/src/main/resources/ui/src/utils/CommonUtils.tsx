@@ -404,7 +404,10 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
   if (!defaultFields) {
     return tabSpecificField;
   }
-  if (tabSpecificField === TabSpecificField.LINEAGE) {
+  if (
+    tabSpecificField === TabSpecificField.LINEAGE ||
+    tabSpecificField === TabSpecificField.ACTIVITY_FEED
+  ) {
     return defaultFields;
   }
 

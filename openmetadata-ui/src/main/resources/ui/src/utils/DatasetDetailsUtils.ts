@@ -23,6 +23,11 @@ export const datasetTableTabs = [
     path: 'schema',
   },
   {
+    name: 'Activity Feed',
+    path: 'activity_feed',
+    field: TabSpecificField.ACTIVITY_FEED,
+  },
+  {
     name: 'Sample Data',
     path: 'sample_data',
     field: TabSpecificField.SAMPLE_DATA,
@@ -54,32 +59,36 @@ export const datasetTableTabs = [
 export const getCurrentDatasetTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'sample_data':
+    case 'activity_feed':
       currentTab = 2;
 
       break;
-    case 'table_queries':
+    case 'sample_data':
       currentTab = 3;
 
       break;
-
-    case 'profiler':
+    case 'table_queries':
       currentTab = 4;
 
       break;
 
-    case 'lineage':
+    case 'profiler':
       currentTab = 5;
 
       break;
 
-    case 'dbt':
+    case 'lineage':
       currentTab = 6;
 
       break;
 
-    case 'manage':
+    case 'dbt':
       currentTab = 7;
+
+      break;
+
+    case 'manage':
+      currentTab = 8;
 
       break;
 

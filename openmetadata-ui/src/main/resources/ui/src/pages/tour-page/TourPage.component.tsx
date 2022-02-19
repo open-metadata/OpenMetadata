@@ -174,12 +174,14 @@ const TourPage = () => {
             entityLineage={mockDatasetData.entityLineage}
             entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}
+            entityThread={[]}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             isNodeLoading={{
               id: undefined,
               state: false,
             }}
+            isentityThreadLoading={false}
             joins={mockDatasetData.joins as unknown as TableJoins}
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}

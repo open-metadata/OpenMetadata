@@ -15,8 +15,14 @@ import { AxiosResponse } from 'axios';
 import { Feed, FeedById } from 'Models';
 import APIClient from './index';
 
-export const getAllFeeds: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get('/feed');
+export const getAllFeeds: Function = (
+  entityLink?: string
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/feed`, {
+    params: {
+      entityLink: entityLink,
+    },
+  });
 };
 
 export const postFeed: Function = (data: Feed): Promise<AxiosResponse> => {
