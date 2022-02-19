@@ -887,3 +887,6 @@ body .profiler-graph .recharts-active-dot circle {
   );
   pointer-events: none; /* so the text is still selectable */
 }
+.table-query-editor > .CodeMirror {
+  height: auto !important;
+}

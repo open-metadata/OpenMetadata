@@ -84,6 +84,10 @@ export interface Column {
    * Description of the column.
    */
   description?: string;
+  /**
+   * Display Name that identifies this column name.
+   */
+  displayName?: string;
   fullyQualifiedName?: string;
   /**
    * Json schema only if the dataType is JSON else null.
@@ -141,6 +145,7 @@ export enum DataType {
   Time = 'TIME',
   Timestamp = 'TIMESTAMP',
   Tinyint = 'TINYINT',
+  UUID = 'UUID',
   Union = 'UNION',
   Varbinary = 'VARBINARY',
   Varchar = 'VARCHAR',
