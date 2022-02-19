@@ -15,9 +15,9 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
-import { Paging, ServicesData } from 'Models';
+import { ExtraInfo, Paging, ServicesData } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   addAirflowPipeline,
   deleteAirflowPipelineById,
@@ -41,9 +41,14 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
+import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import Tags from '../../components/tags/tags';
-import { pagingObject } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  getTeamDetailsPath,
+  pagingObject,
+} from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -62,11 +67,18 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getEntityMissingError, isEven } from '../../utils/CommonUtils';
 import {
+  getEntityMissingError,
+  hasEditAccess,
+  isEven,
+} from '../../utils/CommonUtils';
+import { getInfoElements } from '../../utils/EntityUtils';
+import {
+  getCurrentServiceTab,
   getIsIngestionEnable,
   getServiceCategoryFromType,
   isRequiredDetailsAvailableForIngestion,
+  servicePageTabs,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
@@ -78,10 +90,9 @@ type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<PipelineService>;
 
 const ServicePage: FunctionComponent = () => {
-  const { serviceFQN, serviceType, serviceCategory } = useParams() as Record<
-    string,
-    string
-  >;
+  const { serviceFQN, serviceType, serviceCategory, tab } =
+    useParams() as Record<string, string>;
+  const history = useHistory();
   const { isAdminUser, isAuthDisabled } = useAuth();
   const [serviceName, setServiceName] = useState(
     serviceCategory || getServiceCategoryFromType(serviceType)
@@ -99,7 +110,7 @@ const ServicePage: FunctionComponent = () => {
   const [isLoading, setIsloading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
-  const [activeTab, setActiveTab] = useState(1);
+  const [activeTab, setActiveTab] = useState(getCurrentServiceTab(tab));
   const [isConnectionAvailable, setConnectionAvailable] =
     useState<boolean>(true);
   const [isError, setIsError] = useState(false);
@@ -158,13 +169,52 @@ const ServicePage: FunctionComponent = () => {
       },
 
       isProtected: !isAdminUser && !isAuthDisabled,
-      isHidden: !isAdminUser && !isAuthDisabled,
       position: 3,
+    },
+    {
+      name: 'Manage',
+      icon: {
+        alt: 'manage',
+        name: 'icon-manage',
+        title: 'Manage',
+        selectedName: 'icon-managecolor',
+      },
+      isProtected: false,
+      position: 4,
+    },
+  ];
+
+  const extraInfo: Array<ExtraInfo> = [
+    {
+      key: 'Owner',
+      value:
+        serviceDetails?.owner?.type === 'team'
+          ? getTeamDetailsPath(serviceDetails?.owner?.type || '')
+          : serviceDetails?.owner?.name || '',
+      placeholderText: serviceDetails?.owner?.displayName || '',
+      isLink: serviceDetails?.owner?.type === 'team',
+      openInNewTab: false,
     },
   ];
 
   const activeTabHandler = (tabValue: number) => {
     setActiveTab(tabValue);
+    const currentTabIndex = tabValue - 1;
+    if (servicePageTabs(getCountLabel())[currentTabIndex].path !== tab) {
+      setActiveTab(
+        getCurrentServiceTab(
+          servicePageTabs(getCountLabel())[currentTabIndex].path
+        )
+      );
+      history.push({
+        pathname: getServiceDetailsPath(
+          serviceFQN,
+          serviceType,
+          serviceCategory,
+          servicePageTabs(getCountLabel())[currentTabIndex].path
+        ),
+      });
+    }
   };
 
   const getSchemaFromType = (type: AirflowPipeline['pipelineType']) => {
@@ -181,12 +231,12 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getAllIngestionWorkflows = (paging?: string) => {
+    setIsloading(true);
     getAirflowPipelines(['owner, tags, status'], serviceFQN, '', paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
           setIngestionPaging(res.data.paging);
-          setIsloading(false);
         } else {
           setIngestionPaging({} as Paging);
         }
@@ -629,7 +679,8 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceCategory, serviceType]);
 
   useEffect(() => {
-    getServiceByFQN(serviceName, serviceFQN)
+    setIsloading(true);
+    getServiceByFQN(serviceName, serviceFQN, ['owner'])
       .then((resService: AxiosResponse) => {
         const { description, serviceType } = resService.data;
         setServiceDetails(resService.data);
@@ -656,11 +707,18 @@ const ServicePage: FunctionComponent = () => {
             body: errMsg,
           });
         }
-        setIsloading(false);
-      });
+      })
+      .finally(() => setIsloading(false));
   }, [serviceFQN, serviceName]);
 
   useEffect(() => {
+    const currentTab = getCurrentServiceTab(tab);
+    const currentTabIndex = currentTab - 1;
+
+    if (tabs[currentTabIndex].isProtected) {
+      activeTabHandler(1);
+    }
+
     if (isIngestionEnable) {
       // getDatabaseServices();
       getAllIngestionWorkflows();
@@ -698,6 +756,29 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
+    const updatedData = {
+      ...serviceDetails,
+      owner,
+    };
+
+    return new Promise<void>((_, reject) => {
+      updateService(serviceName, serviceDetails?.id, updatedData)
+        .then((res: AxiosResponse) => {
+          setServiceDetails(res.data);
+          reject();
+        })
+        .catch((err: AxiosError) => {
+          reject();
+          const msg = err.response?.data.message;
+          showToast({
+            variant: 'error',
+            body: msg ?? `Error while updating owner for ${serviceFQN}`,
+          });
+        });
+    });
+  };
+
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -727,8 +808,23 @@ const ServicePage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <PageContainer>
-          <div className="tw-px-4" data-testid="service-page">
+          <div
+            className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col"
+            data-testid="service-page">
             <TitleBreadcrumb titleLinks={slashedTableName} />
+
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+              {extraInfo.map((info, index) => (
+                <span className="tw-flex" key={index}>
+                  {getInfoElements(info)}
+                  {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
+                    <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                      |
+                    </span>
+                  ) : null}
+                </span>
+              ))}
+            </div>
 
             <div
               className="tw-my-2 tw-ml-2"
@@ -751,111 +847,127 @@ const ServicePage: FunctionComponent = () => {
                 setActiveTab={activeTabHandler}
                 tabs={tabs}
               />
-              {activeTab === 1 && (
-                <Fragment>
+              <div className="tw-flex-grow">
+                {activeTab === 1 && (
+                  <Fragment>
+                    <div
+                      className="tw-mt-4 tw-px-1"
+                      data-testid="table-container">
+                      <table
+                        className="tw-bg-white tw-w-full tw-mb-4"
+                        data-testid="database-tables">
+                        <thead>
+                          <tr className="tableHead-row">{getTableHeaders()}</tr>
+                        </thead>
+                        <tbody className="tableBody">
+                          {data.length > 0 ? (
+                            data.map((dataObj, index) => (
+                              <tr
+                                className={classNames(
+                                  'tableBody-row',
+                                  !isEven(index + 1) ? 'odd-row' : null
+                                )}
+                                data-testid="column"
+                                key={index}>
+                                <td className="tableBody-cell">
+                                  <Link
+                                    to={getLinkForFqn(
+                                      dataObj.fullyQualifiedName || ''
+                                    )}>
+                                    {serviceName ===
+                                      ServiceCategory.DASHBOARD_SERVICES &&
+                                    (dataObj as Dashboard).displayName
+                                      ? (dataObj as Dashboard).displayName
+                                      : dataObj.name}
+                                  </Link>
+                                </td>
+                                <td className="tableBody-cell">
+                                  {dataObj.description ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={dataObj.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description added
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="tableBody-cell">
+                                  <p>{dataObj?.owner?.name || '--'}</p>
+                                </td>
+                                {getOptionalTableCells(dataObj)}
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="tableBody-row">
+                              <td
+                                className="tableBody-cell tw-text-center"
+                                colSpan={4}>
+                                No records found.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                    {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+                      <NextPrevious
+                        paging={paging}
+                        pagingHandler={pagingHandler}
+                      />
+                    )}
+                  </Fragment>
+                )}
+
+                {activeTab === 2 && (
                   <div
                     className="tw-mt-4 tw-px-1"
-                    data-testid="table-container">
-                    <table
-                      className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-tables">
-                      <thead>
-                        <tr className="tableHead-row">{getTableHeaders()}</tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {data.length > 0 ? (
-                          data.map((dataObj, index) => (
-                            <tr
-                              className={classNames(
-                                'tableBody-row',
-                                !isEven(index + 1) ? 'odd-row' : null
-                              )}
-                              data-testid="column"
-                              key={index}>
-                              <td className="tableBody-cell">
-                                <Link
-                                  to={getLinkForFqn(
-                                    dataObj.fullyQualifiedName || ''
-                                  )}>
-                                  {serviceName ===
-                                    ServiceCategory.DASHBOARD_SERVICES &&
-                                  (dataObj as Dashboard).displayName
-                                    ? (dataObj as Dashboard).displayName
-                                    : dataObj.name}
-                                </Link>
-                              </td>
-                              <td className="tableBody-cell">
-                                {dataObj.description ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={dataObj.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description added
-                                  </span>
-                                )}
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>{dataObj?.owner?.name || '--'}</p>
-                              </td>
-                              {getOptionalTableCells(dataObj)}
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="tableBody-row">
-                            <td
-                              className="tableBody-cell tw-text-center"
-                              colSpan={4}>
-                              No records found.
-                            </td>
-                          </tr>
+                    data-testid="ingestion-container">
+                    {isConnectionAvailable ? (
+                      <Ingestion
+                        addIngestion={addIngestionWorkflowHandler}
+                        deleteIngestion={deleteIngestionById}
+                        ingestionList={ingestions}
+                        isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(
+                          serviceName as ServiceCategory,
+                          serviceDetails as ServicesData
                         )}
-                      </tbody>
-                    </table>
+                        paging={ingestionPaging}
+                        pagingHandler={ingestionPagingHandler}
+                        serviceList={serviceList}
+                        serviceName={serviceFQN}
+                        serviceType={serviceDetails?.serviceType}
+                        triggerIngestion={triggerIngestionById}
+                        updateIngestion={updateIngestion}
+                      />
+                    ) : (
+                      <IngestionError />
+                    )}
                   </div>
-                  {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-                    <NextPrevious
-                      paging={paging}
-                      pagingHandler={pagingHandler}
-                    />
-                  )}
-                </Fragment>
-              )}
+                )}
 
-              {activeTab === 2 && (
-                <div
-                  className="tw-mt-4 tw-px-1"
-                  data-testid="ingestion-container">
-                  {isConnectionAvailable ? (
-                    <Ingestion
-                      addIngestion={addIngestionWorkflowHandler}
-                      deleteIngestion={deleteIngestionById}
-                      ingestionList={ingestions}
-                      isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(
-                        serviceName as ServiceCategory,
-                        serviceDetails as ServicesData
+                {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
+                  <ServiceConfig
+                    data={serviceDetails as ServicesData}
+                    handleUpdate={handleConfigUpdate}
+                    serviceCategory={serviceName as ServiceCategory}
+                  />
+                )}
+
+                {activeTab === 4 && (
+                  <div className="tw-bg-white tw-h-full tw-pt-4 tw-pb-6">
+                    <ManageTabComponent
+                      hideTier
+                      currentUser={serviceDetails?.owner?.id}
+                      hasEditAccess={hasEditAccess(
+                        serviceDetails?.owner?.type || '',
+                        serviceDetails?.owner?.id || ''
                       )}
-                      paging={ingestionPaging}
-                      pagingHandler={ingestionPagingHandler}
-                      serviceList={serviceList}
-                      serviceName={serviceFQN}
-                      serviceType={serviceDetails?.serviceType}
-                      triggerIngestion={triggerIngestionById}
-                      updateIngestion={updateIngestion}
+                      onSave={handleUpdateOwner}
                     />
-                  ) : (
-                    <IngestionError />
-                  )}
-                </div>
-              )}
-
-              {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
-                <ServiceConfig
-                  data={serviceDetails as ServicesData}
-                  handleUpdate={handleConfigUpdate}
-                  serviceCategory={serviceName as ServiceCategory}
-                />
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </PageContainer>
