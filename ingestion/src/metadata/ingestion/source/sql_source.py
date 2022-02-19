@@ -530,14 +530,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_constraint = self._get_column_constraints(
                             column, pk_columns, unique_columns
                         )
-                        if not col_constraint:
-                            if len(pk_columns) > 1:
-                                self.table_constraints = [
-                                    TableConstraint(
-                                        constraintType=ConstraintType.PRIMARY_KEY,
-                                        columns=pk_columns,
-                                    )
-                                ]
+                        if not col_constraint and len(pk_columns) > 1:
+                            self.table_constraints = [
+                                TableConstraint(
+                                    constraintType=ConstraintType.PRIMARY_KEY,
+                                    columns=pk_columns,
+                                )
+                            ]
                         col_data_length = self._check_col_length(
                             col_type, column["type"]
                         )
