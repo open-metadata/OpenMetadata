@@ -16,9 +16,11 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
+import itertools
 import uuid
 from typing import Dict, Iterable, List, Optional
 
+import click
 from pydantic import Field
 from sqlalchemy.orm import DeclarativeMeta, InstrumentedAttribute, Session
 
@@ -47,6 +49,12 @@ from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.models import TestDef
 
 logger = logger()
+
+
+class TestValidationException(Exception):
+    """
+    Raised when there are test errors
+    """
 
 
 class ProfilerWorkflowConfig(ConfigModel):
@@ -116,6 +124,9 @@ class ProfilerWorkflow:
         # SQLAlchemy Session to run the profilers
         self.session: Session = create_and_bind_session(get_engine(self.source_config))
 
+        # Init validation report
+        self.report["tests"] = {}
+
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
         """
@@ -168,15 +179,32 @@ class ProfilerWorkflow:
 
         Same with `schema_filter_pattern`.
         """
-        all_tables = self.metadata.list_entities(
-            entity=Table,
-            fields=[
-                "tableProfile"  # We will need it for window metrics to check past data
-            ],
+
+        # First, get all the databases for the service:
+        all_dbs = self.metadata.list_entities(
+            entity=Database,
             params={"service": self.source_config.service_name},
         )
 
-        yield from self.filter_entities(all_tables.entities)
+        # Then list all tables from each db.
+        # This returns a nested structure [[db1 tables], [db2 tables]...]
+        all_tables = [
+            self.metadata.list_entities(
+                entity=Table,
+                fields=[
+                    "tableProfile"
+                ],  # We will need it for window metrics to check past data
+                params={
+                    "database": f"{self.source_config.service_name}.{database.name.__root__}"
+                },
+            ).entities
+            for database in all_dbs.entities
+        ]
+
+        # Flatten the structure into a List[Table]
+        flat_tables = list(itertools.chain.from_iterable(all_tables))
+
+        yield from self.filter_entities(flat_tables)
 
     def build_table_profiler(self, table) -> Profiler:
         """
@@ -187,7 +215,7 @@ class ProfilerWorkflow:
         if not self.config.profiler:
             return SimpleTableProfiler(session=self.session, table=table)
 
-        metrics = [Metrics.get(name) for name in self.config.profiler.table_metrics]
+        metrics = [Metrics.init(name) for name in self.config.profiler.table_metrics]
 
         return SingleProfiler(*metrics, session=self.session, table=table)
 
@@ -205,7 +233,9 @@ class ProfilerWorkflow:
                 profiler=SimpleProfiler(session=self.session, col=column, table=table),
             )
 
-        metrics = [Metrics.get(name) for name in self.config.profiler.metrics]
+        metrics = [
+            Metrics.init(name, col=column) for name in self.config.profiler.metrics
+        ]
 
         return ColumnProfiler(
             column=column.name,
@@ -268,6 +298,7 @@ class ProfilerWorkflow:
         for test in test_def.table_tests:
             for validation in test.expression:
                 validation.validate(profiler_results.table_profiler.results)
+                self.report["tests"][test.name.replace(" ", "_")] = validation.valid
 
         for column_res in test_def.column_tests:
             for test in column_res.columns:
@@ -287,6 +318,7 @@ class ProfilerWorkflow:
 
                 for validation in test.expression:
                     validation.validate(profiler.results)
+                    self.report["tests"][test.name.replace(" ", "_")] = validation.valid
 
         return test_def
 
@@ -310,3 +342,32 @@ class ProfilerWorkflow:
                 # TODO: publish validation with sink
             else:
                 logger.info("No tests found. We will just return the Profiler data.")
+
+    def print_status(self) -> Dict[str, bool]:
+        """
+        Print test report and return it
+        """
+        click.echo()
+        click.secho("Tests Status:", bold=True)
+        click.echo(self.report["tests"])
+        return self.report["tests"]
+
+    def raise_from_status(self):
+        """
+        Raise an exception if any test failed
+        """
+        failures = next(
+            iter(name for name, res in self.report["tests"].items() if not res), None
+        )
+
+        if failures:
+            click.secho("Some tests did not pass:")
+            click.secho(failures)
+            raise TestValidationException
+
+    def stop(self):
+        """
+        Close all connections
+        """
+        self.metadata.close()
+        self.session.close()
