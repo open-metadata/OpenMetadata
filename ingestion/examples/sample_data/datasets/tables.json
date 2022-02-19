@@ -18,7 +18,6 @@
           "description": "Unique identifier for the address.",
           "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
           "tags": [],
-          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
@@ -129,6 +128,15 @@
           "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.phone",
           "tags": [],
           "ordinalPosition": 12
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "address_id",
+            "shop_id"
+          ]
         }
       ],
       "database": {
