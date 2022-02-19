@@ -71,11 +71,7 @@ import {
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import {
-  getOwnerFromId,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 
 const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
@@ -196,7 +192,7 @@ const PipelineDetailsPage = () => {
         setPipelineId(id);
         setDescription(description ?? '');
         setFollowers(followers);
-        setOwner(getOwnerFromId(owner?.id));
+        setOwner(owner);
         setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
         setServiceType(serviceType);
@@ -342,7 +338,7 @@ const PipelineDetailsPage = () => {
         .then((res) => {
           setPipelineDetails(res.data);
           setCurrentVersion(res.data.version);
-          setOwner(getOwnerFromId(res.data.owner?.id));
+          setOwner(res.data.owner);
           setTier(getTierTags(res.data.tags));
           resolve();
         })

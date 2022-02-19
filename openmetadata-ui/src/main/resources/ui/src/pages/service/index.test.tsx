@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { act } from 'react-test-renderer';
 import ServicePage from './index';
 
 const mockData = {
@@ -100,7 +101,31 @@ jest.mock(
   }
 );
 
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
+    )),
+  useHistory: jest.fn(),
+  useParams: jest.fn().mockReturnValue({
+    serviceFQN: 'bigquery_gcp',
+    serviceType: 'BigQuery',
+    serviceCategory: 'databaseServices',
+    tab: 'databases',
+  }),
+}));
+
+jest.mock('../../components/containers/PageContainer', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <div data-testid="PageContainer">{children}</div>
+    ));
+});
+
 jest.mock('../../utils/ServiceUtils', () => ({
+  getCurrentServiceTab: jest.fn().mockReturnValue(1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
@@ -136,20 +161,23 @@ describe('Test ServicePage Component', () => {
     const { container } = render(<ServicePage />, {
       wrapper: MemoryRouter,
     });
-    const servicePage = await findByTestId(container, 'service-page');
-    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
-    const descriptionContainer = await findByTestId(
-      container,
-      'description-container'
-    );
-    const description = await findByText(container, /Description_component/i);
-    const tabPane = await findByText(container, /TabsPane_component/i);
 
-    expect(servicePage).toBeInTheDocument();
-    expect(titleBreadcrumb).toBeInTheDocument();
-    expect(descriptionContainer).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
-    expect(tabPane).toBeInTheDocument();
+    await act(async () => {
+      const servicePage = await findByTestId(container, 'service-page');
+      const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+      const descriptionContainer = await findByTestId(
+        container,
+        'description-container'
+      );
+      const description = await findByText(container, /Description_component/i);
+      const tabPane = await findByText(container, /TabsPane_component/i);
+
+      expect(servicePage).toBeInTheDocument();
+      expect(titleBreadcrumb).toBeInTheDocument();
+      expect(descriptionContainer).toBeInTheDocument();
+      expect(description).toBeInTheDocument();
+      expect(tabPane).toBeInTheDocument();
+    });
   });
 
   it('Table should be visible if data is available', async () => {

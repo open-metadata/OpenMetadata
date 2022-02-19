@@ -69,11 +69,7 @@ import {
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import {
-  getOwnerFromId,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 type ChartType = {
   displayName: string;
 } & Chart;
@@ -246,7 +242,7 @@ const DashboardDetailsPage = () => {
         setDashboardId(id);
         setDescription(description ?? '');
         setFollowers(followers);
-        setOwner(getOwnerFromId(owner?.id));
+        setOwner(owner);
         setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
         setServiceType(serviceType);
@@ -414,7 +410,7 @@ const DashboardDetailsPage = () => {
         .then((res) => {
           setDashboardDetails(res.data);
           setCurrentVersion(res.data.version);
-          setOwner(getOwnerFromId(res.data.owner?.id));
+          setOwner(res.data.owner);
           setTier(getTierTags(res.data.tags));
           resolve();
         })

@@ -50,13 +50,19 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TeamsPage} path={ROUTES.TEAMS} />
       <Route exact component={TeamsPage} path={ROUTES.TEAM_DETAILS} />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
-      <Route component={ServicePage} path={ROUTES.SERVICE} />
+      <Route exact component={ServicePage} path={ROUTES.SERVICE} />
+      <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
-      <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
+      <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
+      <Route
+        exact
+        component={DatabaseDetails}
+        path={ROUTES.DATABASE_DETAILS_WITH_TAB}
+      />
       <Route exact component={DatasetDetailsPage} path={ROUTES.TABLE_DETAILS} />
       <Route
         exact

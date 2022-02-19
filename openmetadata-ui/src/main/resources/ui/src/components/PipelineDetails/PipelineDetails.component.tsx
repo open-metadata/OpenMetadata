@@ -154,8 +154,8 @@ const PipelineDetails = ({
       value:
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
-      placeholderText: owner?.displayName || '',
+          : owner?.displayName || owner?.name || '',
+      placeholderText: owner?.displayName || owner?.name || '',
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
@@ -210,12 +210,7 @@ const PipelineDetails = ({
         : pipelineDetails.tags;
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner
-          ? {
-              ...pipelineDetails.owner,
-              ...newOwner,
-            }
-          : pipelineDetails.owner,
+        owner: newOwner ? newOwner : pipelineDetails.owner,
         tags: tierTag,
       };
 

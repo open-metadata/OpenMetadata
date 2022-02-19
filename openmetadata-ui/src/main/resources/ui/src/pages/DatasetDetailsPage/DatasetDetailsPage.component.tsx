@@ -75,7 +75,7 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
+import { getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
@@ -199,7 +199,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableId(id);
         setCurrentVersion(version);
         setTier(getTierTags(tags));
-        setOwner(getOwnerFromId(owner?.id));
+        setOwner(owner);
         setFollowers(followers);
         setDeleted(deleted);
         setSlashedTableName([
@@ -401,7 +401,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           const { version, owner, tags } = res.data;
           setCurrentVersion(version);
           setTableDetails(res.data);
-          setOwner(getOwnerFromId(owner?.id));
+          setOwner(owner);
           setTier(getTierTags(tags));
           resolve();
         })

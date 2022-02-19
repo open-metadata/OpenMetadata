@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { ServiceOption } from 'Models';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getServiceDetails: Function = (): Promise<AxiosResponse> => {
@@ -34,9 +35,15 @@ export const getServiceById: Function = (
 
 export const getServiceByFQN: Function = (
   serviceName: string,
-  fqn: string
+  fqn: string,
+  arrQueryFields = ''
 ): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/${serviceName}/name/${fqn}`);
+  const url = getURLWithQueryFields(
+    `/services/${serviceName}/name/${fqn}`,
+    arrQueryFields
+  );
+
+  return APIClient.get(url);
 };
 
 export const postService: Function = (
