@@ -16,6 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -31,6 +32,7 @@ import {
   patchDashboardDetails,
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
+import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -65,7 +67,7 @@ import {
   defaultFields,
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -113,6 +115,10 @@ const DashboardDetailsPage = () => {
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
+
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -302,6 +308,23 @@ const DashboardDetailsPage = () => {
 
           break;
         }
+
+        break;
+      }
+      case TabSpecificField.ACTIVITY_FEED: {
+        setIsentityThreadLoading(true);
+        getAllFeeds(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN))
+          .then((res: AxiosResponse) => {
+            const { data } = res.data;
+            setEntityThread(data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: 'Error while fetching entity feeds',
+            });
+          })
+          .finally(() => setIsentityThreadLoading(false));
 
         break;
       }
@@ -514,10 +537,12 @@ const DashboardDetailsPage = () => {
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}
+          entityThread={entityThread}
           followDashboardHandler={followDashboard}
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}

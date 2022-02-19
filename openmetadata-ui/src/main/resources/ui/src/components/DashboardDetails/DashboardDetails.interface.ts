@@ -14,6 +14,7 @@
 import { Operation } from 'fast-json-patch';
 import {
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -50,8 +51,10 @@ export interface DashboardDetailsProps {
   followers: Array<User>;
   dashboardTags: Array<EntityTags>;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
+  entityThread: EntityThread[];
   deleted?: boolean;
   isLineageLoading?: boolean;
+  isentityThreadLoading: boolean;
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
