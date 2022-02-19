@@ -61,7 +61,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
                 return (
                   <ActivityFeedCard
-                    className="tw-mb-2"
+                    className="tw-mb-3"
                     feed={mainFeed}
                     key={index}
                     repliedUsers={repliedUsers}
