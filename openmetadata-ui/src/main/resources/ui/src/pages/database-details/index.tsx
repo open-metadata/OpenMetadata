@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { Paging } from 'Models';
+import { ExtraInfo, Paging } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import appState from '../../AppState';
@@ -34,18 +34,30 @@ import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-brea
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
+import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import Tags from '../../components/tags/tags';
 import {
+  getDatabaseDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
 import useToastContext from '../../hooks/useToastContext';
-import { getEntityMissingError, isEven } from '../../utils/CommonUtils';
+import {
+  getEntityMissingError,
+  hasEditAccess,
+  isEven,
+} from '../../utils/CommonUtils';
+import {
+  databaseDetailsTabs,
+  getCurrentDatabaseDetailsTab,
+} from '../../utils/DatabaseDetailsUtils';
+import { getInfoElements } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -55,8 +67,9 @@ const DatabaseDetails: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+
   const showToast = useToastContext();
-  const { databaseFQN } = useParams() as Record<string, string>;
+  const { databaseFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
@@ -71,7 +84,9 @@ const DatabaseDetails: FunctionComponent = () => {
   const [tablePaging, setTablePaging] = useState<Paging>(pagingObject);
   const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<number>(
+    getCurrentDatabaseDetailsTab(tab)
+  );
   const [isError, setIsError] = useState(false);
 
   const history = useHistory();
@@ -89,6 +104,31 @@ const DatabaseDetails: FunctionComponent = () => {
       count: tableInstanceCount,
       isProtected: false,
       position: 1,
+    },
+    {
+      name: 'Manage',
+      icon: {
+        alt: 'manage',
+        name: 'icon-manage',
+        title: 'Manage',
+        selectedName: 'icon-managecolor',
+      },
+      isProtected: false,
+      position: 2,
+    },
+  ];
+
+  const extraInfo: Array<ExtraInfo> = [
+    {
+      key: 'Owner',
+      value:
+        database?.owner?.type === 'team'
+          ? getTeamDetailsPath(database?.owner?.type || '')
+          : database?.owner?.displayName || database?.owner?.name || '',
+      placeholderText:
+        database?.owner?.displayName || database?.owner?.name || '',
+      isLink: database?.owner?.type === 'team',
+      openInNewTab: false,
     },
   ];
 
@@ -125,7 +165,7 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
-    getDatabaseDetailsByFQN(databaseFQN)
+    getDatabaseDetailsByFQN(databaseFQN, ['owner'])
       .then((res: AxiosResponse) => {
         const { description, id, name, service, serviceType } = res.data;
         setDatabase(res.data);
@@ -215,7 +255,16 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const activeTabHandler = (tabValue: number) => {
-    setActiveTab(tabValue);
+    const currentTabIndex = tabValue - 1;
+    if (databaseDetailsTabs[currentTabIndex].path !== tab) {
+      setActiveTab(tabValue);
+      history.push({
+        pathname: getDatabaseDetailsPath(
+          databaseFQN,
+          databaseDetailsTabs[currentTabIndex].path
+        ),
+      });
+    }
   };
 
   const tablePagingHandler = (cursorType: string) => {
@@ -225,6 +274,29 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsLoading(true);
     fetchDatabaseTables(pagingString).finally(() => {
       setIsLoading(false);
+    });
+  };
+
+  const handleUpdateOwner = (owner: Database['owner']) => {
+    const updatedData = {
+      ...database,
+      owner,
+    };
+
+    return new Promise<void>((_, reject) => {
+      saveUpdatedDatabaseData(updatedData as Database)
+        .then((res: AxiosResponse) => {
+          setDatabase(res.data);
+          reject();
+        })
+        .catch((err: AxiosError) => {
+          reject();
+          const msg = err.response?.data.message;
+          showToast({
+            variant: 'error',
+            body: msg ?? `Error while updating owner for ${databaseFQN}`,
+          });
+        });
     });
   };
 
@@ -239,6 +311,12 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [appState.inPageSearchText]);
 
   useEffect(() => {
+    const currentTab = getCurrentDatabaseDetailsTab(tab);
+    const currentTabIndex = currentTab - 1;
+
+    if (tabs[currentTabIndex].isProtected) {
+      activeTabHandler(1);
+    }
     getDetailsByFQN();
   }, []);
 
@@ -262,6 +340,19 @@ const DatabaseDetails: FunctionComponent = () => {
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="page-container">
             <TitleBreadcrumb titleLinks={slashedTableName} />
+
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+              {extraInfo.map((info, index) => (
+                <span className="tw-flex" key={index}>
+                  {getInfoElements(info)}
+                  {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
+                    <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                      |
+                    </span>
+                  ) : null}
+                </span>
+              ))}
+            </div>
 
             <div className="tw-pl-2" data-testid="description-container">
               <Description
@@ -414,6 +505,18 @@ const DatabaseDetails: FunctionComponent = () => {
                       />
                     )}
                   </>
+                )}
+
+                {activeTab === 2 && (
+                  <ManageTabComponent
+                    hideTier
+                    currentUser={database?.owner?.id}
+                    hasEditAccess={hasEditAccess(
+                      database?.owner?.type || '',
+                      database?.owner?.id || ''
+                    )}
+                    onSave={handleUpdateOwner}
+                  />
                 )}
               </div>
             </div>

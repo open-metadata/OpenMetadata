@@ -192,9 +192,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         title: 'Manage',
         selectedName: 'icon-managecolor',
       },
-      isProtected: true,
+      isProtected: false,
       isHidden: deleted,
-      protectedState: !owner || hasEditAccess(),
       position: 6,
     },
   ];

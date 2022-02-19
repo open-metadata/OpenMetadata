@@ -454,3 +454,50 @@ export const isRequiredDetailsAvailableForIngestion = (
       return true;
   }
 };
+
+export const servicePageTabs = (entity: string) => [
+  {
+    name: entity,
+    path: entity.toLowerCase(),
+  },
+  {
+    name: 'Ingestions',
+    path: 'ingestions',
+  },
+  {
+    name: 'Connection Config',
+    path: 'connection_config',
+  },
+  {
+    name: 'Manage',
+    path: 'manage',
+  },
+];
+
+export const getCurrentServiceTab = (tab: string) => {
+  let currentTab = 1;
+  switch (tab) {
+    case 'ingestions':
+      currentTab = 2;
+
+      break;
+
+    case 'connection_config':
+      currentTab = 3;
+
+      break;
+
+    case 'manage':
+      currentTab = 4;
+
+      break;
+
+    case 'entity':
+    default:
+      currentTab = 1;
+
+      break;
+  }
+
+  return currentTab;
+};

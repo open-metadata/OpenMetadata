@@ -133,6 +133,7 @@ export const ROUTES = {
   FEEDS: '/feeds',
   DUMMY: '/dummy',
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_TYPE}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
+  SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_TYPE}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SERVICES: '/services',
   USERS: '/users',
   SCORECARD: '/scorecard',
@@ -148,6 +149,7 @@ export const ROUTES = {
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
+  DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   USER_LIST: '/user-list',
@@ -194,13 +196,18 @@ export const getTableTabPath = (tableFQN: string, tab = 'schema') => {
 export const getServiceDetailsPath = (
   serviceFQN: string,
   serviceType: string,
-  serviceCat: string
+  serviceCat: string,
+  tab?: string
 ) => {
-  let path = ROUTES.SERVICE;
+  let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
     .replace(PLACEHOLDER_ROUTE_SERVICE_TYPE, serviceType)
     .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
@@ -214,9 +221,13 @@ export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
   return path;
 };
 
-export const getDatabaseDetailsPath = (databaseFQN: string) => {
-  let path = ROUTES.DATABASE_DETAILS;
+export const getDatabaseDetailsPath = (databaseFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.DATABASE_DETAILS_WITH_TAB : ROUTES.DATABASE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DATABASE_FQN, databaseFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
