@@ -190,9 +190,13 @@ export interface DatabaseConnection {
  */
 export enum DatabaseServiceType {
   Athena = 'Athena',
+  AzureSQL = 'AzureSQL',
   BigQuery = 'BigQuery',
+  ClickHouse = 'ClickHouse',
+  Databricks = 'Databricks',
   Db2 = 'Db2',
   Druid = 'Druid',
+  DynamoDB = 'DynamoDB',
   Glue = 'Glue',
   Hive = 'Hive',
   MariaDB = 'MariaDB',
@@ -202,6 +206,7 @@ export enum DatabaseServiceType {
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
+  SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',
   Vertica = 'Vertica',
