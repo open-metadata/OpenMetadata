@@ -41,6 +41,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       </div>
       <div className="tw-ml-7 tw-w-4/5">
         <RichTextEditorPreviewer
+          className="activity-feed-card-text"
           enableSeeMoreVariant={false}
           markdown={feed.message}
         />

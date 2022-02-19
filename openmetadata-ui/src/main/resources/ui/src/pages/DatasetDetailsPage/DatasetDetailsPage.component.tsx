@@ -315,25 +315,21 @@ const DatasetDetailsPage: FunctionComponent = () => {
         }
       }
       case TabSpecificField.ACTIVITY_FEED: {
-        if (entityThread.length > 0) {
-          break;
-        } else {
-          setIsentityThreadLoading(true);
-          getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN))
-            .then((res: AxiosResponse) => {
-              const { data } = res.data;
-              setEntityThread(data);
-            })
-            .catch(() => {
-              showToast({
-                variant: 'error',
-                body: 'Error while fetching entity feeds',
-              });
-            })
-            .finally(() => setIsentityThreadLoading(false));
+        setIsentityThreadLoading(true);
+        getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN))
+          .then((res: AxiosResponse) => {
+            const { data } = res.data;
+            setEntityThread(data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: 'Error while fetching entity feeds',
+            });
+          })
+          .finally(() => setIsentityThreadLoading(false));
 
-          break;
-        }
+        break;
       }
 
       default:
