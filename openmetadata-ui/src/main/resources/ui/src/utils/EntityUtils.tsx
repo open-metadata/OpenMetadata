@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isNil, isString } from 'lodash';
+import { isEmpty, isNil, isString, isUndefined } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import Avatar from '../components/common/avatar/Avatar';
@@ -475,6 +475,8 @@ export const getInfoElements = (data: ExtraInfo) => {
 export const getEntityFeedLink: Function = (
   type: string,
   fqn: string
-): string => {
+): string | undefined => {
+  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+
   return `<#E/${type}/${fqn}>`;
 };
