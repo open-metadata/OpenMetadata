@@ -304,5 +304,5 @@ export const TITLE_FOR_NON_ADMIN_ACTION =
 export const positionX = 150;
 export const positionY = 60;
 
-export const nodeWidth = 172;
-export const nodeHeight = 36;
+export const nodeWidth = 240;
+export const nodeHeight = 40;
