@@ -42,7 +42,7 @@ base_requirements = {
     "sql-metadata~=2.0.0",
     "requests~=2.26",
     "cryptography",
-    "Jinja2>=2.11.3, <3.0",
+    "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
 }
@@ -138,7 +138,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.8.7",
+    version="0.8.8.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
