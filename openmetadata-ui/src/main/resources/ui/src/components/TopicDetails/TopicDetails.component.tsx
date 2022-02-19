@@ -339,7 +339,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             )}
             {activeTab === 2 && (
               <div
-                className="tw-py-4 tw-grid tw-grid-cols-3 entity-feed-list"
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4"
                 id="activityfeed">
                 <div />
                 <ActivityFeedList
