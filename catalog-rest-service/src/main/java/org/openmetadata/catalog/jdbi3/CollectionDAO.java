@@ -55,6 +55,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository.AirflowPipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.FieldRelationshipDAO.FromFieldMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
@@ -516,6 +517,33 @@ public interface CollectionDAO {
 
     @SqlUpdate("UPDATE thread_entity SET json = :json where id = :id")
     void update(@Bind("id") String id, @Bind("json") String json);
+
+    @SqlQuery(
+        "SELECT entityLink, COUNT(*) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQN=te.id "
+            + "WHERE fr.toFQN LIKE CONCAT(:fqnPrefix, '%') AND fr.toType like concat(:toType, '%') AND fr.fromType = :fromType "
+            + "AND fr.relation = :relation AND te.resolved= :isResolved "
+            + "GROUP BY entityLink")
+    @RegisterRowMapper(CountFieldMapper.class)
+    List<List<String>> listCountByEntityLink(
+        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("fromType") String fromType,
+        @Bind("toType") String toType,
+        @Bind("relation") int relation,
+        @Bind("isResolved") boolean isResolved);
+
+    @SqlQuery(
+        "SELECT entityLink, COUNT(*) count FROM thread_entity WHERE (id IN (<threadIds>)) "
+            + "AND resolved= :isResolved GROUP BY entityLink")
+    @RegisterRowMapper(CountFieldMapper.class)
+    List<List<String>> listCountByThreads(
+        @BindList("threadIds") List<String> threadIds, @Bind("isResolved") boolean isResolved);
+
+    class CountFieldMapper implements RowMapper<List<String>> {
+      @Override
+      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Arrays.asList(rs.getString("entityLink"), rs.getString("count"));
+      }
+    }
   }
 
   interface FieldRelationshipDAO {

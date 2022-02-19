@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -38,6 +39,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.feed.CreateThread;
+import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
@@ -96,7 +98,7 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Parameter(
               description = "Filter threads by entity link",
-              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}>"))
+              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink)
       throws IOException {
@@ -120,6 +122,33 @@ public class FeedResource {
     return addHref(uriInfo, dao.get(id));
   }
 
+  @GET
+  @Path("/count")
+  @Operation(
+      summary = "count of threads",
+      tags = "feeds",
+      description = "Get a count of threads, optionally filtered by `entityLink` for each of the entities.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Count of threads",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ThreadCount.class)))
+      })
+  public ThreadCount getThreadCount(
+      @Context UriInfo uriInfo,
+      @Parameter(
+              description = "Filter threads by entity link",
+              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
+          @QueryParam("entityLink")
+          String entityLink,
+      @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("isResolved")
+          Boolean isResolved)
+      throws IOException {
+    return dao.getThreadsCount(entityLink, isResolved);
+  }
+
   @POST
   @Operation(
       summary = "Create a thread",
@@ -136,7 +165,7 @@ public class FeedResource {
       throws IOException, ParseException {
     Thread thread = getThread(securityContext, create);
     FeedUtil.addPost(thread, new Post().withMessage(create.getMessage()).withFrom(create.getFrom()));
-    addHref(uriInfo, dao.create(thread));
+    addHref(uriInfo, dao.create(thread, securityContext));
     return Response.created(thread.getHref()).entity(thread).build();
   }
 
