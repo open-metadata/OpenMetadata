@@ -118,8 +118,6 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
 
     def salesforce_client(self) -> Iterable[OMetaDatabaseAndTable]:
         try:
-
-            row_order = 1
             table_columns = []
             md = self.sf.restful(
                 "sobjects/{}/describe/".format(self.config.sobject_name), params=None
@@ -140,10 +138,8 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
                         description=column["label"],
                         columnDataType=self.column_type(column["type"].upper()),
                         columnConstraint=col_constraint,
-                        ordinalPosition=row_order,
                     )
                 )
-                row_order += 1
             table_data = self.fetch_sample_data(self.config.sobject_name)
             logger.info("Successfully Ingested the sample data")
             table_entity = Table(
