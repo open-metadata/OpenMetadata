@@ -24,7 +24,7 @@ import click
 from pydantic import Field
 from sqlalchemy.orm import DeclarativeMeta, InstrumentedAttribute, Session
 
-from ingestion.build.lib.metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.config.common import ConfigModel, DynamicTypedConfig
 from metadata.config.workflow import get_ingestion_source, get_sink
 from metadata.generated.schema.entity.data.database import Database

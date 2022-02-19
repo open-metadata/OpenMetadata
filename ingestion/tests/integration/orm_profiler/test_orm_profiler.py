@@ -33,7 +33,7 @@ from metadata.ingestion.api.workflow import Workflow
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from ingestion.build.lib.metadata.orm_profiler.engines import create_and_bind_session
+from metadata.orm_profiler.engines import create_and_bind_session
 
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared"
