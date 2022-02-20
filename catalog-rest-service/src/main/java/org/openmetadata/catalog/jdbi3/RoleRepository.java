@@ -16,12 +16,15 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
@@ -31,10 +34,13 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -180,24 +186,16 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   public ResultList<Role> getDefaultRolesResultList(UriInfo uriInfo, Fields fields)
-      throws GeneralSecurityException, UnsupportedEncodingException {
+      throws GeneralSecurityException, IOException {
     List<Role> roles = getDefaultRoles(uriInfo, fields);
     return new ResultList<>(roles, null, null, roles.size());
   }
 
-  private List<Role> getDefaultRoles(UriInfo uriInfo, Fields fields) {
-    List<Role> roles =
-        daoCollection.roleDAO().getDefaultRoles().stream()
-            .map(
-                json -> {
-                  try {
-                    return withHref(uriInfo, setFields(JsonUtils.readValue(json, Role.class), fields));
-                  } catch (IOException e) {
-                    LOG.warn("Could not parse Role from json {}", json);
-                  }
-                  return null;
-                })
-            .collect(Collectors.toList());
+  private List<Role> getDefaultRoles(UriInfo uriInfo, Fields fields) throws IOException {
+    List<Role> roles = new ArrayList<>();
+    for (String roleJson : daoCollection.roleDAO().getDefaultRoles()) {
+      roles.add(withHref(uriInfo, setFields(JsonUtils.readValue(roleJson, Role.class), fields)));
+    }
     if (roles.size() > 1) {
       LOG.warn(
           "{} roles {}, are registered as default. There SHOULD be only one role marked as default.",
@@ -340,8 +338,97 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
-      recordChange("default", original.getEntity().getDefault(), updated.getEntity().getDefault());
+    public void entitySpecificUpdate() throws IOException, ParseException {
+      updateDefault(original.getEntity(), updated.getEntity());
+    }
+
+    private void updateDefault(Role origRole, Role updatedRole) throws IOException, ParseException {
+      long startTime = System.nanoTime();
+      if (Boolean.FALSE.equals(origRole.getDefault()) && Boolean.TRUE.equals(updatedRole.getDefault())) {
+        setDefaultToTrue(updatedRole);
+      }
+      if (Boolean.TRUE.equals(origRole.getDefault()) && Boolean.FALSE.equals(updatedRole.getDefault())) {
+        setDefaultToFalse(updatedRole);
+      }
+      recordChange("default", origRole.getDefault(), updatedRole.getDefault());
+      LOG.debug(
+          "Took {} ns to update {} role field default from {} to {}",
+          System.nanoTime() - startTime,
+          updatedRole.getName(),
+          origRole.getDefault(),
+          updatedRole.getDefault());
+    }
+
+    private void setDefaultToTrue(Role role) throws IOException, ParseException {
+      List<Role> defaultRoles = getDefaultRoles(null, ROLE_PATCH_FIELDS);
+      EntityRepository<Role> roleRepository = Entity.getEntityRepository(Entity.ROLE);
+      // Set default=FALSE for all existing default roles.
+      for (Role defaultRole : defaultRoles) {
+        if (defaultRole.getId().equals(role.getId())) {
+          // Skip the current role which is being set with default=TRUE.
+          continue;
+        }
+        Role origDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), ROLE_PATCH_FIELDS);
+        Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), ROLE_PATCH_FIELDS);
+        updatedDefaultRole = updatedDefaultRole.withDefault(false);
+        new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
+      }
+      LOG.info("Creating 'user --- has ---> role' relationship for {} role", role.getName());
+      updateUsers(new RoleEntityInterface(role).getEntityReference(), null);
+    }
+
+    private void setDefaultToFalse(Role role) {
+      LOG.info("Deleting 'user --- has ---> role' relationship for {} role", role.getName());
+      updateUsers(null, new RoleEntityInterface(role).getEntityReference());
+    }
+
+    private List<User> getAllUsers() {
+      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+      try {
+        return userRepository
+            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, null, Integer.MAX_VALUE - 1, null, Include.ALL)
+            .getData();
+      } catch (GeneralSecurityException | IOException | ParseException e) {
+        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));
+      }
+    }
+
+    private void updateUsers(EntityReference addRole, EntityReference removeRole) {
+      List<User> users = getAllUsers();
+      if (users.isEmpty()) {
+        return;
+      }
+      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+      users
+          .parallelStream()
+          .forEach(
+              user -> {
+                try {
+                  updateUser(userRepository, user, addRole, removeRole);
+                } catch (IOException | ParseException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+    }
+
+    private void updateUser(
+        EntityRepository<User> userRepository, User user, EntityReference addRole, EntityReference removeRole)
+        throws IOException, ParseException {
+      User origUser = userRepository.get(null, user.getId().toString(), UserRepository.USER_PATCH_FIELDS);
+      User updatedUser = userRepository.get(null, user.getId().toString(), UserRepository.USER_PATCH_FIELDS);
+      List<EntityReference> roles = updatedUser.getRoles();
+      if (roles == null) {
+        roles = new ArrayList<>();
+      }
+      Set<EntityReference> rolesSet = new HashSet<>(roles);
+      if (addRole != null) {
+        rolesSet.add(addRole);
+      }
+      if (removeRole != null) {
+        rolesSet.remove(removeRole);
+      }
+      updatedUser.setRoles(new ArrayList<>(rolesSet));
+      Entity.getEntityRepository(Entity.USER).getUpdater(origUser, updatedUser, Operation.PATCH).update();
     }
   }
 }

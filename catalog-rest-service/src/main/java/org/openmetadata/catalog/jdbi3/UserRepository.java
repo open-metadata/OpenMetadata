@@ -78,7 +78,7 @@ public class UserRepository extends EntityRepository<User> {
         daoCollection.roleDAO().getDefaultRolesIds().stream().map(UUID::fromString).collect(Collectors.toSet());
     defaultRoleIds.removeAll(existingRoleIds);
 
-    if (rolesRef == null || rolesRef.size() == 0) {
+    if (rolesRef == null || rolesRef.isEmpty()) {
       rolesRef = new ArrayList<>();
     }
     for (UUID roleId : defaultRoleIds) {

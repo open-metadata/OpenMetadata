@@ -908,12 +908,12 @@ public abstract class EntityRepository<T> {
       this.operation = operation;
     }
 
-    public final void update() throws IOException {
+    public final void update() throws IOException, ParseException {
       update(false);
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
-    public final void update(boolean allowEdits) throws IOException {
+    public final void update(boolean allowEdits) throws IOException, ParseException {
       if (operation.isDelete()) { // DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -930,7 +930,7 @@ public abstract class EntityRepository<T> {
       storeUpdate();
     }
 
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() throws IOException, ParseException {
       // Default implementation. Override this to add any entity specific field updates
     }
 

@@ -417,21 +417,22 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       webhook.getEventFilters().forEach(f -> filter.put(f.getEventType(), f.getEntities()));
     }
 
-    private void setErrorStatus(Long attemptTime, Integer statusCode, String reason) throws IOException {
+    private void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
+        throws IOException, ParseException {
       if (!attemptTime.equals(webhook.getFailureDetails().getLastFailedAt())) {
         setStatus(Status.FAILED, attemptTime, statusCode, reason, null);
       }
       throw new RuntimeException(reason);
     }
 
-    private void setAwaitingRetry(Long attemptTime, int statusCode, String reason) throws IOException {
+    private void setAwaitingRetry(Long attemptTime, int statusCode, String reason) throws IOException, ParseException {
       if (!attemptTime.equals(webhook.getFailureDetails().getLastFailedAt())) {
         setStatus(Status.AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
       }
     }
 
     private void setStatus(Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp)
-        throws IOException {
+        throws IOException, ParseException {
       Webhook stored = daoCollection.webhookDAO().findEntityById(webhook.getId());
       webhook.setStatus(status);
       webhook
