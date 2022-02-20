@@ -439,7 +439,7 @@ class OpenMetadata(
         fields: Optional[List[str]] = None,
         after: str = None,
         limit: int = 1000,
-        params: Dict = {},
+        params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -449,7 +449,7 @@ class OpenMetadata(
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
-        url_params = f"&{urllib.parse.urlencode(params)}"
+        url_params = f"&{urllib.parse.urlencode(params)}" if params else ""
         resp = self.client.get(
             f"{suffix}{url_limit}{url_after}{url_fields}{url_params}"
         )

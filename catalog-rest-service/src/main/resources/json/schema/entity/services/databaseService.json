@@ -29,7 +29,8 @@
         "Databricks",
         "DynamoDB",
         "AzureSQL",
-        "SingleStore"
+        "SingleStore",
+        "SQLite"
       ],
       "javaEnums": [
         {
@@ -94,6 +95,9 @@
         },
         {
           "name": "SingleStore"
+        },
+        {
+          "name": "SQLite"
         }
       ]
     },

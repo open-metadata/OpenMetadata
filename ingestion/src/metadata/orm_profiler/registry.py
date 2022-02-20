@@ -83,6 +83,13 @@ class MetricRegistry(Enum):
         except KeyError:
             return None
 
+    @classmethod
+    def init(cls, key: str, *args, **kwargs):
+        try:
+            return cls[key](*args, **kwargs)
+        except KeyError:
+            return None
+
 
 class TypeRegistry(Enum):
     """

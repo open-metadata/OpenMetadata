@@ -15,9 +15,8 @@ Core Validation definitions
 import operator as op
 from typing import Any, Callable, Dict, Union
 
-from pydantic import BaseModel, StrictStr, ValidationError, validator
+from pydantic import ValidationError
 
-from metadata.orm_profiler.metrics.core import Metric
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.utils import logger
 
@@ -46,100 +45,101 @@ _OPERATOR_MAP = {
 }
 
 
-class Validation(BaseModel):
+class Validation:
     """
     Base class for Validation definition.
+
+    This data will be extracted from the TestDef expression.
 
     We will map here the results from parsing with
     the grammar.
     """
 
-    metric: StrictStr
-    operator: Callable
-    value: Union[float, int, str]
-    valid: bool = None
+    def __init__(self, metric: str, operator: Callable, value: Union[float, int, str]):
+        self.metric = metric
+        self.operator = operator
+        self.value = value
+        self.valid = None
 
-    class Config:
-        smart_union = True  # Otherwise, we have undesired type coercion
+    @classmethod
+    def create(cls, raw_validation: Dict[str, str]) -> "Validation":
+        """
+        Given the results of the grammar parser, convert
+        them to a Validation class with the assigned Metric,
+        the right operator and the casted value.
+        """
 
+        raw_metric = raw_validation.get("metric")
+        if not raw_metric:
+            raise ValidationConversionException(
+                f"Missing metric information in {raw_validation}."
+            )
 
-def to_validation(raw_validation: Dict[str, str]) -> Validation:
-    """
-    Given the results of the grammar parser, convert
-    them to a Validation class with the assigned Metric,
-    the right operator and the casted value.
-    """
+        metric = Metrics.get(raw_metric.upper())
+        if not metric:
+            logger.error("Error trying to get Metric from Registry.")
+            raise ValidationConversionException(
+                f"Cannot find metric from {raw_validation} in the Registry."
+            )
 
-    raw_metric = raw_validation.get("metric")
-    if not raw_metric:
-        raise ValidationConversionException(
-            f"Missing metric information in {raw_validation}."
-        )
+        metric_name = metric.name()
 
-    metric = Metrics.get(raw_metric.upper())
-    if not metric:
-        logger.error("Error trying to get Metric from Registry.")
-        raise ValidationConversionException(
-            f"Cannot find metric from {raw_validation} in the Registry."
-        )
+        operator = _OPERATOR_MAP.get(raw_validation.get("operation"))
+        if not operator:
+            logger.error("Invalid Operator when converting to validation.")
+            raise ValidationConversionException(
+                f"Cannot find operator from {raw_validation}."
+            )
 
-    metric_name = metric.name()
+        raw_value = raw_validation.get("value")
+        if not raw_value:
+            logger.error("Missing or Empty value")
+            raise ValidationConversionException(
+                f"Missing or empty value in {raw_validation}."
+            )
 
-    operator = _OPERATOR_MAP.get(raw_validation.get("operation"))
-    if not operator:
-        logger.error("Invalid Operator when converting to validation.")
-        raise ValidationConversionException(
-            f"Cannot find operator from {raw_validation}."
-        )
+        if raw_value.isdigit():
+            value = int(raw_value)  # Check if int
+        else:
+            try:
+                value = float(raw_value)  # Otherwise, might be float
+            except ValueError:
+                value = raw_value  # If not, leave as string
 
-    raw_value = raw_validation.get("value")
-    if not raw_value:
-        logger.error("Missing or Empty value")
-        raise ValidationConversionException(
-            f"Missing or empty value in {raw_validation}."
-        )
-
-    if raw_value.isdigit():
-        value = int(raw_value)  # Check if int
-    else:
         try:
-            value = float(raw_value)  # Otherwise, might be float
-        except ValueError:
-            value = raw_value  # If not, leave as string
+            validation = cls(metric=metric_name, operator=operator, value=value)
+        except ValidationError as err:
+            logger.error(
+                "Error trying to convert a RAW validation to a Validation model"
+            )
+            raise err
 
-    try:
-        validation = Validation(metric=metric_name, operator=operator, value=value)
-    except ValidationError as err:
-        logger.error("Error trying to convert a RAW validation to a Validation model")
-        raise err
+        return validation
 
-    return validation
+    def validate(self, results: Dict[str, Any]) -> "Validation":
+        """
+        Given a Validation and the profiler results,
+        compare their data.
 
+        We will call this function for each validation
+        that we received.
 
-def validate(validation: Validation, results: Dict[str, Any]) -> Validation:
-    """
-    Given a Validation and the profiler results,
-    compare their data.
+        Each time we will return a Validation object
+        with a properly informed `valid` field,
+        containing the result of the validation.
+        """
+        computed_metric = results.get(self.metric)
 
-    We will call this function for each validation
-    that we received.
+        if not computed_metric:
+            raise MissingMetricException(
+                f"The required metric {self.metric} is not available"
+                + f" in the profiler results: {results}."
+            )
 
-    Each time we will return a Validation object
-    with a properly informed `valid` field,
-    containing the result of the validation.
-    """
-    computed_metric = results.get(validation.metric)
-
-    if not computed_metric:
-        raise MissingMetricException(
-            f"The required metric {validation.metric} is not available"
-            + f" in the profiler results: {results}."
+        is_valid = self.operator(
+            computed_metric, self.value  # Order matters. Real value vs. expected
         )
 
-    is_valid = validation.operator(
-        computed_metric, validation.value  # Order matters. Real value vs. expected
-    )
+        self.valid = is_valid  # Either True / False
 
-    validation.valid = is_valid  # Either True / False
-
-    return validation
+        return self  # return self for convenience

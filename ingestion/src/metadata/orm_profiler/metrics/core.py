@@ -142,6 +142,8 @@ class ComposedMetric(Metric, ABC):
     directly in the profiler.
     """
 
+    # TODO: new abstract method with the set of required metrics so that we can validate profilers
+
     @abstractmethod
     def fn(self, res: Dict[str, Any]):
         """
