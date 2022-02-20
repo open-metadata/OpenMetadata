@@ -66,7 +66,7 @@
       "default": false
     },
     "defaultRoles": {
-      "description": "Roles to be assigned for all users that are part of this team.",
+      "description": "Roles to be assigned to all users that are part of this team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

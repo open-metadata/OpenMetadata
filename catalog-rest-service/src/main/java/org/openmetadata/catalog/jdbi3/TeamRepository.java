@@ -308,27 +308,56 @@ public class TeamRepository extends EntityRepository<Team> {
     public void entitySpecificUpdate() throws IOException {
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
       updateUsers(original.getEntity(), updated.getEntity());
+      updateDefaultRoles(original.getEntity(), updated.getEntity());
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
       List<EntityReference> origUsers = Optional.ofNullable(origTeam.getUsers()).orElse(Collections.emptyList());
       List<EntityReference> updatedUsers = Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList());
+      updateEntityRelationships(
+          "users", origTeam.getId(), updatedTeam.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers);
+    }
 
+    private void updateDefaultRoles(Team origTeam, Team updatedTeam) throws JsonProcessingException {
+      List<EntityReference> origDefaultRoles =
+          Optional.ofNullable(origTeam.getDefaultRoles()).orElse(Collections.emptyList());
+      List<EntityReference> updatedDefaultRoles =
+          Optional.ofNullable(updatedTeam.getDefaultRoles()).orElse(Collections.emptyList());
+      updateEntityRelationships(
+          "defaultRoles",
+          origTeam.getId(),
+          updatedTeam.getId(),
+          Relationship.HAS,
+          Entity.ROLE,
+          origDefaultRoles,
+          updatedDefaultRoles);
+    }
+
+    private void updateEntityRelationships(
+        String field,
+        UUID origId,
+        UUID updatedId,
+        Relationship relationshipType,
+        String toEntityType,
+        List<EntityReference> origRefs,
+        List<EntityReference> updatedRefs)
+        throws JsonProcessingException {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      if (recordListChange("users", origUsers, updatedUsers, added, deleted, entityReferenceMatch)) {
-        // Remove users from original and add users from updated
-        daoCollection
-            .relationshipDAO()
-            .deleteFrom(origTeam.getId().toString(), Entity.TEAM, Relationship.HAS.ordinal(), "user");
-        // Add relationships
-        for (EntityReference user : updatedUsers) {
-          addRelationship(updatedTeam.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
-        }
-
-        updatedUsers.sort(EntityUtil.compareEntityReference);
-        origUsers.sort(EntityUtil.compareEntityReference);
+      if (!recordListChange(field, origRefs, updatedRefs, added, deleted, entityReferenceMatch)) {
+        // No changes between original and updated.
+        return;
       }
+      // Remove relationships from original
+      daoCollection
+          .relationshipDAO()
+          .deleteFrom(origId.toString(), Entity.TEAM, relationshipType.ordinal(), toEntityType);
+      // Add relationships from updated
+      for (EntityReference ref : updatedRefs) {
+        addRelationship(updatedId, ref.getId(), Entity.TEAM, toEntityType, relationshipType);
+      }
+      updatedRefs.sort(EntityUtil.compareEntityReference);
+      origRefs.sort(EntityUtil.compareEntityReference);
     }
   }
 }
