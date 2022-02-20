@@ -351,7 +351,7 @@ public class RoleRepository extends EntityRepository<Role> {
         setDefaultToFalse(updatedRole);
       }
       recordChange("default", origRole.getDefault(), updatedRole.getDefault());
-      LOG.info(
+      LOG.debug(
           "Took {} ns to update {} role field default from {} to {}",
           System.nanoTime() - startTime,
           updatedRole.getName(),
@@ -395,7 +395,7 @@ public class RoleRepository extends EntityRepository<Role> {
 
     private void updateUsers(EntityReference addRole, EntityReference removeRole) {
       List<User> users = getAllUsers();
-      if (users.size() == 0) {
+      if (users.isEmpty()) {
         return;
       }
       EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
