@@ -98,7 +98,7 @@ public class TeamResource {
     }
   }
 
-  protected static final String FIELDS = "profile,users,owns";
+  protected static final String FIELDS = "profile,users,owns,defaultRoles";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -370,6 +370,7 @@ public class TeamResource {
         .withProfile(ct.getProfile())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
-        .withUsers(dao.getUsers(ct.getUsers()));
+        .withUsers(dao.getEntityReferences(ct.getUsers()))
+        .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()));
   }
 }
