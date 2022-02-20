@@ -44,6 +44,7 @@ export interface DatasetDetailsProps {
   owner: DatasetOwner;
   description: string;
   tableProfile: Table['tableProfile'];
+  tableQueries: Table['tableQueries'];
   columns: Table['columns'];
   tier: TagLabel;
   sampleData: TableData;
@@ -54,6 +55,7 @@ export interface DatasetDetailsProps {
   deleted?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
+  isQueriesLoading?: boolean;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;

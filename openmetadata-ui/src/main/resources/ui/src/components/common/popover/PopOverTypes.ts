@@ -30,4 +30,5 @@ export type PopOverProp = {
   className?: string;
   delay?: number;
   hideDelay?: number;
+  sticky?: boolean;
 };

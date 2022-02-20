@@ -28,7 +28,6 @@ import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
 import IconControlPlus from '../assets/svg/control-plus.svg';
-import IconCopy from '../assets/svg/copy.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -81,10 +80,13 @@ import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconChevronDown from '../assets/svg/icon-chevron-down.svg';
+import IconCopy from '../assets/svg/icon-copy.svg';
+import IconDown from '../assets/svg/icon-down.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
+import IconUp from '../assets/svg/icon-up.svg';
 import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
 import IconLineageColor from '../assets/svg/lineage-color.svg';
@@ -239,6 +241,8 @@ export const Icons = {
   ANNOUNCEMENT: 'icon-announcement',
   ANNOUNCEMENT_WHITE: 'icon-announcement-white',
   CHEVRON_DOWN: 'icon-chevron-down',
+  ICON_UP: 'icon-up',
+  ICON_DOWN: 'icon-down',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -689,6 +693,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.CHEVRON_DOWN:
       IconComponent = IconChevronDown;
+
+      break;
+    case Icons.ICON_DOWN:
+      IconComponent = IconDown;
+
+      break;
+    case Icons.ICON_UP:
+      IconComponent = IconUp;
 
       break;
 

@@ -29,6 +29,7 @@ const PopOver: React.FC<PopOverProp> = ({
   title,
   trigger,
   theme = 'dark',
+  sticky = false,
 }): JSX.Element => {
   return (
     <Tooltip
@@ -39,6 +40,7 @@ const PopOver: React.FC<PopOverProp> = ({
       html={html}
       position={position}
       size={size}
+      sticky={sticky}
       theme={theme}
       title={title || ''}
       trigger={trigger}>

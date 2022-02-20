@@ -13,91 +13,66 @@
  */
 
 /**
- * Create a topic entity request
+ * Create Glossary term entity request
  */
-export interface CreateTopic {
+export interface CreateGlossaryTerm {
   /**
-   * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
+   * Other glossary terms that are children of this glossary term.
    */
-  cleanupPolicies?: CleanupPolicy[];
+  children?: EntityReference[];
   /**
-   * Description of the topic instance. What it has and how to use it.
+   * Description of the glossary term.
    */
   description?: string;
   /**
-   * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
+   * Display Name that identifies this glossary.
    */
-  maximumMessageSize?: number;
+  displayName?: string;
   /**
-   * Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas`
-   * configuration.
+   * Reference to the glossary that this term is part of.
    */
-  minimumInSyncReplicas?: number;
+  glossary: EntityReference;
   /**
-   * Name that identifies this topic instance uniquely.
+   * Preferred name for the glossary term.
    */
   name: string;
   /**
-   * Owner of this topic
+   * Reference to the parent glossary term. When null, the term is at the root of the glossary.
    */
-  owner?: EntityReference;
+  parent?: EntityReference;
   /**
-   * Number of partitions into which the topic is divided.
+   * Link to a reference from an external glossary.
    */
-  partitions: number;
+  references?: TermReference;
   /**
-   * Replication Factor in integer (more than 1).
+   * Other glossary terms that are related to this glossary term.
    */
-  replicationFactor?: number;
+  relatedTerms?: EntityReference[];
   /**
-   * Maximum size of a partition in bytes before old data is discarded. For Kafka -
-   * `retention.bytes` configuration.
+   * User names of the reviewers for this glossary.
    */
-  retentionSize?: number;
+  reviewers?: EntityReference[];
   /**
-   * Retention time in milliseconds. For Kafka - `retention.ms` configuration.
+   * Alternate names that are synonyms or near-synonyms for the glossary term.
    */
-  retentionTime?: number;
+  synonyms?: string[];
   /**
-   * Schema used for message serialization. Optional as some topics may not have associated
-   * schemas.
-   */
-  schemaText?: string;
-  /**
-   * Schema used for message serialization.
-   */
-  schemaType?: SchemaType;
-  /**
-   * Link to the messaging service where this topic is hosted in
-   */
-  service: EntityReference;
-  /**
-   * Tags for this topic
+   * Tags for this glossary term.
    */
   tags?: TagLabel[];
-  /**
-   * Contains key/value pair of topic configuration.
-   */
-  topicConfig?: { [key: string]: any };
 }
 
 /**
- * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
- */
-export enum CleanupPolicy {
-  Compact = 'compact',
-  Delete = 'delete',
-}
-
-/**
- * Owner of this topic
+ * Other glossary terms that are children of this glossary term.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Link to the messaging service where this topic is hosted in
+ * Reference to the glossary that this term is part of.
+ *
+ * Reference to the parent glossary term. When null, the term is at the root of the glossary.
  */
 export interface EntityReference {
   /**
@@ -129,15 +104,17 @@ export interface EntityReference {
 }
 
 /**
- * Schema used for message serialization.
- *
- * Schema type used for the message.
+ * Link to a reference from an external glossary.
  */
-export enum SchemaType {
-  Avro = 'Avro',
-  JSON = 'JSON',
-  Other = 'Other',
-  Protobuf = 'Protobuf',
+export interface TermReference {
+  /**
+   * Name that identifies the source of an external glossary term. Example `HealthCare.gov`
+   */
+  endpoint?: string;
+  /**
+   * Name that identifies the source of an external glossary term. Example `HealthCare.gov`
+   */
+  name?: string;
 }
 
 /**

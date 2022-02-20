@@ -46,11 +46,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateUser;
@@ -79,6 +83,7 @@ import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
@@ -91,6 +96,35 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public void post_entity_as_non_admin_401(TestInfo test) {
     // Override the method as a User can create a User entity for himself
     // during first time login without being an admin
+  }
+
+  @Order(Integer.MAX_VALUE) // Run this test last to avoid side effects of default role creation to fail other tests.
+  @Test
+  void post_userWithDefaultRole(TestInfo test) throws IOException {
+    // Given no default role has been set, when a user is created, then no role should be assigned.
+    CreateUser create = createRequest(test, 1);
+    createUserAndCheckRoles(create, Collections.emptyList());
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role defaultRole = roleResourceTest.createRolesAndSetDefault(test, 7);
+    List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
+    UUID nonDefaultRoleId = roles.stream().filter(role -> !role.getDefault()).findAny().orElseThrow().getId();
+    UUID defaultRoleId = defaultRole.getId();
+
+    // Given a default role has been set, when a user is created without any roles, then the default role should be
+    // assigned.
+    create = createRequest(test, 2);
+    createUserAndCheckRoles(create, Arrays.asList(defaultRoleId));
+
+    // Given a default role has been set, when a user is created with a non default role, then the default role should
+    // be assigned along with the non default role.
+    create = createRequest(test, 3).withRoles(List.of(nonDefaultRoleId));
+    createUserAndCheckRoles(create, Arrays.asList(nonDefaultRoleId, defaultRoleId));
+
+    // Given a default role has been set, when a user is created with both default and non-default role, then both
+    // roles should be assigned.
+    create = createRequest(test, 4).withRoles(List.of(nonDefaultRoleId, defaultRoleId));
+    createUserAndCheckRoles(create, Arrays.asList(nonDefaultRoleId, defaultRoleId));
   }
 
   @Test
@@ -477,6 +511,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         entityNotFound("user", user.getId()));
 
     // TODO deactivated user can't be made owner
+  }
+
+  private void createUserAndCheckRoles(CreateUser create, List<UUID> expectedRolesIds) throws HttpResponseException {
+    User user = createEntity(create, ADMIN_AUTH_HEADERS);
+    user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
+    List<UUID> actualRolesIds =
+        user.getRoles().stream().map(EntityReference::getId).sorted().collect(Collectors.toList());
+    Collections.sort(expectedRolesIds);
+    assertEquals(expectedRolesIds, actualRolesIds);
   }
 
   private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)

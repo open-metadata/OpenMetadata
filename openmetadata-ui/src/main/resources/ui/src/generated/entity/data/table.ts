@@ -208,6 +208,10 @@ export interface Column {
    * Description of the column.
    */
   description?: string;
+  /**
+   * Display Name that identifies this column name.
+   */
+  displayName?: string;
   fullyQualifiedName?: string;
   /**
    * Json schema only if the dataType is JSON else null.
@@ -265,6 +269,7 @@ export enum DataType {
   Time = 'TIME',
   Timestamp = 'TIMESTAMP',
   Tinyint = 'TINYINT',
+  UUID = 'UUID',
   Union = 'UNION',
   Varbinary = 'VARBINARY',
   Varchar = 'VARCHAR',
@@ -475,9 +480,13 @@ export interface TableData {
  */
 export enum DatabaseServiceType {
   Athena = 'Athena',
+  AzureSQL = 'AzureSQL',
   BigQuery = 'BigQuery',
+  ClickHouse = 'ClickHouse',
+  Databricks = 'Databricks',
   Db2 = 'Db2',
   Druid = 'Druid',
+  DynamoDB = 'DynamoDB',
   Glue = 'Glue',
   Hive = 'Hive',
   MariaDB = 'MariaDB',
@@ -487,6 +496,7 @@ export enum DatabaseServiceType {
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
+  SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',
   Vertica = 'Vertica',

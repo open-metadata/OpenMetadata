@@ -24,6 +24,7 @@ import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
@@ -53,6 +54,7 @@ public class ChangeEventHandler implements EventHandler {
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
+    SecurityContext securityContext = requestContext.getSecurityContext();
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent != null) {
@@ -75,7 +77,7 @@ public class ChangeEventHandler implements EventHandler {
         List<Thread> threads = getThreads(responseContext);
         if (threads != null) {
           for (var thread : threads) {
-            feedDao.create(thread);
+            feedDao.create(thread, securityContext);
           }
         }
       }
@@ -225,12 +227,11 @@ public class ChangeEventHandler implements EventHandler {
       switch (changeType) {
         case ADD:
           message =
-              String.format("Added %s: `*%s*`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
+              String.format("Added %s: `%s`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
           break;
         case UPDATE:
           message =
-              String.format(
-                  "Updated %s to `*%s*`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
+              String.format("Updated %s to `%s`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
           break;
         case DELETE:
           message = String.format("Deleted %s", arrayFieldValue != null ? arrayFieldValue : fieldName);
