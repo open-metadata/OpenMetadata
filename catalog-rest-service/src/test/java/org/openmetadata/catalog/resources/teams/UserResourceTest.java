@@ -101,19 +101,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Order(Integer.MAX_VALUE) // Run this test last to avoid side effects of default role creation to fail other tests.
   @Test
   void post_userWithDefaultRole(TestInfo test) throws IOException {
-    // Given no default role has been set, when a user is created, then no role should be assigned.
-    CreateUser create = createRequest(test, 1);
-    createUserAndCheckRoles(create, Collections.emptyList());
-
     RoleResourceTest roleResourceTest = new RoleResourceTest();
-    Role defaultRole = roleResourceTest.createRolesAndSetDefault(test, 7);
     List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
     UUID nonDefaultRoleId = roles.stream().filter(role -> !role.getDefault()).findAny().orElseThrow().getId();
-    UUID defaultRoleId = defaultRole.getId();
+    UUID defaultRoleId =
+        roles.stream().filter(Role::getDefault).findAny().orElseThrow().getId(); // DataConsumer is default role.
 
     // Given a default role has been set, when a user is created without any roles, then the default role should be
     // assigned.
-    create = createRequest(test, 2);
+    CreateUser create = createRequest(test, 2);
     createUserAndCheckRoles(create, Arrays.asList(defaultRoleId));
 
     // Given a default role has been set, when a user is created with a non default role, then the default role should
@@ -244,12 +240,24 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role role1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
     Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    UUID defaultRoleId =
+        roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData().stream()
+            .filter(Role::getDefault)
+            .findAny()
+            .orElseThrow()
+            .getId(); // DataConsumer is default role.
+    EntityReference defaultRoleRef =
+        new RoleEntityInterface(roleResourceTest.getEntity(defaultRoleId, RoleResource.FIELDS, ADMIN_AUTH_HEADERS))
+            .getEntityReference();
+
     List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
     CreateUser create = createRequest(test).withRoles(roles);
-    User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    List<UUID> createdRoles = Arrays.asList(role1.getId(), role2.getId(), defaultRoleRef.getId());
+    CreateUser created = createRequest(test).withRoles(createdRoles);
+    User user = createAndCheckEntity(create, ADMIN_AUTH_HEADERS, created);
 
     // Ensure User has relationship to these roles
-    String[] expectedRoles = roles.stream().map(UUID::toString).sorted().toArray(String[]::new);
+    String[] expectedRoles = createdRoles.stream().map(UUID::toString).sorted().toArray(String[]::new);
     List<EntityReference> roleReferences = user.getRoles();
     String[] actualRoles = roleReferences.stream().map(ref -> ref.getId().toString()).sorted().toArray(String[]::new);
     assertArrayEquals(expectedRoles, actualRoles);
@@ -391,11 +399,16 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
+    List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
+    UUID defaultRoleId =
+        roles.stream().filter(Role::getDefault).findAny().orElseThrow().getId(); // DataConsumer is default role.
+    EntityReference defaultRoleRef =
+        new RoleEntityInterface(roleResourceTest.getEntity(defaultRoleId, RoleResource.FIELDS, ADMIN_AUTH_HEADERS))
+            .getEntityReference();
     EntityReference role1 =
         new RoleEntityInterface(
                 roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS))
             .getEntityReference();
-    List<EntityReference> roles1 = Arrays.asList(role1);
 
     //
     // Add previously absent attributes
@@ -403,22 +416,31 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String origJson = JsonUtils.pojoToJson(user);
 
     String timezone = "America/Los_Angeles";
-    user.withRoles(roles1)
+    user.withRoles(Arrays.asList(role1, defaultRoleRef))
         .withTeams(teams)
         .withTimezone(timezone)
         .withDisplayName("displayName")
         .withProfile(profile)
         .withIsBot(false)
         .withIsAdmin(false);
+    User update =
+        JsonUtils.readValue(origJson, User.class)
+            .withRoles(Arrays.asList(role1))
+            .withTeams(teams)
+            .withTimezone(timezone)
+            .withDisplayName("displayName")
+            .withProfile(profile)
+            .withIsBot(false)
+            .withIsAdmin(false);
 
     ChangeDescription change = getChangeDescription(user.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(roles1));
+    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(Arrays.asList(role1)));
     change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(teams));
     change.getFieldsAdded().add(new FieldChange().withName("timezone").withNewValue(timezone));
     change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
     change.getFieldsAdded().add(new FieldChange().withName("profile").withNewValue(profile));
     change.getFieldsAdded().add(new FieldChange().withName("isBot").withNewValue(false));
-    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change, update);
 
     //
     // Replace the attributes
@@ -431,20 +453,28 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         new RoleEntityInterface(
                 roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS))
             .getEntityReference();
-    List<EntityReference> roles2 = Arrays.asList(role2);
 
     origJson = JsonUtils.pojoToJson(user);
-    user.withRoles(roles2)
+    user.withRoles(Arrays.asList(role2, defaultRoleRef))
         .withTeams(teams1)
         .withTimezone(timezone1)
         .withDisplayName("displayName1")
         .withProfile(profile1)
         .withIsBot(true)
         .withIsAdmin(false);
+    update =
+        JsonUtils.readValue(origJson, User.class)
+            .withRoles(Arrays.asList(role2))
+            .withTeams(teams1)
+            .withTimezone(timezone1)
+            .withDisplayName("displayName1")
+            .withProfile(profile1)
+            .withIsBot(true)
+            .withIsAdmin(false);
 
     change = getChangeDescription(user.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(roles1));
-    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(roles2));
+    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(Arrays.asList(role1)));
+    change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(Arrays.asList(role2)));
     change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(List.of(team2)));
     change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(List.of(team3)));
     change
@@ -455,30 +485,38 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("displayName1"));
     change.getFieldsUpdated().add(new FieldChange().withName("profile").withOldValue(profile).withNewValue(profile1));
     change.getFieldsUpdated().add(new FieldChange().withName("isBot").withOldValue(false).withNewValue(true));
-
-    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change, update);
 
     //
     // Remove the attributes
     //
     origJson = JsonUtils.pojoToJson(user);
-    user.withRoles(null)
+    user.withRoles(Arrays.asList(defaultRoleRef))
         .withTeams(null)
         .withTimezone(null)
         .withDisplayName(null)
         .withProfile(null)
         .withIsBot(null)
         .withIsAdmin(false);
+    update =
+        JsonUtils.readValue(origJson, User.class)
+            .withRoles(null)
+            .withTeams(null)
+            .withTimezone(null)
+            .withDisplayName(null)
+            .withProfile(null)
+            .withIsBot(null)
+            .withIsAdmin(false);
 
     // Note non-empty display field is not deleted
     change = getChangeDescription(user.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(roles2));
+    change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(Arrays.asList(role2)));
     change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(teams1));
     change.getFieldsDeleted().add(new FieldChange().withName("timezone").withOldValue(timezone1));
     change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
     change.getFieldsDeleted().add(new FieldChange().withName("profile").withOldValue(profile1));
     change.getFieldsDeleted().add(new FieldChange().withName("isBot").withOldValue(true).withNewValue(null));
-    patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change, update);
   }
 
   @Test

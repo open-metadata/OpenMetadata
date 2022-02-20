@@ -15,6 +15,8 @@ package org.openmetadata.catalog.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -36,6 +38,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
@@ -56,11 +59,47 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Test
-  void get_queryDefaultRole(TestInfo test) throws IOException {
-    Role defaultRole = createRolesAndSetDefault(test, 7);
+  void defaultRole(TestInfo test) throws IOException {
+    // Check if there is a default role in the beginning. DataConsumer is a default role.
     List<Role> defaultRoles = getDefaultRoles();
     assertEquals(1, defaultRoles.size());
-    assertEquals(defaultRole.getId(), defaultRoles.get(0).getId());
+    Role prevDefaultRole = defaultRoles.get(0);
+
+    // Update the default role and check the following:
+    // - the default role has changed
+    // - the previous default role is no longer set as default
+    // - all users have roles set correctly (only current default role should exist)
+    for (int i = 0; i < 2; i++) { // Run two iterations for this test.
+      Role defaultRole = createRolesAndSetDefault(test, 7, i * 10);
+      defaultRoles = getDefaultRoles();
+      assertEquals(1, defaultRoles.size());
+      assertEquals(defaultRole.getId(), defaultRoles.get(0).getId());
+      assertNotEquals(defaultRole.getId(), prevDefaultRole.getId());
+
+      List<User> users = new UserResourceTest().listEntities(Map.of("fields", "roles"), ADMIN_AUTH_HEADERS).getData();
+      for (User user : users) {
+        boolean defaultRoleSet = false, prevDefaultRoleExists = false;
+
+        for (EntityReference role : user.getRoles()) {
+          if (role.getId().equals(defaultRole.getId())) {
+            defaultRoleSet = true;
+          }
+          if (role.getId().equals(prevDefaultRole.getId())) {
+            prevDefaultRoleExists = true;
+          }
+        }
+        if (!defaultRoleSet) {
+          fail(String.format("Default role %s was not set for user %s", defaultRole.getName(), user.getName()));
+        }
+        if (prevDefaultRoleExists) {
+          fail(
+              String.format(
+                  "Previous default role %s has not been removed for user %s",
+                  prevDefaultRole.getName(), user.getName()));
+        }
+      }
+      prevDefaultRole = defaultRole;
+    }
   }
 
   public List<Role> getDefaultRoles() throws HttpResponseException {
@@ -72,17 +111,18 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
    *
    * @return the default role
    */
-  public Role createRolesAndSetDefault(TestInfo test, @Positive int numberOfRoles) throws IOException {
+  public Role createRolesAndSetDefault(TestInfo test, @Positive int numberOfRoles, @Positive int offset)
+      throws IOException {
     // Create a set of roles.
     for (int i = 0; i < numberOfRoles; i++) {
-      CreateRole create = createRequest(test, i + 1);
+      CreateRole create = createRequest(test, offset + i + 1);
       createAndCheckRole(create, ADMIN_AUTH_HEADERS);
     }
 
     // Set one of the roles as default.
     Role role =
         getEntityByName(
-            getEntityName(test, new Random().nextInt(numberOfRoles)),
+            getEntityName(test, offset + new Random().nextInt(numberOfRoles)),
             Collections.emptyMap(),
             RoleResource.FIELDS,
             ADMIN_AUTH_HEADERS);
