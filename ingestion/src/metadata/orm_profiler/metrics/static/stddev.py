@@ -40,7 +40,7 @@ def _(element, compiler, **kw):
     return "STDEVP(%s)" % compiler.process(element.clauses, **kw)
 
 
-@compiles(StdDevFn, "sqlite")  # Needed for unit tests
+@compiles(StdDevFn, DatabaseServiceType.SQLite.value.lower())  # Needed for unit tests
 def _(element, compiler, **kw):
     """
     This actually returns the squared STD, but as
