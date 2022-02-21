@@ -22,6 +22,7 @@ import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: EntityThread[];
   withSidePanel?: boolean;
+  isEntityFeed?: boolean;
 }
 
 const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
@@ -38,6 +39,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
   feedList,
   withSidePanel = false,
+  isEntityFeed = false,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
@@ -65,7 +67,9 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 return (
                   <ActivityFeedCard
                     className="tw-mb-3"
+                    entityLink={feed.about}
                     feed={mainFeed}
+                    isEntityFeed={isEntityFeed}
                     key={index}
                     repliedUsers={repliedUsers}
                     replies={replies}

@@ -496,6 +496,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 id="activityfeed">
                 <div />
                 <ActivityFeedList
+                  isEntityFeed
                   withSidePanel
                   className=""
                   feedList={entityThread}

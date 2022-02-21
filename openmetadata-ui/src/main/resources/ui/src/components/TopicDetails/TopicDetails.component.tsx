@@ -343,6 +343,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 id="activityfeed">
                 <div />
                 <ActivityFeedList
+                  isEntityFeed
                   withSidePanel
                   className=""
                   feedList={entityThread}

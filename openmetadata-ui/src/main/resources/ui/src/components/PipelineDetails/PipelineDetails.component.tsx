@@ -425,6 +425,7 @@ const PipelineDetails = ({
                   id="activityfeed">
                   <div />
                   <ActivityFeedList
+                    isEntityFeed
                     withSidePanel
                     className=""
                     feedList={entityThread}

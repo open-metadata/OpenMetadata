@@ -317,3 +317,7 @@ export const positionY = 60;
 
 export const nodeWidth = 240;
 export const nodeHeight = 40;
+
+export const EntityRegExPattern = /<#E\/([^<>]+?)\/([^<>]+?)\/([^<>]+?)>/;
+
+export const EntityRegEx = new RegExp(EntityRegExPattern);
