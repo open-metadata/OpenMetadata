@@ -33,6 +33,7 @@ import PageLayout from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import EntityList from '../EntityList/EntityList';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
+import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
 import { MyDataProps } from './MyData.interface';
@@ -169,12 +170,18 @@ const MyData: React.FC<MyDataProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {getFilterDropDown()}
-          <ActivityFeedList
-            className=""
-            feedList={feedData}
-            isLoading={isFeedLoading}
-          />
+          {feedData?.length > 0 ? (
+            <Fragment>
+              {getFilterDropDown()}
+              <ActivityFeedList
+                className=""
+                feedList={feedData}
+                isLoading={isFeedLoading}
+              />
+            </Fragment>
+          ) : (
+            <Onboarding />
+          )}
         </Fragment>
       )}
     </PageLayout>
