@@ -18,7 +18,7 @@ Note that we are using our own Registry definition
 that allows us to directly call our metrics without
 having the verbosely pass .value all the time...
 """
-
+from metadata.orm_profiler.metrics.composed.duplicate_count import DuplicateCount
 from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
 from metadata.orm_profiler.metrics.static.avg import Avg
 from metadata.orm_profiler.metrics.static.count import Count
@@ -47,4 +47,5 @@ class Metrics(MetricRegistry):
     STDDEV = StdDev
 
     # Composed Metrics
+    DUPLICATE_COUNT = DuplicateCount
     NULL_RATIO = NullRatio

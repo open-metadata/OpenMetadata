@@ -10,38 +10,34 @@
 #  limitations under the License.
 
 """
-Null Ratio Composed Metric definition
+Count Duplicates Composed Metric definition
 """
 from typing import Any, Dict, Optional
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.null_count import NullCount
+from metadata.orm_profiler.metrics.static.distinct import Distinct
 
 
-class NullRatio(ComposedMetric):
+class DuplicateCount(ComposedMetric):
     """
-    Given the total count and null count,
-    compute the null ratio
+    Given the total count and the distinct count,
+    compute the number of rows that are duplicates
     """
 
     @property
     def metric_type(self):
-        """
-        Override default metric_type definition as
-        we now don't care about the column
-        """
-        return float
+        return int
 
     def fn(self, res: Dict[str, Any]) -> Optional[float]:
         """
-        Safely compute null ratio based on the profiler
+        Safely compute duplicate count based on the profiler
         results of other Metrics
         """
-        res_count = res.get(Count.name())
-        res_null = res.get(NullCount.name())
+        count = res.get(Count.name())
+        distinct_count = res.get(Distinct.name())
 
-        if res_count and res_null is not None:
-            return res_null / (res_null + res_count)
+        if count is not None and distinct_count is not None:
+            return count - distinct_count
 
         return None

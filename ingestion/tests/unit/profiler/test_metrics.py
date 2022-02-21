@@ -145,4 +145,16 @@ class MetricsTest(TestCase):
 
         assert res["DISTINCT"] == 2
 
+    def test_duplicate_count(self):
+        """
+        Check composed duplicate count
+        """
+        count = Metrics.COUNT(col=User.name)
+        dist = Metrics.DISTINCT(col=User.name)
+        dup_count = Metrics.DUPLICATE_COUNT(col=User.name)
+        res = SingleProfiler(count, dist, dup_count, session=self.session, table=User).execute()
+
+        assert res["DUPLICATECOUNT"] == 0
+
+
 
