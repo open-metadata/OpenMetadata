@@ -12,8 +12,9 @@
  */
 
 import classNames from 'classnames';
-import { EntityThread } from 'Models';
-import React, { FC, HTMLAttributes } from 'react';
+import { isUndefined } from 'lodash';
+import { EntityThread, Post } from 'Models';
+import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getRelativeDateByTimeStamp } from '../../../utils/TimeUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -43,6 +44,18 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
+  const [selectedThread, setSelectedThread] = useState<EntityThread>();
+
+  const onThreadSelect = (id: string) => {
+    const thread = feedList.find((f) => f.id === id);
+    if (thread) {
+      setSelectedThread(thread);
+    }
+  };
+
+  const onCancel = () => {
+    setSelectedThread(undefined);
+  };
 
   return (
     <div className={classNames(className)}>
@@ -73,13 +86,24 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                     key={index}
                     repliedUsers={repliedUsers}
                     replies={replies}
+                    threadId={feed.id}
+                    onThreadSelect={onThreadSelect}
                   />
                 );
               })}
           </div>
         );
       })}
-      {withSidePanel ? <ActivityFeedPanel /> : null}
+      {withSidePanel && selectedThread ? (
+        <Fragment>
+          <ActivityFeedPanel
+            open={!isUndefined(selectedThread)}
+            replies={selectedThread?.posts as Post[]}
+            threadLink={selectedThread?.about as string}
+            onCancel={onCancel}
+          />
+        </Fragment>
+      ) : null}
     </div>
   );
 };

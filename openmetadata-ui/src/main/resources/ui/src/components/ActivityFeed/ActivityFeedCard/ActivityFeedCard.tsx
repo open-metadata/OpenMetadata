@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { Post } from 'Models';
 import React, { FC, Fragment, HTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
@@ -29,10 +30,12 @@ import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEdito
 
 interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   feed: Post;
-  replies: number;
-  repliedUsers: Array<string>;
-  entityLink: string;
+  entityLink?: string;
+  repliedUsers?: Array<string>;
+  replies?: number;
   isEntityFeed?: boolean;
+  threadId?: string;
+  onThreadSelect?: (id: string) => void;
 }
 interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,
@@ -48,7 +51,10 @@ interface FeedBodyProp extends HTMLAttributes<HTMLDivElement> {
 }
 interface FeedFooterProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'replies' | 'repliedUsers'> {}
+    Pick<
+      ActivityFeedCardProp,
+      'replies' | 'repliedUsers' | 'threadId' | 'onThreadSelect'
+    > {}
 
 const FeedHeader: FC<FeedHeaderProp> = ({
   className,
@@ -64,27 +70,29 @@ const FeedHeader: FC<FeedHeaderProp> = ({
       <Avatar name={createdBy} width="24" />
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
         {createdBy}
-        <span className="tw-pl-1 tw-font-normal">
-          posted on{' '}
-          {isEntityFeed ? (
-            <span className="tw-heading">{entityField}</span>
-          ) : (
-            <Fragment>
-              {entityType}{' '}
-              <Link
-                to={getEntityLink(entityType as string, entityFQN as string)}>
-                <button className="link-text" disabled={AppState.isTourOpen}>
-                  {getPartialNameFromFQN(
-                    entityFQN as string,
-                    entityType === 'table' ? ['table'] : ['database']
-                  )}
-                </button>
-              </Link>
-            </Fragment>
-          )}
-          <span className="tw-text-grey-muted tw-pl-1 tw-text-xs">
-            {getDayTimeByTimeStamp(timeStamp)}
+        {entityFQN && entityType && entityFQN ? (
+          <span className="tw-pl-1 tw-font-normal">
+            posted on{' '}
+            {isEntityFeed ? (
+              <span className="tw-heading">{entityField}</span>
+            ) : (
+              <Fragment>
+                {entityType}{' '}
+                <Link
+                  to={getEntityLink(entityType as string, entityFQN as string)}>
+                  <button className="link-text" disabled={AppState.isTourOpen}>
+                    {getPartialNameFromFQN(
+                      entityFQN as string,
+                      entityType === 'table' ? ['table'] : ['database']
+                    )}
+                  </button>
+                </Link>
+              </Fragment>
+            )}
           </span>
+        ) : null}
+        <span className="tw-text-grey-muted tw-pl-1 tw-text-xs">
+          {getDayTimeByTimeStamp(timeStamp)}
         </span>
       </h6>
     </div>
@@ -107,15 +115,19 @@ const FeedFooter: FC<FeedFooterProp> = ({
   repliedUsers,
   replies,
   className,
+  threadId,
+  onThreadSelect,
 }) => {
   return (
     <div className={className}>
       <div className="tw-flex tw-group">
-        {repliedUsers.map((u, i) => (
+        {repliedUsers?.map((u, i) => (
           <Avatar className="tw-mt-0.5 tw-mx-0.5" key={i} name={u} width="18" />
         ))}
-        <p className="tw-ml-1 link-text">
-          {replies > 1 ? `${replies} replies` : `${replies} reply`}
+        <p
+          className="tw-ml-1 link-text"
+          onClick={() => onThreadSelect?.(threadId as string)}>
+          {(replies ?? 0) > 1 ? `${replies} replies` : `${replies} reply`}
         </p>
       </div>
     </div>
@@ -129,10 +141,12 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   repliedUsers,
   entityLink,
   isEntityFeed,
+  threadId,
+  onThreadSelect,
 }) => {
-  const entityType = getEntityType(entityLink);
-  const entityFQN = getEntityFQN(entityLink);
-  const entityField = getEntityField(entityLink);
+  const entityType = getEntityType(entityLink as string);
+  const entityFQN = getEntityFQN(entityLink as string);
+  const entityField = getEntityField(entityLink as string);
 
   return (
     <div className={classNames(className)}>
@@ -148,11 +162,15 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         className="tw-mx-7 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
         message={feed.message}
       />
-      <FeedFooter
-        className="tw-ml-7 tw-mt-2"
-        repliedUsers={repliedUsers}
-        replies={replies}
-      />
+      {!isUndefined(repliedUsers) && !isUndefined(replies) ? (
+        <FeedFooter
+          className="tw-ml-7 tw-mt-2"
+          repliedUsers={repliedUsers}
+          replies={replies}
+          threadId={threadId}
+          onThreadSelect={onThreadSelect}
+        />
+      ) : null}
     </div>
   );
 };
