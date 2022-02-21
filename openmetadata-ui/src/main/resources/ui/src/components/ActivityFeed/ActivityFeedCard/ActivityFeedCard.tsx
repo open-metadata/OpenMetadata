@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { Post } from 'Models';
 import React, { FC, HTMLAttributes } from 'react';
-import { getTimeByTimeStamp } from '../../../utils/TimeUtils';
+import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import Avatar from '../../common/avatar/Avatar';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
@@ -37,7 +37,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
           {feed.from}
           <span className="tw-text-grey-muted tw-pl-1 tw-text-xs">
-            {getTimeByTimeStamp(feed.postTs)}
+            {getDayTimeByTimeStamp(feed.postTs)}
           </span>
         </h6>
       </div>

@@ -103,3 +103,7 @@ export const getRelativeDateByTimeStamp = (timeStamp: number): string => {
 export const getTimeByTimeStamp = (timeStamp: number): string => {
   return moment(timeStamp, 'x').format('hh:mm A');
 };
+
+export const getDayTimeByTimeStamp = (timeStamp: number): string => {
+  return moment(timeStamp, 'x').calendar();
+};

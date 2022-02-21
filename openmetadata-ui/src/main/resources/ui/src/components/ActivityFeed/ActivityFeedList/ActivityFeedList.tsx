@@ -17,9 +17,11 @@ import React, { FC, HTMLAttributes } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getRelativeDateByTimeStamp } from '../../../utils/TimeUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 
 interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: EntityThread[];
+  withSidePanel?: boolean;
 }
 
 const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
@@ -35,6 +37,7 @@ const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
   feedList,
+  withSidePanel = false,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
@@ -72,6 +75,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           </div>
         );
       })}
+      {withSidePanel ? <ActivityFeedPanel /> : null}
     </div>
   );
 };
