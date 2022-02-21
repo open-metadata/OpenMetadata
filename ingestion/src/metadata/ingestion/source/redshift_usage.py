@@ -11,14 +11,23 @@
 
 # This import verifies that the dependencies are available.
 import logging
+import traceback
 from typing import Any, Dict, Iterable, Iterator, Union
 
+from sqllineage.runner import LineageRunner
+
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.sink.metadata_rest import MetadataRestSink
 from metadata.ingestion.source.redshift import RedshiftConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
@@ -45,6 +54,8 @@ class RedshiftUsageSource(Source[TableQuery]):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         self.config = config
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
         start, end = get_start_and_end(config.duration)
         self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
             start_time=start, end_time=end
@@ -93,9 +104,41 @@ class RedshiftUsageSource(Source[TableQuery]):
                 service_name=self.config.service_name,
             )
             yield tq
+            result = LineageRunner(tq.sql)
+            sink = MetadataRestSink(self.ctx, self.config, self.metadata_config)
+            if result.target_tables and result.intermediate_tables:
+                for intermediate_table in result.intermediate_tables:
+                    for source_table in result.source_tables:
+                        lineage = self.create_lineage(source_table, intermediate_table)
+                        sink.write_record(lineage)
+                    for target_table in result.target_tables:
+                        lineage = self.create_lineage(intermediate_table, target_table)
+                        sink.write_record(lineage)
+            elif result.target_tables:
+                for target_table in result.target_tables:
+                    for source_table in result.source_tables:
+                        lineage = self.create_lineage(source_table, target_table)
+                        sink.write_record(lineage)
 
     def close(self):
         self.alchemy_helper.close()
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def create_lineage(self, from_table, to_table):
+        try:
+            from_fqdn = f"{self.config.service_name}.{from_table}"
+            from_entity = self.metadata.get_by_name(entity=Table, fqdn=from_fqdn)
+            to_fqdn = f"{self.config.service_name}.{to_table}"
+            to_entity = self.metadata.get_by_name(entity=Table, fqdn=to_fqdn)
+            return AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(
+                        id=from_entity.id.__root__, type="table"
+                    ),
+                    toEntity=EntityReference(id=to_entity.id.__root__, type="table"),
+                )
+            )
+        except Exception as err:  # pylint: disable=broad-except,unused-variable
+            logger.error(traceback.print_exc())
