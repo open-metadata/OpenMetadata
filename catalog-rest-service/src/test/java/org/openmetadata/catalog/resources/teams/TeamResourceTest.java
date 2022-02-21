@@ -36,12 +36,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -55,7 +57,6 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -88,21 +89,28 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
+  void post_teamWithUsersAndDefaultRoles_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
     User user2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role role1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    List<UUID> roles = Arrays.asList(role1.getId(), role2.getId());
+
     CreateTeam create =
         createRequest(test)
             .withDisplayName("displayName")
             .withDescription("description")
             .withProfile(PROFILE)
-            .withUsers(users);
+            .withUsers(users)
+            .withDefaultRoles(roles);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Make sure the user entity has relationship to the team
+    // Ensure that the user entity has relationship to the team
     user1 = userResourceTest.getEntity(user1.getId(), "teams", TEST_AUTH_HEADERS);
     assertEquals(team.getId(), user1.getTeams().get(0).getId());
     user2 = userResourceTest.getEntity(user2.getId(), "teams", TEST_AUTH_HEADERS);
@@ -135,15 +143,26 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
     List<UUID> users = Collections.singletonList(user1.getId());
-    CreateTeam create = createRequest(test).withUsers(users);
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role role1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    List<UUID> roles = Collections.singletonList(role1.getId());
+
+    CreateTeam create = createRequest(test).withUsers(users).withDefaultRoles(roles);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Team with users can be deleted - Team -- has --> User relationships are deleted
+    // Team with users and defaultRoles can be deleted
+    // Team -- has --> User relationships are deleted
+    // Team -- has --> Role relationships are deleted
     deleteAndCheckEntity(team, ADMIN_AUTH_HEADERS);
 
-    // Make sure user does not have relationship to this team
+    // Ensure that the user does not have relationship to this team
     User user = userResourceTest.getEntity(user1.getId(), "teams", ADMIN_AUTH_HEADERS);
     assertTrue(user.getTeams().isEmpty());
+
+    // Ensure that the role is not deleted
+    Role role = roleResourceTest.getEntity(role1.getId(), "", ADMIN_AUTH_HEADERS);
+    assertNotNull(role);
   }
 
   @Test
@@ -160,7 +179,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void patch_deleteUserFromTeam_200(TestInfo test) throws IOException {
+  void patch_deleteUserAndDefaultRoleFromTeam_200(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     final int totalUsers = 20;
     ArrayList<UUID> users = new ArrayList<>();
@@ -168,17 +187,35 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
       users.add(user.getId());
     }
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    roleResourceTest.createRolesAndSetDefault(test, 5, 0);
+    List<Role> roles = roleResourceTest.listEntities(Map.of(), ADMIN_AUTH_HEADERS).getData();
+    List<UUID> rolesIds = roles.stream().map(Role::getId).collect(Collectors.toList());
+
     CreateTeam create =
-        createRequest(getEntityName(test), "description", "displayName", null).withProfile(PROFILE).withUsers(users);
+        createRequest(getEntityName(test), "description", "displayName", null)
+            .withProfile(PROFILE)
+            .withUsers(users)
+            .withDefaultRoles(rolesIds);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Remove a user from the team list using patch request
+    // Remove a user from the team using patch request
     String json = JsonUtils.pojoToJson(team);
     int removeUserIndex = new Random().nextInt(totalUsers);
     EntityReference deletedUser = team.getUsers().get(removeUserIndex).withHref(null);
     team.getUsers().remove(removeUserIndex);
     ChangeDescription change = getChangeDescription(team.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("users").withOldValue(Arrays.asList(deletedUser)));
+    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove a default role from the team using patch request
+    json = JsonUtils.pojoToJson(team);
+    int removeDefaultRoleIndex = new Random().nextInt(roles.size());
+    EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex).withHref(null);
+    team.getDefaultRoles().remove(removeDefaultRoleIndex);
+    change = getChangeDescription(team.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("defaultRoles").withOldValue(Arrays.asList(deletedRole)));
     patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
@@ -188,6 +225,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       String expectedDisplayName,
       Profile expectedProfile,
       List<EntityReference> expectedUsers,
+      List<EntityReference> expectedDefaultRoles,
       String expectedUpdatedBy) {
     assertListNotNull(team.getId(), team.getHref());
     assertEquals(expectedDescription, team.getDescription());
@@ -195,6 +233,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(expectedDisplayName, team.getDisplayName());
     assertEquals(expectedProfile, team.getProfile());
     TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
+    TestUtils.assertEntityReferenceList(expectedDefaultRoles, team.getDefaultRoles());
     TestUtils.validateEntityReference(team.getOwns());
   }
 
@@ -214,18 +253,20 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         expectedTeam.getDisplayName(),
         expectedTeam.getProfile(),
         null,
+        null,
         updatedBy);
     assertNull(getTeam.getOwns());
 
-    // .../teams?fields=users,owns
-    fields = "users,owns,profile";
+    // .../teams?fields=users,owns,profile,defaultRoles
+    fields = "users,owns,profile,defaultRoles";
     getTeam =
         byName
             ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(expectedTeam.getId(), fields, ADMIN_AUTH_HEADERS);
     assertNotNull(getTeam.getProfile());
-    validateEntityReference(getTeam.getUsers());
     validateEntityReference(getTeam.getOwns());
+    validateEntityReference(getTeam.getUsers());
+    validateEntityReference(getTeam.getDefaultRoles());
   }
 
   @Override
@@ -252,14 +293,21 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     assertEquals(createRequest.getProfile(), team.getProfile());
+    TestUtils.validateEntityReference(team.getOwns());
 
     List<EntityReference> expectedUsers = new ArrayList<>();
-    for (UUID teamId : Optional.ofNullable(createRequest.getUsers()).orElse(Collections.emptyList())) {
-      expectedUsers.add(new EntityReference().withId(teamId).withType(Entity.USER));
+    for (UUID userId : Optional.ofNullable(createRequest.getUsers()).orElse(Collections.emptyList())) {
+      expectedUsers.add(new EntityReference().withId(userId).withType(Entity.USER));
     }
     expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
     TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
-    TestUtils.validateEntityReference(team.getOwns());
+
+    List<EntityReference> expectedDefaultRoles = new ArrayList<>();
+    for (UUID roleId : Optional.ofNullable(createRequest.getDefaultRoles()).orElse(Collections.emptyList())) {
+      expectedDefaultRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
+    }
+    expectedDefaultRoles = expectedDefaultRoles.isEmpty() ? null : expectedDefaultRoles;
+    TestUtils.assertEntityReferenceList(expectedDefaultRoles, team.getDefaultRoles());
   }
 
   @Override
@@ -287,15 +335,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());
+    TestUtils.validateEntityReference(updated.getOwns());
 
     List<EntityReference> expectedUsers = Optional.ofNullable(expected.getUsers()).orElse(Collections.emptyList());
     List<EntityReference> actualUsers = Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList());
-    actualUsers.forEach(TestUtils::validateEntityReference);
+    TestUtils.assertEntityReferenceList(expectedUsers, actualUsers);
 
-    actualUsers.sort(EntityUtil.compareEntityReference);
-    expectedUsers.sort(EntityUtil.compareEntityReference);
-    assertEquals(expectedUsers, actualUsers);
-    TestUtils.validateEntityReference(updated.getOwns());
+    List<EntityReference> expectedDefaultRoles =
+        Optional.ofNullable(expected.getDefaultRoles()).orElse(Collections.emptyList());
+    List<EntityReference> actualDefaultRoles =
+        Optional.ofNullable(updated.getDefaultRoles()).orElse(Collections.emptyList());
+    TestUtils.assertEntityReferenceList(expectedDefaultRoles, actualDefaultRoles);
   }
 
   @Override
@@ -308,11 +358,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     if (expected == actual) {
       return;
     }
-    if (fieldName.equals("users")) {
+    if (fieldName.equals("users") || fieldName.equals("defaultRoles")) {
       @SuppressWarnings("unchecked")
-      List<EntityReference> expectedUsers = (List<EntityReference>) expected;
-      List<EntityReference> actualUsers = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedUsers, actualUsers);
+      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEntityReferencesFieldChange(expectedRefs, actualRefs);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

@@ -78,6 +78,7 @@ public class TeamResource {
 
   public static Team addHref(UriInfo uriInfo, Team team) {
     Entity.withHref(uriInfo, team.getUsers());
+    Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
     return team;
   }
