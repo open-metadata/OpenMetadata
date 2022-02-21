@@ -92,9 +92,6 @@ public final class Entity {
   public static final String USER = "user";
   public static final String TEAM = "team";
 
-  // Thread is just used in the tests
-  public static final String THREAD = "Thread";
-
   //
   // Operations
   //

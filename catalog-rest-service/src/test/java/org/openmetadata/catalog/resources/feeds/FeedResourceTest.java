@@ -253,7 +253,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> listPosts(NON_EXISTENT_ENTITY.toString(), AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(Entity.THREAD, NON_EXISTENT_ENTITY));
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
   }
 
   public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
