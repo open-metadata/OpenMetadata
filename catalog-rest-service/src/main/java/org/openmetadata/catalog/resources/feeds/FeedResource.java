@@ -20,6 +20,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Objects;
@@ -80,6 +82,20 @@ public class FeedResource {
 
     ThreadList(List<Thread> data) {
       super(data);
+    }
+  }
+
+  public static class PostList extends ResultList<Post> {
+    @SuppressWarnings("unused") /* Required for tests */
+    public PostList() {}
+
+    public PostList(List<Post> data, String beforeCursor, String afterCursor, int total)
+        throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
+    }
+
+    public PostList(List<Post> listPosts) {
+      super(listPosts);
     }
   }
 
@@ -185,6 +201,22 @@ public class FeedResource {
   public Response addPost(@Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post) throws IOException {
     Thread thread = addHref(uriInfo, dao.addPostToThread(id, post));
     return Response.created(thread.getHref()).entity(thread).build();
+  }
+
+  @GET
+  @Path("/{id}/posts")
+  @Operation(
+      summary = "Get all the posts of a thread",
+      tags = "feeds",
+      description = "Get all the posts of an existing thread.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The posts of the given thread.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PostList.class))),
+      })
+  public PostList getPosts(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+    return new PostList(dao.listPosts(id));
   }
 
   private Thread getThread(SecurityContext securityContext, CreateThread create) {

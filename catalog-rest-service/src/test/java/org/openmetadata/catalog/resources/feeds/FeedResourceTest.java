@@ -50,6 +50,7 @@ import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.feeds.FeedResource.PostList;
 import org.openmetadata.catalog.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
@@ -234,10 +235,25 @@ public class FeedResourceTest extends CatalogApplicationTest {
   void post_validAddPost_200() throws HttpResponseException {
     Thread thread = createAndCheck(create(), AUTH_HEADERS);
     // Add 10 posts and validate
-    for (int i = 0; i < 10; i++) {
+    int POST_COUNT = 10;
+    for (int i = 0; i < POST_COUNT; i++) {
       Post post = createPost();
       thread = addPostAndCheck(thread, post, AUTH_HEADERS);
     }
+
+    // Check if get posts API returns all the posts
+    PostList postList = listPosts(thread.getId().toString(), AUTH_HEADERS);
+    // Thread also has the first message as a post.
+    // So, the total count should be POST_COUNT+1
+    assertEquals(POST_COUNT + 1, postList.getData().size());
+  }
+
+  @Test
+  void get_listPosts_404() {
+    assertResponse(
+        () -> listPosts(NON_EXISTENT_ENTITY.toString(), AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
   }
 
   public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
@@ -311,6 +327,11 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
+  public static PostList listPosts(String threadId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(String.format("feed/%s/posts", threadId));
+    return TestUtils.get(target, PostList.class, authHeaders);
+  }
+
   public static ThreadCount listThreadsCount(String entityLink, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed/count");
@@ -322,6 +343,6 @@ public class FeedResourceTest extends CatalogApplicationTest {
     List<EntityLinkThreadCount> linkThreadCount = listThreadsCount(entityLink, authHeaders).getCounts();
     EntityLinkThreadCount threadCount =
         linkThreadCount.stream().filter(l -> l.getEntityLink().equals(entityLink)).findFirst().orElseThrow();
-    return (int) threadCount.getCount();
+    return threadCount.getCount();
   }
 }
