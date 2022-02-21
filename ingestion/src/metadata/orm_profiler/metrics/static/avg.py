@@ -51,6 +51,9 @@ class Avg(StaticMetric):
     - For a concatenable (str, text...) return the AVG length
     """
 
+    def metric_type(self):
+        return float
+
     @_label
     def fn(self):
         if is_quantifiable(self.col.type):
