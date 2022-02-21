@@ -43,8 +43,6 @@ def _(element, compiler, **kw):
     if len(element.clauses) < 2:
         raise ValueError("We need to concat at least two elements")
 
-    concat = "||".join([
-        compiler.process(elem, **kw) for elem in element.clauses
-    ])
+    concat = "||".join([compiler.process(elem, **kw) for elem in element.clauses])
 
     return concat
