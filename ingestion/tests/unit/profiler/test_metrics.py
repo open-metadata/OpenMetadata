@@ -13,6 +13,7 @@
 Test Metrics behavior
 """
 from unittest import TestCase
+from numpy.random import normal
 
 from sqlalchemy import Column, Integer, String, create_engine, TEXT
 from sqlalchemy.orm import declarative_base
@@ -39,7 +40,7 @@ class MetricsTest(TestCase):
     Run checks on different metrics
     """
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
+    engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
     @classmethod
@@ -156,5 +157,27 @@ class MetricsTest(TestCase):
 
         assert res["DUPLICATECOUNT"] == 0
 
+    def test_histogram(self):
+        """
+        Check histogram computation
+        """
 
+        # Cook some data first
+        class TestHist(Base):
+            __tablename__ = "test_hist"
+            id = Column(Integer, primary_key=True)
+            num = Column(Integer)
+
+        TestHist.__table__.create(bind=self.engine)
+
+        data = [TestHist(num=int(rand)) for rand in normal(loc=0, scale=10, size=2000)]
+
+        self.session.add_all(data)
+        self.session.commit()
+
+        hist = Metrics.HISTOGRAM(TestHist.num, bins=5)
+        res = SingleProfiler(hist, session=self.session, table=TestHist).execute()
+
+        assert res["HISTOGRAM"]
+        assert len(res["HISTOGRAM"]["count"]) == 5
 
