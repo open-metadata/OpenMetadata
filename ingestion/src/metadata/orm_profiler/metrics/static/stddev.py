@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.orm_profiler.orm.registry import SQLALCHEMY_NUMERIC
+from metadata.orm_profiler.orm.registry import is_quantifiable
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -63,11 +63,11 @@ class StdDev(StaticMetric):
 
     @_label
     def fn(self):
-        if self.col.type.__class__ not in SQLALCHEMY_NUMERIC:
-            logger.info(
-                f"{self.col} has type {self.col.type}, which is not listed as numeric."
-                + " We won't compute STDDEV for it."
-            )
-            return None
+        if is_quantifiable(self.col.type):
+            return StdDevFn(self.col)
 
-        return StdDevFn(self.col)
+        logger.info(
+            f"{self.col} has type {self.col.type}, which is not listed as quantifiable."
+            + " We won't compute STDDEV for it."
+        )
+        return None
