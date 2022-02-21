@@ -14,7 +14,7 @@ Test Metrics behavior
 """
 from unittest import TestCase
 
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, TEXT
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
@@ -30,6 +30,7 @@ class User(Base):
     name = Column(String(256))
     fullname = Column(String(256))
     nickname = Column(String(256))
+    comments = Column(TEXT)
     age = Column(Integer)
 
 
@@ -49,8 +50,8 @@ class MetricsTest(TestCase):
         User.__table__.create(bind=cls.engine)
 
         data = [
-            User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
-            User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
+            User(name="John", fullname="John Doe", nickname="johnny b goode", comments="no comments", age=30),
+            User(name="Jane", fullname="Jone Doe", nickname=None, comments="maybe some comments", age=31),
         ]
         cls.session.add_all(data)
         cls.session.commit()
@@ -111,3 +112,28 @@ class MetricsTest(TestCase):
         profiler = SingleProfiler(table_count, session=self.session, table=User)
         res = profiler.execute()
         assert res.get(Metrics.ROW_NUMBER.name) == 2
+
+    def test_avg(self):
+        """
+        Check avg for distinct types
+        """
+
+        # Integer
+        avg = Metrics.AVG(col=User.age)
+        res = SingleProfiler(avg, session=self.session, table=User).execute()
+
+        assert res["AVG"] == 30.5
+
+        # String
+        avg = Metrics.AVG(col=User.name)
+        res = SingleProfiler(avg, session=self.session, table=User).execute()
+
+        assert res["AVG"] == 4.0
+
+        # Text
+        avg = Metrics.AVG(col=User.comments)
+        res = SingleProfiler(avg, session=self.session, table=User).execute()
+
+        assert res["AVG"] == 15.0
+
+
