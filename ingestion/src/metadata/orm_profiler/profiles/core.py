@@ -22,6 +22,7 @@ from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
     Metric,
+    QueryMetric,
     StaticMetric,
     TimeMetric,
 )
@@ -126,6 +127,10 @@ class Profiler(ABC):
     def custom_metrics(self):
         return self._filter_metrics(CustomMetric)
 
+    @property
+    def query_metrics(self):
+        return self._filter_metrics(QueryMetric)
+
     def build_col_query(self) -> Optional[Query]:
         """
         Build the query with all the column static metrics.
@@ -170,6 +175,20 @@ class Profiler(ABC):
             row = self.session.query(metric.fn()).select_from(self.table).first()
             self.results = dict(row)
 
+    def sql_query_run(self):
+        """
+        Run QueryMetrics
+        """
+        for metric in self.query_metrics:
+            query_res = metric.query(session=self.session).all()
+
+            # query_res has the shape of List[Row], where each row is a dict,
+            # e.g., [{colA: 1, colB: 2},...]
+            # We are going to transform this into a Dict[List] by pivoting, so that
+            # data = {colA: [1,2,3], colB: [4,5,6]...}
+            data = {k: [dic[k] for dic in query_res] for k in dict(query_res[0])}
+            self.results = {metric.name(): data}
+
     def post_run(self):
         """
         Run this after the metrics have been computed
@@ -192,6 +211,7 @@ class Profiler(ABC):
         """
         self.sql_table_run()
         self.sql_col_run()
+        self.sql_query_run()
         self.post_run()
 
         return self.results
