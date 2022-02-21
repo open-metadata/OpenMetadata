@@ -16,9 +16,8 @@ import importlib
 import logging
 from typing import Type, TypeVar
 
-from metadata.ingestion.api.processor import Processor
-
 from metadata.ingestion.api.common import DynamicTypedConfig, WorkflowContext
+from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -124,7 +123,7 @@ def get_processor(
     processor_config: DynamicTypedConfig,
     metadata_config: MetadataServerConfig,
     _from: str = "ingestion",
-    **kwargs
+    **kwargs,
 ) -> Processor:
     """
     Helps us to fetch and import the Processor class.
