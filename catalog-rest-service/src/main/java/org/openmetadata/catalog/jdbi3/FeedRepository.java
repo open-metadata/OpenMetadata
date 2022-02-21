@@ -185,6 +185,11 @@ public class FeedRepository {
     return threadCount;
   }
 
+  public List<Post> listPosts(String threadId) throws IOException {
+    Thread thread = get(threadId);
+    return thread.getPosts();
+  }
+
   @Transaction
   public List<Thread> listThreads(String link) throws IOException {
     if (link == null) {
