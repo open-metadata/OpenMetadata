@@ -546,7 +546,7 @@ const DashboardDetails = ({
               )}
               {activeTab === 2 && (
                 <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4"
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
                   id="activityfeed">
                   <div />
                   <ActivityFeedList
