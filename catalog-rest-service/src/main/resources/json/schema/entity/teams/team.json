@@ -4,7 +4,6 @@
   "title": "Team",
   "description": "This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.",
   "type": "object",
-
   "definitions": {
     "teamName": {
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
@@ -13,7 +12,6 @@
       "maxLength": 128
     }
   },
-
   "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -66,6 +64,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "defaultRoles": {
+      "description": "Roles to be assigned to all users that are part of this team.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
   "required": ["id", "name", "href"],
