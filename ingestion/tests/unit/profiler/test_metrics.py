@@ -13,9 +13,9 @@
 Test Metrics behavior
 """
 from unittest import TestCase
-from numpy.random import normal
 
-from sqlalchemy import Column, Integer, String, create_engine, TEXT
+from numpy.random import normal
+from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
@@ -51,8 +51,20 @@ class MetricsTest(TestCase):
         User.__table__.create(bind=cls.engine)
 
         data = [
-            User(name="John", fullname="John Doe", nickname="johnny b goode", comments="no comments", age=30),
-            User(name="Jane", fullname="Jone Doe", nickname=None, comments="maybe some comments", age=31),
+            User(
+                name="John",
+                fullname="John Doe",
+                nickname="johnny b goode",
+                comments="no comments",
+                age=30,
+            ),
+            User(
+                name="Jane",
+                fullname="Jone Doe",
+                nickname=None,
+                comments="maybe some comments",
+                age=31,
+            ),
         ]
         cls.session.add_all(data)
         cls.session.commit()
@@ -153,7 +165,9 @@ class MetricsTest(TestCase):
         count = Metrics.COUNT(col=User.name)
         dist = Metrics.DISTINCT(col=User.name)
         dup_count = Metrics.DUPLICATE_COUNT(col=User.name)
-        res = SingleProfiler(count, dist, dup_count, session=self.session, table=User).execute()
+        res = SingleProfiler(
+            count, dist, dup_count, session=self.session, table=User
+        ).execute()
 
         assert res["DUPLICATECOUNT"] == 0
 
@@ -180,4 +194,3 @@ class MetricsTest(TestCase):
 
         assert res["HISTOGRAM"]
         assert len(res["HISTOGRAM"]["count"]) == 5
-
