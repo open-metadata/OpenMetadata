@@ -12,7 +12,7 @@
 """
 Distinct Count Metric definition
 """
-from sqlalchemy import func, distinct
+from sqlalchemy import distinct, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
