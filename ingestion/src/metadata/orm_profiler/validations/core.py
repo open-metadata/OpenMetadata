@@ -60,6 +60,7 @@ class Validation:
         self.operator = operator
         self.value = value
         self.valid = None
+        self.computed_metric = None
 
     @classmethod
     def create(cls, raw_validation: Dict[str, str]) -> "Validation":
@@ -128,16 +129,16 @@ class Validation:
         with a properly informed `valid` field,
         containing the result of the validation.
         """
-        computed_metric = results.get(self.metric)
+        self.computed_metric = results.get(self.metric)
 
-        if not computed_metric:
+        if not self.computed_metric:
             raise MissingMetricException(
                 f"The required metric {self.metric} is not available"
                 + f" in the profiler results: {results}."
             )
 
         is_valid = self.operator(
-            computed_metric, self.value  # Order matters. Real value vs. expected
+            self.computed_metric, self.value  # Order matters. Real value vs. expected
         )
 
         self.valid = is_valid  # Either True / False
