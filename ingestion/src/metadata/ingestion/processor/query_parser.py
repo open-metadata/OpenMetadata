@@ -76,7 +76,7 @@ class QueryParserProcessor(Processor):
     def process(self, record: TableQuery) -> QueryParserData:
         try:
             start_date = record.analysis_date
-            if isinstance(record.analysis_date,str):
+            if isinstance(record.analysis_date, str):
                 start_date = datetime.datetime.strptime(
                     record.analysis_date, "%Y-%m-%d %H:%M:%S"
                 ).date()
