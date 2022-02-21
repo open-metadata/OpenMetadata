@@ -6,7 +6,7 @@ interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 const ActivityFeedPanel: FC<ActivityFeedPanelProp> = () => {
-  const [showSidePanel, setShowSidePanel] = useState<boolean>(true);
+  const [showSidePanel, setShowSidePanel] = useState<boolean>(false);
 
   return (
     <div>
