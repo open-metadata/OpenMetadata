@@ -62,7 +62,7 @@ class Histogram(QueryMetric):
                 + bins_cte.c.step
             ).label("bin_ceil"),
         ).join(
-            bins_cte, and_(1 == 1)
+            bins_cte, and_(True)
         )  # join on 1 = 1 -> we just want the step info
         ranges_cte = ranges.cte("ranges")
 
