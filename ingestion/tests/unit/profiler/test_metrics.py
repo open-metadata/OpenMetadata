@@ -136,4 +136,13 @@ class MetricsTest(TestCase):
 
         assert res["AVG"] == 15.0
 
+    def test_distinct(self):
+        """
+        Check distinct count
+        """
+        dist = Metrics.DISTINCT(col=User.age)
+        res = SingleProfiler(dist, session=self.session, table=User).execute()
+
+        assert res["DISTINCT"] == 2
+
 

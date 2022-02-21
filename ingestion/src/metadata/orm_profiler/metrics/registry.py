@@ -22,6 +22,7 @@ having the verbosely pass .value all the time...
 from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
 from metadata.orm_profiler.metrics.static.avg import Avg
 from metadata.orm_profiler.metrics.static.count import Count
+from metadata.orm_profiler.metrics.static.distinct import Distinct
 from metadata.orm_profiler.metrics.static.min import Min
 from metadata.orm_profiler.metrics.static.null_count import NullCount
 from metadata.orm_profiler.metrics.static.row_number import RowNumber
@@ -39,6 +40,7 @@ class Metrics(MetricRegistry):
     # Static Metrics
     AVG = Avg
     COUNT = Count
+    DISTINCT = Distinct
     MIN = Min
     NULL_COUNT = NullCount
     ROW_NUMBER = RowNumber
