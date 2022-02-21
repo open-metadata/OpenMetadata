@@ -116,7 +116,7 @@ migrationConfiguration:
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
-  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-""}
+  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
   adminPrincipals:
     - ${AUTHORIZER_ADMIN_PRINCIPALS:-admin}
   botPrincipals:
@@ -134,6 +134,13 @@ elasticsearch:
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
+  username: ${ELASTICSEARCH_USER:-""}
+  password: ${ELASTICSEARCH_PASSWORD:-""}
+  truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
+  truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
+  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
+  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
