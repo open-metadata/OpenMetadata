@@ -12,10 +12,14 @@
 Test that we can safely convert to validation
 and check results
 """
-import pytest
 import operator as op
-from metadata.orm_profiler.validations.core import to_validation, Validation, ValidationConversionException, validate
 
+import pytest
+
+from metadata.orm_profiler.validations.core import (
+    Validation,
+    ValidationConversionException,
+)
 from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
 
 visitor = ExpVisitor()
@@ -26,33 +30,33 @@ def test_model_conversion():
     Check that we can properly convert to a Validation model
     """
     raw_validation = parse("count == 100", visitor)[0]
-    model = to_validation(raw_validation)
+    model = Validation.create(raw_validation)
 
-    assert model == Validation(
-        metric="COUNT", operator=op.eq, value=100
-    )
+    assert model.metric == "COUNT"
+    assert model.operator == op.eq
+    assert model.value == 100
 
     raw_validation = parse("min > something", visitor)[0]
-    model = to_validation(raw_validation)
+    model = Validation.create(raw_validation)
 
-    assert model == Validation(
-        metric="MIN", operator=op.gt, value="something"
-    )
+    assert model.metric == "MIN"
+    assert model.operator == op.gt
+    assert model.value == "something"
 
     raw_validation = parse("null_ratio < 0.2", visitor)[0]
-    model = to_validation(raw_validation)
+    model = Validation.create(raw_validation)
 
-    assert model == Validation(
-        metric="NULLRATIO", operator=op.lt, value=0.2
-    )
+    assert model.metric == "NULLRATIO"
+    assert model.operator == op.lt
+    assert model.value == 0.2
 
     # This validation does not make sense, but we are just checking cases
     raw_validation = parse("null_ratio >= 5.4", visitor)[0]
-    model = to_validation(raw_validation)
+    model = Validation.create(raw_validation)
 
-    assert model == Validation(
-        metric="NULLRATIO", operator=op.ge, value=5.4
-    )
+    assert model.metric == "NULLRATIO"
+    assert model.operator == op.ge
+    assert model.value == 5.4
 
 
 def test_model_conversion_exceptions():
@@ -62,27 +66,27 @@ def test_model_conversion_exceptions():
 
     # No info at all
     with pytest.raises(ValidationConversionException):
-        to_validation({})
+        Validation.create({})
 
     # Invalid metric, cannot be found in Registry
     with pytest.raises(ValidationConversionException):
-        to_validation({"metric": "not a valid metric"})
+        Validation.create({"metric": "not a valid metric"})
 
     # Missing Operation key
     with pytest.raises(ValidationConversionException):
-        to_validation({"metric": "min"})
+        Validation.create({"metric": "min"})
 
     # Invalid Operation value
     with pytest.raises(ValidationConversionException):
-        to_validation({"metric": "min", "operation": "invalid operation"})
+        Validation.create({"metric": "min", "operation": "invalid operation"})
 
     # Missing value key
     with pytest.raises(ValidationConversionException):
-        to_validation({"metric": "min", "operation": "=="})
+        Validation.create({"metric": "min", "operation": "=="})
 
     # Empty value
     with pytest.raises(ValidationConversionException):
-        to_validation({"metric": "min", "operation": "==", "value": ""})
+        Validation.create({"metric": "min", "operation": "==", "value": ""})
 
 
 def test_validate():
@@ -92,23 +96,23 @@ def test_validate():
     results = {"COUNT": 100}
 
     raw_validation = parse("count == 100", visitor)[0]
-    validation = to_validation(raw_validation)
+    validation = Validation.create(raw_validation)
 
-    assert validate(validation, results).valid
+    assert validation.validate(results).valid
 
     raw_validation = parse("count != 100", visitor)[0]
-    validation = to_validation(raw_validation)
+    validation = Validation.create(raw_validation)
 
-    assert not validate(validation, results).valid
+    assert not validation.validate(results).valid
 
     results = {"NULLRATIO": 0.2}
 
     raw_validation = parse("Null_Ratio < 0.3", visitor)[0]
-    validation = to_validation(raw_validation)
+    validation = Validation.create(raw_validation)
 
-    assert validate(validation, results).valid
+    assert validation.validate(results).valid
 
     raw_validation = parse("Null_Ratio >= 0.3", visitor)[0]
-    validation = to_validation(raw_validation)
+    validation = Validation.create(raw_validation)
 
-    assert not validate(validation, results).valid
+    assert not validation.validate(results).valid

@@ -47,7 +47,7 @@
     },
     "userRoleAttr": {
       "description": "Role of the user that the rule should match on.",
-      "$ref": "../../teams/team.json#/definitions/teamName",
+      "$ref": "../../teams/role.json#/definitions/roleName",
       "default": null
     },
     "operation": {

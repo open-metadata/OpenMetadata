@@ -1372,6 +1372,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
+    return createAndCheckEntity(create, authHeaders, create);
+  }
+
+  /**
+   * Helper function to create an entity, submit POST API request and validate response.
+   *
+   * @param create entity to be created
+   * @param authHeaders auth headers to be used for the PATCH API request
+   * @param created expected response from POST API after entity has been created
+   * @return entity response from the POST API
+   */
+  public final T createAndCheckEntity(K create, Map<String, String> authHeaders, K created) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     T entity = createEntity(create, authHeaders);
@@ -1379,12 +1391,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     assertEquals(updatedBy, entityInterface.getUpdatedBy());
     assertEquals(0.1, entityInterface.getVersion()); // First version of the entity
-    validateCreatedEntity(entity, create, authHeaders);
+    validateCreatedEntity(entity, created, authHeaders);
 
     // GET the entity created and ensure it has all the information set in create request
     T getEntity = getEntity(entityInterface.getId(), authHeaders);
     assertEquals(0.1, entityInterface.getVersion()); // First version of the entity
-    validateCreatedEntity(getEntity, create, authHeaders);
+    validateCreatedEntity(getEntity, created, authHeaders);
 
     // TODO GET the entity by name
 
@@ -1465,10 +1477,32 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       UpdateType updateType,
       ChangeDescription expectedChange)
       throws IOException {
+    return patchEntityAndCheck(updated, originalJson, authHeaders, updateType, expectedChange, updated);
+  }
+
+  /**
+   * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
+   *
+   * @param updated entity to compare with response from PATCH API
+   * @param originalJson JSON representation of entity before the update
+   * @param authHeaders auth headers to be used for the PATCH API request
+   * @param updateType type of update, see {@link TestUtils.UpdateType}
+   * @param expectedChange change description that is expected from the PATCH API response
+   * @param update entity used to diff against originalJson to generate JSON PATCH for PATCH API test
+   * @return entity response from the PATCH API
+   */
+  protected final T patchEntityAndCheck(
+      T updated,
+      String originalJson,
+      Map<String, String> authHeaders,
+      UpdateType updateType,
+      ChangeDescription expectedChange,
+      T update)
+      throws IOException {
     EntityInterface<T> entityInterface = getEntityInterface(updated);
 
     // Validate information returned in patch response has the updates
-    T returned = patchEntity(entityInterface.getId(), originalJson, updated, authHeaders);
+    T returned = patchEntity(entityInterface.getId(), originalJson, update, authHeaders);
     entityInterface = getEntityInterface(returned);
 
     compareEntities(updated, returned, authHeaders);

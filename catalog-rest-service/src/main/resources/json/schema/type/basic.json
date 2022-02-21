@@ -58,9 +58,9 @@
       "format": "date-time"
     },
     "entityLink": {
-      "description": "Link to an entity or field within an entity using this format `<#E/{entities}/{entityType}/{field}/{fieldValue}`.",
+      "description": "Link to an entity or field within an entity using this format `<#E/{entities}/{entityType}/{field}/{arrayFieldName}/{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^<#E/\\S+/\\S+>$"
+      "pattern": "^<#E\/\\S+\/\\S+>$"
     },
     "sqlQuery": {
       "description": "SQL query statement. Example - 'select * from orders'.",
