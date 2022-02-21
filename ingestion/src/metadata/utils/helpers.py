@@ -12,6 +12,7 @@
 from datetime import datetime, timedelta
 from typing import List
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -32,6 +33,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -178,3 +181,19 @@ def datetime_to_ts(date: datetime) -> int:
     Convert a given date to a timestamp as an Int
     """
     return int(date.timestamp())
+
+
+def create_lineage(from_entity, to_entity):
+    lineage = AddLineageRequest(
+        edge=EntitiesEdge(
+            fromEntity=EntityReference(
+                id=from_entity.id.__root__,
+                type="table",
+            ),
+            toEntity=EntityReference(
+                id=to_entity.id.__root__,
+                type="table",
+            ),
+        )
+    )
+    return lineage

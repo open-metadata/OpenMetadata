@@ -20,20 +20,17 @@ from typing import Iterable
 from google.cloud import logging
 from sqllineage.runner import LineageRunner
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import create_lineage, get_start_and_end
 
 logger = log.getLogger(__name__)
 
@@ -153,7 +150,7 @@ class BigqueryUsageSource(Source[TableQuery]):
                                         source_entity = metadata.get_by_name(
                                             entity=Table, fqdn=source_fqdn
                                         )
-                                        lineage = self.create_lineage(
+                                        lineage = create_lineage(
                                             source_entity, intermediate_entity
                                         )
 
@@ -167,7 +164,7 @@ class BigqueryUsageSource(Source[TableQuery]):
                                         target_entity = metadata.get_by_name(
                                             entity=Table, fqdn=target_fqdn
                                         )
-                                        lineage = self.create_lineage(
+                                        lineage = create_lineage(
                                             target_entity, intermediate_entity
                                         )
                                         yield lineage
@@ -188,7 +185,7 @@ class BigqueryUsageSource(Source[TableQuery]):
                                         source_entity = metadata.get_by_name(
                                             entity=Table, fqdn=source_fqdn
                                         )
-                                        lineage = self.create_lineage(
+                                        lineage = create_lineage(
                                             source_entity, target_entity
                                         )
                                         yield lineage
@@ -203,18 +200,3 @@ class BigqueryUsageSource(Source[TableQuery]):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
-
-    def create_lineage(self, from_entity, to_entity):
-        lineage = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=from_entity.id.__root__,
-                    type="table",
-                ),
-                toEntity=EntityReference(
-                    id=to_entity.id.__root__,
-                    type="table",
-                ),
-            )
-        )
-        return lineage
