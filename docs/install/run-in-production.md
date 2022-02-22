@@ -8,7 +8,7 @@ description: >-
 
 ## Requirements
 
-This guide assumes you have access to a command-line environment or shell such as bash, zsh, etc. or Linux or Mac OS X or PowerShell on Microsoft Windows.&#x20;
+This guide assumes you have access to a command-line environment or shell such as bash, zsh, etc. or Linux or Mac OS X or PowerShell on Microsoft Windows.
 
 This guide also assumes that your command-line environment has access to the `tar` utility.
 
@@ -46,7 +46,7 @@ To install or upgrade Elasticsearch to a supported version please see the instru
 
 ### Airflow (version 2.0.0 or greater) or other workflow schedulers
 
-OpenMetadata performs metadata ingestion using ingestion connectors designed to run in Airflow or another workflow scheduler.&#x20;
+OpenMetadata performs metadata ingestion using ingestion connectors designed to run in Airflow or another workflow scheduler.
 
 To install Airflow, please see the [Airflow Installation](https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html) guide.
 
@@ -84,22 +84,39 @@ OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run th
 
 We recommend configuring `serviced` to monitor the OpenMetadata command to restart in case of any failures.
 
-## Running with a load balancer
+## Run OpenMetadata with a load balancer
 
-One or more OpenMetadata instances can be put behind a load balancer for reverse proxying, in that case, an appropriate OpenMetdata URL must be mentioned in the load balancer's configuration file.
+You may put one or more OpenMetadata instances behind a load balancer for reverse proxying. To do this you will need to add one or more entries to the configuration file for your reverse proxy.
 
-For example, in case Apache mod proxy the VirtualHost tag in the configuration file should be edited out with the following
+### Apache mod\_proxy
+
+To use the Apache mod\_proxy module as a reverse proxy for load balancing, update the `VirtualHost` tag in your Apache config file to resemble the following.&#x20;
 
 ```
   <VirtualHost *:80>
-  <Proxy balancer://mycluster>
-      BalancerMember http://127.0.0.1:8585 <!-- First OpenMetadata server -->
-      BalancerMember http://127.0.0.2:8686 <!-- Second OpenMetadata server -->
-  </Proxy>
+      <Proxy balancer://mycluster>
+          BalancerMember http://127.0.0.1:8585 <!-- First OpenMetadata server -->
+          BalancerMember http://127.0.0.2:8686 <!-- Second OpenMetadata server -->
+      </Proxy>
 
       ProxyPreserveHost On
 
       ProxyPass / balancer://mycluster/
       ProxyPassReverse / balancer://mycluster/
   </VirtualHost>
+```
+
+### Nginx
+
+To use OpenMetadata behind an Nginx reverse proxy, add an entry resembling the following the `http` context of your Nginx configuration file for each OpenMetadata instance.
+
+```
+server {
+    access_log /var/log/nginx/stage-reverse-access.log;
+    error_log /var/log/nginx/stage-reverse-error.log;         
+    server_name stage.open-metadata.org;
+    location / {
+        proxy_pass http://127.0.0.1:8585;
+    }
+}
 ```
