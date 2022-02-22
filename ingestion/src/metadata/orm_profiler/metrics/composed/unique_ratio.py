@@ -10,23 +10,23 @@
 #  limitations under the License.
 
 """
-Null Ratio Composed Metric definition
+Unique Ratio Composed Metric definition
 """
 from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.null_count import NullCount
+from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
 
 
-class NullRatio(ComposedMetric):
+class UniqueRatio(ComposedMetric):
     """
-    Given the total count and null count,
-    compute the null ratio
+    Given the total count and unique count,
+    compute the unique ratio
     """
 
     def required_metrics(self) -> Tuple[str, ...]:
-        return Count.name(), NullCount.name()
+        return Count.name(), UniqueCount.name()
 
     @property
     def metric_type(self):
@@ -42,9 +42,9 @@ class NullRatio(ComposedMetric):
         results of other Metrics
         """
         res_count = res.get(Count.name())
-        res_null = res.get(NullCount.name())
+        res_unique = res.get(UniqueCount.name())
 
-        if res_count and res_null is not None:
-            return res_null / (res_null + res_count)
+        if res_count and res_unique is not None:
+            return res_unique / res_count
 
         return None

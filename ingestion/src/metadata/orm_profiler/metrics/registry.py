@@ -22,6 +22,7 @@ from metadata.orm_profiler.metrics.composed.duplicate_count import DuplicateCoun
 from metadata.orm_profiler.metrics.composed.ilike_ratio import ILikeRatio
 from metadata.orm_profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
+from metadata.orm_profiler.metrics.composed.unique_ratio import UniqueRatio
 from metadata.orm_profiler.metrics.static.avg import Avg
 from metadata.orm_profiler.metrics.static.count import Count
 from metadata.orm_profiler.metrics.static.distinct import Distinct
@@ -36,6 +37,7 @@ from metadata.orm_profiler.metrics.static.null_count import NullCount
 from metadata.orm_profiler.metrics.static.row_number import RowNumber
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
+from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
 from metadata.orm_profiler.registry import MetricRegistry
 
 
@@ -61,6 +63,8 @@ class Metrics(MetricRegistry):
     ROW_NUMBER = RowNumber
     STDDEV = StdDev
     SUM = Sum
+    UNIQUE_COUNT = UniqueCount
+    UNIQUE_RATIO = UniqueRatio
 
     # Composed Metrics
     DUPLICATE_COUNT = DuplicateCount

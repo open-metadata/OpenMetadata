@@ -328,3 +328,25 @@ class MetricsTest(TestCase):
 
         # SUM does not get computed, so profiler._results is still None here
         assert not res
+
+    def test_unique_count(self):
+        """
+        Check Unique Count metric
+        """
+        unique_count = Metrics.UNIQUE_COUNT(User.name)
+        res = SingleProfiler(unique_count, session=self.session, table=User).execute()
+
+        assert res["UNIQUECOUNT"] == 2
+
+    def test_unique_ratio(self):
+        """
+        Check Unique Count metric
+        """
+        count = Metrics.COUNT(User.name)
+        unique_count = Metrics.UNIQUE_COUNT(User.name)
+        unique_ratio = Metrics.UNIQUE_RATIO(User.name)
+        res = SingleProfiler(
+            count, unique_count, unique_ratio, session=self.session, table=User
+        ).execute()
+
+        assert res["UNIQUERATIO"] == 1.0
