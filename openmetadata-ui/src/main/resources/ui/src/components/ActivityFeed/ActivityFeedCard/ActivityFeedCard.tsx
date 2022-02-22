@@ -126,22 +126,29 @@ const FeedFooter: FC<FeedFooterProp> = ({
 }) => {
   return (
     <div className={className}>
-      <div className="tw-flex tw-group">
-        {repliedUsers?.map((u, i) => (
-          <Avatar className="tw-mt-0.5 tw-mx-0.5" key={i} name={u} width="18" />
-        ))}
-        <p
-          className="tw-ml-1 link-text tw-text-xs tw-mt-1"
-          onClick={() => onThreadSelect?.(threadId as string)}>
-          {(replies ?? 0) > 1 ? `${replies} replies` : `${replies} reply`}
-        </p>
-        {lastReplyTimeStamp ? (
-          <span className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1">
-            Last reply{' '}
-            {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
-          </span>
-        ) : null}
-      </div>
+      {!isUndefined(repliedUsers) && !isUndefined(replies) ? (
+        <div className="tw-flex tw-group">
+          {repliedUsers?.map((u, i) => (
+            <Avatar
+              className="tw-mt-0.5 tw-mx-0.5"
+              key={i}
+              name={u}
+              width="18"
+            />
+          ))}
+          <p
+            className="tw-ml-1 link-text tw-text-xs tw-mt-1"
+            onClick={() => onThreadSelect?.(threadId as string)}>
+            {(replies ?? 0) > 1 ? `${replies} replies` : `${replies} reply`}
+          </p>
+          {lastReplyTimeStamp ? (
+            <span className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1">
+              Last reply{' '}
+              {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -172,19 +179,17 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         timeStamp={feed.postTs}
       />
       <FeedBody
-        className="tw-mx-7 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
+        className="tw-mx-7 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all"
         message={feed.message}
       />
-      {!isUndefined(repliedUsers) && !isUndefined(replies) ? (
-        <FeedFooter
-          className="tw-ml-7 tw-mt-2"
-          lastReplyTimeStamp={lastReplyTimeStamp}
-          repliedUsers={repliedUsers}
-          replies={replies}
-          threadId={threadId}
-          onThreadSelect={onThreadSelect}
-        />
-      ) : null}
+      <FeedFooter
+        className="tw-ml-7 tw-mt-2"
+        lastReplyTimeStamp={lastReplyTimeStamp}
+        repliedUsers={repliedUsers}
+        replies={replies}
+        threadId={threadId}
+        onThreadSelect={onThreadSelect}
+      />
     </div>
   );
 };

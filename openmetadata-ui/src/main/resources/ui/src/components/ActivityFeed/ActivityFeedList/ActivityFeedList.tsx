@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityThread, Post } from 'Models';
+import { EntityThread } from 'Models';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getRelativeDateByTimeStamp } from '../../../utils/TimeUtils';
@@ -100,8 +100,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         <Fragment>
           <ActivityFeedPanel
             open={!isUndefined(selectedThread)}
-            replies={selectedThread?.posts as Post[]}
-            threadLink={selectedThread?.about as string}
+            selectedThread={selectedThread}
             onCancel={onCancel}
           />
         </Fragment>
