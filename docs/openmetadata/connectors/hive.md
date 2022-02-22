@@ -120,7 +120,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "service_name": "local_hive",
       "host_port": "hostname.domain.com:10000",
       "scheme": "hive",
-      "query": "select top 50 * from {}.{}",
+      "query": "select * from {}.{} limit 50",
       "data_profiler_enabled": "true",
       "data_profiler_offset": "0",
       "data_profiler_limit": "50000"

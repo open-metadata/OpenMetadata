@@ -59,8 +59,6 @@ class Profiler(ABC):
         self._metrics = metrics
         self._results: Optional[Dict[str, Any]] = None
 
-        self.validate_composed_metric()
-
     @property
     def session(self) -> Session:
         return self._session
