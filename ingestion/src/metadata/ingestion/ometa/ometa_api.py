@@ -415,14 +415,13 @@ class OpenMetadata(
                 )
             return entity(**resp)
         except APIError as err:
-            if err.status_code == 404 and entity.__name__ == "DatabaseService":
-                logger.error(
-                    "GET %s for %s."
-                    "Error %s - creating databaseService instance for %s",
+            if err.status_code == 404:
+                logger.info(
+                    "GET %s for %s." "Error %s - %s",
                     entity.__name__,
                     path,
                     err.status_code,
-                    path.split("/")[-1],
+                    err,
                 )
 
             else:
