@@ -14,6 +14,8 @@
 import { CookieStorage } from 'cookie-storage';
 import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
+import { ROUTES } from '../constants/constants';
+import { AuthTypes } from '../enums/signin.enum';
 import { isDev } from '../utils/EnvironmentUtils';
 
 const cookieStorage = new CookieStorage();
@@ -45,10 +47,60 @@ export const getUserManagerConfig = (
   };
 };
 
+export const getAuthConfig = (
+  authClient: Record<string, string> = {}
+): Record<string, string | boolean> => {
+  const { authority, clientId, callbackUrl, provider } = authClient;
+  let config = {};
+
+  switch (provider) {
+    case AuthTypes.OKTA:
+      {
+        config = {
+          clientId,
+          issuer: authority,
+          redirectUri: isDev()
+            ? 'http://localhost:3000/callback'
+            : !isNil(callbackUrl)
+            ? callbackUrl
+            : `${window.location.origin}/callback`,
+          scopes: ['openid', 'profile', 'email', 'offline_access'],
+          pkce: true,
+          provider,
+        };
+      }
+
+      break;
+    case AuthTypes.GOOGLE:
+      {
+        config = {
+          clientId,
+          provider,
+        };
+      }
+
+      break;
+  }
+
+  return config;
+};
+
 export const getNameFromEmail = (email: string) => {
   if (email?.match(/^\S+@\S+\.\S+$/)) {
     return email.split('@')[0];
   } else {
     return '';
   }
+};
+
+export const isProtectedRoute = (pathname: string) => {
+  return (
+    pathname !== ROUTES.SIGNUP &&
+    pathname !== ROUTES.SIGNIN &&
+    pathname !== ROUTES.CALLBACK
+  );
+};
+
+export const isTourRoute = (pathname: string) => {
+  return pathname === ROUTES.TOUR;
 };

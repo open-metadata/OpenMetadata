@@ -13,9 +13,11 @@
 
 import React, { FunctionComponent } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
-import Appbar from './components/app-bar/Appbar';
+import { AuthProvider } from './auth-provider-v1/AuthProviderV1';
+import ProtectedApp from './auth-provider-v1/ProtectedApp';
+// import Appbar from './components/app-bar/Appbar';
 import { ToastContextProvider } from './contexts/ToastContext';
-import AppRouter from './router/AppRouter';
+// import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
   return (
@@ -23,8 +25,11 @@ const App: FunctionComponent = () => {
       <ToastContextProvider>
         <Router>
           <div className="content-wrapper" data-testid="content-wrapper">
-            <Appbar />
-            <AppRouter />
+            <AuthProvider>
+              <ProtectedApp />
+              {/* <Appbar />
+            <AppRouter /> */}
+            </AuthProvider>
           </div>
         </Router>
       </ToastContextProvider>
