@@ -16,7 +16,7 @@ import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
-import { getRelativeDateByTimeStamp } from '../../../utils/TimeUtils';
+import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 
@@ -25,16 +25,6 @@ interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
 }
-
-const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
-  const updatedFeedList = feedList.map((feed) => ({
-    ...feed,
-    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt),
-  }));
-  const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
-
-  return { updatedFeedList, relativeDays };
-};
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,

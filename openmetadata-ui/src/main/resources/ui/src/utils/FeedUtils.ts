@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { EntityThread } from 'Models';
 import { EntityRegEx } from '../constants/feed.constants';
+import { getRelativeDateByTimeStamp } from './TimeUtils';
 
 export const getEntityType = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
@@ -27,4 +29,14 @@ export const getEntityField = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
 
   return match?.[3];
+};
+
+export const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
+  const updatedFeedList = feedList.map((feed) => ({
+    ...feed,
+    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt),
+  }));
+  const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
+
+  return { updatedFeedList, relativeDays };
 };
