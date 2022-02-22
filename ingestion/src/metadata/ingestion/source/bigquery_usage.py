@@ -70,7 +70,6 @@ class BigqueryUsageSource(Source[TableQuery]):
 
     def get_connection_url(self):
         if self.project_id:
-            print(f"{self.scheme}://{self.project_id}")
             return f"{self.scheme}://{self.project_id}"
         return f"{self.scheme}://"
 
