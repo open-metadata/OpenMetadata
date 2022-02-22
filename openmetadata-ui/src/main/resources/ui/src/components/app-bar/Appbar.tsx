@@ -211,6 +211,19 @@ const Appbar: React.FC = (): JSX.Element => {
       );
     }
   };
+  const handleOnclick = (value: string) => {
+    setIsOpen(false);
+    addToRecentSearched(value);
+    history.push(
+      getExplorePathWithSearch(
+        value,
+        // this is for if user is searching from another page
+        location.pathname.startsWith(ROUTES.EXPLORE)
+          ? appState.explorePageTab
+          : 'tables'
+      )
+    );
+  };
 
   useEffect(() => {
     setSearchValue(searchQuery);
@@ -243,6 +256,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <NavBar
           handleFeatureModal={handleFeatureModal}
           handleKeyDown={handleKeyDown}
+          handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
           isFeatureModalOpen={isFeatureModalOpen}

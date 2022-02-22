@@ -91,6 +91,16 @@ const TourPage = () => {
       }
     }
   };
+  const handleOnClick = (value: string) => {
+    if (location.pathname.includes(ROUTES.TOUR)) {
+      if (value === TOUR_SEARCH_TERM) {
+        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+        clearSearchTerm();
+      }
+
+      return;
+    }
+  };
 
   useEffect(() => {
     handleIsTourOpen(true);
@@ -216,6 +226,7 @@ const TourPage = () => {
         isTourRoute
         handleFeatureModal={handleCountChange}
         handleKeyDown={handleKeyDown}
+        handleOnClick={() => handleOnClick(searchValue)}
         handleSearchBoxOpen={handleCountChange}
         handleSearchChange={(value) => setSearchValue(value)}
         isFeatureModalOpen={false}
