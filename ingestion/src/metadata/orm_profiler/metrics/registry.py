@@ -35,6 +35,7 @@ from metadata.orm_profiler.metrics.static.min_length import MinLength
 from metadata.orm_profiler.metrics.static.null_count import NullCount
 from metadata.orm_profiler.metrics.static.row_number import RowNumber
 from metadata.orm_profiler.metrics.static.stddev import StdDev
+from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.registry import MetricRegistry
 
 
@@ -59,6 +60,7 @@ class Metrics(MetricRegistry):
     NULL_COUNT = NullCount
     ROW_NUMBER = RowNumber
     STDDEV = StdDev
+    SUM = Sum
 
     # Composed Metrics
     DUPLICATE_COUNT = DuplicateCount

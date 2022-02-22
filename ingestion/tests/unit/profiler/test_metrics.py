@@ -313,3 +313,18 @@ class MetricsTest(TestCase):
         res = SingleProfiler(max_length, session=self.session, table=User).execute()
 
         assert res["MAXLENGTH"] == 19
+
+    def test_sum(self):
+        """
+        Check SUM Metric
+        """
+        _sum = Metrics.SUM(User.age)
+        res = SingleProfiler(_sum, session=self.session, table=User).execute()
+
+        assert res["SUM"] == 61
+
+        _sum = Metrics.SUM(User.name)
+        res = SingleProfiler(_sum, session=self.session, table=User).execute()
+
+        # SUM does not get computed, so profiler._results is still None here
+        assert not res
