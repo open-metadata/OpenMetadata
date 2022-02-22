@@ -97,7 +97,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 entityLink={feed.about}
                 feed={mainFeed}
                 isEntityFeed={isEntityFeed}
-                isFooterVisible={!selctedThreadId}
+                isFooterVisible={selctedThreadId !== feed.id}
                 lastReplyTimeStamp={lastPost.postTs}
                 repliedUsers={repliedUsers}
                 replies={replies}
