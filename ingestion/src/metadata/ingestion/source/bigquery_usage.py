@@ -178,5 +178,5 @@ class BigqueryUsageSource(Source[TableQuery]):
                 to_type="table",
             )
         except Exception as err:
-            logger.error(traceback.print_exc())
+            logger.debug(traceback.print_exc())
             logger.error(err)

@@ -211,5 +211,5 @@ def create_lineage(from_entity, from_type, to_entity, to_type):
         )
         return lineage
     except Exception as err:
-        logger.error(traceback.print_exc())
+        logger.debug(traceback.print_exc())
         logger.error(err)
