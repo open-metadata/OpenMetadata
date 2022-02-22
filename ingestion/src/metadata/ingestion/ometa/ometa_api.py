@@ -415,13 +415,24 @@ class OpenMetadata(
                 )
             return entity(**resp)
         except APIError as err:
-            logger.error(
-                "GET %s for %s." "Error %s - %s",
-                entity.__name__,
-                path,
-                err.status_code,
-                err,
-            )
+            if err.status_code == 404:
+                logger.info(
+                    "GET %s for %s. HTTP %s - %s",
+                    entity.__name__,
+                    path,
+                    err.status_code,
+                    err,
+                )
+
+            else:
+                logger.error(
+                    "GET %s for %s." "Error %s - %s",
+                    entity.__name__,
+                    path,
+                    err.status_code,
+                    err,
+                )
+
             return None
 
     def get_entity_reference(
