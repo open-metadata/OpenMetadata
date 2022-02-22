@@ -25,6 +25,67 @@ interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
 }
+interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
+  relativeDay: string;
+}
+interface FeedListBodyProp
+  extends HTMLAttributes<HTMLDivElement>,
+    Pick<FeedListSeparatorProp, 'relativeDay'>,
+    Pick<ActivityFeedListProp, 'isEntityFeed'> {
+  updatedFeedList: Array<EntityThread & { relativeDay: string }>;
+  onThreadSelect: (value: string) => void;
+}
+
+const FeedListSeparator: FC<FeedListSeparatorProp> = ({
+  className,
+  relativeDay,
+}) => {
+  return (
+    <div className={className}>
+      <div className="tw-flex tw-justify-center">
+        <hr className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0" />
+        <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
+          {relativeDay}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const FeedListBody: FC<FeedListBodyProp> = ({
+  updatedFeedList,
+  relativeDay,
+  isEntityFeed,
+  onThreadSelect,
+}) => {
+  return (
+    <Fragment>
+      {updatedFeedList
+        .filter((f) => f.relativeDay === relativeDay)
+        .map((feed, index) => {
+          const mainFeed = feed.posts?.[0];
+          const replies = feed.posts.length;
+          const repliedUsers = feed.posts.map((f) => f.from);
+          const lastPost = feed.posts?.[replies - 1];
+
+          return (
+            <ActivityFeedCard
+              className="tw-mb-6"
+              entityLink={feed.about}
+              feed={mainFeed}
+              isEntityFeed={isEntityFeed}
+              key={index}
+              lastReplyTimeStamp={lastPost.postTs}
+              repliedUsers={repliedUsers}
+              replies={replies}
+              threadId={feed.id}
+              onThreadSelect={onThreadSelect}
+            />
+          );
+        })}
+    </Fragment>
+  );
+};
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
@@ -51,39 +112,18 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     <div className={classNames(className)}>
       {relativeDays.map((d, i) => {
         return (
-          <div key={i}>
-            <div className="tw-relative tw-mt-1 tw-mb-3.5">
-              <div className="tw-flex tw-justify-center">
-                <hr className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0" />
-                <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
-                  {d}
-                </span>
-              </div>
-            </div>
-            {updatedFeedList
-              .filter((f) => f.relativeDay === d)
-              .map((feed, index) => {
-                const mainFeed = feed.posts?.[0];
-                const replies = feed.posts.length;
-                const repliedUsers = feed.posts.map((f) => f.from);
-                const lastPost = feed.posts?.[replies - 1];
-
-                return (
-                  <ActivityFeedCard
-                    className="tw-mb-6"
-                    entityLink={feed.about}
-                    feed={mainFeed}
-                    isEntityFeed={isEntityFeed}
-                    key={index}
-                    lastReplyTimeStamp={lastPost.postTs}
-                    repliedUsers={repliedUsers}
-                    replies={replies}
-                    threadId={feed.id}
-                    onThreadSelect={onThreadSelect}
-                  />
-                );
-              })}
-          </div>
+          <Fragment key={i}>
+            <FeedListSeparator
+              className="tw-relative tw-mt-1 tw-mb-3.5"
+              relativeDay={d}
+            />
+            <FeedListBody
+              isEntityFeed={isEntityFeed}
+              relativeDay={d}
+              updatedFeedList={updatedFeedList}
+              onThreadSelect={onThreadSelect}
+            />
+          </Fragment>
         );
       })}
       {withSidePanel && selectedThread ? (
