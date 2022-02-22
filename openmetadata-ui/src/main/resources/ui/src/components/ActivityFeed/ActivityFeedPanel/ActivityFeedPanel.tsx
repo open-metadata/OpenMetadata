@@ -26,8 +26,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
     <header className={className}>
       <div className="tw-flex tw-justify-between tw-py-3">
         <p>
-          <strong>Thread </strong>
-          <span className="tw-font-light">{entityField}</span>
+          Thread on <span className="tw-heading">{entityField}</span>
         </p>
         <svg
           className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
@@ -76,7 +75,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           }
         )}>
         <FeedPanelHeader
-          className="tw-font-semibold tw-px-4 tw-shadow-sm"
+          className="tw-px-4 tw-shadow-sm"
           entityField={entityField as string}
           onCancel={onCancel}
         />

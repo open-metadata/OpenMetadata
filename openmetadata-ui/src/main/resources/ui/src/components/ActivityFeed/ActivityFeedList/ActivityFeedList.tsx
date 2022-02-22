@@ -76,14 +76,16 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 const mainFeed = feed.posts?.[0];
                 const replies = feed.posts.length;
                 const repliedUsers = feed.posts.map((f) => f.from);
+                const lastPost = feed.posts?.[replies - 1];
 
                 return (
                   <ActivityFeedCard
-                    className="tw-mb-3"
+                    className="tw-mb-6"
                     entityLink={feed.about}
                     feed={mainFeed}
                     isEntityFeed={isEntityFeed}
                     key={index}
+                    lastReplyTimeStamp={lastPost.postTs}
                     repliedUsers={repliedUsers}
                     replies={replies}
                     threadId={feed.id}

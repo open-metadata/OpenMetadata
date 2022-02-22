@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import { Post } from 'Models';
 import React, { FC, Fragment, HTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
@@ -35,6 +35,7 @@ interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   replies?: number;
   isEntityFeed?: boolean;
   threadId?: string;
+  lastReplyTimeStamp?: number;
   onThreadSelect?: (id: string) => void;
 }
 interface FeedHeaderProp
@@ -53,7 +54,11 @@ interface FeedFooterProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<
       ActivityFeedCardProp,
-      'replies' | 'repliedUsers' | 'threadId' | 'onThreadSelect'
+      | 'replies'
+      | 'repliedUsers'
+      | 'threadId'
+      | 'onThreadSelect'
+      | 'lastReplyTimeStamp'
     > {}
 
 const FeedHeader: FC<FeedHeaderProp> = ({
@@ -117,6 +122,7 @@ const FeedFooter: FC<FeedFooterProp> = ({
   className,
   threadId,
   onThreadSelect,
+  lastReplyTimeStamp,
 }) => {
   return (
     <div className={className}>
@@ -125,10 +131,16 @@ const FeedFooter: FC<FeedFooterProp> = ({
           <Avatar className="tw-mt-0.5 tw-mx-0.5" key={i} name={u} width="18" />
         ))}
         <p
-          className="tw-ml-1 link-text"
+          className="tw-ml-1 link-text tw-text-xs tw-mt-1"
           onClick={() => onThreadSelect?.(threadId as string)}>
           {(replies ?? 0) > 1 ? `${replies} replies` : `${replies} reply`}
         </p>
+        {lastReplyTimeStamp ? (
+          <span className="tw-text-grey-muted tw-pl-1 tw-text-xs tw-font-medium tw-mt-1">
+            Last reply{' '}
+            {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -142,6 +154,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   entityLink,
   isEntityFeed,
   threadId,
+  lastReplyTimeStamp,
   onThreadSelect,
 }) => {
   const entityType = getEntityType(entityLink as string);
@@ -165,6 +178,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       {!isUndefined(repliedUsers) && !isUndefined(replies) ? (
         <FeedFooter
           className="tw-ml-7 tw-mt-2"
+          lastReplyTimeStamp={lastReplyTimeStamp}
           repliedUsers={repliedUsers}
           replies={replies}
           threadId={threadId}
