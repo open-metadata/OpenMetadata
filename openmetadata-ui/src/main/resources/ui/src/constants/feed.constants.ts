@@ -11,20 +11,6 @@
  *  limitations under the License.
  */
 
-import { EntityRegEx } from '../constants/feed.constants';
+export const EntityRegExPattern = /<#E\/([^<>]+?)\/([^<>]+?)\/([^<>]+?)>/;
 
-export const getEntityType = (entityLink: string) => {
-  const match = EntityRegEx.exec(entityLink);
-
-  return match?.[1];
-};
-export const getEntityFQN = (entityLink: string) => {
-  const match = EntityRegEx.exec(entityLink);
-
-  return match?.[2];
-};
-export const getEntityField = (entityLink: string) => {
-  const match = EntityRegEx.exec(entityLink);
-
-  return match?.[3];
-};
+export const EntityRegEx = new RegExp(EntityRegExPattern);
