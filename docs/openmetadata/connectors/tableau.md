@@ -38,6 +38,8 @@ metadata ingest -c ./examples/workflows/tableau.json
     "config": {
       "username": "username",
       "password": "password",
+      "personal_access_token_secret": "personal_access_token_secret",
+      "personal_access_token_name": "personal_access_token_name",
       "service_name": "local_tableau",
       "server": "server_address",
       "site_name": "site_name",
