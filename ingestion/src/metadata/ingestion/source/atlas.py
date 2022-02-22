@@ -3,8 +3,11 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from pydantic import SecretStr
+
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -96,64 +99,57 @@ class AtlasSource(Source):
             tbl_entities = table_entity["entities"]
             for tbl_entity in tbl_entities:
                 try:
-                    if self.config.atlas_name == "altas_rdbms":
-                        tbl_columns = self._parse_table_columns(
-                            table_entity, tbl_entity
-                        )
-                        tbl_attrs = tbl_entity["attributes"]
-                        db_entity = tbl_entity["relationshipAttributes"]["rdbms_db"]
-                        db = self._get_database(db_entity["displayText"])
-                        table_name = tbl_attrs["name"]
-                        fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
-                        tbl_description = (
-                            tbl_attrs["description"]
-                            if tbl_attrs["description"] is not None
-                            else " "
-                        )
 
-                        om_table_entity = Table(
-                            id=uuid.uuid4(),
-                            name=table_name,
-                            description=tbl_description,
-                            fullyQualifiedName=fqn,
-                            columns=tbl_columns,
-                        )
+                    tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
+                    tbl_attrs = tbl_entity["attributes"]
+                    db_entity = tbl_entity["relationshipAttributes"]["rdbms_db"]
+                    db = self._get_database(db_entity["displayText"])
+                    table_name = tbl_attrs["name"]
+                    fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+                    tbl_description = (
+                        tbl_attrs["description"]
+                        if tbl_attrs["description"] is not None
+                        else " "
+                    )
 
-                        table_and_db = OMetaDatabaseAndTable(
-                            table=om_table_entity, database=db
-                        )
-                        yield table_and_db
+                    om_table_entity = Table(
+                        id=uuid.uuid4(),
+                        name=table_name,
+                        description=tbl_description,
+                        fullyQualifiedName=fqn,
+                        columns=tbl_columns,
+                    )
 
-                    if self.config.atlas_name == "atlas_kafka":
+                    table_and_db = OMetaDatabaseAndTable(
+                        table=om_table_entity, database=db
+                    )
+                    yield table_and_db
 
-                        tbl_attrs = tbl_entity["attributes"]
-                        table_name = tbl_attrs["name"]
-                        topic = CreateTopicEntityRequest(
-                            name=table_name[0:63],
-                            service=EntityReference(
-                                id=self.service.id, type="messagingService"
-                            ),
-                            partitions=1,
-                        )
+                    tbl_attrs = tbl_entity["attributes"]
+                    table_name = tbl_attrs["name"]
+                    topic = CreateTopicRequest(
+                        name=table_name[0:63],
+                        service=EntityReference(
+                            id=self.service.id, type="messagingService"
+                        ),
+                        partitions=1,
+                    )
 
-                        yield topic
+                    yield topic
 
-                    if self.config.atlas_name == "atlas_lineage":
-                        tbl_entities = table_entity["entities"]
+                    tbl_entities = table_entity["entities"]
 
-                        tbl_columns = self._parse_table_columns(
-                            table_entity, tbl_entity
-                        )
-                        tbl_attrs = tbl_entity["attributes"]
-                        db_entity = tbl_entity["relationshipAttributes"]["rdbms_db"]
-                        db = self._get_database(db_entity["displayText"])
-                        table_name = tbl_attrs["name"]
+                    tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
+                    tbl_attrs = tbl_entity["attributes"]
+                    db_entity = tbl_entity["relationshipAttributes"]["rdbms_db"]
+                    db = self._get_database(db_entity["displayText"])
+                    table_name = tbl_attrs["name"]
 
-                        om_table_entity = CreateTableEntityRequest(
-                            name=table_name, columns=tbl_columns, database=db.id
-                        )
-                        created_table = self.metadata.create_or_update(om_table_entity)
-                        yield created_table
+                    om_table_entity = CreateTableRequest(
+                        name=table_name, columns=tbl_columns, database=db.id
+                    )
+                    created_table = self.metadata.create_or_update(om_table_entity)
+                    yield created_table
 
                 except Exception as e:
                     logger.error(e)
@@ -235,7 +231,7 @@ class AtlasSource(Source):
                 continue
         return om_cols
 
-    def ingest_lineage(self, source_guid) -> Iterable[AddLineage]:
+    def ingest_lineage(self, source_guid) -> Iterable[AddLineageRequest]:
         lineageResponse = self.atlas_client.get_lineage(source_guid)
         lineage_relations = lineageResponse["relations"]
         tbl_entity = self.atlas_client.get_table(lineageResponse["baseEntityGuid"])
@@ -262,7 +258,7 @@ class AtlasSource(Source):
             to_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
             )
-            lineage = AddLineage(
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
             yield lineage

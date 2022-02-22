@@ -2,6 +2,8 @@ import base64
 import json
 from typing import List
 
+from pydantic import SecretStr
+
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -13,11 +15,10 @@ from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 class AtlasSourceConfig(ConfigModel):
     atlas_host: str = "http://localhost:21000"
     user_name: str
-    password: str
+    password: SecretStr
     service_name: str
     service_type: str = "Hive"
     host_port: str
-    atlas_name: str
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
@@ -30,14 +31,18 @@ class AtlasSourceConfig(ConfigModel):
 class AtlasClient:
     def __init__(self, config: AtlasSourceConfig, raw_data: bool = False):
         self.config = config
+        self.config.password = config.password.get_secret_value()
         self.auth_token = generate_http_basic_token(config.user_name, config.password)
+
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.atlas_host,
             auth_header="Authorization",
             api_version="api",
             auth_token="Basic {}".format(self.auth_token),
         )
+
         self.client = REST(client_config)
+        print(self.client)
         self._use_raw_data = raw_data
 
     def list_entities(self, entity_type="Table") -> List[str]:
@@ -50,6 +55,7 @@ class AtlasClient:
 
     def get_table(self, table):
         response = self.client.get(f"/atlas/v2/entity/bulk?guid={table}")
+        print(response)
         return response
 
 
