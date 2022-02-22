@@ -88,14 +88,13 @@ class Profiler(ABC):
         Here we prepare the logic to being able to have
         the complete suite of computed metrics.
         """
-        if not self._results:
-            return None
+        results = self._results if self._results else {}
 
-        results = {
-            metric.name(): self._results.get(metric.name()) for metric in self.metrics
+        response = {
+            metric.name(): results.get(metric.name()) for metric in self.metrics
         }
 
-        return results
+        return response
 
     @results.setter
     def results(self, value: Dict[str, Any]):

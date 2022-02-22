@@ -275,8 +275,7 @@ class MetricsTest(TestCase):
         min_length = Metrics.MIN_LENGTH(col=User.age)
         res = SingleProfiler(min_length, session=self.session, table=User).execute()
 
-        # MIN_LENGTH does not get computed, so profiler._results is still None here
-        assert not res
+        assert res["MINLENGTH"] is None
 
         # String
         min_length = Metrics.MIN_LENGTH(col=User.name)
@@ -299,8 +298,7 @@ class MetricsTest(TestCase):
         max_length = Metrics.MAX_LENGTH(col=User.age)
         res = SingleProfiler(max_length, session=self.session, table=User).execute()
 
-        # MAX_LENGTH does not get computed, so profiler._results is still None here
-        assert not res
+        assert res["MAXLENGTH"] is None
 
         # String
         max_length = Metrics.MAX_LENGTH(col=User.name)
@@ -326,8 +324,7 @@ class MetricsTest(TestCase):
         _sum = Metrics.SUM(User.name)
         res = SingleProfiler(_sum, session=self.session, table=User).execute()
 
-        # SUM does not get computed, so profiler._results is still None here
-        assert not res
+        assert res["SUM"] is None
 
     def test_unique_count(self):
         """
