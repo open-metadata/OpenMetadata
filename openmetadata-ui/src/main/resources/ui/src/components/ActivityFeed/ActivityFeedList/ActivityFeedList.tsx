@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityThread } from 'Models';
+import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
@@ -28,11 +28,17 @@ interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
 interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
   relativeDay: string;
 }
+interface LatestReplyFeedListProp extends HTMLAttributes<HTMLDivElement> {
+  feeds: Post[];
+}
 interface FeedListBodyProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<FeedListSeparatorProp, 'relativeDay'>,
     Pick<ActivityFeedListProp, 'isEntityFeed'> {
   updatedFeedList: Array<EntityThread & { relativeDay: string }>;
+  selctedThreadId: string;
+  onThreadIdSelect: (value: string) => void;
+  onThreadIdDeselect: () => void;
   onThreadSelect: (value: string) => void;
 }
 
@@ -52,11 +58,27 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
   );
 };
 
+const LatestReplyFeedList: FC<LatestReplyFeedListProp> = ({
+  className,
+  feeds,
+}) => {
+  return (
+    <div className={className}>
+      {feeds.map((feed, index) => (
+        <ActivityFeedCard className="tw-mb-6" feed={feed} key={index} />
+      ))}
+    </div>
+  );
+};
+
 const FeedListBody: FC<FeedListBodyProp> = ({
   updatedFeedList,
   relativeDay,
   isEntityFeed,
   onThreadSelect,
+  selctedThreadId,
+  onThreadIdSelect,
+  onThreadIdDeselect,
 }) => {
   return (
     <Fragment>
@@ -69,18 +91,38 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           const lastPost = feed.posts?.[replies - 1];
 
           return (
-            <ActivityFeedCard
-              className="tw-mb-6"
-              entityLink={feed.about}
-              feed={mainFeed}
-              isEntityFeed={isEntityFeed}
-              key={index}
-              lastReplyTimeStamp={lastPost.postTs}
-              repliedUsers={repliedUsers}
-              replies={replies}
-              threadId={feed.id}
-              onThreadSelect={onThreadSelect}
-            />
+            <Fragment key={index}>
+              <ActivityFeedCard
+                className="tw-mb-6"
+                entityLink={feed.about}
+                feed={mainFeed}
+                isEntityFeed={isEntityFeed}
+                isFooterVisible={!selctedThreadId}
+                lastReplyTimeStamp={lastPost.postTs}
+                repliedUsers={repliedUsers}
+                replies={replies}
+                threadId={feed.id}
+                onThreadSelect={onThreadIdSelect}
+              />
+              {selctedThreadId === feed.id ? (
+                <Fragment>
+                  <LatestReplyFeedList
+                    className="tw-mt-6 tw-ml-8"
+                    feeds={feed.posts}
+                  />
+                  <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6">
+                    <p
+                      className="link-text"
+                      onClick={() => onThreadSelect(selctedThreadId)}>
+                      Show more
+                    </p>
+                    <p className="link-text" onClick={onThreadIdDeselect}>
+                      Show less
+                    </p>
+                  </div>
+                </Fragment>
+              ) : null}
+            </Fragment>
           );
         })}
     </Fragment>
@@ -96,6 +138,15 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
+  const [selctedThreadId, setSelctedThreadId] = useState<string>('');
+
+  const onThreadIdSelect = (id: string) => {
+    setSelctedThreadId(id);
+  };
+
+  const onThreadIdDeselect = () => {
+    setSelctedThreadId('');
+  };
 
   const onThreadSelect = (id: string) => {
     const thread = feedList.find((f) => f.id === id);
@@ -120,7 +171,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             <FeedListBody
               isEntityFeed={isEntityFeed}
               relativeDay={d}
+              selctedThreadId={selctedThreadId}
               updatedFeedList={updatedFeedList}
+              onThreadIdDeselect={onThreadIdDeselect}
+              onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}
             />
           </Fragment>

@@ -36,6 +36,7 @@ interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   isEntityFeed?: boolean;
   threadId?: string;
   lastReplyTimeStamp?: number;
+  isFooterVisible?: boolean;
   onThreadSelect?: (id: string) => void;
 }
 interface FeedHeaderProp
@@ -59,6 +60,7 @@ interface FeedFooterProp
       | 'threadId'
       | 'onThreadSelect'
       | 'lastReplyTimeStamp'
+      | 'isFooterVisible'
     > {}
 
 const FeedHeader: FC<FeedHeaderProp> = ({
@@ -123,10 +125,13 @@ const FeedFooter: FC<FeedFooterProp> = ({
   threadId,
   onThreadSelect,
   lastReplyTimeStamp,
+  isFooterVisible,
 }) => {
   return (
     <div className={className}>
-      {!isUndefined(repliedUsers) && !isUndefined(replies) ? (
+      {!isUndefined(repliedUsers) &&
+      !isUndefined(replies) &&
+      isFooterVisible ? (
         <div className="tw-flex tw-group">
           {repliedUsers?.map((u, i) => (
             <Avatar
@@ -163,6 +168,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   threadId,
   lastReplyTimeStamp,
   onThreadSelect,
+  isFooterVisible = true,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -184,6 +190,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       />
       <FeedFooter
         className="tw-ml-7 tw-mt-2"
+        isFooterVisible={isFooterVisible}
         lastReplyTimeStamp={lastReplyTimeStamp}
         repliedUsers={repliedUsers}
         replies={replies}
