@@ -74,7 +74,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
 }) => {
   return (
     <div className={classNames('tw-flex tw-mb-1.5', className)}>
-      <Avatar name={createdBy} width="24" />
+      <Avatar name={createdBy} width="30" />
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
         {createdBy}
         {entityFQN && entityType && entityFQN ? (
@@ -138,16 +138,16 @@ const FeedFooter: FC<FeedFooterProp> = ({
               className="tw-mt-0.5 tw-mx-0.5"
               key={i}
               name={u}
-              width="18"
+              width="22"
             />
           ))}
           <p
-            className="tw-ml-1 link-text tw-text-xs tw-mt-1"
+            className="tw-ml-1 link-text tw-text-xs tw-mt-1.5"
             onClick={() => onThreadSelect?.(threadId as string)}>
             {(replies ?? 0) > 1 ? `${replies} replies` : `${replies} reply`}
           </p>
           {lastReplyTimeStamp ? (
-            <span className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1">
+            <span className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1.5">
               Last reply{' '}
               {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
             </span>

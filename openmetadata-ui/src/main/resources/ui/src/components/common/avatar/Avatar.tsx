@@ -40,6 +40,8 @@ const Avatar = ({
         borderRadius: '50%',
         background: color,
         color: 'black',
+        fontSize: `${Number(width) / 2}px`,
+        fontWeight: 'normal',
       }}>
       <p className={classNames('tw-self-center tw-capitalize', textClass)}>
         {character}
