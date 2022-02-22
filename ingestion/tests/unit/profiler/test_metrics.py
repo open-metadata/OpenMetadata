@@ -14,8 +14,9 @@ Test Metrics behavior
 """
 from unittest import TestCase
 
+import pytest
 from numpy.random import normal
-from sqlalchemy import TEXT, Column, Integer, String, create_engine
+from sqlalchemy import TEXT, Column, Integer, String, create_engine, text
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
@@ -194,3 +195,31 @@ class MetricsTest(TestCase):
 
         assert res["HISTOGRAM"]
         assert len(res["HISTOGRAM"]["count"]) == 5
+
+    def test_like_count(self):
+        """
+        Check LIKE count
+        """
+        # In sqlite, LIKE is insensitive by default, so we just check here
+        # that the metrics runs correctly rather than the implementation logic.
+        like = Metrics.LIKE_COUNT(User.name, expression="J%")
+        res = SingleProfiler(like, session=self.session, table=User).execute()
+
+        assert res["LIKECOUNT"] == 2
+
+        like_ko = Metrics.LIKE_COUNT(User.name)
+        with pytest.raises(AttributeError):
+            SingleProfiler(like_ko, session=self.session, table=User).execute()
+
+    def test_ilike_count(self):
+        """
+        Check ILIKE count: case-insensitive LIKE
+        """
+        ilike = Metrics.ILIKE_COUNT(User.name, expression="j%")
+        res = SingleProfiler(ilike, session=self.session, table=User).execute()
+
+        assert res["ILIKECOUNT"] == 2
+
+        ilike_ko = Metrics.ILIKE_COUNT(User.name)
+        with pytest.raises(AttributeError):
+            SingleProfiler(ilike_ko, session=self.session, table=User).execute()
