@@ -14,6 +14,7 @@ import collections
 # This import verifies that the dependencies are available.
 import logging as log
 import os
+import traceback
 from datetime import datetime
 from typing import Iterable
 
@@ -44,6 +45,7 @@ class BigqueryUsageSource(Source[TableQuery]):
         self.temp_credentials = None
         self.metadata_config = metadata_config
         self.config = config
+        self.metadata = OpenMetadata(metadata_config)
         self.project_id = self.config.project_id
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.status = SQLSourceStatus()
@@ -135,58 +137,23 @@ class BigqueryUsageSource(Source[TableQuery]):
                             yield tq
 
                             result = LineageRunner(tq.sql)
-                            metadata = OpenMetadata(self.metadata_config)
                             if result.target_tables and result.intermediate_tables:
                                 for intermediate_table in result.intermediate_tables:
-                                    intermediate_fqdn = f"{self.config.service_name}.{intermediate_table}"
-                                    intermediate_entity = metadata.get_by_name(
-                                        entity=Table, fqdn=intermediate_fqdn
-                                    )
                                     for source_table in result.source_tables:
-
-                                        source_fqdn = (
-                                            f"{self.config.service_name}.{source_table}"
+                                        lineage = self.fetch_lineage(
+                                            source_table, intermediate_table
                                         )
-                                        source_entity = metadata.get_by_name(
-                                            entity=Table, fqdn=source_fqdn
-                                        )
-                                        lineage = create_lineage(
-                                            source_entity, intermediate_entity
-                                        )
-
                                         yield lineage
-
                                     for target_table in result.target_tables:
-
-                                        target_fqdn = (
-                                            f"{self.config.service_name}.{target_table}"
-                                        )
-                                        target_entity = metadata.get_by_name(
-                                            entity=Table, fqdn=target_fqdn
-                                        )
-                                        lineage = create_lineage(
-                                            target_entity, intermediate_entity
+                                        lineage = self.fetch_lineage(
+                                            intermediate_table, target_table
                                         )
                                         yield lineage
-
-                            if result.target_tables:
+                            elif result.target_tables:
                                 for target_table in result.target_tables:
-                                    target_fqdn = (
-                                        f"{self.config.service_name}.{target_table}"
-                                    )
-                                    target_entity = metadata.get_by_name(
-                                        entity=Table, fqdn=target_fqdn
-                                    )
                                     for source_table in result.source_tables:
-
-                                        source_fqdn = (
-                                            f"{self.config.service_name}.{source_table}"
-                                        )
-                                        source_entity = metadata.get_by_name(
-                                            entity=Table, fqdn=source_fqdn
-                                        )
-                                        lineage = create_lineage(
-                                            source_entity, target_entity
+                                        lineage = self.fetch_lineage(
+                                            source_table, target_table
                                         )
                                         yield lineage
 
@@ -200,3 +167,18 @@ class BigqueryUsageSource(Source[TableQuery]):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
+
+    def fetch_lineage(self, from_table, to_table):
+        try:
+            database = (
+                ""
+                if from_table.schema.raw_name == "<default>"
+                else from_table.schema.raw_name
+            )
+            from_fqdn = f"{self.config.service_name}.{database}.{from_table}"
+            from_entity = self.metadata.get_by_name(entity=Table, fqdn=from_fqdn)
+            to_fqdn = f"{self.config.service_name}.{database}.{to_table}"
+            to_entity = self.metadata.get_by_name(entity=Table, fqdn=to_fqdn)
+            return create_lineage(from_entity, to_entity)
+        except Exception as err:
+            logger.error(traceback.print_exc())
