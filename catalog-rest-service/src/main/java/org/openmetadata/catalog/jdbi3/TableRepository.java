@@ -263,13 +263,13 @@ public class TableRepository extends EntityRepository<Table> {
 
     // process test result
     if (storedMapTableTests.containsKey(tableTest.getId())
-        && tableTest.getTestCaseResults() != null
-        && !tableTest.getTestCaseResults().isEmpty()) {
+        && tableTest.getResults() != null
+        && !tableTest.getResults().isEmpty()) {
       TableTest prevTableTest = storedMapTableTests.get(tableTest.getId());
-      List<Object> prevTestCaseResults = prevTableTest.getTestCaseResults();
-      List<Object> newTestCaseResults = tableTest.getTestCaseResults();
+      List<Object> prevTestCaseResults = prevTableTest.getResults();
+      List<Object> newTestCaseResults = tableTest.getResults();
       newTestCaseResults.addAll(prevTestCaseResults);
-      tableTest.setTestCaseResults(newTestCaseResults);
+      tableTest.setResults(newTestCaseResults);
     }
 
     storedMapTableTests.put(tableTest.getId(), tableTest);

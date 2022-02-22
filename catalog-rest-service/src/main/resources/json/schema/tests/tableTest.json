@@ -40,12 +40,29 @@
       },
       "additionalProperties": false
     },
+    "testCaseExecutionFrequency": {
+      "description": "How often the test case should run.",
+      "javaType": "org.openmetadata.catalog.type.TestCaseExecutionFrequency",
+      "type": "string",
+      "enum": ["Hourly", "Daily", "Weekly"],
+      "javaEnums": [
+        {
+          "name": "Hourly"
+        },
+        {
+          "name": "Daily"
+        },
+        {
+          "name": "Weekly"
+        }
+      ]
+    },
     "testCaseResult": {
-      "testCaseExecutionDate": {
+      "executionTime": {
         "description": "Data one which profile is taken.",
-        "$ref": "../type/basic.json#/definitions/date"
+        "$ref": "../type/basic.json#/definitions/timestamp"
       },
-      "testCaseStatus": {
+      "status": {
         "description": "Status of Test Case run.",
         "javaType": "org.openmetadata.catalog.type.TestCaseStatus",
         "type": "string",
@@ -62,11 +79,11 @@
           }
         ]
       },
-      "testResult": {
+      "result": {
         "description": "Details of test case results.",
         "type": "string"
       },
-      "testCaseSampleData": {
+      "sampleData": {
         "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
         "type": "string"
       }
@@ -90,7 +107,10 @@
     "testCase": {
       "$ref": "#/definitions/testCase"
     },
-    "testCaseResults": {
+    "executionFrequency": {
+      "$ref": "#/definitions/testCaseExecutionFrequency"
+    },
+    "results": {
       "description": "List of results of the test case.",
       "type": "array",
       "items": {
