@@ -112,11 +112,13 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   />
                   <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6">
                     <p
-                      className="link-text"
+                      className="link-text tw-text-xs"
                       onClick={() => onThreadSelect(selctedThreadId)}>
                       Show more
                     </p>
-                    <p className="link-text" onClick={onThreadIdDeselect}>
+                    <p
+                      className="link-text tw-text-xs"
+                      onClick={onThreadIdDeselect}>
                       Show less
                     </p>
                   </div>
