@@ -415,13 +415,25 @@ class OpenMetadata(
                 )
             return entity(**resp)
         except APIError as err:
-            logger.error(
-                "GET %s for %s." "Error %s - %s",
-                entity.__name__,
-                path,
-                err.status_code,
-                err,
-            )
+            if err.status_code == 404 and entity.__name__ == "DatabaseService":
+                logger.error(
+                    "GET %s for %s."
+                    "Error %s - creating databaseService instance for %s",
+                    entity.__name__,
+                    path,
+                    err.status_code,
+                    path.split("/")[-1],
+                )
+
+            else:
+                logger.error(
+                    "GET %s for %s." "Error %s - %s",
+                    entity.__name__,
+                    path,
+                    err.status_code,
+                    err,
+                )
+
             return None
 
     def get_entity_reference(
