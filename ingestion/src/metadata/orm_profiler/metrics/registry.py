@@ -28,6 +28,7 @@ from metadata.orm_profiler.metrics.static.distinct import Distinct
 from metadata.orm_profiler.metrics.static.histogram import Histogram
 from metadata.orm_profiler.metrics.static.ilike_count import ILikeCount
 from metadata.orm_profiler.metrics.static.like_count import LikeCount
+from metadata.orm_profiler.metrics.static.max import Max
 from metadata.orm_profiler.metrics.static.min import Min
 from metadata.orm_profiler.metrics.static.null_count import NullCount
 from metadata.orm_profiler.metrics.static.row_number import RowNumber
@@ -49,6 +50,7 @@ class Metrics(MetricRegistry):
     HISTOGRAM = Histogram
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount
+    MAX = Max
     MIN = Min
     NULL_COUNT = NullCount
     ROW_NUMBER = RowNumber

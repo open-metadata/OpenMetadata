@@ -251,3 +251,17 @@ class MetricsTest(TestCase):
         ).execute()
 
         assert res["ILIKERATIO"] == 1.0
+
+    def test_max(self):
+        """
+        Check MAX metric
+        """
+        _max = Metrics.MAX(User.age)
+        res = SingleProfiler(_max, session=self.session, table=User).execute()
+
+        assert res["MAX"] == 31
+
+        _max = Metrics.MAX(User.name)
+        res = SingleProfiler(_max, session=self.session, table=User).execute()
+
+        assert res["MAX"] == "John"
