@@ -101,11 +101,6 @@ public final class DatabaseUtil {
     String dataType = column.getDataType().value().toLowerCase(Locale.ROOT);
     String dataTypeDisplay = column.getDataTypeDisplay().toLowerCase(Locale.ROOT);
 
-    if (!dataTypeDisplay.startsWith(dataType)) {
-      throw new IllegalArgumentException(
-          String.format("columnDataType %s does not match columnDataTypeDisplay %s", dataType, dataTypeDisplay));
-    }
-
     column.setDataTypeDisplay(dataTypeDisplay); // Make dataTypeDisplay lower case
   }
 
