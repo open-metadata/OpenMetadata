@@ -98,7 +98,6 @@ public final class DatabaseUtil {
     }
 
     // Make sure types from column dataType and dataTypeDisplay match
-    String dataType = column.getDataType().value().toLowerCase(Locale.ROOT);
     String dataTypeDisplay = column.getDataTypeDisplay().toLowerCase(Locale.ROOT);
 
     column.setDataTypeDisplay(dataTypeDisplay); // Make dataTypeDisplay lower case
