@@ -54,12 +54,14 @@ metadata ingest -c ./examples/workflows/tableau.json
 
 1. **username** - pass the Tableau username.
 2. **password** - password for the username.
-3. **server** - address of the server.
-4. **site\_name** - pass the site name.
-5. **site\_url** - pass the tableau connector url.
-6. **api\_version** - pass an api version.
-7. **service\_name** - Service Name for this Tableau cluster. If you added Tableau cluster through OpenMetadata UI, make sure the service name matches the same.
-8. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+3. **personal\_access\_token\_secret** - **** pass the personal access token secret
+4. **personal\_access\_token\_name** - pass the personal access token name
+5. **server** - address of the server.
+6. **site\_name** - pass the site name.
+7. **site\_url** - pass the tableau connector url.
+8. **api\_version** - pass an api version.
+9. **service\_name** - Service Name for this Tableau cluster. If you added Tableau cluster through OpenMetadata UI, make sure the service name matches the same.
+10. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ## Publish to OpenMetadata
 
