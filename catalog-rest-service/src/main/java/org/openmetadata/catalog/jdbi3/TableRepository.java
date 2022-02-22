@@ -46,6 +46,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.TableTest;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResource;
@@ -243,6 +244,41 @@ public class TableRepository extends EntityRepository<Table> {
         .insert(tableId.toString(), "table.tableQueries", "sqlQuery", JsonUtils.pojoToJson(updatedQueries));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withTableQueries(getQueries(table));
+  }
+
+  public Table addTableTest(UUID tableId, TableTest tableTest) throws IOException, ParseException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    // if ID is not passed we treat it as a new test case being added
+    if (tableTest.getId() == null) {
+      tableTest.setId(UUID.randomUUID());
+    }
+    List<TableTest> storedTableTests = getTableTests(table);
+    Map<UUID, TableTest> storedMapTableTests = new HashMap<>();
+    if (storedTableTests != null) {
+      for (TableTest t : storedTableTests) {
+        storedMapTableTests.put(t.getId(), t);
+      }
+    }
+
+    // process test result
+    if (storedMapTableTests.containsKey(tableTest.getId())
+        && tableTest.getTestCaseResults() != null
+        && !tableTest.getTestCaseResults().isEmpty()) {
+      TableTest prevTableTest = storedMapTableTests.get(tableTest.getId());
+      List<Object> prevTestCaseResults = prevTableTest.getTestCaseResults();
+      List<Object> newTestCaseResults = tableTest.getTestCaseResults();
+      newTestCaseResults.addAll(prevTestCaseResults);
+      tableTest.setTestCaseResults(newTestCaseResults);
+    }
+
+    storedMapTableTests.put(tableTest.getId(), tableTest);
+    List<TableTest> updatedQueries = new ArrayList<>(storedMapTableTests.values());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(tableId.toString(), "table.testCases", "tableTest", JsonUtils.pojoToJson(updatedQueries));
+    setFields(table, Fields.EMPTY_FIELDS);
+    return table.withTableTests(getTableTests(table));
   }
 
   @Transaction
@@ -641,6 +677,14 @@ public class TableRepository extends EntityRepository<Table> {
       tableQueries.sort(Comparator.comparing(SQLQuery::getVote, Comparator.reverseOrder()));
     }
     return tableQueries;
+  }
+
+  private List<TableTest> getTableTests(Table table) throws IOException {
+    List<TableTest> tableTests =
+        JsonUtils.readObjects(
+            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableTests"),
+            TableTest.class);
+    return tableTests;
   }
 
   public static class TableEntityInterface implements EntityInterface<Table> {

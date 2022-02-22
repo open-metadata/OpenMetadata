@@ -52,6 +52,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.TableTest;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -499,6 +500,20 @@ public class TableResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addDataModel(UUID.fromString(id), dataModel);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/test")
+  @Operation(summary = "Add table test cases", tags = "tables", description = "Add test cases to the table.")
+  public Table addTableTest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      TableTest tableTest)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Table table = dao.addTableTest(UUID.fromString(id), tableTest);
     return addHref(uriInfo, table);
   }
 

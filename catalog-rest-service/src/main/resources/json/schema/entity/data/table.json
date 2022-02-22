@@ -588,6 +588,14 @@
       },
       "default": null
     },
+    "tableTests": {
+      "description": "List of test cases that ran against a table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/tableTest.json"
+      },
+      "default": null
+    },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
       "$ref": "#/definitions/dataModel"
