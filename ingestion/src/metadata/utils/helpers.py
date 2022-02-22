@@ -189,14 +189,22 @@ def datetime_to_ts(date: datetime) -> int:
 
 def create_lineage(from_entity, from_type, to_entity, to_type):
     try:
+        from_entity_id = (
+            from_entity.id.__root__
+            if hasattr(from_entity.id, "__root__")
+            else from_entity.id
+        )
+        to_entity_id = (
+            to_entity.id.__root__ if hasattr(to_entity.id, "__root__") else to_entity.id
+        )
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
-                    id=from_entity.id.__root__,
+                    id=from_entity_id,
                     type=from_type,
                 ),
                 toEntity=EntityReference(
-                    id=to_entity.id.__root__,
+                    id=to_entity_id,
                     type=to_type,
                 ),
             )
