@@ -223,3 +223,31 @@ class MetricsTest(TestCase):
         ilike_ko = Metrics.ILIKE_COUNT(User.name)
         with pytest.raises(AttributeError):
             SingleProfiler(ilike_ko, session=self.session, table=User).execute()
+
+    def test_like_ratio(self):
+        """
+        Check LIKE ratio
+        """
+        like = Metrics.LIKE_COUNT(User.name, expression="J%")
+        count = Metrics.COUNT(User.name)
+        like_ratio = Metrics.LIKE_RATIO(User.name)
+        res = SingleProfiler(
+            like, count, like_ratio, session=self.session, table=User
+        ).execute()
+
+        assert res["LIKERATIO"] == 1.0
+
+    def test_ilike_ratio(self):
+        """
+        Check LIKE ratio
+        """
+        # In sqlite, LIKE is insensitive by default, so we just check here
+        # that the metrics runs correctly rather than the implementation logic.
+        ilike = Metrics.ILIKE_COUNT(User.name, expression="j%")
+        count = Metrics.COUNT(User.name)
+        ilike_ratio = Metrics.ILIKE_RATIO(User.name)
+        res = SingleProfiler(
+            ilike, count, ilike_ratio, session=self.session, table=User
+        ).execute()
+
+        assert res["ILIKERATIO"] == 1.0
