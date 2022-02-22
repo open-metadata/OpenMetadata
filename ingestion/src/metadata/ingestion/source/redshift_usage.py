@@ -105,26 +105,28 @@ class RedshiftUsageSource(Source[TableQuery]):
             )
             yield tq
             result = LineageRunner(tq.sql)
-            sink = MetadataRestSink(self.ctx, self.config, self.metadata_config)
-            if result.target_tables and result.intermediate_tables:
-                for intermediate_table in result.intermediate_tables:
-                    for source_table in result.source_tables:
-                        lineage = self.create_lineage(source_table, intermediate_table)
-                        sink.write_record(lineage)
-                    for target_table in result.target_tables:
-                        lineage = self.create_lineage(intermediate_table, target_table)
-                        sink.write_record(lineage)
-            elif result.target_tables:
-                for target_table in result.target_tables:
-                    for source_table in result.source_tables:
-                        lineage = self.create_lineage(source_table, target_table)
-                        sink.write_record(lineage)
+            self.get_lineage(result)
 
     def close(self):
         self.alchemy_helper.close()
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def get_lineage(self, result):
+        sink = MetadataRestSink(self.ctx, self.config, self.metadata_config)
+        for intermediate_table in result.intermediate_tables:
+            for source_table in result.source_tables:
+                lineage = self.create_lineage(source_table, intermediate_table)
+                sink.write_record(lineage)
+            for target_table in result.target_tables:
+                lineage = self.create_lineage(intermediate_table, target_table)
+                sink.write_record(lineage)
+        if not result.intermediate_tables:
+            for target_table in result.target_tables:
+                for source_table in result.source_tables:
+                    lineage = self.create_lineage(source_table, target_table)
+                    sink.write_record(lineage)
 
     def create_lineage(self, from_table, to_table):
         try:
@@ -140,5 +142,5 @@ class RedshiftUsageSource(Source[TableQuery]):
                     toEntity=EntityReference(id=to_entity.id.__root__, type="table"),
                 )
             )
-        except Exception as err:  # pylint: disable=broad-except,unused-variable
+        except Exception:  # pylint: disable=broad-except,unused-variable
             logger.error(traceback.print_exc())
