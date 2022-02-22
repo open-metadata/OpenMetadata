@@ -265,3 +265,51 @@ class MetricsTest(TestCase):
         res = SingleProfiler(_max, session=self.session, table=User).execute()
 
         assert res["MAX"] == "John"
+
+    def test_min_length(self):
+        """
+        Check MIN_LENGTH metric
+        """
+
+        # Integer
+        min_length = Metrics.MIN_LENGTH(col=User.age)
+        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+
+        # MIN_LENGTH does not get computed, so profiler._results is still None here
+        assert not res
+
+        # String
+        min_length = Metrics.MIN_LENGTH(col=User.name)
+        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+
+        assert res["MINLENGTH"] == 4
+
+        # Text
+        min_length = Metrics.MIN_LENGTH(col=User.comments)
+        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+
+        assert res["MINLENGTH"] == 11
+
+    def test_max_length(self):
+        """
+        Check MAX_LENGTH metric
+        """
+
+        # Integer
+        max_length = Metrics.MAX_LENGTH(col=User.age)
+        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+
+        # MAX_LENGTH does not get computed, so profiler._results is still None here
+        assert not res
+
+        # String
+        max_length = Metrics.MAX_LENGTH(col=User.name)
+        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+
+        assert res["MAXLENGTH"] == 4
+
+        # Text
+        max_length = Metrics.MAX_LENGTH(col=User.comments)
+        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+
+        assert res["MAXLENGTH"] == 19
