@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
+import traceback
 from datetime import datetime, timedelta
 from typing import List
 
@@ -36,6 +38,8 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+logger = logging.getLogger(__name__)
 
 
 def get_start_and_end(duration):
@@ -183,17 +187,21 @@ def datetime_to_ts(date: datetime) -> int:
     return int(date.timestamp())
 
 
-def create_lineage(from_entity, to_entity):
-    lineage = AddLineageRequest(
-        edge=EntitiesEdge(
-            fromEntity=EntityReference(
-                id=from_entity.id.__root__,
-                type="table",
-            ),
-            toEntity=EntityReference(
-                id=to_entity.id.__root__,
-                type="table",
-            ),
+def create_lineage(from_entity, from_type, to_entity, to_type):
+    try:
+        lineage = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=from_entity.id.__root__,
+                    type=from_type,
+                ),
+                toEntity=EntityReference(
+                    id=to_entity.id.__root__,
+                    type=to_type,
+                ),
+            )
         )
-    )
-    return lineage
+        return lineage
+    except Exception as err:
+        logger.error(traceback.print_exc())
+        logger.error(err)
