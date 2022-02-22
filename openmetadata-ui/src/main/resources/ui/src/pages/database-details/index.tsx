@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { ExtraInfo, Paging } from 'Models';
+import { EntityThread, ExtraInfo, Paging } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import appState from '../../AppState';
@@ -24,7 +24,9 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
+import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
+import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -44,6 +46,7 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
@@ -57,7 +60,7 @@ import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
-import { getInfoElements } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -89,6 +92,10 @@ const DatabaseDetails: FunctionComponent = () => {
   );
   const [isError, setIsError] = useState(false);
 
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
+
   const history = useHistory();
   const isMounting = useRef(true);
 
@@ -106,6 +113,17 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
+      name: 'Activity Feed',
+      icon: {
+        alt: 'activity_feed',
+        name: 'activity_feed',
+        title: 'Activity Feed',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -114,7 +132,7 @@ const DatabaseDetails: FunctionComponent = () => {
         selectedName: 'icon-managecolor',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
   ];
 
@@ -300,6 +318,22 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const fetchActivityFeed = () => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setEntityThread(data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feeds',
+        });
+      })
+      .finally(() => setIsentityThreadLoading(false));
+  };
+
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
@@ -319,6 +353,12 @@ const DatabaseDetails: FunctionComponent = () => {
     }
     getDetailsByFQN();
   }, []);
+
+  useEffect(() => {
+    if (TabSpecificField.ACTIVITY_FEED === tab) {
+      fetchActivityFeed();
+    }
+  }, [tab]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -506,8 +546,22 @@ const DatabaseDetails: FunctionComponent = () => {
                     )}
                   </>
                 )}
-
                 {activeTab === 2 && (
+                  <div
+                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                    id="activityfeed">
+                    <div />
+                    <ActivityFeedList
+                      isEntityFeed
+                      withSidePanel
+                      className=""
+                      feedList={entityThread}
+                      isLoading={isentityThreadLoading}
+                    />
+                    <div />
+                  </div>
+                )}
+                {activeTab === 3 && (
                   <ManageTabComponent
                     hideTier
                     currentUser={database?.owner?.id}
