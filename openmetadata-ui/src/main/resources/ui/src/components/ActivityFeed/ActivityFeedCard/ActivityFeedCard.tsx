@@ -96,7 +96,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
             )}
           </span>
         ) : null}
-        <span className="tw-text-grey-muted tw-pl-1 tw-text-xs">
+        <span className="tw-text-grey-muted tw-pl-2 tw-text-xs">
           {getDayTimeByTimeStamp(timeStamp)}
         </span>
       </h6>
@@ -136,7 +136,7 @@ const FeedFooter: FC<FeedFooterProp> = ({
           {(replies ?? 0) > 1 ? `${replies} replies` : `${replies} reply`}
         </p>
         {lastReplyTimeStamp ? (
-          <span className="tw-text-grey-muted tw-pl-1 tw-text-xs tw-font-medium tw-mt-1">
+          <span className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1">
             Last reply{' '}
             {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
           </span>
