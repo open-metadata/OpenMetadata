@@ -29,7 +29,7 @@ public class CatalogHealthCheck extends HealthCheck {
   private final UserRepository userRepository;
   private final EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, "profile");
 
-  public CatalogHealthCheck(CatalogApplicationConfig config, Jdbi jdbi) {
+  public CatalogHealthCheck(Jdbi jdbi) {
     super();
     CollectionDAO repo = jdbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(repo);

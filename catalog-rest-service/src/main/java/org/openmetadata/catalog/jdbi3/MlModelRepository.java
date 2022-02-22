@@ -141,7 +141,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private void validateMlDataSource(MlFeatureSource source) throws IOException {
     if (source.getDataSource() != null) {
-      Entity.getEntityReference(source.getDataSource().getType(), source.getDataSource().getId());
+      Entity.getEntityReferenceById(source.getDataSource().getType(), source.getDataSource().getId());
     }
   }
 

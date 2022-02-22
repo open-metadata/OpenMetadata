@@ -79,6 +79,7 @@ public final class Entity {
   public static final String LOCATION = "location";
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
+  public static final String THREAD = "thread";
 
   //
   // Policies
@@ -115,10 +116,10 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReference(EntityReference ref) throws IOException {
-    return getEntityReference(ref.getType(), ref.getId());
+    return getEntityReferenceById(ref.getType(), ref.getId());
   }
 
-  public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
+  public static EntityReference getEntityReferenceById(@NonNull String entity, @NonNull UUID id) throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
@@ -133,14 +134,6 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
     }
     return dao.findEntityReferenceByName(fqn);
-  }
-
-  public static EntityReference getEntityReferenceById(@NonNull String entity, @NonNull UUID id) throws IOException {
-    EntityDAO<?> dao = DAO_MAP.get(entity);
-    if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
-    }
-    return dao.findEntityReferenceById(id);
   }
 
   public static <T> EntityReference getEntityReference(T entity) {
@@ -277,6 +270,8 @@ public final class Entity {
 
   /** Class for getting validated entity list from a queryParam with list of entities. */
   public static class EntityList {
+    private EntityList() {}
+
     public static List<String> getEntityList(String name, String entitiesParam) {
       if (entitiesParam == null) {
         return null;

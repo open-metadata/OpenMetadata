@@ -38,6 +38,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 public class PermissionsResource {
   private final Authorizer authorizer;
 
+  @SuppressWarnings("unused")
   public PermissionsResource(CollectionDAO dao, @NonNull Authorizer authorizer) {
     this.authorizer = authorizer;
   }

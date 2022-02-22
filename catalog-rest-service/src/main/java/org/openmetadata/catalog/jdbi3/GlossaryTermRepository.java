@@ -42,7 +42,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "tags");
   private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "tags");
-  private final CollectionDAO dao;
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -56,7 +55,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         true,
         false,
         false);
-    this.dao = dao;
   }
 
   @Override
@@ -74,7 +72,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<String> ids =
         findFrom(
             entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
-    return ids.size() == 1 ? Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
+    return ids.size() == 1 ? Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
@@ -126,7 +124,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setReviewers(reviewers);
 
     // Set tags
-    entity.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), entity.getTags()));
+    entity.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), entity.getTags()));
   }
 
   @Override
@@ -149,9 +147,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .withTags(null);
 
     if (update) {
-      dao.glossaryTermDAO().update(entity.getId(), JsonUtils.pojoToJson(entity));
+      daoCollection.glossaryTermDAO().update(entity.getId(), JsonUtils.pojoToJson(entity));
     } else {
-      dao.glossaryTermDAO().insert(entity);
+      daoCollection.glossaryTermDAO().insert(entity);
     }
 
     // Restore the relationships
@@ -165,7 +163,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void storeRelationships(GlossaryTerm entity) {
-    // TODO Add relationships for  related terms, and reviewers
     addRelationship(
         entity.getGlossary().getId(), entity.getId(), Entity.GLOSSARY, Entity.GLOSSARY_TERM, Relationship.CONTAINS);
     if (entity.getParent() != null) {

@@ -688,8 +688,7 @@ public abstract class EntityRepository<T> {
       }
       // this could be changed to Include.NON_DELETED because we validate only when creating entities linked to
       // non-deleted entities.
-      Object entity = Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted);
-      return helper(entity).toEntityReference();
+      return helper(Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted)).toEntityReference();
     }
 
     /**
@@ -1081,17 +1080,17 @@ public abstract class EntityRepository<T> {
       updatedList = Optional.ofNullable(updatedList).orElse(Collections.emptyList());
       for (K stored : origList) {
         // If an entry in the original list is not in updated list, then it is deleted during update
-        K updated = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
-        if (updated == null) {
+        K u = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
+        if (u == null) {
           deletedItems.add(stored);
         }
       }
 
-      for (K updated : updatedList) {
+      for (K U : updatedList) {
         // If an entry in the updated list is not in original list, then it is added during update
-        K stored = origList.stream().filter(c -> typeMatch.test(c, updated)).findAny().orElse(null);
+        K stored = origList.stream().filter(c -> typeMatch.test(c, U)).findAny().orElse(null);
         if (stored == null) { // New column added
-          addedItems.add(updated);
+          addedItems.add(U);
         }
       }
       if (!addedItems.isEmpty()) {
