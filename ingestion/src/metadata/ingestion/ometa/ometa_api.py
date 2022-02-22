@@ -417,7 +417,7 @@ class OpenMetadata(
         except APIError as err:
             if err.status_code == 404:
                 logger.info(
-                    "GET %s for %s." "Error %s - %s",
+                    "GET %s for %s. HTTP %s - %s",
                     entity.__name__,
                     path,
                     err.status_code,
