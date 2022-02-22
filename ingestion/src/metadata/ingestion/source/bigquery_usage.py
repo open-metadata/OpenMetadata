@@ -182,3 +182,4 @@ class BigqueryUsageSource(Source[TableQuery]):
             return create_lineage(from_entity, to_entity)
         except Exception as err:
             logger.error(traceback.print_exc())
+            logger.error(err)

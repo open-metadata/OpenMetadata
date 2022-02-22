@@ -57,7 +57,7 @@ class Validation(BaseModel):
     metric: StrictStr
     operator: Callable
     value: Union[float, int, str]
-    valid: bool = None
+    valid: bool
 
     class Config:
         smart_union = True  # Otherwise, we have undesired type coercion
