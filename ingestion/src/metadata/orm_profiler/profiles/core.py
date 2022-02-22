@@ -32,6 +32,13 @@ from metadata.orm_profiler.utils import logger
 logger = logger()
 
 
+class MissingMetricException(Exception):
+    """
+    Raise when building the profiler with Composed Metrics
+    and not all the required metrics are present
+    """
+
+
 class Profiler(ABC):
     """
     Core Profiler.
@@ -51,6 +58,8 @@ class Profiler(ABC):
         self._table = table
         self._metrics = metrics
         self._results: Optional[Dict[str, Any]] = None
+
+        self.validate_composed_metric()
 
     @property
     def session(self) -> Session:
@@ -130,6 +139,19 @@ class Profiler(ABC):
     @property
     def query_metrics(self):
         return self._filter_metrics(QueryMetric)
+
+    def validate_composed_metric(self) -> None:
+        """
+        Make sure that all composed metrics have
+        the necessary ingredients defined in
+        `required_metrics` attr
+        """
+        names = {metric.name() for metric in self.metrics}
+        for metric in self.composed_metrics:
+            if not set(metric.required_metrics()).issubset(names):
+                raise MissingMetricException(
+                    f"We need {metric.required_metrics()} for {metric.name()}, but only got {names} in the profiler"
+                )
 
     def build_col_query(self) -> Optional[Query]:
         """

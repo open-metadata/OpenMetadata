@@ -14,10 +14,13 @@ Test Profiler behavior
 """
 from unittest import TestCase
 
+import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiles.core import MissingMetricException, SingleProfiler
 from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 
 Base = declarative_base()
@@ -75,3 +78,20 @@ class ProfilerTest(TestCase):
         simple = SimpleTableProfiler(session=self.session, table=User)
         simple.execute()
         assert simple.results == {"ROWNUMBER": 2}
+
+    def test_required_metrics(self):
+        """
+        Check that we raise properly MissingMetricException
+        when not building the profiler with all the
+        required ingredients
+        """
+        like = Metrics.LIKE_COUNT(User.name, expression="J%")
+        count = Metrics.COUNT(User.name)
+        like_ratio = Metrics.LIKE_RATIO(User.name)
+
+        # This should run properly
+        SingleProfiler(like, count, like_ratio, session=self.session, table=User)
+
+        with pytest.raises(MissingMetricException):
+            # We are missing ingredients here
+            SingleProfiler(like, like_ratio, session=self.session, table=User)
