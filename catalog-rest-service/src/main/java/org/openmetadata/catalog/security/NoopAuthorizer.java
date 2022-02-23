@@ -77,11 +77,7 @@ public class NoopAuthorizer implements Authorizer {
   private void addAnonymousUser() {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(null, username, fields);
-      if (user != null && (user.getIsBot() == null || !user.getIsBot())) {
-        user.setIsAdmin(true);
-      }
-      addOrUpdateUser(user);
+      userRepository.getByName(null, username, fields);
     } catch (EntityNotFoundException ex) {
       User user =
           new User()
