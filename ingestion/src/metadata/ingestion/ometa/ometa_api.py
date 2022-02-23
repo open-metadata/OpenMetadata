@@ -130,7 +130,7 @@ class OpenMetadata(
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.api_endpoint,
             api_version=self.config.api_version,
-            auth_header="Authorization",
+            auth_header="X-Catalog-Source",
             auth_token=asyncio.run(self._auth_provider.auth_token()),
         )
         self.client = REST(client_config)
