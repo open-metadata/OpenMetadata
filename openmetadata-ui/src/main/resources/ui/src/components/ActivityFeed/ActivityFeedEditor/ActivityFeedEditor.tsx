@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FC, HTMLAttributes } from 'react';
+import React, { FC, HTMLAttributes, useRef } from 'react';
 import { Button } from '../../buttons/Button/Button';
 import FeedEditor from '../../FeedEditor/FeedEditor';
 
@@ -19,17 +19,27 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: (value: string) => void;
   buttonClass?: string;
 }
+type EditorContentRef = {
+  getEditorValue: () => string;
+};
 
 const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   className,
   buttonClass = '',
   onSave,
 }) => {
+  const editorRef = useRef<EditorContentRef>();
+  const onSaveHandler = () => {
+    if (editorRef.current) {
+      onSave?.(editorRef.current?.getEditorValue() ?? '');
+    }
+  };
+
   return (
     <div className={className}>
-      <FeedEditor onSave={onSave} />
+      <FeedEditor ref={editorRef} />
       <div className="tw-flex tw-flex-row tw-items-center tw-justify-end">
-        <Button className={buttonClass} theme="primary">
+        <Button className={buttonClass} theme="primary" onClick={onSaveHandler}>
           Send
         </Button>
       </div>

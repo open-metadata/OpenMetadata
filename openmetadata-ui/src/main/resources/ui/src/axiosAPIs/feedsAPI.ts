@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Feed, FeedById } from 'Models';
+import { Feed, Post } from 'Models';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
@@ -35,7 +35,7 @@ export const getFeedById: Function = (id: string): Promise<AxiosResponse> => {
 
 export const postFeedById: Function = (
   id: string,
-  data: FeedById
+  data: Post
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/feed/${id}/posts`, data);
 };

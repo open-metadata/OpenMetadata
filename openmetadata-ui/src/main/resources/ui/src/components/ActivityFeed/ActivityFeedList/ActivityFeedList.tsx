@@ -14,7 +14,13 @@
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread, Post } from 'Models';
-import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
+import React, {
+  FC,
+  Fragment,
+  HTMLAttributes,
+  useEffect,
+  useState,
+} from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import Onboarding from '../../onboarding/Onboarding';
@@ -26,6 +32,7 @@ interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: EntityThread[];
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
+  postFeedHandler?: (value: string, id: string) => void;
 }
 interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
   relativeDay: string;
@@ -42,6 +49,8 @@ interface FeedListBodyProp
   onThreadIdSelect: (value: string) => void;
   onThreadIdDeselect: () => void;
   onThreadSelect: (value: string) => void;
+  postFeed: (value: string) => void;
+  onViewMore: () => void;
 }
 
 const FeedListSeparator: FC<FeedListSeparatorProp> = ({
@@ -81,6 +90,8 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   selctedThreadId,
   onThreadIdSelect,
   withSidePanel,
+  postFeed,
+  onViewMore,
 }) => {
   return (
     <Fragment>
@@ -89,7 +100,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
         .map((feed, index) => {
           const mainFeed = feed.posts?.[0];
           const replies = feed.posts.length;
-          const repliedUsers = feed.posts.map((f) => f.from).slice(1, 4);
+          const repliedUsers = feed.posts.map((f) => f.from).slice(-3);
           const lastPost = feed.posts?.[replies - 1];
 
           return (
@@ -111,17 +122,21 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6 tw--mt-4">
                     <p
                       className="link-text tw-text-xs tw-underline"
-                      onClick={() => onThreadSelect(selctedThreadId)}>
+                      onClick={() => {
+                        onThreadSelect(selctedThreadId);
+                        onViewMore();
+                      }}>
                       View more replies
                     </p>
                   </div>
                   <LatestReplyFeedList
                     className="tw-mt-6 tw-ml-8"
-                    feeds={feed?.posts?.slice(1, 4) as Post[]}
+                    feeds={feed?.posts?.slice(-3) as Post[]}
                   />
                   <ActivityFeedEditor
                     buttonClass="tw-mr-4"
                     className="tw-ml-11 tw-mr-2"
+                    onSave={postFeed}
                   />
                 </Fragment>
               ) : null}
@@ -137,11 +152,13 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   feedList,
   withSidePanel = false,
   isEntityFeed = false,
+  postFeedHandler,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
   const [selctedThreadId, setSelctedThreadId] = useState<string>('');
+  const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
 
   const onThreadIdSelect = (id: string) => {
     setSelctedThreadId(id);
@@ -158,9 +175,22 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     }
   };
 
+  const onViewMore = () => {
+    setIsPanelOpen(true);
+  };
+
   const onCancel = () => {
     setSelectedThread(undefined);
+    setIsPanelOpen(false);
   };
+
+  const postFeed = (value: string) => {
+    postFeedHandler?.(value, selctedThreadId);
+  };
+
+  useEffect(() => {
+    onThreadSelect(selctedThreadId);
+  }, [feedList]);
 
   return (
     <div className={classNames(className)}>
@@ -175,6 +205,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 />
                 <FeedListBody
                   isEntityFeed={isEntityFeed}
+                  postFeed={postFeed}
                   relativeDay={d}
                   selctedThreadId={selctedThreadId}
                   updatedFeedList={updatedFeedList}
@@ -182,14 +213,16 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   onThreadIdDeselect={onThreadIdDeselect}
                   onThreadIdSelect={onThreadIdSelect}
                   onThreadSelect={onThreadSelect}
+                  onViewMore={onViewMore}
                 />
               </Fragment>
             );
           })}
-          {withSidePanel && selectedThread ? (
+          {withSidePanel && selectedThread && isPanelOpen ? (
             <Fragment>
               <ActivityFeedPanel
-                open={!isUndefined(selectedThread)}
+                open={!isUndefined(selectedThread) && isPanelOpen}
+                postFeed={postFeed}
                 selectedThread={selectedThread}
                 onCancel={onCancel}
               />

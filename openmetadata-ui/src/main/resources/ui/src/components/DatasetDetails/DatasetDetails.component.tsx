@@ -91,6 +91,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableQueries,
   entityThread,
   isentityThreadLoading,
+  postFeedHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -501,6 +502,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   className=""
                   feedList={entityThread}
                   isLoading={isentityThreadLoading}
+                  postFeedHandler={postFeedHandler}
                 />
                 <div />
               </div>

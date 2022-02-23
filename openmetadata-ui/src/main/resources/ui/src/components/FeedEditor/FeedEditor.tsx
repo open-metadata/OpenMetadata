@@ -1,6 +1,14 @@
+import classNames from 'classnames';
 import MarkdownShortcuts from 'quill-markdown-shortcuts';
-import React, { FC, HTMLAttributes, useState } from 'react';
+import React, {
+  forwardRef,
+  HTMLAttributes,
+  useImperativeHandle,
+  useState,
+} from 'react';
 import ReactQuill, { Quill } from 'react-quill';
+import { HTMLToMarkdown } from '../../utils/FeedUtils';
+import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import './FeedEditor.css';
 
 Quill.register('modules/markdownShortcuts', MarkdownShortcuts);
@@ -27,26 +35,37 @@ const modules = {
 };
 
 interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
-  onSave?: (value: string) => void;
+  editorClass?: string;
+  className?: string;
 }
 
-const FeedEditor: FC<FeedEditorProp> = ({ className }) => {
-  const [value, setValue] = useState<string>('');
-  const onChangeHandler = (value: string) => {
-    setValue(value);
-  };
+const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
+  ({ className, editorClass }: FeedEditorProp, ref) => {
+    const [value, setValue] = useState<string>('');
+    const onChangeHandler = (value: string) => {
+      setValue(value);
+    };
 
-  return (
-    <div className={className}>
-      <ReactQuill
-        className="editor-container"
-        modules={modules}
-        theme="snow"
-        value={value}
-        onChange={onChangeHandler}
-      />
-    </div>
-  );
-};
+    useImperativeHandle(ref, () => ({
+      getEditorValue() {
+        setValue('');
+
+        return HTMLToMarkdown.turndown(value);
+      },
+    }));
+
+    return (
+      <div className={className}>
+        <ReactQuill
+          className={classNames('editor-container', editorClass)}
+          modules={modules}
+          theme="snow"
+          value={value}
+          onChange={onChangeHandler}
+        />
+      </div>
+    );
+  }
+);
 
 export default FeedEditor;

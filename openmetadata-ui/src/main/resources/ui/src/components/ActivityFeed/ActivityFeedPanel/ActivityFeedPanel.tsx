@@ -31,6 +31,7 @@ interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
   selectedThread: EntityThread;
   open?: boolean;
   onCancel: () => void;
+  postFeed: (value: string) => void;
 }
 
 interface FeedPanelHeaderProp
@@ -136,13 +137,13 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   selectedThread,
   onCancel,
   className,
+  postFeed,
 }) => {
-  const [threadData, setThreadData] = useState<EntityThread>();
+  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
 
   useEffect(() => {
-    setIsLoading(true);
     getFeedById(selectedThread.id)
       .then((res: AxiosResponse) => {
         setThreadData(res.data);
@@ -151,14 +152,14 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   }, [selectedThread]);
 
   return (
-    <div className={className}>
+    <div className={classNames('tw-h-full', className)}>
       <FeedPanelOverlay
         className="tw-z-10 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
         onCancel={onCancel}
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-w-2/5 tw-bg-white tw-fixed tw-h-full tw-overflow-y-auto tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -169,17 +170,17 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           entityField={entityField as string}
           onCancel={onCancel}
         />
-        <div className="tw-h-full">
-          <FeedPanelBody
-            className="tw-p-4 tw-pl-8"
-            isLoading={isLoading}
-            threadData={threadData as EntityThread}
-          />
-          <ActivityFeedEditor
-            buttonClass="tw-mr-4"
-            className="tw-ml-11 tw-mr-2"
-          />
-        </div>
+
+        <FeedPanelBody
+          className="tw-p-4 tw-pl-8"
+          isLoading={isLoading}
+          threadData={threadData as EntityThread}
+        />
+        <ActivityFeedEditor
+          buttonClass="tw-mr-4"
+          className="tw-ml-11 tw-mr-2 tw-mb-2"
+          onSave={postFeed}
+        />
       </div>
     </div>
   );

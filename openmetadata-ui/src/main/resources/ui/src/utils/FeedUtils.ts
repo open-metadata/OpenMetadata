@@ -12,6 +12,7 @@
  */
 
 import { EntityThread } from 'Models';
+import TurndownService from 'turndown';
 import { EntityRegEx } from '../constants/feed.constants';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 
@@ -40,3 +41,21 @@ export const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
 
   return { updatedFeedList, relativeDays };
 };
+
+export const HTMLToMarkdown = new TurndownService({
+  bulletListMarker: '-',
+  fence: '```',
+  codeBlockStyle: 'fenced',
+})
+  .addRule('codeblock', {
+    filter: ['pre'],
+    replacement: function (content: string) {
+      return '```\n' + content + '\n```';
+    },
+  })
+  .addRule('strikethrough', {
+    filter: ['del', 's'],
+    replacement: function (content: string) {
+      return '~~' + content + '~~';
+    },
+  });

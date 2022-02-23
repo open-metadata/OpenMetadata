@@ -25,7 +25,7 @@ import {
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
+import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -167,6 +167,22 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .finally(() => {
         setIsLineageLoading(false);
       });
+  };
+
+  const getFeedData = () => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN))
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setEntityThread(data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feeds',
+        });
+      })
+      .finally(() => setIsentityThreadLoading(false));
   };
 
   const fetchTableDetail = () => {
@@ -315,19 +331,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         }
       }
       case TabSpecificField.ACTIVITY_FEED: {
-        setIsentityThreadLoading(true);
-        getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN))
-          .then((res: AxiosResponse) => {
-            const { data } = res.data;
-            setEntityThread(data);
-          })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: 'Error while fetching entity feeds',
-            });
-          })
-          .finally(() => setIsentityThreadLoading(false));
+        getFeedData();
 
         break;
       }
@@ -507,6 +511,36 @@ const DatasetDetailsPage: FunctionComponent = () => {
     });
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...thread, posts: posts };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -553,6 +587,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
+          postFeedHandler={postFeedHandler}
           removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}
