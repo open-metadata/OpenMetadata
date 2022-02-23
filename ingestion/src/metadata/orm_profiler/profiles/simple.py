@@ -29,11 +29,20 @@ class SimpleProfiler(SingleProfiler):
 
     def __init__(self, session: Session, col: InstrumentedAttribute, table):
         _metrics = [
-            Metrics.MIN(col),
+            Metrics.AVG(col),
             Metrics.COUNT(col),
-            Metrics.STDDEV(col),
+            Metrics.DISTINCT(col),
+            Metrics.MIN(col),
+            Metrics.MIN_LENGTH(col),
+            Metrics.MAX(col),
+            Metrics.MAX_LENGTH(col),
             Metrics.NULL_COUNT(col),
             Metrics.NULL_RATIO(col),
+            Metrics.STDDEV(col),
+            Metrics.SUM(col),
+            Metrics.UNIQUE_COUNT(col),
+            Metrics.UNIQUE_RATIO(col),
+            Metrics.HISTOGRAM(col, bins=5),
         ]
         super().__init__(*_metrics, session=session, table=table)
 
