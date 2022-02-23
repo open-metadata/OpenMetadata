@@ -15,6 +15,7 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 
+import asyncio
 import logging
 import urllib
 from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
@@ -129,8 +130,8 @@ class OpenMetadata(
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.api_endpoint,
             api_version=self.config.api_version,
-            auth_header="X-Catalog-Source",
-            auth_token=self._auth_provider.auth_token(),
+            auth_header="Authorization",
+            auth_token=asyncio.run(self._auth_provider.auth_token()),
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
