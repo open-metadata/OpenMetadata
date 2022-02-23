@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -113,9 +115,11 @@ public class FeedResource {
   public ThreadList list(
       @Context UriInfo uriInfo,
       @Parameter(
-              description = "Limit the number of posts sorted by chronological order",
+              description = "Limit the number of posts sorted by chronological order (1 to 1000000, default = 3)",
               schema = @Schema(type = "integer"))
-          @DefaultValue("0")
+          @Min(1)
+          @Max(1000000)
+          @DefaultValue("3")
           @QueryParam("limitPosts")
           int limitPosts,
       @Parameter(
