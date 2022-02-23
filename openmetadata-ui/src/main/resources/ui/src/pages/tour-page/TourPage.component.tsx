@@ -137,6 +137,7 @@ const TourPage = () => {
             followedData={[]}
             ingestionCount={0}
             ownedData={[]}
+            postFeedHandler={jest.fn()}
             searchResult={myDataSearchResult as unknown as SearchResponse}
             userDetails={AppState.userDetails}
           />

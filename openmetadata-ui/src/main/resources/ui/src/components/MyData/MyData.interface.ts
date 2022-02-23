@@ -35,4 +35,5 @@ export interface MyDataProps {
   fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;
   isFeedLoading?: boolean;
+  postFeedHandler: (value: string, id: string) => void;
 }

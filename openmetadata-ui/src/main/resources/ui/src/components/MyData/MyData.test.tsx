@@ -308,6 +308,7 @@ describe('Test MyData page', () => {
         followedData={formatDataResponse(mockData.data.hits.hits)}
         ingestionCount={0}
         ownedData={formatDataResponse(mockData.data.hits.hits)}
+        postFeedHandler={jest.fn()}
         searchResult={mockData as unknown as SearchResponse}
         userDetails={mockUserDetails as unknown as User}
       />,

@@ -24,7 +24,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
-import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
+import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -148,6 +148,36 @@ const MyDataPage = () => {
       });
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...thread, posts: posts };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchData(true);
   }, []);
@@ -183,6 +213,7 @@ const MyDataPage = () => {
           ingestionCount={ingestionCount}
           isFeedLoading={isFeedLoading}
           ownedData={ownedData || []}
+          postFeedHandler={postFeedHandler}
           searchResult={searchResult}
         />
       ) : (

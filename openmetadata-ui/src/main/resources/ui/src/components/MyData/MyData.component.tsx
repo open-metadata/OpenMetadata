@@ -49,6 +49,7 @@ const MyData: React.FC<MyDataProps> = ({
   feedFilter,
   feedFilterHandler,
   isFeedLoading,
+  postFeedHandler,
 }: MyDataProps): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
@@ -177,6 +178,7 @@ const MyData: React.FC<MyDataProps> = ({
                 className=""
                 feedList={feedData}
                 isLoading={isFeedLoading}
+                postFeedHandler={postFeedHandler}
               />
             </Fragment>
           ) : (

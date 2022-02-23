@@ -113,7 +113,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 entityLink={feed.about}
                 feed={mainFeed}
                 isEntityFeed={isEntityFeed}
-                isFooterVisible={selctedThreadId !== feed.id && withSidePanel}
+                isFooterVisible={selctedThreadId !== feed.id}
                 lastReplyTimeStamp={lastPost.postTs}
                 repliedUsers={repliedUsers}
                 replies={replies}
@@ -122,16 +122,18 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {selctedThreadId === feed.id ? (
                 <Fragment>
-                  <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6 tw--mt-4">
-                    <p
-                      className="link-text tw-text-xs tw-underline"
-                      onClick={() => {
-                        onThreadSelect(selctedThreadId);
-                        onViewMore();
-                      }}>
-                      View more replies
-                    </p>
-                  </div>
+                  {withSidePanel ? (
+                    <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6 tw--mt-4">
+                      <p
+                        className="link-text tw-text-xs tw-underline"
+                        onClick={() => {
+                          onThreadSelect(selctedThreadId);
+                          onViewMore();
+                        }}>
+                        View more replies
+                      </p>
+                    </div>
+                  ) : null}
                   <LatestReplyFeedList
                     className="tw-mt-6 tw-ml-8"
                     feeds={feed?.posts?.slice(1).slice(-3) as Post[]}
