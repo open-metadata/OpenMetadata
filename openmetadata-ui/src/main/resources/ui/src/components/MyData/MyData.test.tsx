@@ -238,10 +238,6 @@ jest.mock('../dropdown/DropDownList', () => {
   return jest.fn().mockReturnValue(<p>DropDownList</p>);
 });
 
-jest.mock('../common/FeedCard/FeedCards.component', () => {
-  return jest.fn().mockReturnValue(<p>FeedCards</p>);
-});
-
 jest.mock('../MyAssetStats/MyAssetStats.component', () => {
   return jest.fn().mockReturnValue(<p>MyAssetStats</p>);
 });
