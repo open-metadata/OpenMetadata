@@ -59,6 +59,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   deleted,
   entityThread,
   isentityThreadLoading,
+  postFeedHandler,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -348,6 +349,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   className=""
                   feedList={entityThread}
                   isLoading={isentityThreadLoading}
+                  postFeedHandler={postFeedHandler}
                 />
                 <div />
               </div>

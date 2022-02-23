@@ -18,7 +18,7 @@ import { EntityTags, EntityThread, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
+import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -315,6 +315,36 @@ const TopicDetailsPage: FunctionComponent = () => {
     );
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...thread, posts: posts };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchTopicDetail(topicFQN);
   }, [topicFQN]);
@@ -342,6 +372,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           maximumMessageSize={maximumMessageSize}
           owner={owner}
           partitions={partitions}
+          postFeedHandler={postFeedHandler}
           replicationFactor={replicationFactor}
           retentionSize={retentionSize}
           schemaText={schemaText}
