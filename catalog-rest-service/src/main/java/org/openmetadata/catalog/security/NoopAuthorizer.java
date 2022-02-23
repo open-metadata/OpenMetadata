@@ -84,12 +84,11 @@ public class NoopAuthorizer implements Authorizer {
               .withId(UUID.randomUUID())
               .withName(username)
               .withEmail(username + "@domain.com")
-              .withIsAdmin(true)
               .withUpdatedBy(username)
               .withUpdatedAt(System.currentTimeMillis());
       addOrUpdateUser(user);
     } catch (IOException | ParseException e) {
-      LOG.error("Failed to create admin user {}", username, e);
+      LOG.error("Failed to create anonymous user {}", username, e);
     }
   }
 
