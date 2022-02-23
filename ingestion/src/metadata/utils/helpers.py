@@ -44,9 +44,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = logging.getLogger(__name__)
 
-metadata = None
-config = None
-
 
 def get_start_and_end(duration):
     today = datetime.utcnow()
@@ -193,11 +190,11 @@ def datetime_to_ts(date: datetime) -> int:
     return int(date.timestamp())
 
 
-def create_lineage(from_table, to_table, query_info):
+def create_lineage(from_table, to_table, query_info, metadata):
     try:
-        from_fqdn = f"{config.service_name}.{from_table}"
+        from_fqdn = f"{query_info.get('service_name')}.{from_table}"
         from_entity = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
-        to_fqdn = f"{config.service_name}.{to_table}"
+        to_fqdn = f"{query_info.get('service_name')}.{to_table}"
         to_entity = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
         if not from_entity or not to_entity:
             return None
@@ -232,19 +229,16 @@ def create_lineage(from_table, to_table, query_info):
         logger.error(err)
 
 
-def ingest_lineage(query_info, metadata_config, config_obj):
-    global config
-    global metadata
+def ingest_lineage(query_info, metadata_config):
     result = LineageRunner(query_info["sql"])
     metadata = OpenMetadata(metadata_config)
-    config = config_obj
     if result.target_tables and result.intermediate_tables:
         for intermediate_table in result.intermediate_tables:
             for source_table in result.source_tables:
-                create_lineage(source_table, intermediate_table, query_info)
+                create_lineage(source_table, intermediate_table, query_info, metadata)
             for target_table in result.target_tables:
-                create_lineage(intermediate_table, target_table, query_info)
+                create_lineage(intermediate_table, target_table, query_info, metadata)
     elif result.target_tables:
         for target_table in result.target_tables:
             for source_table in result.source_tables:
-                create_lineage(source_table, target_table, query_info)
+                create_lineage(source_table, target_table, query_info, metadata)

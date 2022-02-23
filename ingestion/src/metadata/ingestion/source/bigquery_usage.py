@@ -44,7 +44,6 @@ class BigqueryUsageSource(Source[TableQuery]):
         self.temp_credentials = None
         self.metadata_config = metadata_config
         self.config = config
-        self.metadata = OpenMetadata(metadata_config)
         self.project_id = self.config.project_id
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.status = SQLSourceStatus()
@@ -133,14 +132,15 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 service_name=self.config.service_name,
                             )
                             yield tq
+
                             query_info = {
                                 "sql": tq.sql,
                                 "from_type": "table",
                                 "to_type": "table",
+                                "service_name": self.config.service_name,
                             }
-                            ingest_lineage(
-                                query_info, self.metadata_config, self.config
-                            )
+
+                            ingest_lineage(query_info, self.metadata_config)
 
         except Exception as err:
             logger.error(repr(err))
