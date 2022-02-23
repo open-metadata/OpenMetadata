@@ -113,12 +113,18 @@ public class FeedResource {
   public ThreadList list(
       @Context UriInfo uriInfo,
       @Parameter(
+              description = "Limit the number of posts sorted by chronological order",
+              schema = @Schema(type = "integer"))
+          @DefaultValue("0")
+          @QueryParam("limitPosts")
+          int limitPosts,
+      @Parameter(
               description = "Filter threads by entity link",
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink)
       throws IOException {
-    return new ThreadList(addHref(uriInfo, dao.listThreads(entityLink)));
+    return new ThreadList(addHref(uriInfo, dao.listThreads(entityLink, limitPosts)));
   }
 
   @GET
@@ -180,8 +186,7 @@ public class FeedResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
       throws IOException, ParseException {
     Thread thread = getThread(securityContext, create);
-    FeedUtil.addPost(thread, new Post().withMessage(create.getMessage()).withFrom(create.getFrom()));
-    addHref(uriInfo, dao.create(thread, securityContext));
+    addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();
   }
 
@@ -223,7 +228,8 @@ public class FeedResource {
     return new Thread()
         .withId(UUID.randomUUID())
         .withThreadTs(System.currentTimeMillis())
-        .withCreatedBy(securityContext.getUserPrincipal().getName())
+        .withMessage(create.getMessage())
+        .withCreatedBy(create.getFrom())
         .withAbout(create.getAbout())
         .withAddressedTo(create.getAddressedTo())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
