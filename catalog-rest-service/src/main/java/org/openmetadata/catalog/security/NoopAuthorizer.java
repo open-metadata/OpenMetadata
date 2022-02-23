@@ -100,7 +100,7 @@ public class NoopAuthorizer implements Authorizer {
   private void addOrUpdateUser(User user) {
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
-      LOG.debug("Added admin user entry: {}", addedUser);
+      LOG.debug("Added anonymous user entry: {}", addedUser);
     } catch (IOException | ParseException exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
