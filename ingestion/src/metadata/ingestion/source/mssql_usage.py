@@ -28,7 +28,7 @@ from metadata.ingestion.source.sql_alchemy_helper import (
     SQLSourceStatus,
 )
 from metadata.utils.helpers import get_raw_extract_iter, get_start_and_end
-from metadata.utils.sql_queries import MSSQL_SQL_STATEMENT
+from metadata.utils.sql_queries import MSSQL_SQL_USAGE_STATEMENT
 
 
 class MssqlUsageSource(Source[TableQuery]):
@@ -53,7 +53,7 @@ class MssqlUsageSource(Source[TableQuery]):
         self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
-        self.sql_stmt = MSSQL_SQL_STATEMENT.format(start_date=start, end_date=end)
+        self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
         self.alchemy_helper = SQLAlchemyHelper(
             config, metadata_config, ctx, DatabaseServiceType.MSSQL.value, self.sql_stmt
         )

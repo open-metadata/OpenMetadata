@@ -270,7 +270,7 @@ VERTICA_VIEW_DEFINITION = """
       AND {schema_condition}
 """
 
-MSSQL_SQL_STATEMENT = """
+MSSQL_SQL_USAGE_STATEMENT = """
       SELECT
         db.NAME database_name,
         t.text query_text,
