@@ -11,3 +11,8 @@ some functions:
 - `process_literal_param`: How we handle literal column creation.
 
 It is interesting to add a validation step as well to make sure we are not allowing invalid data.
+
+# Important Considerations
+
+- MSSQL type [deprecation](https://docs.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?redirectedfrom=MSDN&view=sql-server-ver15).
+    A lot of functions do not support `TEXT`, `NTEXT` and `IMAGE`. We won't support them either.
