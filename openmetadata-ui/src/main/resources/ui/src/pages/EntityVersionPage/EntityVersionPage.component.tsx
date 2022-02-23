@@ -155,7 +155,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-                      serviceType,
+
                       ServiceCategory.DATABASE_SERVICES
                     )
                   : '',
@@ -208,7 +208,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-                      serviceType,
+
                       ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
@@ -258,7 +258,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-                      serviceType,
+
                       ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
@@ -308,7 +308,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-                      serviceType,
+
                       ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
@@ -372,7 +372,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-                          serviceType,
+
                           ServiceCategory.DATABASE_SERVICES
                         )
                       : '',
@@ -429,7 +429,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-                          serviceType,
+
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',
@@ -481,7 +481,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-                          serviceType,
+
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',
@@ -533,7 +533,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-                          serviceType,
+
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',

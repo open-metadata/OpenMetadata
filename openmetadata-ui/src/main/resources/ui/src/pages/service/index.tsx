@@ -209,7 +209,6 @@ const ServicePage: FunctionComponent = () => {
       history.push({
         pathname: getServiceDetailsPath(
           serviceFQN,
-          serviceType,
           serviceCategory,
           servicePageTabs(getCountLabel())[currentTabIndex].path
         ),

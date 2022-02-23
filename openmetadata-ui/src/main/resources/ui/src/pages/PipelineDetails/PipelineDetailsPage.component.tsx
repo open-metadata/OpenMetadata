@@ -197,7 +197,7 @@ const PipelineDetailsPage = () => {
             url: service.name
               ? getServiceDetailsPath(
                   service.name,
-                  serviceType,
+
                   ServiceCategory.PIPELINE_SERVICES
                 )
               : '',
