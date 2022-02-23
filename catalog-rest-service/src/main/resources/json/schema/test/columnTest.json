@@ -1,0 +1,200 @@
+{
+  "$id": "https://open-metadata.org/schema/test/columnTest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableTest",
+  "description": "TableTest is a test definition to capture data quality tests against tables and columns.",
+  "type": "object",
+  "definitions": {
+    "testCase": {
+      "description": "Column Test Case.",
+      "type": "object",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "title": "columnValuesToBeUnique",
+              "description": "This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be unique. ",
+              "type": "object",
+              "javaType": "org.openmetadata.catalog.entity.tests.column.ColumnValuesToBeUnique",
+              "properties": {},
+              "additionalProperties": false
+            },
+            {
+              "title": "columnValuesToBeNotNull",
+              "description": "This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a column are null. Values must be explicitly null. Empty strings don't count as null. ",
+              "type": "object",
+              "javaType": "org.openmetadata.catalog.entity.tests.column.ColumnValuesToBeNotNull",
+              "properties": {},
+              "additionalProperties": false
+            },
+            {
+              "title": "columnValuesToMatchRegex",
+              "description": "This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ",
+              "type": "object",
+              "javaType": "org.openmetadata.catalog.entity.tests.column.ColumnValuesToMatchRegex",
+              "properties": {
+                "regex": {
+                  "description": "The regular expression the column entries should match.",
+                  "type": "string"
+                }
+              },
+              "required": ["regex"],
+              "additionalProperties": false
+            },
+            {
+              "title": "columnValuesToBeNotInSet",
+              "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
+              "type": "object",
+              "javaType": "org.openmetadata.catalog.entity.tests.column.ColumnValuesToBeNotInSet",
+              "properties": {
+                "values": {
+                  "description": "An Array of values.",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "required": ["column", "values"],
+              "additionalProperties": false
+            },
+            {
+              "title": "columnValuesToBeBetween",
+              "description": "This schema defines the test ColumnValuesToBeBetween. Test the values in a column to be between minimum and maximum value. ",
+              "type": "object",
+              "javaType": "org.openmetadata.catalog.entity.tests.column.ColumnValuesToBeBetween",
+              "properties": {
+                "minValue": {
+                  "description": "The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",
+                  "type": "integer"
+                },
+                "maxValue": {
+                  "description": "The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows",
+                  "type": "integer"
+                }
+              },
+              "anyOf": [
+                { "required": ["minValue", "column"] },
+                { "required": ["maxValue", "column"] }
+              ],
+              "additionalProperties": false
+            },
+            {
+              "title": "columnValuesMissingCountToBeEqual",
+              "description": "This schema defines the test ColumnValuesMissingCount. Test the column values missing count to be equal to given number. ",
+              "type": "object",
+              "javaType": "org.openmetadata.catalog.entity.tests.column.ColumnValuesMissingCountToBeEqual",
+              "properties": {
+                "column": {
+                  "description": "Name of the column in a table.",
+                  "type": "string"
+                },
+                "missingCountValue": {
+                  "description": "No.of missing values to be equal to.",
+                  "type": "integer"
+                },
+                "missingValueMatch": {
+                  "description": "By default match all null and empty values to be missing. This field allows us to configure additional strings such as N/A, NULL as missing strings as well.",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": ["column", "missingValue"],
+              "additionalProperties": false
+            },
+            {
+              "title": "columnValueLengthsToBeBetween",
+              "description": "This schema defines the test ColumnValueLengthsToBeBetween. Test the value lengths in a column to be between minimum and maximum value. ",
+              "type": "object",
+              "javaType": "org.openmetadata.catalog.entity.tests.column.ColumnValueLengthsToBeBetween",
+              "properties": {
+                "column": {
+                  "description": "Name of the column in a table.",
+                  "type": "string"
+                },
+                "minValue": {
+                  "description": "The {minValue} for the column length. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",
+                  "type": "integer"
+                },
+                "maxValue": {
+                  "description": "The {maxValue} for the column length. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows",
+                  "type": "integer"
+                }
+              },
+              "anyOf": [
+                { "required": ["minValue", "column"] },
+                { "required": ["maxValue", "column"] }
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "testType": {
+          "enum": [
+            "columnValuesToBeUnique",
+            "columnValuesToBeNotNull",
+            "columnValuesToMatchRegex",
+            "columnValuesToBeNotInSet",
+            "columnValuesToBeBetween",
+            "columnValuesMissingCountToBeEqual",
+            "columnValueLengthsToBeBetween"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this table instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this test case. Autogenerated based on table/column name and test name",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "type": "string"
+    },
+    "columnName": {
+      "description": "Name of the column in a table.",
+      "type": "string"
+    },
+    "testCase": {
+      "$ref": "#/definitions/testCase"
+    },
+    "executionFrequency": {
+      "$ref": "./basic.json#/definitions/testCaseExecutionFrequency"
+    },
+    "results": {
+      "description": "List of results of the test case.",
+      "type": "array",
+      "items": {
+        "$ref": "./basic.json#/definitions/testCaseResult"
+      }
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "column", "testCase"],
+  "additionalProperties": false
+}

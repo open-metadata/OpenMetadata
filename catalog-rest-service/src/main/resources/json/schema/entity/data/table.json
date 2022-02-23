@@ -592,7 +592,7 @@
       "description": "List of test cases that ran against a table.",
       "type": "array",
       "items": {
-        "$ref": "../../tests/tableTest.json"
+        "$ref": "../../test/tableTest.json"
       },
       "default": null
     },

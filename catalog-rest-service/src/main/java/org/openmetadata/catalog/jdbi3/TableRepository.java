@@ -65,6 +65,7 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TestCaseResult;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -111,6 +112,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
+    table.setTableTests(fields.contains("tableTests") ? getTableTests(table) : null);
     return table;
   }
 
@@ -266,8 +268,8 @@ public class TableRepository extends EntityRepository<Table> {
         && tableTest.getResults() != null
         && !tableTest.getResults().isEmpty()) {
       TableTest prevTableTest = storedMapTableTests.get(tableTest.getId());
-      List<Object> prevTestCaseResults = prevTableTest.getResults();
-      List<Object> newTestCaseResults = tableTest.getResults();
+      List<TestCaseResult> prevTestCaseResults = prevTableTest.getResults();
+      List<TestCaseResult> newTestCaseResults = tableTest.getResults();
       newTestCaseResults.addAll(prevTestCaseResults);
       tableTest.setResults(newTestCaseResults);
     }
@@ -276,7 +278,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<TableTest> updatedQueries = new ArrayList<>(storedMapTableTests.values());
     daoCollection
         .entityExtensionDAO()
-        .insert(tableId.toString(), "table.testCases", "tableTest", JsonUtils.pojoToJson(updatedQueries));
+        .insert(tableId.toString(), "table.tableTests", "tableTest", JsonUtils.pojoToJson(updatedQueries));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withTableTests(getTableTests(table));
   }
@@ -680,11 +682,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private List<TableTest> getTableTests(Table table) throws IOException {
-    List<TableTest> tableTests =
-        JsonUtils.readObjects(
-            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableTests"),
-            TableTest.class);
-    return tableTests;
+    return JsonUtils.readObjects(
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableTests"), TableTest.class);
   }
 
   public static class TableEntityInterface implements EntityInterface<Table> {

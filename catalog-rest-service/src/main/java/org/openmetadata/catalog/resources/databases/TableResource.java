@@ -107,7 +107,7 @@ public class TableResource {
 
   static final String FIELDS =
       "columns,tableConstraints,usageSummary,owner,"
-          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tableTests";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -504,7 +504,7 @@ public class TableResource {
   }
 
   @PUT
-  @Path("/{id}/test")
+  @Path("/{id}/tableTest")
   @Operation(summary = "Add table test cases", tags = "tables", description = "Add test cases to the table.")
   public Table addTableTest(
       @Context UriInfo uriInfo,

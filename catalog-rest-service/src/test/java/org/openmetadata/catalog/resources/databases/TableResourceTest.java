@@ -78,7 +78,11 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.TableTest;
+import org.openmetadata.catalog.entity.data.TestCase;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.tests.column.ColumnValuesToBeUnique;
+import org.openmetadata.catalog.entity.tests.table.TableRowCountToEqual;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
@@ -105,6 +109,9 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.type.TestCaseExecutionFrequency;
+import org.openmetadata.catalog.type.TestCaseResult;
+import org.openmetadata.catalog.type.TestCaseStatus;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -1020,6 +1027,57 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void put_tableTests_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    TableRowCountToEqual tableRowCountToEqual = new TableRowCountToEqual().withValue(100);
+    TestCase testCase =
+        new TestCase().withSchema(TestCase.Schema.TABLE_ROW_COUNT_TO_EQUAL).withConfig(tableRowCountToEqual);
+    TableTest tableTest =
+        new TableTest()
+            .withName("test1")
+            .withTestCase(testCase)
+            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+    Table putResponse = putTableTest(table.getId(), tableTest, ADMIN_AUTH_HEADERS);
+
+    table = getEntity(table.getId(), "tableTests", ADMIN_AUTH_HEADERS);
+    verifyTableTest(table.getTableTests(), List.of(tableTest));
+
+    // Add result to tableTest
+    TestCaseResult testCaseResult1 =
+        new TestCaseResult()
+            .withResult("Rows equal to 100")
+            .withStatus(TestCaseStatus.Success)
+            .withSampleData("Rows == 100")
+            .withExecutionTime(100L);
+    tableTest.setResults(List.of(testCaseResult1));
+    tableTest.setId(table.getTableTests().get(0).getId());
+    putResponse = putTableTest(table.getId(), tableTest, ADMIN_AUTH_HEADERS);
+    verifyTableTest(putResponse.getTableTests(), List.of(tableTest));
+
+    TestCaseResult testCaseResult2 =
+        new TestCaseResult()
+            .withResult("Rows equal to 100")
+            .withStatus(TestCaseStatus.Success)
+            .withSampleData("Rows == 100")
+            .withExecutionTime(100L);
+    tableTest.setResults(List.of(testCaseResult2));
+    tableTest.setId(table.getTableTests().get(0).getId());
+
+    table = getEntity(table.getId(), "tableTests", ADMIN_AUTH_HEADERS);
+    verifyTableTest(table.getTableTests(), List.of(tableTest));
+    ColumnValuesToBeUnique columnValuesToBeUnique =
+        new ColumnValuesToBeUnique().withColumn(table.getColumns().get(0).getName());
+    TestCase testCase2 =
+        new TestCase().withSchema(TestCase.Schema.COLUMN_VALUE_TO_BE_UNIQUE).withConfig(columnValuesToBeUnique);
+    TableTest tableTest1 = new TableTest().withName("column_value_to_be_unique").withTestCase(testCase2);
+    putResponse = putTableTest(table.getId(), tableTest1, ADMIN_AUTH_HEADERS);
+    verifyTableTest(putResponse.getTableTests(), List.of(tableTest));
+
+    table = getEntity(table.getId(), "tableTests", ADMIN_AUTH_HEADERS);
+    verifyTableTest(table.getTableTests(), List.of(tableTest, tableTest1));
+  }
+
+  @Test
   void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
     CreateTable create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     // Create first time using POST
@@ -1500,6 +1558,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, dataModel, Table.class, OK, authHeaders);
   }
 
+  public static Table putTableTest(UUID tableId, TableTest data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableTest");
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
     return TagResourceTest.getTag(tagFQN, "usageCount", authHeaders).getUsageCount();
   }
@@ -1519,6 +1583,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       TableProfile storedProfile = tableProfileMap.get(tableProfile.getProfileDate());
       assertNotNull(storedProfile);
       assertEquals(tableProfile, storedProfile);
+    }
+  }
+
+  private void verifyTableTest(List<TableTest> actualTests, List<TableTest> expectedTests) {
+    assertEquals(actualTests.size(), expectedTests.size());
+    Map<String, TableTest> tableTestMap = new HashMap<>();
+    for (TableTest test : actualTests) {
+      tableTestMap.put(test.getName(), test);
+    }
+    for (TableTest test : expectedTests) {
+      TableTest storedTest = tableTestMap.get(test.getName());
+      assertNotNull(storedTest);
+      assertEquals(test.getName(), storedTest.getName());
+      assertEquals(test.getDescription(), storedTest.getDescription());
+      assertEquals(test.getExecutionFrequency(), storedTest.getExecutionFrequency());
+      assertEquals(test.getOwner(), storedTest.getOwner());
+      assertEquals(test.getResults(), storedTest.getResults());
+      assertEquals(test.getTestCase().toString(), storedTest.getTestCase().toString());
     }
   }
 
