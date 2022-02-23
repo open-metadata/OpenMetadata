@@ -17,6 +17,7 @@ import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import Onboarding from '../../onboarding/Onboarding';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 
@@ -163,35 +164,41 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   return (
     <div className={classNames(className)}>
-      {relativeDays.map((d, i) => {
-        return (
-          <Fragment key={i}>
-            <FeedListSeparator
-              className="tw-relative tw-mt-1 tw-mb-3.5"
-              relativeDay={d}
-            />
-            <FeedListBody
-              isEntityFeed={isEntityFeed}
-              relativeDay={d}
-              selctedThreadId={selctedThreadId}
-              updatedFeedList={updatedFeedList}
-              withSidePanel={withSidePanel}
-              onThreadIdDeselect={onThreadIdDeselect}
-              onThreadIdSelect={onThreadIdSelect}
-              onThreadSelect={onThreadSelect}
-            />
-          </Fragment>
-        );
-      })}
-      {withSidePanel && selectedThread ? (
+      {feedList.length > 0 ? (
         <Fragment>
-          <ActivityFeedPanel
-            open={!isUndefined(selectedThread)}
-            selectedThread={selectedThread}
-            onCancel={onCancel}
-          />
+          {relativeDays.map((d, i) => {
+            return (
+              <Fragment key={i}>
+                <FeedListSeparator
+                  className="tw-relative tw-mt-1 tw-mb-3.5"
+                  relativeDay={d}
+                />
+                <FeedListBody
+                  isEntityFeed={isEntityFeed}
+                  relativeDay={d}
+                  selctedThreadId={selctedThreadId}
+                  updatedFeedList={updatedFeedList}
+                  withSidePanel={withSidePanel}
+                  onThreadIdDeselect={onThreadIdDeselect}
+                  onThreadIdSelect={onThreadIdSelect}
+                  onThreadSelect={onThreadSelect}
+                />
+              </Fragment>
+            );
+          })}
+          {withSidePanel && selectedThread ? (
+            <Fragment>
+              <ActivityFeedPanel
+                open={!isUndefined(selectedThread)}
+                selectedThread={selectedThread}
+                onCancel={onCancel}
+              />
+            </Fragment>
+          ) : null}
         </Fragment>
-      ) : null}
+      ) : (
+        <Onboarding />
+      )}
     </div>
   );
 };
