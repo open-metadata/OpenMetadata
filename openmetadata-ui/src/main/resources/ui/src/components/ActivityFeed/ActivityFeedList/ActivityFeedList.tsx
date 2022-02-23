@@ -34,7 +34,7 @@ interface LatestReplyFeedListProp extends HTMLAttributes<HTMLDivElement> {
 interface FeedListBodyProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<FeedListSeparatorProp, 'relativeDay'>,
-    Pick<ActivityFeedListProp, 'isEntityFeed'> {
+    Pick<ActivityFeedListProp, 'isEntityFeed' | 'withSidePanel'> {
   updatedFeedList: Array<EntityThread & { relativeDay: string }>;
   selctedThreadId: string;
   onThreadIdSelect: (value: string) => void;
@@ -78,6 +78,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onThreadSelect,
   selctedThreadId,
   onThreadIdSelect,
+  withSidePanel,
 }) => {
   return (
     <Fragment>
@@ -96,7 +97,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 entityLink={feed.about}
                 feed={mainFeed}
                 isEntityFeed={isEntityFeed}
-                isFooterVisible={selctedThreadId !== feed.id}
+                isFooterVisible={selctedThreadId !== feed.id && withSidePanel}
                 lastReplyTimeStamp={lastPost.postTs}
                 repliedUsers={repliedUsers}
                 replies={replies}
@@ -174,6 +175,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               relativeDay={d}
               selctedThreadId={selctedThreadId}
               updatedFeedList={updatedFeedList}
+              withSidePanel={withSidePanel}
               onThreadIdDeselect={onThreadIdDeselect}
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}

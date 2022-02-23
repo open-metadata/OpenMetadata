@@ -86,7 +86,10 @@ const FeedHeader: FC<FeedHeaderProp> = ({
               <Fragment>
                 {entityType}{' '}
                 <Link
-                  to={getEntityLink(entityType as string, entityFQN as string)}>
+                  to={`${getEntityLink(
+                    entityType as string,
+                    entityFQN as string
+                  )}/activity_feed`}>
                   <button className="link-text" disabled={AppState.isTourOpen}>
                     {getPartialNameFromFQN(
                       entityFQN as string,
@@ -168,7 +171,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   threadId,
   lastReplyTimeStamp,
   onThreadSelect,
-  isFooterVisible = true,
+  isFooterVisible = false,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
