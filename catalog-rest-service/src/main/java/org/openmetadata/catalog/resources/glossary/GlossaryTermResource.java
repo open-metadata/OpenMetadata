@@ -92,6 +92,7 @@ public class GlossaryTermResource {
     term.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, term.getId()));
     Entity.withHref(uriInfo, term.getGlossary());
     Entity.withHref(uriInfo, term.getParent());
+    Entity.withHref(uriInfo, term.getChildren());
     Entity.withHref(uriInfo, term.getRelatedTerms());
     Entity.withHref(uriInfo, term.getReviewers());
     return term;
