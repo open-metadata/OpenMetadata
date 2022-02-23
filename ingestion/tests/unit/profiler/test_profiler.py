@@ -64,11 +64,25 @@ class ProfilerTest(TestCase):
         simple = SimpleProfiler(session=self.session, col=User.age, table=User)
         simple.execute()
         assert simple.results == {
-            "MIN": 30,
+            "AVG": 30.5,
             "COUNT": 2,
-            "STDDEV": 0.25,
+            "DISTINCT": 2,
+            "HISTOGRAM": {
+                "bin": ["30.0 to 30.25", "31.0 to 31.25"],
+                "bin_ceil": [30.25, 31.25],
+                "bin_floor": [30.0, 31.0],
+                "count": [1, 1],
+            },
+            "MAX": 31,
+            "MAXLENGTH": None,
+            "MIN": 30,
+            "MINLENGTH": None,
             "NULLCOUNT": 0,
             "NULLRATIO": 0.0,
+            "STDDEV": 0.25,
+            "SUM": 61,
+            "UNIQUECOUNT": 2,
+            "UNIQUERATIO": 1.0,
         }
 
     def test_simple_table_profiler(self):
