@@ -55,13 +55,15 @@ def get_columns(bq_schema):
             "raw_data_type": str(_get_sqla_column_type(field)),
             "policy_tags": None,
         }
-        if field.policy_tags:
-            col_obj["policy_tags"] = (
-                PolicyTagManagerClient()
-                .get_policy_tag(name=field.policy_tags.names[0])
-                .display_name
-            )
-
+        try:
+            if field.policy_tags:
+                col_obj["policy_tags"] = (
+                    PolicyTagManagerClient()
+                    .get_policy_tag(name=field.policy_tags.names[0])
+                    .display_name
+                )
+        except Exception as err:
+            logger.info(f"Skipping Policy Tag: {err}")
         col_list.append(col_obj)
     return col_list
 
