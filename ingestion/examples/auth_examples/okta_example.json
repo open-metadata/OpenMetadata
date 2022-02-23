@@ -1,0 +1,26 @@
+{
+  "source": {
+    "type": "sample-data",
+    "config": {
+      "sample_data_folder": "./examples/sample_data"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "okta",
+      "client_id": "{client_id}",
+      "org_url": "{Issuer URI}",
+      "private_key": "Public and Private Keypair",
+      "email": "email",
+      "scopes": [
+        "Authorization Server Scopes"
+      ]
+    }
+  }
+}
