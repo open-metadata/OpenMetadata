@@ -230,6 +230,7 @@ public class FeedRepository {
   }
 
   private List<Thread> limitPostsInThreads(List<Thread> threads, int limitPosts) {
+    // Return all the posts if limit is 0, since 0 is the default
     if (limitPosts == 0) {
       return threads;
     }

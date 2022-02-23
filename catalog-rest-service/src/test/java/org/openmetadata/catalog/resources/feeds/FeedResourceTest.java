@@ -297,6 +297,11 @@ public class FeedResourceTest extends CatalogApplicationTest {
     for (var post : posts) {
       assertEquals("message" + startIndex++, post.getMessage());
     }
+
+    // when posts limit is null or 0, it should return all the posts
+    threads = listThreads(null, null, AUTH_HEADERS);
+    thread = threads.getData().get(0);
+    assertEquals(10, thread.getPosts().size());
   }
 
   @Test
