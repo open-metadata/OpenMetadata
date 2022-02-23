@@ -104,7 +104,7 @@ public class NoopAuthorizer implements Authorizer {
     } catch (IOException | ParseException exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("Admin user entry: {} already exists.", user);
+      LOG.debug("Anonymous user entry: {} already exists.", user);
     }
   }
 }
