@@ -367,7 +367,6 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void storeRelationships(Table table) {
     // Add relationship from database to table
-    String databaseId = table.getDatabase().getId().toString();
     addRelationship(table.getDatabase().getId(), table.getId(), DATABASE, TABLE, Relationship.CONTAINS);
 
     // Add table owner relationship
