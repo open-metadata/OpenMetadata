@@ -200,7 +200,7 @@ def create_lineage(from_table, to_table, query_info, metadata):
             return None
         from_entity_id = (
             from_entity.id.__root__
-            if from_entity and hasattr(from_entity.id, "__root__")
+            if hasattr(from_entity.id, "__root__")
             else from_entity.id
         )
 
