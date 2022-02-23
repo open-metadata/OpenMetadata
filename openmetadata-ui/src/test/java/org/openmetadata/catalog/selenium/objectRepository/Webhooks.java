@@ -1,14 +1,14 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+@RequiredArgsConstructor
 public class Webhooks {
+  @NotNull
   WebDriver webDriver;
-
-  public Webhooks(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
 
   By webhookLink = By.linkText("Webhooks");
   By addWebhook = By.xpath("//button[@data-testid='add-webhook-button']");
