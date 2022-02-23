@@ -178,7 +178,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         />
         <ActivityFeedEditor
           buttonClass="tw-mr-4"
-          className="tw-ml-11 tw-mr-2 tw-mb-2"
+          className="tw-ml-5 tw-mr-2 tw-mb-2"
           onSave={postFeed}
         />
       </div>

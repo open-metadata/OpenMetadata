@@ -134,7 +134,7 @@ const FeedFooter: FC<FeedFooterProp> = ({
   const repliesCount = isUndefined(replies) ? 0 : replies - 1;
 
   const getReplyText = (count: number) => {
-    if (count === 0) return 'Reply';
+    if (count === 0) return 'Reply in thread';
     if (count === 1) return `${count} reply`;
 
     return `${count} replies`;
@@ -155,7 +155,7 @@ const FeedFooter: FC<FeedFooterProp> = ({
             />
           ))}
           <p
-            className="tw-ml-1 link-text tw-text-xs tw-mt-1.5"
+            className="tw-ml-1 link-text tw-text-xs tw-mt-1.5 tw-underline"
             onClick={() => onThreadSelect?.(threadId as string)}>
             {getReplyText(repliesCount)}
           </p>

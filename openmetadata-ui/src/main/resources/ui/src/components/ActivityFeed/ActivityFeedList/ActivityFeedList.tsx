@@ -140,7 +140,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   />
                   <ActivityFeedEditor
                     buttonClass="tw-mr-4"
-                    className="tw-ml-11 tw-mr-2"
+                    className="tw-ml-5 tw-mr-2"
                     onSave={postFeed}
                   />
                 </Fragment>
