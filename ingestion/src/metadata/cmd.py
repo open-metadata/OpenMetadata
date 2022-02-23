@@ -16,7 +16,6 @@ import sys
 from typing import List, Optional, Tuple
 
 import click
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
@@ -24,6 +23,7 @@ from metadata.cli.backup import run_backup
 from metadata.cli.docker import run_docker
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.profiler.profiler_runner import ProfilerRunner
 
 logger = logging.getLogger(__name__)

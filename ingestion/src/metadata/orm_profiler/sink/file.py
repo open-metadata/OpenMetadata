@@ -49,9 +49,7 @@ class FileSink(Sink[Entity]):
         self.wrote_something = False
 
     @classmethod
-    def create(
-        cls, config_dict: dict, _, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, _, ctx: WorkflowContext):
         config = FileSinkConfig.parse_obj(config_dict)
         return cls(ctx, config)
 
@@ -77,8 +75,8 @@ class FileSink(Sink[Entity]):
                 self.file.write(f"Table Test results:\n")
                 for validation in test.expression:
                     self.file.write(
-                        f"\t{test.name}: {validation.valid}, (Real) {validation.computed_metric}" +
-                        f"{validation.operator} {validation.value} (expected)\n"
+                        f"\t{test.name}: {validation.valid}, (Real) {validation.computed_metric}"
+                        + f"{validation.operator} {validation.value} (expected)\n"
                     )
 
         self.wrote_something = True
