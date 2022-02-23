@@ -56,7 +56,7 @@ class FileSink(Sink[Entity]):
     def write_record(self, record: ProfileAndTests) -> None:
 
         if self.wrote_something:
-            self.file.write(",\n")
+            self.file.write("\n")
 
         self.file.write(f"Profile for: {record.profile.table.fullyQualifiedName}\n")
         self.file.write(f"Table Profile results:\n")
@@ -70,14 +70,24 @@ class FileSink(Sink[Entity]):
                 self.file.write(f"\t\t{metric}: {value}\n")
 
         if record.tests:
-            self.file.write(f"Table Test results:\n")
+            self.file.write(f"\nTest results:\n")
+
             for test in record.tests.table_tests:
-                self.file.write(f"Table Test results:\n")
+                self.file.write(f"\tTable Tests results:\n")
                 for validation in test.expression:
                     self.file.write(
-                        f"\t{test.name}: {validation.valid}, (Real) {validation.computed_metric}"
-                        + f"{validation.operator} {validation.value} (expected)\n"
+                        f"\t\t{test.name}: {validation.valid}, (Real) {validation.computed_metric}"
+                        + f" <{validation.operator.__name__}> {validation.value} (expected)\n"
                     )
+
+            for col_test in record.tests.column_tests:
+                self.file.write(f"\tColumn Tests results:\n")
+                for column in col_test.columns:
+                    for validation in column.expression:
+                        self.file.write(
+                            f"\t\t[{column.column}] - {column.name}: {validation.valid}, (Real) {validation.computed_metric}"
+                            + f" <{validation.operator.__name__}> {validation.value} (expected)\n"
+                        )
 
         self.wrote_something = True
         self.report.records_written(record.profile.table.fullyQualifiedName)
