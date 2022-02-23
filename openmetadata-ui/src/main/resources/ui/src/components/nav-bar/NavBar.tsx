@@ -86,7 +86,7 @@ const NavBar = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleOnClick(searchValue);
+                handleOnClick();
               }}>
               <SVGIcons alt="icon-search" icon={searchIcon} />
             </span>

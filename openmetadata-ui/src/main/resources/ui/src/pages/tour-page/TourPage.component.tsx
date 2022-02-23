@@ -79,27 +79,24 @@ const TourPage = () => {
     setSearchValue('');
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (location.pathname.includes(ROUTES.TOUR)) {
-        if (searchValue === TOUR_SEARCH_TERM) {
-          AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
-          clearSearchTerm();
-        }
-
-        return;
-      }
-    }
-  };
-  const handleOnClick = (value: string) => {
+  const handleSearch = () => {
     if (location.pathname.includes(ROUTES.TOUR)) {
-      if (value === TOUR_SEARCH_TERM) {
+      if (searchValue === TOUR_SEARCH_TERM) {
         AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
         clearSearchTerm();
       }
 
       return;
     }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+  const handleOnClick = () => {
+    handleSearch();
   };
 
   useEffect(() => {
@@ -226,7 +223,7 @@ const TourPage = () => {
         isTourRoute
         handleFeatureModal={handleCountChange}
         handleKeyDown={handleKeyDown}
-        handleOnClick={() => handleOnClick(searchValue)}
+        handleOnClick={handleOnClick}
         handleSearchBoxOpen={handleCountChange}
         handleSearchChange={(value) => setSearchValue(value)}
         isFeatureModalOpen={false}

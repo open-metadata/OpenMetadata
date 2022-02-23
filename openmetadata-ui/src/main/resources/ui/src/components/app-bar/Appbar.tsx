@@ -194,24 +194,7 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const target = e.target as HTMLInputElement;
-    if (e.key === 'Enter') {
-      setIsOpen(false);
-
-      addToRecentSearched(target.value);
-      history.push(
-        getExplorePathWithSearch(
-          target.value,
-          // this is for if user is searching from another page
-          location.pathname.startsWith(ROUTES.EXPLORE)
-            ? appState.explorePageTab
-            : 'tables'
-        )
-      );
-    }
-  };
-  const handleOnclick = (value: string) => {
+  const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
     history.push(
@@ -223,6 +206,17 @@ const Appbar: React.FC = (): JSX.Element => {
           : 'tables'
       )
     );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const target = e.target as HTMLInputElement;
+    if (e.key === 'Enter') {
+      searchHandler(target.value);
+    }
+  };
+
+  const handleOnclick = () => {
+    searchHandler(searchValue ?? '');
   };
 
   useEffect(() => {
