@@ -78,6 +78,7 @@ public class TeamResource {
 
   public static Team addHref(UriInfo uriInfo, Team team) {
     Entity.withHref(uriInfo, team.getUsers());
+    Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
     return team;
   }
@@ -98,7 +99,7 @@ public class TeamResource {
     }
   }
 
-  protected static final String FIELDS = "profile,users,owns";
+  protected static final String FIELDS = "profile,users,owns,defaultRoles";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -370,6 +371,7 @@ public class TeamResource {
         .withProfile(ct.getProfile())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
-        .withUsers(dao.getUsers(ct.getUsers()));
+        .withUsers(dao.getEntityReferences(ct.getUsers()))
+        .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()));
   }
 }

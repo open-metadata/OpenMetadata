@@ -53,7 +53,7 @@ class MetadataRestSink(Sink[Entity]):
         return cls(ctx, config, metadata_config)
 
     def get_status(self) -> SinkStatus:
-        pass
+        return self.status
 
     def close(self) -> None:
         pass

@@ -15,15 +15,21 @@ Validate workflow configs and filters
 import uuid
 from copy import deepcopy
 
+import sqlalchemy as sqa
+from sqlalchemy.orm import declarative_base
+
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
 from metadata.orm_profiler.profiles.models import ProfilerDef
+from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 
 config = {
     "source": {"type": "sqlite", "config": {"service_name": "my_service"}},
+    "processor": {"type": "orm-profiler", "config": {}},
     "sink": {"type": "metadata-rest", "config": {}},
     "metadata_server": {
         "type": "metadata-server",
@@ -43,8 +49,10 @@ def test_init_workflow():
     """
     assert isinstance(workflow.source_config, SQLiteConfig)
     assert isinstance(workflow.metadata_config, MetadataServerConfig)
-    assert workflow.config.profiler is None
-    assert workflow.config.tests is None
+
+    assert isinstance(workflow.processor, OrmProfilerProcessor)
+    assert workflow.processor.config.profiler is None
+    assert workflow.processor.config.tests is None
 
 
 def test_filter_entities():
@@ -130,10 +138,10 @@ def test_profile_def():
     Validate the definitions of the profile in the JSON
     """
     profile_config = deepcopy(config)
-    profile_config["profiler"] = {
+    profile_config["processor"]["config"]["profiler"] = {
         "name": "my_profiler",
         "table_metrics": ["row_number"],
-        "metrics": ["min", "COUNT"],
+        "metrics": ["min", "COUNT", "null_count"],
     }
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
@@ -141,12 +149,43 @@ def test_profile_def():
     profile_definition = ProfilerDef(
         name="my_profiler",
         table_metrics=["ROW_NUMBER"],
-        metrics=["MIN", "COUNT"],
+        metrics=["MIN", "COUNT", "NULL_COUNT"],
         time_metrics=None,
         custom_metrics=None,
     )
 
-    assert profile_workflow.config.profiler == profile_definition
+    assert isinstance(profile_workflow.processor, OrmProfilerProcessor)
+    assert profile_workflow.processor.config.profiler == profile_definition
+
+
+def test_default_profile_def():
+    """
+    If no information is specified for the profiler, let's
+    use the SimpleTableProfiler and SimpleProfiler
+    """
+
+    profile_workflow = ProfilerWorkflow.create(config)
+
+    assert isinstance(profile_workflow.processor, OrmProfilerProcessor)
+    assert profile_workflow.processor.config.profiler is None
+
+    Base = declarative_base()
+
+    class User(Base):
+        __tablename__ = "users"
+        id = sqa.Column(sqa.Integer, primary_key=True)
+        name = sqa.Column(sqa.String(256))
+        fullname = sqa.Column(sqa.String(256))
+        nickname = sqa.Column(sqa.String(256))
+        age = sqa.Column(sqa.Integer)
+
+    assert isinstance(
+        profile_workflow.processor.build_table_profiler(User), SimpleTableProfiler
+    )
+    assert isinstance(
+        profile_workflow.processor.build_column_profiler(User, User.name).profiler,
+        SimpleProfiler,
+    )
 
 
 def test_tests_def():
@@ -154,7 +193,7 @@ def test_tests_def():
     Validate the test case definition
     """
     test_config = deepcopy(config)
-    test_config["tests"] = {
+    test_config["processor"]["config"]["tests"] = {
         "name": "my_tests",
         "table_tests": [
             {
@@ -196,7 +235,8 @@ def test_tests_def():
 
     test_workflow = ProfilerWorkflow.create(test_config)
 
-    tests = test_workflow.config.tests
+    assert isinstance(test_workflow.processor, OrmProfilerProcessor)
+    tests = test_workflow.processor.config.tests
 
     assert tests.name == "my_tests"
 

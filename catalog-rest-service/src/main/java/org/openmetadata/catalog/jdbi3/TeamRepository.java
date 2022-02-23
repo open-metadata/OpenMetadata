@@ -35,8 +35,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class TeamRepository extends EntityRepository<Team> {
-  static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
-  static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
+  static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users,defaultRoles");
+  static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users,defaultRoles");
 
   public TeamRepository(CollectionDAO dao) {
     super(
@@ -52,23 +52,33 @@ public class TeamRepository extends EntityRepository<Team> {
         false);
   }
 
-  public List<EntityReference> getUsers(List<UUID> userIds) {
-    if (userIds == null) {
+  public List<EntityReference> getEntityReferences(List<UUID> ids) {
+    if (ids == null) {
       return null;
     }
-    List<EntityReference> users = new ArrayList<>();
-    for (UUID id : userIds) {
-      users.add(new EntityReference().withId(id));
+    List<EntityReference> entityReferences = new ArrayList<>();
+    for (UUID id : ids) {
+      entityReferences.add(new EntityReference().withId(id));
     }
-    return users;
+    return entityReferences;
   }
 
-  public void validateUsers(List<EntityReference> users) throws IOException {
-    if (users != null) {
-      users.sort(EntityUtil.compareEntityReference);
-      for (EntityReference user : users) {
-        EntityReference ref = daoCollection.userDAO().findEntityReferenceById(user.getId());
-        user.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
+  public void validateEntityReferences(List<EntityReference> entityReferences, String entityType) throws IOException {
+    if (entityReferences != null) {
+      entityReferences.sort(EntityUtil.compareEntityReference);
+      for (EntityReference entityReference : entityReferences) {
+        EntityReference ref;
+        switch (entityType) {
+          case Entity.USER:
+            ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
+            break;
+          case Entity.ROLE:
+            ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
+            break;
+          default:
+            throw new IllegalArgumentException("Unsupported entity reference for validation");
+        }
+        entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
       }
     }
   }
@@ -80,6 +90,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     team.setUsers(fields.contains("users") ? getUsers(team) : null);
     team.setOwns(fields.contains("owns") ? getOwns(team) : null);
+    team.setDefaultRoles(fields.contains("defaultRoles") ? getDefaultRoles(team) : null);
     return team;
   }
 
@@ -96,27 +107,32 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void prepare(Team team) throws IOException {
-    validateUsers(team.getUsers());
+    validateEntityReferences(team.getUsers(), Entity.USER);
+    validateEntityReferences(team.getDefaultRoles(), Entity.ROLE);
   }
 
   @Override
   public void storeEntity(Team team, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
+    List<EntityReference> defaultRoles = team.getDefaultRoles();
 
-    // Don't store users, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null).withHref(null);
+    // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
+    team.withUsers(null).withDefaultRoles(null).withHref(null);
 
     store(team.getId(), team, update);
 
     // Restore the relationships
-    team.withUsers(users);
+    team.withUsers(users).withDefaultRoles(defaultRoles);
   }
 
   @Override
   public void storeRelationships(Team team) {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
       addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
+    }
+    for (EntityReference defaultRole : Optional.ofNullable(team.getDefaultRoles()).orElse(Collections.emptyList())) {
+      addRelationship(team.getId(), defaultRole.getId(), Entity.TEAM, Entity.ROLE, Relationship.HAS);
     }
   }
 
@@ -127,11 +143,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getUsers(Team team) throws IOException {
     List<String> userIds = findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.USER, toBoolean(toInclude(team)));
-    List<EntityReference> users = new ArrayList<>();
-    for (String userId : userIds) {
-      users.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(userId)));
-    }
-    return users;
+    return populateEntityReferences(userIds, Entity.USER);
   }
 
   private List<EntityReference> getOwns(Team team) throws IOException {
@@ -140,6 +152,29 @@ public class TeamRepository extends EntityRepository<Team> {
         daoCollection
             .relationshipDAO()
             .findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal(), toBoolean(toInclude(team))));
+  }
+
+  private List<EntityReference> getDefaultRoles(Team team) throws IOException {
+    List<String> defaultRoleIds =
+        findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.ROLE, toBoolean(toInclude(team)));
+    return populateEntityReferences(defaultRoleIds, Entity.ROLE);
+  }
+
+  private List<EntityReference> populateEntityReferences(List<String> ids, String entityType) throws IOException {
+    List<EntityReference> refs = new ArrayList<>();
+    for (String id : ids) {
+      switch (entityType) {
+        case Entity.USER:
+          refs.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(id)));
+          break;
+        case Entity.ROLE:
+          refs.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(id)));
+          break;
+        default:
+          throw new IllegalArgumentException("Unsupported entity type for populating entityReference list");
+      }
+    }
+    return refs;
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {
@@ -273,27 +308,56 @@ public class TeamRepository extends EntityRepository<Team> {
     public void entitySpecificUpdate() throws IOException {
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
       updateUsers(original.getEntity(), updated.getEntity());
+      updateDefaultRoles(original.getEntity(), updated.getEntity());
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
       List<EntityReference> origUsers = Optional.ofNullable(origTeam.getUsers()).orElse(Collections.emptyList());
       List<EntityReference> updatedUsers = Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList());
+      updateEntityRelationships(
+          "users", origTeam.getId(), updatedTeam.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers);
+    }
 
+    private void updateDefaultRoles(Team origTeam, Team updatedTeam) throws JsonProcessingException {
+      List<EntityReference> origDefaultRoles =
+          Optional.ofNullable(origTeam.getDefaultRoles()).orElse(Collections.emptyList());
+      List<EntityReference> updatedDefaultRoles =
+          Optional.ofNullable(updatedTeam.getDefaultRoles()).orElse(Collections.emptyList());
+      updateEntityRelationships(
+          "defaultRoles",
+          origTeam.getId(),
+          updatedTeam.getId(),
+          Relationship.HAS,
+          Entity.ROLE,
+          origDefaultRoles,
+          updatedDefaultRoles);
+    }
+
+    private void updateEntityRelationships(
+        String field,
+        UUID origId,
+        UUID updatedId,
+        Relationship relationshipType,
+        String toEntityType,
+        List<EntityReference> origRefs,
+        List<EntityReference> updatedRefs)
+        throws JsonProcessingException {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      if (recordListChange("users", origUsers, updatedUsers, added, deleted, entityReferenceMatch)) {
-        // Remove users from original and add users from updated
-        daoCollection
-            .relationshipDAO()
-            .deleteFrom(origTeam.getId().toString(), Entity.TEAM, Relationship.HAS.ordinal(), "user");
-        // Add relationships
-        for (EntityReference user : updatedUsers) {
-          addRelationship(updatedTeam.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
-        }
-
-        updatedUsers.sort(EntityUtil.compareEntityReference);
-        origUsers.sort(EntityUtil.compareEntityReference);
+      if (!recordListChange(field, origRefs, updatedRefs, added, deleted, entityReferenceMatch)) {
+        // No changes between original and updated.
+        return;
       }
+      // Remove relationships from original
+      daoCollection
+          .relationshipDAO()
+          .deleteFrom(origId.toString(), Entity.TEAM, relationshipType.ordinal(), toEntityType);
+      // Add relationships from updated
+      for (EntityReference ref : updatedRefs) {
+        addRelationship(updatedId, ref.getId(), Entity.TEAM, toEntityType, relationshipType);
+      }
+      updatedRefs.sort(EntityUtil.compareEntityReference);
+      origRefs.sort(EntityUtil.compareEntityReference);
     }
   }
 }

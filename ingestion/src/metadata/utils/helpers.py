@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import logging
 from datetime import datetime, timedelta
 from typing import List
 
@@ -33,6 +33,8 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+logger = logging.getLogger(__name__)
 
 
 def get_start_and_end(duration):
@@ -83,6 +85,7 @@ def get_database_service_or_create(
             "description": "",
             "serviceType": config.get_service_type(),
         }
+        logger.info(f"Creating DatabaseService instance for {config.service_name}")
         created_service = metadata.create_or_update(
             CreateDatabaseServiceRequest(**service)
         )

@@ -4,25 +4,32 @@
   "title": "CreateTeamRequest",
   "description": "Team entity",
   "type": "object",
-
   "properties": {
     "name": {
       "$ref": "../../entity/teams/team.json#/definitions/teamName"
     },
     "displayName": {
-      "description": "Optional name used for display purposes. Example 'Marketing Team'",
+      "description": "Optional name used for display purposes. Example 'Marketing Team'.",
       "type": "string"
     },
     "description": {
-      "description": "Optional description of the team",
+      "description": "Optional description of the team.",
       "type": "string"
     },
     "profile": {
-      "description": "Optional team profile information",
+      "description": "Optional team profile information.",
       "$ref": "../../type/profile.json"
     },
     "users": {
-      "description": "Optional IDs of users that are part of the team",
+      "description": "Optional IDs of users that are part of the team.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "defaultRoles": {
+      "description":  "Roles to be assigned to all users that are part of this team.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"

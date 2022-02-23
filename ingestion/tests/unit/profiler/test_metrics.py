@@ -14,7 +14,8 @@ Test Metrics behavior
 """
 from unittest import TestCase
 
-from sqlalchemy import Column, Integer, String, create_engine
+from numpy.random import normal
+from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
@@ -30,6 +31,7 @@ class User(Base):
     name = Column(String(256))
     fullname = Column(String(256))
     nickname = Column(String(256))
+    comments = Column(TEXT)
     age = Column(Integer)
 
 
@@ -38,7 +40,7 @@ class MetricsTest(TestCase):
     Run checks on different metrics
     """
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
+    engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
     @classmethod
@@ -49,8 +51,20 @@ class MetricsTest(TestCase):
         User.__table__.create(bind=cls.engine)
 
         data = [
-            User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
-            User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
+            User(
+                name="John",
+                fullname="John Doe",
+                nickname="johnny b goode",
+                comments="no comments",
+                age=30,
+            ),
+            User(
+                name="Jane",
+                fullname="Jone Doe",
+                nickname=None,
+                comments="maybe some comments",
+                age=31,
+            ),
         ]
         cls.session.add_all(data)
         cls.session.commit()
@@ -111,3 +125,72 @@ class MetricsTest(TestCase):
         profiler = SingleProfiler(table_count, session=self.session, table=User)
         res = profiler.execute()
         assert res.get(Metrics.ROW_NUMBER.name) == 2
+
+    def test_avg(self):
+        """
+        Check avg for distinct types
+        """
+
+        # Integer
+        avg = Metrics.AVG(col=User.age)
+        res = SingleProfiler(avg, session=self.session, table=User).execute()
+
+        assert res["AVG"] == 30.5
+
+        # String
+        avg = Metrics.AVG(col=User.name)
+        res = SingleProfiler(avg, session=self.session, table=User).execute()
+
+        assert res["AVG"] == 4.0
+
+        # Text
+        avg = Metrics.AVG(col=User.comments)
+        res = SingleProfiler(avg, session=self.session, table=User).execute()
+
+        assert res["AVG"] == 15.0
+
+    def test_distinct(self):
+        """
+        Check distinct count
+        """
+        dist = Metrics.DISTINCT(col=User.age)
+        res = SingleProfiler(dist, session=self.session, table=User).execute()
+
+        assert res["DISTINCT"] == 2
+
+    def test_duplicate_count(self):
+        """
+        Check composed duplicate count
+        """
+        count = Metrics.COUNT(col=User.name)
+        dist = Metrics.DISTINCT(col=User.name)
+        dup_count = Metrics.DUPLICATE_COUNT(col=User.name)
+        res = SingleProfiler(
+            count, dist, dup_count, session=self.session, table=User
+        ).execute()
+
+        assert res["DUPLICATECOUNT"] == 0
+
+    def test_histogram(self):
+        """
+        Check histogram computation
+        """
+
+        # Cook some data first
+        class TestHist(Base):
+            __tablename__ = "test_hist"
+            id = Column(Integer, primary_key=True)
+            num = Column(Integer)
+
+        TestHist.__table__.create(bind=self.engine)
+
+        data = [TestHist(num=int(rand)) for rand in normal(loc=0, scale=10, size=2000)]
+
+        self.session.add_all(data)
+        self.session.commit()
+
+        hist = Metrics.HISTOGRAM(TestHist.num, bins=5)
+        res = SingleProfiler(hist, session=self.session, table=TestHist).execute()
+
+        assert res["HISTOGRAM"]
+        assert len(res["HISTOGRAM"]["count"]) == 5

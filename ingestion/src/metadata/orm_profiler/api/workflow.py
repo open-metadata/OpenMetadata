@@ -18,17 +18,21 @@ Workflow definition for the ORM Profiler.
 """
 import itertools
 import uuid
-from typing import Dict, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 import click
-from pydantic import Field
-from sqlalchemy.orm import DeclarativeMeta, InstrumentedAttribute, Session
+from pydantic import Field, ValidationError
 
-from metadata.config.common import ConfigModel, DynamicTypedConfig
-from metadata.config.workflow import get_ingestion_source, get_sink
+from metadata.config.common import (
+    ConfigModel,
+    DynamicTypedConfig,
+    WorkflowExecutionError,
+)
+from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.common import WorkflowContext
+from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -38,22 +42,16 @@ from metadata.ingestion.source.sql_source_common import (
     SQLConnectionConfig,
     SQLSourceStatus,
 )
-from metadata.orm_profiler.api.models import ColumnProfiler, ProfilerResult
+from metadata.orm_profiler.api.models import ProfileAndTests, ProfilerProcessorConfig
 from metadata.orm_profiler.engines import create_and_bind_session, get_engine
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiles.core import Profiler, SingleProfiler
-from metadata.orm_profiler.profiles.models import ProfilerDef
-from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 from metadata.orm_profiler.utils import logger
-from metadata.orm_profiler.validations.models import TestDef
 
 logger = logger()
 
 
-class TestValidationException(Exception):
+class WorkflowConfigException(Exception):
     """
-    Raised when there are test errors
+    Raised when the workflow is not properly configured
     """
 
 
@@ -66,8 +64,7 @@ class ProfilerWorkflowConfig(ConfigModel):
     run_id: str = Field(default_factory=lambda: str(uuid.uuid1()))
     source: DynamicTypedConfig
     metadata_server: DynamicTypedConfig
-    profiler: Optional[ProfilerDef] = None
-    tests: Optional[TestDef] = None
+    processor: Optional[DynamicTypedConfig] = None
     sink: Optional[DynamicTypedConfig] = None
 
 
@@ -79,10 +76,9 @@ class ProfilerWorkflow:
     config: ProfilerWorkflowConfig
     ctx: WorkflowContext
     source: Source
+    processor: Processor
     sink: Sink
     metadata: OpenMetadata
-    session: Session
-    report = {}
 
     def __init__(self, config: ProfilerWorkflowConfig):
         self.config = config
@@ -109,6 +105,16 @@ class ProfilerWorkflow:
         self.source_config: SQLConnectionConfig = self.source.config
         self.source_status = SQLSourceStatus()
 
+        self.processor = get_processor(
+            processor_type=self.config.processor.type,  # orm-profiler
+            context=self.ctx,
+            processor_config=self.config.processor or ProfilerProcessorConfig(),
+            metadata_config=self.metadata_config,
+            _from="orm_profiler",
+            # Pass the session as kwargs for the profiler
+            session=create_and_bind_session(get_engine(self.source_config)),
+        )
+
         if self.config.sink:
             self.sink = get_sink(
                 sink_type=self.config.sink.type,
@@ -121,19 +127,17 @@ class ProfilerWorkflow:
         # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
 
-        # SQLAlchemy Session to run the profilers
-        self.session: Session = create_and_bind_session(get_engine(self.source_config))
-
-        # Init validation report
-        self.report["tests"] = {}
-
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
         """
         Parse a JSON (dict) and create the workflow
         """
-        config = ProfilerWorkflowConfig.parse_obj(config_dict)
-        return cls(config)
+        try:
+            config = ProfilerWorkflowConfig.parse_obj(config_dict)
+            return cls(config)
+        except ValidationError as err:
+            logger.error("Error trying to parse the Profiler Workflow configuration")
+            raise WorkflowConfigException(f"Error parsing workflow - {err}")
 
     def filter_entities(self, tables: List[Table]) -> Iterable[Table]:
         """
@@ -162,6 +166,7 @@ class ProfilerWorkflow:
                 )
                 continue
 
+            self.source_status.scanned(table.fullyQualifiedName)
             yield table
 
     def list_entities(self) -> Iterable[Table]:
@@ -206,168 +211,74 @@ class ProfilerWorkflow:
 
         yield from self.filter_entities(flat_tables)
 
-    def build_table_profiler(self, table) -> Profiler:
-        """
-        Prepare the profiler for table tests
-
-        table is of type DeclarativeMeta
-        """
-        if not self.config.profiler:
-            return SimpleTableProfiler(session=self.session, table=table)
-
-        metrics = [Metrics.init(name) for name in self.config.profiler.table_metrics]
-
-        return SingleProfiler(*metrics, session=self.session, table=table)
-
-    def build_column_profiler(
-        self, table, column: InstrumentedAttribute
-    ) -> ColumnProfiler:
-        """
-        Given a column from the entity, build the profiler
-
-        table is of type DeclarativeMeta
-        """
-        if not self.config.profiler:
-            return ColumnProfiler(
-                column=column.name,
-                profiler=SimpleProfiler(session=self.session, col=column, table=table),
-            )
-
-        metrics = [
-            Metrics.init(name, col=column) for name in self.config.profiler.metrics
-        ]
-
-        return ColumnProfiler(
-            column=column.name,
-            profiler=SingleProfiler(*metrics, session=self.session, table=table),
-        )
-
-    def profile_entity(self, orm, table: Table) -> ProfilerResult:
-        """
-        Given a table, we will prepare the profiler for
-        all its columns and return all the run profilers
-        in a Dict in the shape {col_name: Profiler}
-
-        Type of entity is DeclarativeMeta
-        """
-        if not isinstance(orm, DeclarativeMeta):
-            raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
-
-        # Prepare the profilers for all table columns
-        res = ProfilerResult(
-            table=table,
-            table_profiler=self.build_table_profiler(orm),
-            column_profilers=[
-                self.build_column_profiler(orm, col) for col in orm.__table__.c
-            ],
-        )
-
-        logger.info(f"Executing profilers for {table.fullyQualifiedName}...")
-
-        # Execute Table Profiler
-        res.table_profiler.execute()
-
-        # Execute all column profilers
-        for col_profiler in res.column_profilers:
-            col_profiler.profiler.execute()
-
-        return res
-
-    def validate_entity(self, orm, profiler_results: ProfilerResult) -> TestDef:
-        """
-        Given a table, check if it has any tests pending.
-
-        If so, run the Validations against the profiler_results
-        and return the computed Validations.
-
-        The result will have the shape {test_name: Validation}
-
-        Type of entity is DeclarativeMeta
-        """
-        if not isinstance(orm, DeclarativeMeta):
-            raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
-
-        logger.info(
-            f"Checking validations for {profiler_results.table.fullyQualifiedName}..."
-        )
-
-        # We have all validations parsed at read-time
-        test_def: TestDef = self.config.tests
-
-        # Compute all validations against the profiler results
-        for test in test_def.table_tests:
-            for validation in test.expression:
-                validation.validate(profiler_results.table_profiler.results)
-                self.report["tests"][test.name.replace(" ", "_")] = validation.valid
-
-        for column_res in test_def.column_tests:
-            for test in column_res.columns:
-                profiler = next(
-                    iter(
-                        col_profiler.profiler
-                        for col_profiler in profiler_results.column_profilers
-                        if col_profiler.column == test.column
-                    ),
-                    None,
-                )
-                if profiler is None:
-                    logger.warn(
-                        f"Cannot find a profiler that computed the column {test.column}. Skipping validation {test}"
-                    )
-                    continue
-
-                for validation in test.expression:
-                    validation.validate(profiler.results)
-                    self.report["tests"][test.name.replace(" ", "_")] = validation.valid
-
-        return test_def
-
     def execute(self):
         """
         Run the profiling and tests
         """
         for entity in self.list_entities():
+            profile_and_tests: ProfileAndTests = self.processor.process(entity)
+            print(profile_and_tests)
 
-            # Convert entity to ORM. Fetch the db by ID to make sure we use the proper db name
-            database = self.metadata.get_by_id(
-                entity=Database, entity_id=entity.database.id
-            )
-            orm_table = ometa_to_orm(table=entity, database=database)
-
-            entity_profile = self.profile_entity(orm_table, entity)
-            # TODO: Publish profile results with sink
-
-            if self.config.tests:
-                entity_validations = self.validate_entity(orm_table, entity_profile)
-                # TODO: publish validation with sink
-            else:
-                logger.info("No tests found. We will just return the Profiler data.")
-
-    def print_status(self) -> Dict[str, bool]:
-        """
-        Print test report and return it
-        """
+    def print_status(self) -> int:
         click.echo()
-        click.secho("Tests Status:", bold=True)
-        click.echo(self.report["tests"])
-        return self.report["tests"]
+        click.secho("Source Status:", bold=True)
+        click.echo(self.source_status.as_string())
+        click.secho("Processor Status:", bold=True)
+        click.echo(self.processor.get_status().as_string())
+        if hasattr(self, "sink"):
+            click.secho("Sink Status:", bold=True)
+            click.echo(self.sink.get_status().as_string())
+            click.echo()
 
-    def raise_from_status(self):
-        """
-        Raise an exception if any test failed
-        """
-        failures = next(
-            iter(name for name, res in self.report["tests"].items() if not res), None
-        )
+        if (
+            self.source_status.failures
+            or self.processor.get_status().failures
+            or (hasattr(self, "sink") and self.sink.get_status().failures)
+        ):
+            click.secho("Workflow finished with failures", fg="bright_red", bold=True)
+            return 1
+        elif (
+            self.source_status.warnings
+            or self.processor.get_status().failures
+            or (hasattr(self, "sink") and self.sink.get_status().warnings)
+        ):
+            click.secho("Workflow finished with warnings", fg="yellow", bold=True)
+            return 0
+        else:
+            click.secho("Workflow finished successfully", fg="green", bold=True)
+            return 0
 
-        if failures:
-            click.secho("Some tests did not pass:")
-            click.secho(failures)
-            raise TestValidationException
+    def raise_from_status(self, raise_warnings=False):
+        """
+        Check source, processor and sink status and raise if needed
+
+        Our profiler source will never log any failure, only filters,
+        as we are just picking up data from OM.
+        """
+
+        if self.processor.get_status().failures:
+            raise WorkflowExecutionError(
+                "Processor reported errors", self.processor.get_status()
+            )
+        if hasattr(self, "sink") and self.sink.get_status().failures:
+            raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
+
+        if raise_warnings:
+            if self.source_status.warnings:
+                raise WorkflowExecutionError(
+                    "Source reported warnings", self.source_status
+                )
+            if self.processor.get_status().warnings:
+                raise WorkflowExecutionError(
+                    "Processor reported warnings", self.processor.get_status()
+                )
+            if hasattr(self, "sink") and self.sink.get_status().warnings:
+                raise WorkflowExecutionError(
+                    "Sink reported warnings", self.sink.get_status()
+                )
 
     def stop(self):
         """
         Close all connections
         """
         self.metadata.close()
-        self.session.close()

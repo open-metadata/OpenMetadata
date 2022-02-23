@@ -10,8 +10,9 @@
 #  limitations under the License.
 
 """
-Population Standard deviation Metric definition
+AVG Metric definition
 """
+from sqlalchemy import func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
@@ -19,43 +20,35 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.orm_profiler.orm.registry import is_quantifiable
+from metadata.orm_profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
 
 
-class StdDevFn(FunctionElement):
+class ConcatAvgFn(FunctionElement):
     name = __qualname__
     inherit_cache = CACHE
 
 
-@compiles(StdDevFn)
+@compiles(ConcatAvgFn)
 def _(element, compiler, **kw):
-    return "STDDEV_POP(%s)" % compiler.process(element.clauses, **kw)
+    return "AVG(LEN(%s))" % compiler.process(element.clauses, **kw)
 
 
-@compiles(StdDevFn, DatabaseServiceType.MSSQL.value.lower())
+@compiles(ConcatAvgFn, DatabaseServiceType.SQLite.value.lower())
 def _(element, compiler, **kw):
-    return "STDEVP(%s)" % compiler.process(element.clauses, **kw)
+    return "AVG(LENGTH(%s))" % compiler.process(element.clauses, **kw)
 
 
-@compiles(StdDevFn, DatabaseServiceType.SQLite.value.lower())  # Needed for unit tests
-def _(element, compiler, **kw):
+class Avg(StaticMetric):
     """
-    This actually returns the squared STD, but as
-    it is only required for tests we can live with it.
-    """
+    AVG Metric
 
-    proc = compiler.process(element.clauses, **kw)
-    return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
+    Given a column, return the AVG value.
 
-
-class StdDev(StaticMetric):
-    """
-    STD Metric
-
-    Given a column, return the Standard Deviation value.
+    - For a quantifiable value, return the usual AVG
+    - For a concatenable (str, text...) return the AVG length
     """
 
     def metric_type(self):
@@ -64,10 +57,12 @@ class StdDev(StaticMetric):
     @_label
     def fn(self):
         if is_quantifiable(self.col.type):
-            return StdDevFn(self.col)
+            return func.avg(self.col)
 
-        logger.info(
-            f"{self.col} has type {self.col.type}, which is not listed as quantifiable."
-            + " We won't compute STDDEV for it."
+        if is_concatenable(self.col.type):
+            return ConcatAvgFn(self.col)
+
+        logger.warning(
+            f"Don't know how to process type {self.col.type} when computing AVG"
         )
         return None
