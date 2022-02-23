@@ -27,7 +27,7 @@ from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import get_raw_extract_iter, get_start_and_end
 from metadata.utils.sql_queries import MSSQL_SQL_STATEMENT
 
 
@@ -48,16 +48,12 @@ class MssqlUsageSource(Source[TableQuery]):
         report:
     """
 
-    # SELECT statement from mysql information_schema
-    # to extract table and column metadata
-    SQL_STATEMENT = MSSQL_SQL_STATEMENT
-
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
-        self.sql_stmt = self.SQL_STATEMENT.format(start_date=start, end_date=end)
+        self.sql_stmt = MSSQL_SQL_STATEMENT.format(start_date=start, end_date=end)
         self.alchemy_helper = SQLAlchemyHelper(
             config, metadata_config, ctx, DatabaseServiceType.MSSQL.value, self.sql_stmt
         )
@@ -70,7 +66,7 @@ class MssqlUsageSource(Source[TableQuery]):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        pass
+        return super().prepare()
 
     def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
         """
@@ -87,7 +83,7 @@ class MssqlUsageSource(Source[TableQuery]):
         it groups to table and yields TableMetadata
         :return:
         """
-        for row in self._get_raw_extract_iter():
+        for row in get_raw_extract_iter(self.alchemy_helper):
             table_query = TableQuery(
                 query=row["query_type"],
                 user_name=row["user_name"],
