@@ -86,7 +86,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
         .map((feed, index) => {
           const mainFeed = feed.posts?.[0];
           const replies = feed.posts.length;
-          const repliedUsers = feed.posts.map((f) => f.from).slice(0, 3);
+          const repliedUsers = feed.posts.map((f) => f.from).slice(1, 4);
           const lastPost = feed.posts?.[replies - 1];
 
           return (
@@ -119,7 +119,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   </div>
                   <LatestReplyFeedList
                     className="tw-mt-6 tw-ml-8"
-                    feeds={feed?.posts?.slice(0, 3) as Post[]}
+                    feeds={feed?.posts?.slice(1, 4) as Post[]}
                   />
                 </Fragment>
               ) : null}
