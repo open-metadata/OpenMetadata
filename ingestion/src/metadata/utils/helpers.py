@@ -14,6 +14,8 @@ import traceback
 from datetime import datetime, timedelta
 from typing import List
 
+from sqllineage.runner import LineageRunner
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -30,6 +32,7 @@ from metadata.generated.schema.api.services.createPipelineService import (
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -187,8 +190,12 @@ def datetime_to_ts(date: datetime) -> int:
     return int(date.timestamp())
 
 
-def create_lineage(from_entity, from_type, to_entity, to_type):
+def create_lineage(from_table, to_table, metadata, config, query_info):
     try:
+        from_fqdn = f"{config.service_name}.{from_table}"
+        from_entity = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
+        to_fqdn = f"{config.service_name}.{to_table}"
+        to_entity = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
         from_entity_id = (
             from_entity.id.__root__
             if hasattr(from_entity.id, "__root__")
@@ -201,15 +208,36 @@ def create_lineage(from_entity, from_type, to_entity, to_type):
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
                     id=from_entity_id,
-                    type=from_type,
+                    type=query_info["from_type"],
                 ),
                 toEntity=EntityReference(
                     id=to_entity_id,
-                    type=to_type,
+                    type=query_info["to_type"],
                 ),
             )
         )
-        return lineage
+
+        created_lineage = metadata.add_lineage(lineage)
+        logger.info(f"Successfully added Lineage {created_lineage}")
+
     except Exception as err:
         logger.debug(traceback.print_exc())
         logger.error(err)
+
+
+def ingest_lineage(query_info, metadata, config):
+    result = LineageRunner(query_info["sql"])
+    if result.target_tables and result.intermediate_tables:
+        for intermediate_table in result.intermediate_tables:
+            for source_table in result.source_tables:
+                create_lineage(
+                    source_table, intermediate_table, metadata, config, query_info
+                )
+            for target_table in result.target_tables:
+                create_lineage(
+                    intermediate_table, target_table, metadata, config, query_info
+                )
+    elif result.target_tables:
+        for target_table in result.target_tables:
+            for source_table in result.source_tables:
+                create_lineage(source_table, target_table, metadata, config, query_info)

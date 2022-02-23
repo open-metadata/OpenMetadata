@@ -21,7 +21,6 @@ from typing import Iterable
 from google.cloud import logging
 from sqllineage.runner import LineageRunner
 
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -29,10 +28,9 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.sink.metadata_rest import MetadataRestSink
 from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.helpers import create_lineage, get_start_and_end
+from metadata.utils.helpers import get_start_and_end, ingest_lineage
 
 logger = log.getLogger(__name__)
 
@@ -135,7 +133,12 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 service_name=self.config.service_name,
                             )
                             yield tq
-                            self.ingest_lineage(tq.sql)
+                            query_info = {
+                                "sql": tq.sql,
+                                "from_type": "table",
+                                "to_type": "table",
+                            }
+                            ingest_lineage(query_info, self.metadata, self.config)
 
         except Exception as err:
             logger.error(repr(err))
@@ -147,36 +150,3 @@ class BigqueryUsageSource(Source[TableQuery]):
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)
-
-    def ingest_lineage(self, sql):
-        result = LineageRunner(sql)
-        sink = MetadataRestSink(self.ctx, self.config, self.metadata_config)
-        if result.target_tables and result.intermediate_tables:
-            for intermediate_table in result.intermediate_tables:
-                for source_table in result.source_tables:
-                    lineage = self.fetch_lineage(source_table, intermediate_table)
-                    sink.write_record(lineage)
-                for target_table in result.target_tables:
-                    lineage = self.fetch_lineage(intermediate_table, target_table)
-                    sink.write_record(lineage)
-        elif result.target_tables:
-            for target_table in result.target_tables:
-                for source_table in result.source_tables:
-                    lineage = self.fetch_lineage(source_table, target_table)
-                    sink.write_record(lineage)
-
-    def fetch_lineage(self, from_table, to_table):
-        try:
-            from_fqdn = f"{self.config.service_name}.{from_table}"
-            from_entity = self.metadata.get_by_name(entity=Table, fqdn=from_fqdn)
-            to_fqdn = f"{self.config.service_name}.{to_table}"
-            to_entity = self.metadata.get_by_name(entity=Table, fqdn=to_fqdn)
-            return create_lineage(
-                from_entity=from_entity,
-                from_type="table",
-                to_entity=to_entity,
-                to_type="table",
-            )
-        except Exception as err:
-            logger.debug(traceback.print_exc())
-            logger.error(err)
