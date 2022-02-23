@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,6 +43,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -87,27 +87,9 @@ public class RoleRepository extends EntityRepository<Role> {
     return Entity.getEntityReference(Entity.POLICY, UUID.fromString(result.get(0)));
   }
 
-  private List<EntityReference> getUsersForRole(@NonNull Role role) {
-    List<EntityReference> entityReferences =
-        daoCollection
-            .relationshipDAO()
-            .findFromEntity(
-                role.getId().toString(),
-                Entity.ROLE,
-                Relationship.HAS.ordinal(),
-                Entity.USER,
-                toBoolean(toInclude(role)));
-    return Optional.ofNullable(entityReferences).orElse(Collections.emptyList()).stream()
-        .map(
-            ref -> {
-              try {
-                return Entity.getEntityReference(Entity.USER, ref.getId());
-              } catch (IOException e) {
-                LOG.warn("Could not get entity reference for user {}", ref.getId());
-              }
-              return ref;
-            })
-        .collect(Collectors.toList());
+  private List<EntityReference> getUsersForRole(@NonNull Role role) throws IOException {
+    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER, toBoolean(toInclude(role)));
+    return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   @Override

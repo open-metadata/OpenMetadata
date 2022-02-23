@@ -80,33 +80,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
     List<String> ids =
         findTo(entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
-    List<EntityReference> children = new ArrayList<>();
-    for (String id : ids) {
-      children.add(Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(id)));
-    }
-    return children.isEmpty() ? null : children;
+    return EntityUtil.populateEntityReferences(ids, Entity.GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
     List<String> ids =
         findBoth(
             entity.getId(), Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, entity.getDeleted());
-    List<EntityReference> relatedTerms = new ArrayList<>();
-    for (String id : ids) {
-      relatedTerms.add(Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(id)));
-    }
-    return relatedTerms.isEmpty() ? null : relatedTerms;
+    return EntityUtil.populateEntityReferences(ids, Entity.GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
     List<String> ids =
         findFrom(entity.getId(), Entity.GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
-
-    List<EntityReference> reviewers = new ArrayList<>();
-    for (String id : ids) {
-      reviewers.add(Entity.getEntityReference(Entity.USER, UUID.fromString(id)));
-    }
-    return reviewers.isEmpty() ? null : reviewers;
+    return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   @Override

@@ -180,11 +180,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
     List<String> chartIds =
         findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART, toBoolean(toInclude(dashboard)));
-    List<EntityReference> charts = new ArrayList<>();
-    for (String chartId : chartIds) {
-      charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
-    }
-    return charts.isEmpty() ? null : charts;
+    return EntityUtil.populateEntityReferences(chartIds, Entity.CHART);
   }
 
   /**
