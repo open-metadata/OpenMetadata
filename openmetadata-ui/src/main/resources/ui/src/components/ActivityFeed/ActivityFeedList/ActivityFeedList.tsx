@@ -78,7 +78,6 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onThreadSelect,
   selctedThreadId,
   onThreadIdSelect,
-  onThreadIdDeselect,
 }) => {
   return (
     <Fragment>
@@ -106,22 +105,22 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {selctedThreadId === feed.id ? (
                 <Fragment>
+                  <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6 tw--mt-4">
+                    <p
+                      className="link-text tw-text-xs tw-underline"
+                      onClick={() => onThreadSelect(selctedThreadId)}>
+                      View more replies
+                    </p>
+                    {/* <p
+                      className="link-text tw-text-xs"
+                      onClick={onThreadIdDeselect}>
+                      Show less
+                    </p> */}
+                  </div>
                   <LatestReplyFeedList
                     className="tw-mt-6 tw-ml-8"
                     feeds={feed?.posts?.slice(0, 3) as Post[]}
                   />
-                  <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6">
-                    <p
-                      className="link-text tw-text-xs"
-                      onClick={() => onThreadSelect(selctedThreadId)}>
-                      Show more
-                    </p>
-                    <p
-                      className="link-text tw-text-xs"
-                      onClick={onThreadIdDeselect}>
-                      Show less
-                    </p>
-                  </div>
                 </Fragment>
               ) : null}
             </Fragment>
