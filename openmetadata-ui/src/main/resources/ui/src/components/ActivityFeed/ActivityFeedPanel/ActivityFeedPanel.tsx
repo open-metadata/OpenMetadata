@@ -25,6 +25,7 @@ import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import { getEntityField } from '../../../utils/FeedUtils';
 import Loader from '../../Loader/Loader';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 
 interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
   selectedThread: EntityThread;
@@ -157,7 +158,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-w-2/5 tw-bg-white tw-fixed tw-h-full tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
+          'tw-top-16 tw-right-0 tw-w-2/5 tw-bg-white tw-fixed tw-h-full tw-overflow-y-auto tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -168,11 +169,17 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           entityField={entityField as string}
           onCancel={onCancel}
         />
-        <FeedPanelBody
-          className="tw-h-full tw-p-4 tw-pl-8"
-          isLoading={isLoading}
-          threadData={threadData as EntityThread}
-        />
+        <div className="tw-h-full">
+          <FeedPanelBody
+            className="tw-p-4 tw-pl-8"
+            isLoading={isLoading}
+            threadData={threadData as EntityThread}
+          />
+          <ActivityFeedEditor
+            buttonClass="tw-mr-4"
+            className="tw-ml-11 tw-mr-2"
+          />
+        </div>
       </div>
     </div>
   );

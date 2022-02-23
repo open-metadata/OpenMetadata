@@ -17,9 +17,9 @@ import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import FeedEditor from '../../FeedEditor/FeedEditor';
 import Onboarding from '../../onboarding/Onboarding';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 
 interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
@@ -119,7 +119,10 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                     className="tw-mt-6 tw-ml-8"
                     feeds={feed?.posts?.slice(1, 4) as Post[]}
                   />
-                  <FeedEditor className="tw-ml-11 tw-mr-2" />
+                  <ActivityFeedEditor
+                    buttonClass="tw-mr-4"
+                    className="tw-ml-11 tw-mr-2"
+                  />
                 </Fragment>
               ) : null}
             </Fragment>
