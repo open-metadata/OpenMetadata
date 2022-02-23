@@ -14,8 +14,10 @@ Histogram Metric definition
 """
 from typing import Optional
 
+import numpy as np
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
+
 from metadata.orm_profiler.metrics.core import QueryMetric
 from metadata.orm_profiler.orm.functions.concat import ConcatFn
 from metadata.orm_profiler.orm.registry import is_quantifiable
@@ -40,13 +42,17 @@ class Histogram(QueryMetric):
         """
 
         if not session:
-            raise AttributeError("We are missing the session attribute to compute the Histogram.")
+            raise AttributeError(
+                "We are missing the session attribute to compute the Histogram."
+            )
 
         if not is_quantifiable(self.col.type):
             return None
 
         bins = session.query(
-            ((func.max(self.col) - func.min(self.col)) / self.bins).label("step")
+            ((func.max(self.col) - func.min(self.col)) / float(self.bins - 1)).label(
+                "step"
+            )
         )
         bins_cte = bins.cte("bins")
 
