@@ -76,4 +76,5 @@ export interface DashboardDetailsProps {
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
+  postFeedHandler: (value: string, id: string) => void;
 }

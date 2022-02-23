@@ -32,7 +32,7 @@ import {
   patchDashboardDetails,
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
-import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
+import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -500,6 +500,36 @@ const DashboardDetailsPage = () => {
     });
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...thread, posts: posts };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -542,6 +572,7 @@ const DashboardDetailsPage = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}
+          postFeedHandler={postFeedHandler}
           removeLineageHandler={removeLineageHandler}
           serviceType={serviceType}
           setActiveTabHandler={activeTabHandler}

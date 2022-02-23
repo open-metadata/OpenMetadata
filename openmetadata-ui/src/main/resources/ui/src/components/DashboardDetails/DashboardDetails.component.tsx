@@ -80,6 +80,7 @@ const DashboardDetails = ({
   isLineageLoading,
   entityThread,
   isentityThreadLoading,
+  postFeedHandler,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -555,6 +556,7 @@ const DashboardDetails = ({
                     className=""
                     feedList={entityThread}
                     isLoading={isentityThreadLoading}
+                    postFeedHandler={postFeedHandler}
                   />
                   <div />
                 </div>
