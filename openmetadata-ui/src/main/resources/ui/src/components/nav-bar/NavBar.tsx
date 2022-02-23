@@ -43,6 +43,7 @@ const NavBar = ({
   handleFeatureModal,
   handleSearchChange,
   handleKeyDown,
+  handleOnClick,
 }: NavBarProps) => {
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const navStyle = (value: boolean) => {
@@ -80,11 +81,15 @@ const NavBar = ({
           <div
             className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
             data-testid="appbar-item">
-            <SVGIcons
-              alt="icon-search"
-              className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-right-2.5 tw-top-2.5 tw-leading-8 tw-text-center tw-pointer-events-none"
-              icon={searchIcon}
-            />
+            <span
+              className="tw-cursor-pointer tw-absolute tw-right-2.5 tw-top-2 tw-block tw-z-40 tw-w-4 tw-h-4 tw-text-center"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleOnClick();
+              }}>
+              <SVGIcons alt="icon-search" icon={searchIcon} />
+            </span>
             <input
               autoComplete="off"
               className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs tw-ml-4"
