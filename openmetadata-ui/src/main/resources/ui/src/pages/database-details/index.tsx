@@ -19,12 +19,12 @@ import { observer } from 'mobx-react';
 import { EntityThread, ExtraInfo, Paging } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import appState from '../../AppState';
+import { default as AppState, default as appState } from '../../AppState';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
-import { getAllFeeds } from '../../axiosAPIs/feedsAPI';
+import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import Description from '../../components/common/description/Description';
@@ -334,6 +334,36 @@ const DatabaseDetails: FunctionComponent = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...thread, posts: posts };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
@@ -557,6 +587,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       className=""
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
+                      postFeedHandler={postFeedHandler}
                     />
                     <div />
                   </div>
