@@ -138,7 +138,9 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 "from_type": "table",
                                 "to_type": "table",
                             }
-                            ingest_lineage(query_info, self.metadata, self.config)
+                            ingest_lineage(
+                                query_info, self.metadata_config, self.config
+                            )
 
         except Exception as err:
             logger.error(repr(err))
