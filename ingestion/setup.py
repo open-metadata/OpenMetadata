@@ -32,8 +32,6 @@ base_requirements = {
     "typing-inspect",
     "pydantic>=1.7.4",
     "pydantic[email]>=1.7.2",
-    "google>=3.0.0",
-    "google-auth>=1.33.0",
     "python-dateutil>=2.8.1",
     "email-validator>=1.0.3",
     "wheel~=0.36.2",
@@ -78,6 +76,7 @@ plugins: Dict[str, Set[str]] = {
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
     "glue": {"boto3~=1.19.12"},
+    "google": {"google>=3.0.0", "google-auth>=1.33.0"},
     "dynamodb": {"boto3~=1.19.12"},
     "hive": {
         "pyhive~=0.6.3",
