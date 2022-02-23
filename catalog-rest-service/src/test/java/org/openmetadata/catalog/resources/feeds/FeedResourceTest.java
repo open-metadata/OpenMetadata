@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -138,7 +139,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  void post_feedWithNonExistentFrom_404() throws IOException {
+  void post_feedWithNonExistentFrom_404() {
     // Create thread with non-existent from
     CreateThread create = create().withFrom(NON_EXISTENT_ENTITY.toString());
     assertResponse(
@@ -154,7 +155,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  void post_feedWithInvalidAbout_400() throws IOException {
+  void post_feedWithInvalidAbout_400() {
     // post with invalid entity link pattern
     // if entity link refers to an array member, then it should have both
     // field name and value
@@ -165,12 +166,12 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   void post_validThreadAndList_200(TestInfo test) throws IOException {
-    int totalThreadCount = listThreads(null, ADMIN_AUTH_HEADERS).getData().size();
-    int userThreadCount = listThreads(USER_LINK, ADMIN_AUTH_HEADERS).getData().size();
-    int teamThreadCount = listThreads(TEAM_LINK, ADMIN_AUTH_HEADERS).getData().size();
-    int tableThreadCount = listThreads(TABLE_LINK, ADMIN_AUTH_HEADERS).getData().size();
-    int tableDescriptionThreadCount = listThreads(TABLE_DESCRIPTION_LINK, ADMIN_AUTH_HEADERS).getData().size();
-    int tableColumnDescriptionThreadCount = listThreads(TABLE_COLUMN_LINK, ADMIN_AUTH_HEADERS).getData().size();
+    int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getData().size();
+    int userThreadCount = listThreads(USER_LINK, null, ADMIN_AUTH_HEADERS).getData().size();
+    int teamThreadCount = listThreads(TEAM_LINK, null, ADMIN_AUTH_HEADERS).getData().size();
+    int tableThreadCount = listThreads(TABLE_LINK, null, ADMIN_AUTH_HEADERS).getData().size();
+    int tableDescriptionThreadCount = listThreads(TABLE_DESCRIPTION_LINK, null, ADMIN_AUTH_HEADERS).getData().size();
+    int tableColumnDescriptionThreadCount = listThreads(TABLE_COLUMN_LINK, null, ADMIN_AUTH_HEADERS).getData().size();
 
     CreateThread create =
         create()
@@ -188,27 +189,57 @@ public class FeedResourceTest extends CatalogApplicationTest {
     for (int i = 0; i < 10; i++) {
       createAndCheck(create, userAuthHeaders);
       // List all the threads and make sure the number of threads increased by 1
-      assertEquals(++userThreadCount, listThreads(USER_LINK, userAuthHeaders).getData().size()); // Mentioned user
-      assertEquals(++teamThreadCount, listThreads(TEAM_LINK, userAuthHeaders).getData().size()); // Mentioned team
-      assertEquals(++tableThreadCount, listThreads(TABLE_LINK, userAuthHeaders).getData().size()); // About TABLE
+      assertEquals(++userThreadCount, listThreads(USER_LINK, null, userAuthHeaders).getData().size()); // Mentioned user
+      // TODO: There is no support for team mentions yet.
+      // assertEquals(++teamThreadCount, listThreads(TEAM_LINK, null, userAuthHeaders).getData().size()); // Mentioned
+      // team
+      assertEquals(++tableThreadCount, listThreads(TABLE_LINK, null, userAuthHeaders).getData().size()); // About TABLE
+      assertEquals(++totalThreadCount, listThreads(null, null, userAuthHeaders).getData().size()); // Overall threads
+    }
+
+    // List threads should not include mentioned entities
+    // It should only include threads which are about the entity link
+    assertEquals(
+        tableDescriptionThreadCount,
+        listThreads(TABLE_DESCRIPTION_LINK, null, userAuthHeaders).getData().size()); // About TABLE Description
+    assertEquals(
+        tableColumnDescriptionThreadCount,
+        listThreads(TABLE_COLUMN_LINK, null, userAuthHeaders).getData().size()); // About TABLE Column Description
+
+    create.withAbout(TABLE_DESCRIPTION_LINK);
+    for (int i = 0; i < 10; i++) {
+      createAndCheck(create, userAuthHeaders);
+      // List all the threads and make sure the number of threads increased by 1
+      assertEquals(++userThreadCount, listThreads(USER_LINK, null, userAuthHeaders).getData().size()); // Mentioned user
+      assertEquals(++tableThreadCount, listThreads(TABLE_LINK, null, userAuthHeaders).getData().size()); // About TABLE
       assertEquals(
           ++tableDescriptionThreadCount,
-          listThreads(TABLE_DESCRIPTION_LINK, userAuthHeaders).getData().size()); // About TABLE Description
+          listThreads(TABLE_DESCRIPTION_LINK, null, userAuthHeaders).getData().size()); // About TABLE Description
+      assertEquals(++totalThreadCount, listThreads(null, null, userAuthHeaders).getData().size()); // Overall threads
+    }
+
+    create.withAbout(TABLE_COLUMN_LINK);
+    for (int i = 0; i < 10; i++) {
+      createAndCheck(create, userAuthHeaders);
+      // List all the threads and make sure the number of threads increased by 1
+      assertEquals(++userThreadCount, listThreads(USER_LINK, null, userAuthHeaders).getData().size()); // Mentioned user
+      assertEquals(++tableThreadCount, listThreads(TABLE_LINK, null, userAuthHeaders).getData().size()); // About TABLE
       assertEquals(
           ++tableColumnDescriptionThreadCount,
-          listThreads(TABLE_COLUMN_LINK, userAuthHeaders).getData().size()); // About TABLE Column Description
-      assertEquals(++totalThreadCount, listThreads(null, userAuthHeaders).getData().size()); // Overall threads
+          listThreads(TABLE_COLUMN_LINK, null, userAuthHeaders).getData().size()); // About TABLE Description
+      assertEquals(++totalThreadCount, listThreads(null, null, userAuthHeaders).getData().size()); // Overall threads
     }
 
     // Test the /api/v1/feed/count API
     assertEquals(userThreadCount, listThreadsCount(USER_LINK, userAuthHeaders).getTotalCount());
-    assertEquals(tableThreadCount, getThreadCount(TABLE_LINK, userAuthHeaders));
+    assertEquals(tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, userAuthHeaders));
+    assertEquals(tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, userAuthHeaders));
   }
 
   @Test
   void post_addPostWithoutMessage_4xx() {
     // Add post to a thread without message field
-    Post post = createPost().withMessage(null);
+    Post post = createPost(null).withMessage(null);
 
     assertResponseContains(
         () -> addPost(THREAD.getId(), post, AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
@@ -217,7 +248,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   @Test
   void post_addPostWithoutFrom_4xx() {
     // Add post to a thread without from field
-    Post post = createPost().withFrom(null);
+    Post post = createPost(null).withFrom(null);
 
     assertResponseContains(() -> addPost(THREAD.getId(), post, AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
   }
@@ -226,7 +257,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   void post_addPostWithNonExistentFrom_404() {
     // Add post to a thread with non-existent from user
 
-    Post post = createPost().withFrom(NON_EXISTENT_ENTITY.toString());
+    Post post = createPost(null).withFrom(NON_EXISTENT_ENTITY.toString());
     assertResponse(
         () -> addPost(THREAD.getId(), post, AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
@@ -237,15 +268,51 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Add 10 posts and validate
     int POST_COUNT = 10;
     for (int i = 0; i < POST_COUNT; i++) {
-      Post post = createPost();
+      Post post = createPost(null);
       thread = addPostAndCheck(thread, post, AUTH_HEADERS);
     }
 
     // Check if get posts API returns all the posts
     PostList postList = listPosts(thread.getId().toString(), AUTH_HEADERS);
-    // Thread also has the first message as a post.
-    // So, the total count should be POST_COUNT+1
-    assertEquals(POST_COUNT + 1, postList.getData().size());
+    assertEquals(POST_COUNT, postList.getData().size());
+  }
+
+  @Test
+  void list_threadsWithPostsLimit() throws HttpResponseException {
+    Thread thread = createAndCheck(create(), AUTH_HEADERS);
+    // Add 10 posts and validate
+    int POST_COUNT = 10;
+    for (int i = 0; i < POST_COUNT; i++) {
+      Post post = createPost("message" + i);
+      thread = addPostAndCheck(thread, post, AUTH_HEADERS);
+    }
+
+    ThreadList threads = listThreads(null, 5, AUTH_HEADERS);
+    thread = threads.getData().get(0);
+    assertEquals(5, thread.getPosts().size());
+    assertEquals(POST_COUNT, thread.getPostsCount());
+    // Thread should contain the latest 5 messages
+    List<Post> posts = thread.getPosts();
+    int startIndex = 5;
+    for (var post : posts) {
+      assertEquals("message" + startIndex++, post.getMessage());
+    }
+
+    // when posts limit is null, it should return 3 posts which is the default
+    threads = listThreads(null, null, AUTH_HEADERS);
+    thread = threads.getData().get(0);
+    assertEquals(3, thread.getPosts().size());
+
+    // limit 0 is not supported and should throw an exception
+    assertResponse(
+        () -> listThreads(null, 0, AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param limitPosts must be greater than or equal to 1]");
+
+    // limit greater than total number of posts should return correct response
+    threads = listThreads(null, 100, AUTH_HEADERS);
+    thread = threads.getData().get(0);
+    assertEquals(10, thread.getPosts().size());
   }
 
   @Test
@@ -281,9 +348,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   private static void validateThread(Thread thread, String message, String from, String about) {
     assertNotNull(thread.getId());
-    Post firstPost = thread.getPosts().get(0);
-    assertEquals(message, firstPost.getMessage());
-    assertEquals(from, firstPost.getFrom());
+    assertEquals(message, thread.getMessage());
+    assertEquals(from, thread.getCreatedBy());
     assertEquals(about, thread.getAbout());
   }
 
@@ -311,8 +377,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return new CreateThread().withFrom(USER.getName()).withMessage("message").withAbout(about);
   }
 
-  public static Post createPost() {
-    return new Post().withFrom(USER.getName()).withMessage("message");
+  public static Post createPost(String message) {
+    message = StringUtils.isNotEmpty(message) ? message : "message";
+    return new Post().withFrom(USER.getName()).withMessage(message);
   }
 
   public static Thread getThread(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -320,10 +387,11 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.get(target, Thread.class, authHeaders);
   }
 
-  public static ThreadList listThreads(String entityLink, Map<String, String> authHeaders)
+  public static ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
+    target = limitPosts != null ? target.queryParam("limitPosts", limitPosts) : target;
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
