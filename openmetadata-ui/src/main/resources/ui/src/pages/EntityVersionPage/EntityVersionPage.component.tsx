@@ -155,15 +155,15 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-
+                      serviceType,
                       ServiceCategory.DATABASE_SERVICES
                     )
                   : '',
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: database.name,
-                url: getDatabaseDetailsPath(database.fullyQualifiedName),
+                name: getPartialNameFromFQN(database.name, ['database']),
+                url: getDatabaseDetailsPath(database.name),
               },
               {
                 name: name,
@@ -208,7 +208,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-
+                      serviceType,
                       ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
@@ -258,7 +258,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-
+                      serviceType,
                       ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
@@ -308,7 +308,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 url: service.name
                   ? getServiceDetailsPath(
                       service.name,
-
+                      serviceType,
                       ServiceCategory.MESSAGING_SERVICES
                     )
                   : '',
@@ -372,7 +372,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-
+                          serviceType,
                           ServiceCategory.DATABASE_SERVICES
                         )
                       : '',
@@ -381,8 +381,8 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: database.name,
-                    url: getDatabaseDetailsPath(database.fullyQualifiedName),
+                    name: getPartialNameFromFQN(database.name, ['database']),
+                    url: getDatabaseDetailsPath(database.name),
                   },
                   {
                     name: name,
@@ -429,7 +429,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-
+                          serviceType,
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',
@@ -481,7 +481,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-
+                          serviceType,
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',
@@ -533,7 +533,7 @@ const EntityVersionPage: FunctionComponent = () => {
                     url: service.name
                       ? getServiceDetailsPath(
                           service.name,
-
+                          serviceType,
                           ServiceCategory.MESSAGING_SERVICES
                         )
                       : '',
