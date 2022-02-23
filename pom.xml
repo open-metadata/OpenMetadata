@@ -79,6 +79,7 @@
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
+    <atlas.version>2.1.0</atlas.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -98,6 +99,29 @@
         <groupId>com.macasaet.fernet</groupId>
         <artifactId>fernet-java8</artifactId>
         <version>${fernet.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.atlas</groupId>
+        <artifactId>atlas-client-v2</artifactId>
+        <version>${atlas.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>jsr311-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet.jsp</groupId>
+            <artifactId>jsp-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-core</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>

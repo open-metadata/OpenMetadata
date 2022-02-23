@@ -27,6 +27,10 @@
       <artifactId>fernet-java8</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.atlas</groupId>
+      <artifactId>atlas-client-v2</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.openmetadata</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>

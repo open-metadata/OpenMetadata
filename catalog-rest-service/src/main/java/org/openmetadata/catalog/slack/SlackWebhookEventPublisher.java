@@ -7,11 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Invocation;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,8 +22,8 @@ import org.openmetadata.catalog.type.FieldChange;
 
 @Slf4j
 public class SlackWebhookEventPublisher extends AbstractEventPublisher {
-  private Invocation.Builder target;
-  private Client client;
+  //  private Invocation.Builder target;
+  //  private Client client;
   private String openMetadataUrl;
 
   public SlackWebhookEventPublisher(SlackPublisherConfiguration config) {
@@ -36,8 +32,8 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
     clientBuilder.connectTimeout(10, TimeUnit.SECONDS);
     clientBuilder.readTimeout(12, TimeUnit.SECONDS);
-    client = clientBuilder.build();
-    target = client.target(slackWebhookURL).request();
+    //    client = clientBuilder.build();
+    //    target = client.target(slackWebhookURL).request();
     openMetadataUrl = refineUri(config.getOpenMetadataUrl());
   }
 
@@ -48,9 +44,9 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
 
   @Override
   public void onShutdown() {
-    if (client != null) {
-      client.close();
-    }
+    //    if (client != null) {
+    //      client.close();
+    //    }
   }
 
   @Override
@@ -58,14 +54,14 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
     for (ChangeEvent event : events.getData()) {
       try {
         SlackMessage slackMessage = buildSlackMessage(event);
-        Response response =
-            target.post(javax.ws.rs.client.Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
-        if (response.getStatus() >= 300 && response.getStatus() < 400) {
-          throw new EventPublisherException(
-              "Slack webhook callback is getting redirected. " + "Please check your configuration");
-        } else if (response.getStatus() >= 300 && response.getStatus() < 600) {
-          throw new SlackRetriableException(response.getStatusInfo().getReasonPhrase());
-        }
+        //        Response response =
+        //            target.post(javax.ws.rs.client.Entity.entity(slackMessage, MediaType.APPLICATION_JSON_TYPE));
+        //        if (response.getStatus() >= 300 && response.getStatus() < 400) {
+        //          throw new EventPublisherException(
+        //              "Slack webhook callback is getting redirected. " + "Please check your configuration");
+        //        } else if (response.getStatus() >= 300 && response.getStatus() < 600) {
+        //          throw new SlackRetriableException(response.getStatusInfo().getReasonPhrase());
+        //        }
       } catch (Exception e) {
         LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
       }
