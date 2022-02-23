@@ -104,7 +104,6 @@ export const getEntityOverview = (
           value: service,
           url: getServiceDetailsPath(
             service,
-
             ServiceCategory.DATABASE_SERVICES
           ),
           isLink: true,
@@ -195,7 +194,6 @@ export const getEntityOverview = (
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
-
             ServiceCategory.PIPELINE_SERVICES
           ),
           isLink: true,
@@ -238,7 +236,6 @@ export const getEntityOverview = (
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
-
             ServiceCategory.DASHBOARD_SERVICES
           ),
           isLink: true,
