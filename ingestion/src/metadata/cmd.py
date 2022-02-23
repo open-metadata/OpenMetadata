@@ -16,6 +16,7 @@ import sys
 from typing import List, Optional, Tuple
 
 import click
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from pydantic import ValidationError
 
 from metadata.__version__ import get_metadata_version
@@ -79,6 +80,32 @@ def ingest(config: str) -> None:
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)
+    except ValidationError as e:
+        click.echo(e, err=True)
+        sys.exit(1)
+
+    workflow.execute()
+    workflow.stop()
+    ret = workflow.print_status()
+    sys.exit(ret)
+
+
+@metadata.command()
+@click.option(
+    "-c",
+    "--config",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Profiler and Testing Workflow config",
+    required=True,
+)
+def profile(config: str) -> None:
+    """Main command for profiling and testing Table sources into Metadata"""
+    config_file = pathlib.Path(config)
+    workflow_config = load_config_file(config_file)
+
+    try:
+        logger.debug(f"Using config: {workflow_config}")
+        workflow = ProfilerWorkflow.create(workflow_config)
     except ValidationError as e:
         click.echo(e, err=True)
         sys.exit(1)
