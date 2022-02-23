@@ -45,44 +45,22 @@ class MssqlUsageSource(Source[TableQuery]):
         analysis_date:
         sql_stmt:
         alchemy_helper:
-        _extract_iter:
-        _database:
         report:
-        SQL_STATEMENT (str):
-        WHERE_CLAUSE_SUFFIX_KEY (str):
-        CLUSTER_SOURCE (str):
-        USE_CATALOG_AS_CLUSTER_NAME (str):
-        DATABASE_KEY (str):
-        SERVICE_TYPE (str):
-        DEFAULT_CLUSTER_SOURCE (str):
     """
 
     # SELECT statement from mysql information_schema
     # to extract table and column metadata
     SQL_STATEMENT = MSSQL_SQL_STATEMENT
 
-    # CONFIG KEYS
-    WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
-    CLUSTER_SOURCE = "cluster_source"
-    CLUSTER_KEY = "cluster_key"
-    USE_CATALOG_AS_CLUSTER_NAME = "use_catalog_as_cluster_name"
-    DATABASE_KEY = "database_key"
-    SERVICE_TYPE = DatabaseServiceType.MSSQL.value
-    DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
-
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
-        self.sql_stmt = MssqlUsageSource.SQL_STATEMENT.format(
-            start_date=start, end_date=end
-        )
+        self.sql_stmt = self.SQL_STATEMENT.format(start_date=start, end_date=end)
         self.alchemy_helper = SQLAlchemyHelper(
-            config, metadata_config, ctx, "MSSQL", self.sql_stmt
+            config, metadata_config, ctx, DatabaseServiceType.MSSQL.value, self.sql_stmt
         )
-        self._extract_iter: Union[None, Iterator] = None
-        self._database = "MSSQL"
         self.report = SQLSourceStatus()
 
     @classmethod
