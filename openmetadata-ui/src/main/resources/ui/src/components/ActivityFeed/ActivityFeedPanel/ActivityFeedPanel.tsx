@@ -157,7 +157,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-w-2/5 tw-bg-white tw-fixed tw-h-full tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000',
+          'tw-top-16 tw-right-0 tw-w-2/5 tw-bg-white tw-fixed tw-h-full tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -169,7 +169,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           onCancel={onCancel}
         />
         <FeedPanelBody
-          className="tw-h-full tw-overflow-y-auto tw-p-4 tw-pl-8"
+          className="tw-h-full tw-p-4 tw-pl-8"
           isLoading={isLoading}
           threadData={threadData as EntityThread}
         />
