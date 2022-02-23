@@ -46,6 +46,8 @@ import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.openmetadata.catalog.atlas.AtlasPublisherConfiguration;
+import org.openmetadata.catalog.atlas.AtlasEventPublisher;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
@@ -223,6 +225,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
           catalogApplicationConfig.getSlackEventPublishers()) {
         SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
         EventPubSub.addEventHandler(slackPublisher);
+      }
+    }
+    // register atlas Event publishers
+    if (catalogApplicationConfig.getAtlasEventPublishers() != null) {
+      for (AtlasPublisherConfiguration atlasPublisherConfiguration :
+          catalogApplicationConfig.getAtlasEventPublishers()) {
+        AtlasEventPublisher atlasPublisher = new AtlasEventPublisher(atlasPublisherConfiguration);
+        EventPubSub.addEventHandler(atlasPublisher);
       }
     }
   }

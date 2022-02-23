@@ -24,6 +24,7 @@ import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
+import org.openmetadata.catalog.atlas.AtlasPublisherConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
@@ -74,6 +75,11 @@ public class CatalogApplicationConfig extends Configuration {
   @Getter
   @Setter
   private List<SlackPublisherConfiguration> slackEventPublishers;
+
+  @JsonProperty("atlasEventPublishers")
+  @Getter
+  @Setter
+  private List<AtlasPublisherConfiguration> atlasEventPublishers;
 
   @JsonProperty("migrationConfiguration")
   @NotNull
