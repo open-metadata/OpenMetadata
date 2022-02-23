@@ -211,7 +211,9 @@ class ProfilerWorkflow:
         """
         for entity in self.list_entities():
             profile_and_tests: ProfileAndTests = self.processor.process(entity)
-            print(profile_and_tests)
+
+            if hasattr(self, "sink"):
+                self.sink.write_record(profile_and_tests)
 
     def print_status(self) -> int:
         click.echo()
