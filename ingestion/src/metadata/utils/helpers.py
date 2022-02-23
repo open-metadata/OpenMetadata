@@ -10,7 +10,7 @@
 #  limitations under the License.
 import logging
 from datetime import datetime, timedelta
-from typing import List
+from typing import Any, Dict, Iterable, List
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -181,3 +181,13 @@ def datetime_to_ts(date: datetime) -> int:
     Convert a given date to a timestamp as an Int
     """
     return int(date.timestamp())
+
+
+def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
+    """
+    Provides iterator of result row from SQLAlchemy helper
+    :return:
+    """
+    rows = alchemy_helper.execute_query()
+    for row in rows:
+        yield row

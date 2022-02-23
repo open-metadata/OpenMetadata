@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MSSQL source module"""
+from typing import Optional
 
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -27,6 +28,7 @@ class MssqlConfig(SQLConnectionConfig):
     use_pymssql: bool = False
     use_pyodbc: bool = False
     uri_string: str = ""
+    duration: Optional[int]
 
     def get_connection_url(self):
         if self.use_pyodbc:
