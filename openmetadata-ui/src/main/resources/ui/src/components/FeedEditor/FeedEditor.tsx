@@ -37,10 +37,11 @@ const modules = {
 interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   editorClass?: string;
   className?: string;
+  placeHolder?: string;
 }
 
 const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
-  ({ className, editorClass }: FeedEditorProp, ref) => {
+  ({ className, editorClass, placeHolder }: FeedEditorProp, ref) => {
     const [value, setValue] = useState<string>('');
     const onChangeHandler = (value: string) => {
       setValue(value);
@@ -59,6 +60,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
+          placeholder={placeHolder ?? 'Post a reply'}
           theme="snow"
           value={value}
           onChange={onChangeHandler}
