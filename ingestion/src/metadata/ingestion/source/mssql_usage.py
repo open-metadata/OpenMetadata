@@ -110,7 +110,6 @@ class MssqlUsageSource(Source[TableQuery]):
         :return:
         """
         for row in self._get_raw_extract_iter():
-            # print(row["query_text"])
             table_query = TableQuery(
                 query=row["query_type"],
                 user_name=row["user_name"],
