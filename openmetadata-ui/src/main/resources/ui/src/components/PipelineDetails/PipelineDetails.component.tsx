@@ -76,6 +76,7 @@ const PipelineDetails = ({
   isLineageLoading,
   isentityThreadLoading,
   entityThread,
+  postFeedHandler,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -430,6 +431,7 @@ const PipelineDetails = ({
                     className=""
                     feedList={entityThread}
                     isLoading={isentityThreadLoading}
+                    postFeedHandler={postFeedHandler}
                   />
                   <div />
                 </div>
