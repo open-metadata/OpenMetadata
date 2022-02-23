@@ -7,8 +7,7 @@ import org.openqa.selenium.WebDriver;
 
 @RequiredArgsConstructor
 public class Webhooks {
-  @NotNull
-  WebDriver webDriver;
+  @NotNull WebDriver webDriver;
 
   By webhookLink = By.linkText("Webhooks");
   By addWebhook = By.xpath("//button[@data-testid='add-webhook-button']");
