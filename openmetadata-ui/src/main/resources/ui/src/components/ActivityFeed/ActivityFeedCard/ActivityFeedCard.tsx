@@ -17,6 +17,7 @@ import { Post } from 'Models';
 import React, { FC, Fragment, HTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPartialNameFromFQN } from '../../../utils/CommonUtils';
 import {
   getEntityField,
@@ -89,7 +90,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
                   to={`${getEntityLink(
                     entityType as string,
                     entityFQN as string
-                  )}/activity_feed`}>
+                  )}/${TabSpecificField.ACTIVITY_FEED}`}>
                   <button className="link-text" disabled={AppState.isTourOpen}>
                     {getPartialNameFromFQN(
                       entityFQN as string,
@@ -130,6 +131,15 @@ const FeedFooter: FC<FeedFooterProp> = ({
   lastReplyTimeStamp,
   isFooterVisible,
 }) => {
+  const repliesCount = isUndefined(replies) ? 0 : replies - 1;
+
+  const getReplyText = (count: number) => {
+    if (count === 0) return 'Reply';
+    if (count === 1) return `${count} reply`;
+
+    return `${count} replies`;
+  };
+
   return (
     <div className={className}>
       {!isUndefined(repliedUsers) &&
@@ -147,9 +157,9 @@ const FeedFooter: FC<FeedFooterProp> = ({
           <p
             className="tw-ml-1 link-text tw-text-xs tw-mt-1.5"
             onClick={() => onThreadSelect?.(threadId as string)}>
-            {(replies ?? 0) > 1 ? `${replies} replies` : `${replies} reply`}
+            {getReplyText(repliesCount)}
           </p>
-          {lastReplyTimeStamp ? (
+          {lastReplyTimeStamp && repliesCount > 0 ? (
             <span className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1.5">
               Last reply{' '}
               {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
