@@ -126,12 +126,21 @@ public final class Entity {
     return dao.findEntityReferenceById(id);
   }
 
-  public static EntityReference getEntityReferenceByName(String entity, String fqn) throws IOException {
+  public static EntityReference getEntityReferenceByName(@NonNull String entity, @NonNull String fqn)
+      throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
     }
     return dao.findEntityReferenceByName(fqn);
+  }
+
+  public static EntityReference getEntityReferenceById(@NonNull String entity, @NonNull UUID id) throws IOException {
+    EntityDAO<?> dao = DAO_MAP.get(entity);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+    }
+    return dao.findEntityReferenceById(id);
   }
 
   public static <T> EntityReference getEntityReference(T entity) {

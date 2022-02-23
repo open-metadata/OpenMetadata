@@ -187,22 +187,14 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
     List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE, toBoolean(toInclude(user)));
-    List<EntityReference> roles = new ArrayList<>(roleIds.size());
-    for (String roleId : roleIds) {
-      roles.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(roleId)));
-    }
-    return roles;
+    return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
   }
 
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds =
         findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM, toBoolean(toInclude(user)));
-    List<EntityReference> teams = new ArrayList<>();
-    for (String teamId : teamIds) {
-      teams.add(daoCollection.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
-    }
-    return teams;
+    return EntityUtil.populateEntityReferences(teamIds, Entity.TEAM);
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
