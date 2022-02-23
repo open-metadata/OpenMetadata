@@ -67,7 +67,11 @@ class QueryParserProcessor(Processor):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+        cls,
+        config_dict: dict,
+        metadata_config_dict: dict,
+        ctx: WorkflowContext,
+        **kwargs
     ):
         config = QueryParserProcessorConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)

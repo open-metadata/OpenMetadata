@@ -198,6 +198,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
       authorizer = NoopAuthorizer.class.getConstructor().newInstance();
+      authorizer.init(null, jdbi);
       ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
       environment.jersey().register(filter);
     }

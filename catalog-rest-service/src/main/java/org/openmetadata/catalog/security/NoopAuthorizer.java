@@ -13,18 +13,38 @@
 
 package org.openmetadata.catalog.security;
 
+import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
+
+import java.io.IOException;
+import java.text.ParseException;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.RestUtil;
 
+@Slf4j
 public class NoopAuthorizer implements Authorizer {
+
+  private static final String fieldsParam = "roles,teams";
+  private UserRepository userRepository;
+  private String username = "anonymous";
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
-    /* Nothing to do */
+    CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    this.userRepository = new UserRepository(collectionDAO);
+    addAnonymousUser();
   }
 
   @Override
@@ -52,5 +72,34 @@ public class NoopAuthorizer implements Authorizer {
   @Override
   public boolean isBot(AuthenticationContext ctx) {
     return true;
+  }
+
+  private void addAnonymousUser() {
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    try {
+      userRepository.getByName(null, username, fields);
+    } catch (EntityNotFoundException ex) {
+      User user =
+          new User()
+              .withId(UUID.randomUUID())
+              .withName(username)
+              .withEmail(username + "@domain.com")
+              .withUpdatedBy(username)
+              .withUpdatedAt(System.currentTimeMillis());
+      addOrUpdateUser(user);
+    } catch (IOException | ParseException e) {
+      LOG.error("Failed to create anonymous user {}", username, e);
+    }
+  }
+
+  private void addOrUpdateUser(User user) {
+    try {
+      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      LOG.debug("Added anonymous user entry: {}", addedUser);
+    } catch (IOException | ParseException exception) {
+      // In HA set up the other server may have already added the user.
+      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Anonymous user entry: {} already exists.", user);
+    }
   }
 }

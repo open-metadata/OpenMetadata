@@ -73,7 +73,7 @@ public class DefaultAuthorizer implements Authorizer {
         if (user != null && (user.getIsAdmin() == null || !user.getIsAdmin())) {
           user.setIsAdmin(true);
         }
-        addOrUpdateAdmin(user);
+        addOrUpdateUser(user);
       } catch (EntityNotFoundException ex) {
         User user =
             new User()
@@ -83,7 +83,7 @@ public class DefaultAuthorizer implements Authorizer {
                 .withIsAdmin(true)
                 .withUpdatedBy(adminUser)
                 .withUpdatedAt(System.currentTimeMillis());
-        addOrUpdateAdmin(user);
+        addOrUpdateUser(user);
       } catch (IOException | ParseException e) {
         LOG.error("Failed to create admin user {}", adminUser, e);
       }
@@ -99,7 +99,7 @@ public class DefaultAuthorizer implements Authorizer {
         if (user != null && (user.getIsBot() == null || !user.getIsBot())) {
           user.setIsBot(true);
         }
-        addOrUpdateAdmin(user);
+        addOrUpdateUser(user);
       } catch (EntityNotFoundException ex) {
         User user =
             new User()
@@ -109,7 +109,7 @@ public class DefaultAuthorizer implements Authorizer {
                 .withIsBot(true)
                 .withUpdatedBy(botUser)
                 .withUpdatedAt(System.currentTimeMillis());
-        addOrUpdateAdmin(user);
+        addOrUpdateUser(user);
       } catch (IOException | ParseException e) {
         LOG.error("Failed to create admin user {}", botUser, e);
       }
@@ -245,7 +245,7 @@ public class DefaultAuthorizer implements Authorizer {
     return userRepository.getByName(null, userName, fields);
   }
 
-  private void addOrUpdateAdmin(User user) {
+  private void addOrUpdateUser(User user) {
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added admin user entry: {}", addedUser);
@@ -253,17 +253,6 @@ public class DefaultAuthorizer implements Authorizer {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Admin user entry: {} already exists.", user);
-    }
-  }
-
-  private void addOrUpdateBot(User user) {
-    try {
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
-      LOG.debug("Added bot user entry: {}", addedUser);
-    } catch (IOException | ParseException exception) {
-      // In HA se tup the other server may have already added the user.
-      LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
-      LOG.debug("Bot user entry: {} already exists.", user);
     }
   }
 }

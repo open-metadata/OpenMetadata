@@ -72,14 +72,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
     List<String> ids =
-        findFrom(entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY, entity.getDeleted());
+        findFrom(
+            entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
     return ids.size() == 1 ? Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
     List<String> ids =
-        findBoth(
-            entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
+        findTo(entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
     List<EntityReference> children = new ArrayList<>();
     for (String id : ids) {
       children.add(Entity.getEntityReference(Entity.GLOSSARY_TERM, UUID.fromString(id)));
@@ -120,7 +120,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       entity.setFullyQualifiedName(entity.getGlossary().getName() + "." + entity.getName());
     } else {
       EntityReference parent = Entity.getEntityReference(entity.getParent());
-      entity.setFullyQualifiedName(entity.getParent().getName() + "." + entity.getName());
+      entity.setFullyQualifiedName(parent.getName() + "." + entity.getName());
       entity.setParent(parent);
     }
 

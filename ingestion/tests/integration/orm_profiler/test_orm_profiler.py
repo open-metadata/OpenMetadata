@@ -20,8 +20,9 @@ from copy import deepcopy
 from unittest import TestCase
 
 import pytest
+from metadata.config.common import WorkflowExecutionError
 
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow, TestValidationException
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
 from metadata.generated.schema.entity.data.table import Table
 
@@ -114,39 +115,43 @@ class ProfilerWorkflowTest(TestCase):
         on top of the Users table
         """
         workflow_config = deepcopy(ingestion_config)
-        workflow_config["profiler"] = {
-            "name": "my_profiler",
-            "table_metrics": ["row_number"],
-            "metrics": ["min", "COUNT", "null_count"],
-        }
-
-        workflow_config["tests"] = {
-            "name": "my_tests",
-            "table_tests": [
-                {
-                    "name": "check row number",
-                    "table": "test_sqlite.main.users",
-                    "expression": "row_number == 2",
-                }
-            ],
-            "column_tests": [
-                {
-                    "name": "some column tests",
-                    "table": "test_sqlite.main.users",
-                    "columns": [
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "table_metrics": ["row_number"],
+                    "metrics": ["min", "COUNT", "null_count"],
+                },
+                "tests": {
+                    "name": "my_tests",
+                    "table_tests": [
                         {
-                            "name": "check name count",
-                            "column": "name",
-                            "expression": "count < 10"
-                        },
+                            "name": "check row number",
+                            "table": "test_sqlite.main.users",
+                            "expression": "row_number == 2",
+                        }
+                    ],
+                    "column_tests": [
                         {
-                            "name": "check null count",
-                            "column": "nickname",
-                            "expression": "null_count == 0"
+                            "name": "some column tests",
+                            "table": "test_sqlite.main.users",
+                            "columns": [
+                                {
+                                    "name": "check name count",
+                                    "column": "name",
+                                    "expression": "count < 10"
+                                },
+                                {
+                                    "name": "check null count",
+                                    "column": "nickname",
+                                    "expression": "null_count == 0"
+                                }
+                            ]
                         }
                     ]
                 }
-            ]
+            }
         }
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
@@ -154,7 +159,7 @@ class ProfilerWorkflowTest(TestCase):
         status = profiler_workflow.print_status()
         profiler_workflow.stop()
 
-        assert status == {'check_row_number': True, 'check_name_count': True, 'check_null_count': False}
+        assert status == 1  # We have a test error, so we get a failure with exit status 1
 
-        with pytest.raises(TestValidationException):
+        with pytest.raises(WorkflowExecutionError):
             profiler_workflow.raise_from_status()

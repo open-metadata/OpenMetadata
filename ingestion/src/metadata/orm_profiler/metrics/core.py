@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Any, Dict, Optional
 
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 # When creating complex metrics, use inherit_cache = CACHE
@@ -63,8 +64,12 @@ class Metric(ABC):
     If not specified, it is a Table metric.
     """
 
-    def __init__(self, col: Optional[InstrumentedAttribute] = None):
+    def __init__(self, col: Optional[InstrumentedAttribute] = None, **kwargs):
         self.col = col
+
+        # We allow to pass any metric specific kwarg
+        for key, value in kwargs.items():
+            self.__setattr__(key, value)
 
     @classmethod
     def name(cls) -> str:
@@ -98,6 +103,23 @@ class StaticMetric(Metric, ABC):
     def fn(self):
         """
         SQLAlchemy function to be executed in Query
+        """
+
+
+class QueryMetric(Metric, ABC):
+    """
+    Metric that needs to execute a fully fledged
+    query to output +1 rows as a result
+    """
+
+    @abstractmethod
+    def query(self, session: Optional[Session] = None):
+        """
+        SQLAlchemy query to execute with .all()
+
+        Note that we might need to pass the session
+        from the profiler to precook some
+        necessary ingredients.
         """
 
 
