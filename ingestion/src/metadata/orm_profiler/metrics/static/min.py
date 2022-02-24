@@ -24,6 +24,10 @@ class Min(StaticMetric):
     Given a column, return the min value.
     """
 
+    @classmethod
+    def name(cls):
+        return "min"
+
     @_label
     def fn(self):
         return func.min(self.col)

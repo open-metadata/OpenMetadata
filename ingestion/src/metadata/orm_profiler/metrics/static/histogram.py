@@ -36,6 +36,10 @@ class Histogram(QueryMetric):
     - For a concatenable (str, text...) return the AVG length
     """
 
+    @classmethod
+    def name(cls):
+        return "histogram"
+
     def query(self, session: Optional[Session] = None):
         """
         Build the histogram query

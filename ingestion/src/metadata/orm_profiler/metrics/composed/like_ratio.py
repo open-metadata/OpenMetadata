@@ -25,7 +25,12 @@ class LikeRatio(ComposedMetric):
     compute the LIKE ratio
     """
 
-    def required_metrics(self) -> Tuple[str, ...]:
+    @classmethod
+    def name(cls):
+        return "likeRatio"
+
+    @classmethod
+    def required_metrics(cls) -> Tuple[str, ...]:
         return Count.name(), LikeCount.name()
 
     @property

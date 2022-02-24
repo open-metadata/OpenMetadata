@@ -35,7 +35,7 @@ from metadata.orm_profiler.api.models import (
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.core import Profiler, SingleProfiler
-from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
+from metadata.orm_profiler.profiles.default import SimpleProfiler, SimpleTableProfiler
 from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.core import Validation
 from metadata.orm_profiler.validations.models import TestDef

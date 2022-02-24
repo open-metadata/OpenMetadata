@@ -17,8 +17,8 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Any, Dict, Optional, Tuple, TypeVar
 
+from sqlalchemy import Column
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 # When creating complex metrics, use inherit_cache = CACHE
 CACHE = True
@@ -64,7 +64,7 @@ class Metric(ABC):
     If not specified, it is a Table metric.
     """
 
-    def __init__(self, col: Optional[InstrumentedAttribute] = None, **kwargs):
+    def __init__(self, col: Optional[Column] = None, **kwargs):
         self.col = col
 
         # We allow to pass any metric specific kwarg
@@ -72,11 +72,21 @@ class Metric(ABC):
             self.__setattr__(key, value)
 
     @classmethod
+    @abstractmethod
     def name(cls) -> str:
         """
-        Metric name
+        Metric name. Follow JSON Schema specifications
         """
-        return cls.__name__.upper()
+
+    @classmethod
+    def is_col_metric(cls) -> bool:
+        """
+        Marks the metric as table or column metric.
+
+        By default, assume that a metric is a column
+        metric. Table metrics should override this.
+        """
+        return True
 
     @property
     def metric_type(self):
@@ -91,7 +101,7 @@ class Metric(ABC):
         We can override this for things like
         variance, where it will be a float
         """
-        return self.col.type.python_type
+        return self.col.type.python_type if self.col else None
 
 
 MetricType = TypeVar("MetricType", bound=Metric)
@@ -126,25 +136,6 @@ class QueryMetric(Metric, ABC):
         """
 
 
-class TimeMetric(Metric, ABC):
-    """
-    Time Metric definition
-    """
-
-    @property
-    @abstractmethod
-    def window(self):
-        """
-        Window time to run the validation
-        """
-
-    @abstractmethod
-    def fn(self):
-        """
-        SQLAlchemy function to be executed in Query
-        """
-
-
 class CustomMetric(Metric, ABC):
     """
     Custom metric definition
@@ -167,8 +158,9 @@ class ComposedMetric(Metric, ABC):
     directly in the profiler.
     """
 
+    @classmethod
     @abstractmethod
-    def required_metrics(self) -> Tuple[str, ...]:
+    def required_metrics(cls) -> Tuple[str, ...]:
         """
         Return a tuple of the required metrics' names
         necessary to compute the composed metric.
@@ -184,26 +176,3 @@ class ComposedMetric(Metric, ABC):
         This metric computes its value based on
         the results already present in the Profiler
         """
-
-
-class RuleMetric(Metric, ABC):
-    """
-    Useful when we need to take into consideration the
-    state of more than one column at a time.
-
-    E.g., the validation would be:
-    if `state` is `delivered`, `payment` should be informed.
-
-    This Metric is based on a target column, the one we will
-    use to inform the results, and the filters, which will
-    define the domain.
-
-    TODO: Figure out the filters signature. We might need
-          to come back here after defining the validations.
-    """
-
-    def __init__(
-        self, target_col: InstrumentedAttribute, *filters: InstrumentedAttribute
-    ):
-        super().__init__(col=target_col)
-        self._filters = filters
