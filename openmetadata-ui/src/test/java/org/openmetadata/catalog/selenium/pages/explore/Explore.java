@@ -3,7 +3,7 @@ package org.openmetadata.catalog.selenium.pages.explore;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
@@ -17,6 +17,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 class Explore {
   WebDriver webDriver;
   static String url = Property.getInstance().getURL();
@@ -32,7 +33,6 @@ class Explore {
   ExplorePage explorePage;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  private static final Logger LOG = Logger.getLogger(Explore.class.getName());
   Integer[] check;
 
   @BeforeEach

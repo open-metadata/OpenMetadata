@@ -17,13 +17,12 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DashboardDetails;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
-import org.openmetadata.catalog.selenium.objectRepository.TopicDetails;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -32,6 +31,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(5)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardDetailsPageTest {
@@ -48,7 +48,6 @@ public class DashboardDetailsPageTest {
   static WebDriverWait wait;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  private static final Logger LOG = Logger.getLogger(TopicDetails.class.getName());
   String description = "Test@1234";
   String updatedDescription = "Updated Description";
   String xpath = "//div[@data-testid='description']/div/span";
