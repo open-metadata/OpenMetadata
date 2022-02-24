@@ -196,24 +196,15 @@ def create_lineage(from_table, to_table, query_info, metadata):
         to_entity: Table = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
         if not from_entity or not to_entity:
             return None
-        from_entity_id = (
-            from_entity.id.__root__
-            if hasattr(from_entity.id, "__root__")
-            else from_entity.id
-        )
-
-        to_entity_id = (
-            to_entity.id.__root__ if hasattr(to_entity.id, "__root__") else to_entity.id
-        )
 
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
-                    id=from_entity_id,
+                    id=from_entity.id.__root__,
                     type=query_info["from_type"],
                 ),
                 toEntity=EntityReference(
-                    id=to_entity_id,
+                    id=to_entity.id.__root__,
                     type=query_info["to_type"],
                 ),
             )
@@ -232,13 +223,12 @@ def ingest_lineage(query_info, metadata_config):
 
     result = LineageRunner(query_info["sql"])
     metadata = OpenMetadata(metadata_config)
-    if result.target_tables and result.intermediate_tables:
-        for intermediate_table in result.intermediate_tables:
-            for source_table in result.source_tables:
-                create_lineage(source_table, intermediate_table, query_info, metadata)
-            for target_table in result.target_tables:
-                create_lineage(intermediate_table, target_table, query_info, metadata)
-    elif result.target_tables:
+    for intermediate_table in result.intermediate_tables:
+        for source_table in result.source_tables:
+            create_lineage(source_table, intermediate_table, query_info, metadata)
+        for target_table in result.target_tables:
+            create_lineage(intermediate_table, target_table, query_info, metadata)
+    if not result.intermediate_tables:
         for target_table in result.target_tables:
             for source_table in result.source_tables:
                 create_lineage(source_table, target_table, query_info, metadata)
