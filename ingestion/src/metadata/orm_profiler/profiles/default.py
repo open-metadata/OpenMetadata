@@ -37,9 +37,9 @@ class DefaultProfiler(Profiler):
             # Table Metrics
             Metrics.ROW_NUMBER.value,
             # Column Metrics
-            Metrics.AVG.value,
+            Metrics.MEAN.value,
             Metrics.COUNT.value,
-            Metrics.DISTINCT.value,
+            Metrics.DISTINCT_COUNT.value,
             Metrics.MIN.value,
             Metrics.MIN_LENGTH.value,
             Metrics.MAX.value,

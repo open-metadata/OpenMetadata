@@ -49,9 +49,9 @@ class Metrics(MetricRegistry):
     """
 
     # Static Metrics
-    AVG = Mean
+    MEAN = Mean
     COUNT = Count
-    DISTINCT = DistinctCount
+    DISTINCT_COUNT = DistinctCount
     HISTOGRAM = Histogram
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount
