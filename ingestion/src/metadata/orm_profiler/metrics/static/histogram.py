@@ -53,8 +53,10 @@ class Histogram(QueryMetric):
         if not is_quantifiable(self.col.type):
             return None
 
+        num_bins = self.bins if hasattr(self, "bins") else 5
+
         bins = session.query(
-            ((func.max(self.col) - func.min(self.col)) / float(self.bins - 1)).label(
+            ((func.max(self.col) - func.min(self.col)) / float(num_bins - 1)).label(
                 "step"
             )
         )
