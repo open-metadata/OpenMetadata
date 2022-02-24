@@ -12,7 +12,8 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, HTMLAttributes, useRef } from 'react';
+import React, { FC, HTMLAttributes, useState } from 'react';
+import { HTMLToMarkdown } from '../../../utils/FeedUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import FeedEditor from '../../FeedEditor/FeedEditor';
@@ -21,32 +22,33 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: (value: string) => void;
   buttonClass?: string;
 }
-type EditorContentRef = {
-  getEditorValue: () => string;
-};
 
 const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   className,
   buttonClass = '',
   onSave,
 }) => {
-  const editorRef = useRef<EditorContentRef>();
+  const [editorValue, setEditorValue] = useState<string>('');
+
+  const onChangeHandler = (value: string) => {
+    setEditorValue(HTMLToMarkdown.turndown(value));
+  };
   const onSaveHandler = () => {
-    if (editorRef.current) {
-      if (editorRef.current?.getEditorValue()) {
-        onSave?.(editorRef.current?.getEditorValue());
-      }
-    }
+    setEditorValue('');
+    onSave?.(editorValue);
   };
 
   return (
     <div className={classNames('tw-relative', className)}>
-      <FeedEditor ref={editorRef} />
+      <FeedEditor
+        defaultValue={editorValue}
+        onChangeHandler={onChangeHandler}
+      />
       <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
         <Button
           className={classNames('tw-bg-gray-400', buttonClass)}
           size="small"
-          theme="default"
+          theme={editorValue.length > 0 ? 'primary' : 'default'}
           onClick={onSaveHandler}>
           <SVGIcons alt="paper-plane" icon="icon-paper-plane" width="18px" />
         </Button>

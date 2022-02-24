@@ -3,6 +3,7 @@ import MarkdownShortcuts from 'quill-markdown-shortcuts';
 import React, {
   forwardRef,
   HTMLAttributes,
+  useEffect,
   useImperativeHandle,
   useState,
 } from 'react';
@@ -35,16 +36,28 @@ const modules = {
 };
 
 interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
+  defaultValue?: string;
   editorClass?: string;
   className?: string;
   placeHolder?: string;
+  onChangeHandler?: (value: string) => void;
 }
 
 const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
-  ({ className, editorClass, placeHolder }: FeedEditorProp, ref) => {
-    const [value, setValue] = useState<string>('');
-    const onChangeHandler = (value: string) => {
+  (
+    {
+      className,
+      editorClass,
+      placeHolder,
+      onChangeHandler,
+      defaultValue = '',
+    }: FeedEditorProp,
+    ref
+  ) => {
+    const [value, setValue] = useState<string>(defaultValue);
+    const handleOnChange = (value: string) => {
       setValue(value);
+      onChangeHandler?.(value);
     };
 
     useImperativeHandle(ref, () => ({
@@ -55,6 +68,10 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       },
     }));
 
+    useEffect(() => {
+      setValue(defaultValue);
+    }, [defaultValue]);
+
     return (
       <div className={className}>
         <ReactQuill
@@ -63,7 +80,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           placeholder={placeHolder ?? 'Post a reply'}
           theme="snow"
           value={value}
-          onChange={onChangeHandler}
+          onChange={handleOnChange}
         />
       </div>
     );
