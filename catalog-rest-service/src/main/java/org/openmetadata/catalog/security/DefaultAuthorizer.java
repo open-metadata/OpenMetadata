@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
-
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Collections;
@@ -32,6 +30,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -66,7 +65,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddAdminUsers() {
     LOG.debug("Checking user entries for admin users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
     for (String adminUser : adminUsers) {
       try {
         User user = userRepository.getByName(null, adminUser, fields);
@@ -92,7 +91,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
     for (String botUser : botUsers) {
       try {
         User user = userRepository.getByName(null, botUser, fields);
@@ -205,7 +204,7 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isAdmin(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
     try {
       User user = userRepository.getByName(null, userName, fields);
       if (user.getIsAdmin() == null) {
@@ -221,7 +220,7 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isBot(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
     try {
       User user = userRepository.getByName(null, userName, fields);
       if (user.getIsBot() == null) {
@@ -241,7 +240,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
     return userRepository.getByName(null, userName, fields);
   }
 

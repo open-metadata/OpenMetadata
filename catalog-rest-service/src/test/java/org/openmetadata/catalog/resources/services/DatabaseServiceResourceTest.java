@@ -174,7 +174,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     createAirflowPipeline.withPipelineConfig(pipelineConfig);
     AirflowPipeline airflowPipeline =
         airflowPipelineResourceTest.createEntity(createAirflowPipeline, ADMIN_AUTH_HEADERS);
-    DatabaseService updatedService = getEntity(service.getId(), "airflowPipeline", ADMIN_AUTH_HEADERS);
+    DatabaseService updatedService = getEntity(service.getId(), "airflowPipelines", ADMIN_AUTH_HEADERS);
     assertEquals(1, updatedService.getAirflowPipelines().size());
     EntityReference expectedPipeline = updatedService.getAirflowPipelines().get(0);
     assertEquals(airflowPipeline.getId(), expectedPipeline.getId());
@@ -246,11 +246,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     }
   }
 
-  private void validatePassword(String fernetKey, String expected, String tokenized) {
-    Fernet fernet = new Fernet(fernetKey);
-    assertEquals(expected, fernet.decrypt(tokenized));
-  }
-
   @Override
   public CreateDatabaseService createRequest(
       String name, String description, String displayName, EntityReference owner) {
@@ -279,12 +274,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public void validateUpdatedEntity(
-      DatabaseService service, CreateDatabaseService request, Map<String, String> authHeaders) {
-    validateCreatedEntity(service, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(DatabaseService expected, DatabaseService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
@@ -300,19 +289,19 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
    */
   @Override
   public void validateGetWithDifferentFields(DatabaseService service, boolean byName) throws HttpResponseException {
-    String fields = "owner";
+    String fields = "";
     service =
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(
-        service.getHref(),
-        service.getOwner(),
-        service.getVersion(),
-        service.getUpdatedBy(),
-        service.getServiceType(),
-        service.getDatabaseConnection(),
-        service.getUpdatedAt());
+    TestUtils.assertListNull(service.getOwner());
+
+    fields = "owner";
+    service =
+        byName
+            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+    TestUtils.assertListNotNull(service.getOwner());
   }
 
   @Override

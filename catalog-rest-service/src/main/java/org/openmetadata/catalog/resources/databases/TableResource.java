@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -107,9 +106,14 @@ public class TableResource {
   }
 
   static final String FIELDS =
-      "columns,tableConstraints,usageSummary,owner,"
+      "tableConstraints,usageSummary,owner,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Table.class);
+
+  static {
+    // Add a field parameter called tests that represents fields - tableTests and columnTests
+    ALLOWED_FIELDS.add("tests");
+  }
 
   @GET
   @Operation(
@@ -158,7 +162,7 @@ public class TableResource {
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Table> tables;
     if (before != null) { // Reverse paging
@@ -199,7 +203,7 @@ public class TableResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -233,7 +237,7 @@ public class TableResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
   }
 
@@ -349,7 +353,7 @@ public class TableResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Table table = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(table).getEntityReference(), patch);
@@ -559,7 +563,7 @@ public class TableResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "location");
+    Fields fields = new Fields(ALLOWED_FIELDS, "location");
     dao.deleteLocation(id);
     Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);

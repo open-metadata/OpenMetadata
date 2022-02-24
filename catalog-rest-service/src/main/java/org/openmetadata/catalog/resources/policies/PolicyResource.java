@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -120,8 +119,8 @@ public class PolicyResource {
     }
   }
 
-  public static final String FIELDS = "displayName,description,owner,policyUrl,enabled,rules,location";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final String FIELDS = "owner,location";
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Policy.class);
 
   @GET
   @Valid
@@ -166,7 +165,7 @@ public class PolicyResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Policy> policies;
     if (before != null) { // Reverse paging
@@ -206,7 +205,7 @@ public class PolicyResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -239,7 +238,7 @@ public class PolicyResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Policy policy = dao.getByName(uriInfo, fqn, fields, include);
     return addHref(uriInfo, policy);
   }
@@ -334,7 +333,7 @@ public class PolicyResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, "owner");
     Policy policy = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
 

@@ -15,12 +15,13 @@ package org.openmetadata.catalog.resources.policies;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
@@ -103,11 +104,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
     assertEquals(createRequest.getPolicyUrl(), policy.getPolicyUrl());
-  }
-
-  @Override
-  public void validateUpdatedEntity(Policy updatedEntity, CreatePolicy request, Map<String, String> authHeaders) {
-    validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   @Override
@@ -332,29 +328,21 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   /** Validate returned fields GET .../policies/{id}?fields="..." or GET .../policies/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
-    // .../policies?fields=owner
-    String fields = "owner";
+    String fields = "";
     policy =
         byName
             ? getPolicyByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getPolicy(policy.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertNotNull(policy.getOwner());
-
-    // .../policies?fields=owner,displayName
-    fields = "owner,displayName";
-    policy =
-        byName
-            ? getPolicyByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getPolicy(policy.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertNotNull(policy.getOwner());
+    assertListNull(policy.getOwner(), policy.getLocation());
 
     // .../policies?fields=owner,displayName,policyUrl
-    fields = "owner,displayName,policyUrl";
+    fields = "owner,location";
     policy =
         byName
             ? getPolicyByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getPolicy(policy.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertNotNull(policy.getOwner());
+    // Field location is set during creation - tested elsewhere
+    assertListNotNull(policy.getOwner() /*, policy.getLocation()*/);
   }
 
   public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
