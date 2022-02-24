@@ -1,15 +1,14 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+@RequiredArgsConstructor
 public class MyDataPage {
 
-  public WebDriver webDriver;
-
-  public MyDataPage(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By closeWhatsNew = By.cssSelector("[data-testid='closeWhatsNew']");
   By openWhatsNew = By.xpath("//button[@data-testid='whatsnew-modal']");

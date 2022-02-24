@@ -1,17 +1,15 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class TopicDetails {
-
-  WebDriver webDriver;
-
-  public TopicDetails(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By addTag = By.xpath("//div[@data-testid=\"tag-conatiner\"]");
   By selectTag = By.xpath("(//div[@data-testid=\"list-item\"])[2]");
