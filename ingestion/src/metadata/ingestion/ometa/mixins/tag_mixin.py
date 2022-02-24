@@ -6,6 +6,8 @@ To be used be OpenMetadata
 import logging
 from typing import List, Optional, Type, TypeVar
 
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import CreateTagCategoryRequest
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
@@ -40,7 +42,7 @@ class OMetaTagMixin:
             logger.error(f"GET {entity.__name__}. Error {err.status_code} - {err}")
             return None
 
-    def create_tag_category(self, tag_category_body: TagCategory):
+    def create_tag_category(self, tag_category_body: CreateTagCategoryRequest):
         """Method to create new tag category
         Args:
             tag_category_body (TagCategory): body of the request
@@ -63,7 +65,7 @@ class OMetaTagMixin:
         return self._get(entity=entity, path=path, fields=fields)
 
     def update_tag_category(
-        self, category_name: str, tag_category_body: TagCategory
+        self, category_name: str, tag_category_body: CreateTagCategoryRequest
     ) -> None:
         """Method to update a tag category
         Args:
@@ -74,7 +76,7 @@ class OMetaTagMixin:
         resp = self.client.put(path=path, data=tag_category_body.json())
         logger.info(f"Updated tag category: {resp}")
 
-    def create_primary_tag(self, category_name: str, primary_tag_body: Tag) -> None:
+    def create_primary_tag(self, category_name: str, primary_tag_body: CreateTagRequest) -> None:
         """Method to create a primary tag within a category
         Args:
             category_name (str): tag category name
@@ -106,7 +108,7 @@ class OMetaTagMixin:
         self,
         category_name: str,
         primary_tag_fqn: str,
-        primary_tag_body: Tag,
+        primary_tag_body: CreateTagRequest,
     ) -> None:
         """Update primary tag info
 
@@ -121,7 +123,7 @@ class OMetaTagMixin:
         logger.info(f"Updated primary tag: {resp}")
 
     def create_secondary_tag(
-        self, category_name: str, primary_tag_fqn: str, secondary_tag_body: Tag
+        self, category_name: str, primary_tag_fqn: str, secondary_tag_body: CreateTagRequest
     ) -> None:
         """Method to create a secondary tag under a primary tag
         Args:
@@ -162,7 +164,7 @@ class OMetaTagMixin:
         category_name: str,
         primary_tag_fqn: str,
         secondary_tag_fqn: str,
-        secondary_tag_body: Tag,
+        secondary_tag_body: CreateTagRequest,
     ) -> None:
         """Update secondary tag information
 
