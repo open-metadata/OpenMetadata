@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -91,7 +92,7 @@ public final class CommonUtil {
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
   public static Date getDateByOffset(Date date, int days) throws ParseException {
-    Calendar calendar = Calendar.getInstance();
+    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     calendar.setTime(date);
     calendar.add(Calendar.DATE, days);
     return calendar.getTime();
@@ -99,7 +100,7 @@ public final class CommonUtil {
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
   public static Date getDateByOffsetSeconds(Date date, int seconds) throws ParseException {
-    Calendar calendar = Calendar.getInstance();
+    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     calendar.setTime(date);
     calendar.add(Calendar.SECOND, seconds);
     return calendar.getTime();

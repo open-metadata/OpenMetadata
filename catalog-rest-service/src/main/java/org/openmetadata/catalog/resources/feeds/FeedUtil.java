@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
-import java.util.Collections;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.type.Post;
 
@@ -22,14 +21,9 @@ public final class FeedUtil {
   private FeedUtil() {}
 
   public static void addPost(Thread thread, Post post) {
-    if (thread.getPosts() == null || thread.getPosts().isEmpty()) {
-      // First post in the thread
-      post.setPostTs(thread.getThreadTs());
-      thread.setPosts(Collections.singletonList(post));
-    } else {
-      // Add new post to the thread
-      post.setPostTs(System.currentTimeMillis());
-      thread.getPosts().add(post);
-    }
+    // Add new post to the thread
+    post.setPostTs(System.currentTimeMillis());
+    thread.getPosts().add(post);
+    thread.withPostsCount(thread.getPosts().size());
   }
 }
