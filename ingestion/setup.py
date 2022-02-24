@@ -102,6 +102,7 @@ plugins: Dict[str, Set[str]] = {
         "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
         "GeoAlchemy2",
+        "sqllineage==1.3.3",
     },
     "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
