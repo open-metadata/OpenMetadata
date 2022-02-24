@@ -140,16 +140,14 @@ def test_profile_def():
     profile_config = deepcopy(config)
     profile_config["processor"]["config"]["profiler"] = {
         "name": "my_profiler",
-        "table_metrics": ["row_number"],
-        "metrics": ["min", "COUNT", "null_count"],
+        "metrics": ["row_count", "min", "COUNT", "null_count"],
     }
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
 
     profile_definition = ProfilerDef(
         name="my_profiler",
-        table_metrics=["ROW_NUMBER"],
-        metrics=["MIN", "COUNT", "NULL_COUNT"],
+        metrics=["ROW_COUNT", "MIN", "COUNT", "NULL_COUNT"],
         time_metrics=None,
         custom_metrics=None,
     )
@@ -196,13 +194,13 @@ def test_tests_def():
             {
                 "name": "first_test",
                 "table": "service.db.name",
-                "expression": "row_number > 100",
+                "expression": "row_count > 100",
                 "enabled": False,
             },
             {
                 "name": "another_test",
                 "table": "service.db.name",
-                "expression": "row_number > 1000 & row_number < 2000",
+                "expression": "row_count > 1000 & row_count < 2000",
             },
         ],
         "column_tests": [

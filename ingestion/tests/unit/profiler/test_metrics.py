@@ -134,10 +134,10 @@ class MetricsTest(TestCase):
         """
         Check Table Metric run
         """
-        table_count = Metrics.ROW_NUMBER.value
+        table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(table_count, session=self.session, table=User)
         res = profiler.execute()._table_results
-        assert res.get(Metrics.ROW_NUMBER.name) == 2
+        assert res.get(Metrics.ROW_COUNT.name) == 2
 
     def test_avg(self):
         """
