@@ -26,10 +26,7 @@ from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.orm_profiler.api.models import (
-    ProfileAndTests,
-    ProfilerProcessorConfig,
-)
+from metadata.orm_profiler.api.models import ProfileAndTests, ProfilerProcessorConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.core import Profiler
@@ -106,9 +103,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return cls(ctx, config, metadata_config, session=session)
 
-    def build_profiler(
-        self, orm
-    ) -> Profiler:
+    def build_profiler(self, orm) -> Profiler:
         """
         Given a column from the entity, build the profiler
 
@@ -118,12 +113,12 @@ class OrmProfilerProcessor(Processor[Table]):
             return DefaultProfiler(session=self.session, table=orm)
 
         # Here we will need to add the logic to pass kwargs to the metrics
-        metrics = [
-            Metrics.get(name) for name in self.config.profiler.metrics
-        ]
+        metrics = [Metrics.get(name) for name in self.config.profiler.metrics]
 
         return Profiler(
-            *metrics, session=self.session, table=orm,
+            *metrics,
+            session=self.session,
+            table=orm,
         )
 
     def profile_entity(self, orm, table: Table) -> TableProfile:
@@ -170,9 +165,7 @@ class OrmProfilerProcessor(Processor[Table]):
         if not isinstance(orm, DeclarativeMeta):
             raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
 
-        logger.info(
-            f"Checking validations for {orm}..."
-        )
+        logger.info(f"Checking validations for {orm}...")
 
         # We have all validations parsed at read-time
         test_def: TestDef = self.config.tests

@@ -118,8 +118,17 @@ class ProfilerTest(TestCase):
         like_ratio = Metrics.LIKE_RATIO.value
 
         # This should run properly
-        Profiler(like, count, like_ratio, session=self.session, table=User, use_cols=[User.age])
+        Profiler(
+            like,
+            count,
+            like_ratio,
+            session=self.session,
+            table=User,
+            use_cols=[User.age],
+        )
 
         with pytest.raises(MissingMetricException):
             # We are missing ingredients here
-            Profiler(like, like_ratio, session=self.session, table=User, use_cols=[User.age])
+            Profiler(
+                like, like_ratio, session=self.session, table=User, use_cols=[User.age]
+            )
