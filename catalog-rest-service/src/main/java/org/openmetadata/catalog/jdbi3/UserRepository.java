@@ -22,7 +22,6 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -31,6 +30,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -66,25 +66,36 @@ public class UserRepository extends EntityRepository<User> {
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) throws IOException {
-    List<EntityReference> rolesRef = user.getRoles();
-    Set<UUID> existingRoleIds = new HashSet<>();
-    if (rolesRef != null) {
-      existingRoleIds = user.getRoles().stream().map(EntityReference::getId).collect(Collectors.toSet());
-    }
+  public void prepare(User user) throws IOException, ParseException {
+    // Get roles assigned to the user.
+    Set<UUID> roleIds =
+        Optional.ofNullable(user.getRoles()).orElse(Collections.emptyList()).stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+    // Get default role set up globally.
+    daoCollection.roleDAO().getDefaultRolesIds().forEach(roleIdStr -> roleIds.add(UUID.fromString(roleIdStr)));
+    // Get default roles from the teams that the user belongs to.
+    getTeamDefaultRoles(user).forEach(roleRef -> roleIds.add(roleRef.getId()));
 
-    // Find default roles to add.
-    Set<UUID> defaultRoleIds =
-        daoCollection.roleDAO().getDefaultRolesIds().stream().map(UUID::fromString).collect(Collectors.toSet());
-    defaultRoleIds.removeAll(existingRoleIds);
-
-    if (rolesRef == null || rolesRef.isEmpty()) {
-      rolesRef = new ArrayList<>();
-    }
-    for (UUID roleId : defaultRoleIds) {
+    // Assign roles.
+    List<EntityReference> rolesRef = new ArrayList<>(roleIds.size());
+    for (UUID roleId : roleIds) {
       rolesRef.add(daoCollection.roleDAO().findEntityReferenceById(roleId));
     }
+    rolesRef.sort(EntityUtil.compareEntityReference);
     user.setRoles(rolesRef);
+  }
+
+  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException, ParseException {
+    List<EntityReference> teamsRef = Optional.ofNullable(user.getTeams()).orElse(Collections.emptyList());
+    List<EntityReference> defaultRoles = new ArrayList<>();
+    for (EntityReference teamRef : teamsRef) {
+      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")));
+      if (team != null && team.getDefaultRoles() != null) {
+        defaultRoles.addAll(team.getDefaultRoles());
+      }
+    }
+    return defaultRoles;
   }
 
   @Override
@@ -351,7 +362,7 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("email", original.getEntity().getEmail(), updated.getEntity().getEmail());
     }
 
-    private void updateRoles(User origUser, User updatedUser) throws JsonProcessingException {
+    private void updateRoles(User origUser, User updatedUser) throws IOException {
       // Remove roles from original and add roles from updated
       daoCollection
           .relationshipDAO()

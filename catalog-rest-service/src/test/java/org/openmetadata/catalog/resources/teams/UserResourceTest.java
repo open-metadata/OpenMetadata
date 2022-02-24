@@ -21,6 +21,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -100,27 +101,90 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Order(Integer.MAX_VALUE) // Run this test last to avoid side effects of default role creation to fail other tests.
   @Test
-  void post_userWithDefaultRole(TestInfo test) throws IOException {
+  void userDefaultRoleAssignment(TestInfo test) throws IOException {
+    // Given a global default role has been set, ...
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
     UUID nonDefaultRoleId = roles.stream().filter(role -> !role.getDefault()).findAny().orElseThrow().getId();
     UUID defaultRoleId =
-        roles.stream().filter(Role::getDefault).findAny().orElseThrow().getId(); // DataConsumer is default role.
+        roles.stream().filter(Role::getDefault).findAny().orElseThrow().getId(); // DataConsumer is global default role.
 
-    // Given a default role has been set, when a user is created without any roles, then the default role should be
-    // assigned.
-    CreateUser create = createRequest(test, 2);
-    createUserAndCheckRoles(create, Arrays.asList(defaultRoleId));
+    // ... when a user is created without any roles, then the global default role should be assigned.
+    CreateUser create = createRequest(test, 1);
+    User user1 = createUserAndCheckRoles(create, Arrays.asList(defaultRoleId));
 
-    // Given a default role has been set, when a user is created with a non default role, then the default role should
-    // be assigned along with the non default role.
-    create = createRequest(test, 3).withRoles(List.of(nonDefaultRoleId));
-    createUserAndCheckRoles(create, Arrays.asList(nonDefaultRoleId, defaultRoleId));
+    // ... when a user is created with a non default role, then the global default role should be assigned along with
+    // the non default role.
+    create = createRequest(test, 2).withRoles(List.of(nonDefaultRoleId));
+    User user2 = createUserAndCheckRoles(create, Arrays.asList(nonDefaultRoleId, defaultRoleId));
 
-    // Given a default role has been set, when a user is created with both default and non-default role, then both
-    // roles should be assigned.
-    create = createRequest(test, 4).withRoles(List.of(nonDefaultRoleId, defaultRoleId));
-    createUserAndCheckRoles(create, Arrays.asList(nonDefaultRoleId, defaultRoleId));
+    // ... when a user is created with both global default and non-default role, then both roles should be assigned.
+    create = createRequest(test, 3).withRoles(List.of(nonDefaultRoleId, defaultRoleId));
+    User user3 = createUserAndCheckRoles(create, Arrays.asList(nonDefaultRoleId, defaultRoleId));
+
+    // Given the default role has changed, ...
+    UUID prevDefaultRoleId = defaultRoleId;
+    Role defaultRole = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1000), ADMIN_AUTH_HEADERS);
+    String defaultRoleJson = JsonUtils.pojoToJson(defaultRole);
+    defaultRole.setDefault(true);
+    defaultRoleId = defaultRole.getId(); // New global default role.
+    assertNotEquals(prevDefaultRoleId, defaultRoleId);
+    roleResourceTest.patchEntity(defaultRoleId, defaultRoleJson, defaultRole, ADMIN_AUTH_HEADERS);
+
+    // ... when user1 exists, then ensure that the default role changed.
+    user1 = getEntity(user1.getId(), ADMIN_AUTH_HEADERS);
+    assertRoles(user1, Arrays.asList(defaultRoleId));
+
+    // ... when user2 exists, then ensure that the default role changed.
+    user2 = getEntity(user2.getId(), ADMIN_AUTH_HEADERS);
+    assertRoles(user2, Arrays.asList(nonDefaultRoleId, defaultRoleId));
+
+    // ... when user3 exists, then ensure that the default role changed.
+    user3 = getEntity(user3.getId(), ADMIN_AUTH_HEADERS);
+    assertRoles(user3, Arrays.asList(nonDefaultRoleId, defaultRoleId));
+
+    Role role1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1001), ADMIN_AUTH_HEADERS);
+    Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1002), ADMIN_AUTH_HEADERS);
+
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team1 =
+        teamResourceTest.createEntity(
+            teamResourceTest.createRequest(test, 1).withDefaultRoles(List.of(role1.getId())), ADMIN_AUTH_HEADERS);
+    Team team2 =
+        teamResourceTest.createEntity(
+            teamResourceTest.createRequest(test, 2).withDefaultRoles(List.of(role1.getId(), role2.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    // Given user1 is not part of any team and have no roles assigned, when user1 joins team1, then user1 gets assigned
+    // the global default role and the team1 default role, role1.
+    String originalUser1 = JsonUtils.pojoToJson(user1);
+    user1.setTeams(List.of(new TeamEntityInterface(team1).getEntityReference()));
+    user1 = patchUser(originalUser1, user1, ADMIN_AUTH_HEADERS);
+    assertRoles(user1, Arrays.asList(defaultRoleId, role1.getId()));
+
+    // Given user1 is part of team1, when user1 joins team2, then user1 gets assigned the global default role, the
+    // team1 default role, role1 and team2 default role, role2.
+    originalUser1 = JsonUtils.pojoToJson(user1);
+    user1.setTeams(
+        List.of(
+            new TeamEntityInterface(team1).getEntityReference(), new TeamEntityInterface(team2).getEntityReference()));
+    user1 = patchUser(originalUser1, user1, ADMIN_AUTH_HEADERS);
+    assertRoles(user1, Arrays.asList(defaultRoleId, role1.getId(), role2.getId()));
+
+    // Given user2 has a non default role assigned, when user2 joins team2, then user2 should get assigned the global
+    // default role, team2 default roles, role1 and role2, and retain its non-default role.
+    String originalUser2 = JsonUtils.pojoToJson(user2);
+    user2.setTeams(List.of(new TeamEntityInterface(team2).getEntityReference()));
+    user2 = patchUser(originalUser2, user2, ADMIN_AUTH_HEADERS);
+    assertRoles(user2, Arrays.asList(defaultRoleId, role1.getId(), role2.getId(), nonDefaultRoleId));
+
+    // Given user2 has a non default role assigned, when user2 leaves team2, then user2 should get assigned the global
+    // default role and retain its non-default role.
+    // To be fixed in https://github.com/open-metadata/OpenMetadata/issues/2969
+    //    originalUser2 = JsonUtils.pojoToJson(user2);
+    //    user2.setTeams(null);
+    //    user2 = patchUser(originalUser2, user2, ADMIN_AUTH_HEADERS);
+    //    assertRoles(user2, Arrays.asList(defaultRoleId, nonDefaultRoleId));
   }
 
   @Test
@@ -551,8 +615,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // TODO deactivated user can't be made owner
   }
 
-  private void createUserAndCheckRoles(CreateUser create, List<UUID> expectedRolesIds) throws HttpResponseException {
+  private User createUserAndCheckRoles(CreateUser create, List<UUID> expectedRolesIds) throws HttpResponseException {
     User user = createEntity(create, ADMIN_AUTH_HEADERS);
+    assertRoles(user, expectedRolesIds);
+    return user;
+  }
+
+  private void assertRoles(User user, List<UUID> expectedRolesIds) throws HttpResponseException {
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
     List<UUID> actualRolesIds =
         user.getRoles().stream().map(EntityReference::getId).sorted().collect(Collectors.toList());
