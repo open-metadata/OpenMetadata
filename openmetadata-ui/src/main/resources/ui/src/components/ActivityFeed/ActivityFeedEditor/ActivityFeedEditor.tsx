@@ -59,11 +59,18 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
       />
       <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
         <Button
-          className={classNames('tw-bg-gray-400', buttonClass)}
+          className={classNames('tw-bg-gray-400 tw-opacity-80', buttonClass)}
+          disabled={editorValue.length === 0}
           size="small"
           theme={editorValue.length > 0 ? 'primary' : 'default'}
+          variant="contained"
           onClick={onSaveHandler}>
-          <SVGIcons alt="paper-plane" icon="icon-paper-plane" width="18px" />
+          <SVGIcons
+            alt="paper-plane"
+            className="tw-py-1"
+            icon="icon-paper-plane"
+            width="18px"
+          />
         </Button>
       </div>
     </div>
