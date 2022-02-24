@@ -110,6 +110,10 @@ jest.mock('../common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<p>TabsPane</p>);
 });
 
+jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
+  return jest.fn().mockReturnValue(<p>FeedCards</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),
