@@ -10,37 +10,41 @@
 #  limitations under the License.
 
 """
-Count Duplicates Composed Metric definition
+Unique Ratio Composed Metric definition
 """
 from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.distinct import Distinct
+from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
 
 
-class DuplicateCount(ComposedMetric):
+class UniqueRatio(ComposedMetric):
     """
-    Given the total count and the distinct count,
-    compute the number of rows that are duplicates
+    Given the total count and unique count,
+    compute the unique ratio
     """
 
     def required_metrics(self) -> Tuple[str, ...]:
-        return Count.name(), Distinct.name()
+        return Count.name(), UniqueCount.name()
 
     @property
     def metric_type(self):
-        return int
+        """
+        Override default metric_type definition as
+        we now don't care about the column
+        """
+        return float
 
     def fn(self, res: Dict[str, Any]) -> Optional[float]:
         """
-        Safely compute duplicate count based on the profiler
+        Safely compute null ratio based on the profiler
         results of other Metrics
         """
-        count = res.get(Count.name())
-        distinct_count = res.get(Distinct.name())
+        res_count = res.get(Count.name())
+        res_unique = res.get(UniqueCount.name())
 
-        if count is not None and distinct_count is not None:
-            return count - distinct_count
+        if res_count and res_unique is not None:
+            return res_unique / res_count
 
         return None

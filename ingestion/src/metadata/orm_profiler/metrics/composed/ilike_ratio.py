@@ -10,37 +10,37 @@
 #  limitations under the License.
 
 """
-Count Duplicates Composed Metric definition
+ILIKE Ratio Composed Metric definition
 """
 from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.distinct import Distinct
+from metadata.orm_profiler.metrics.static.ilike_count import ILikeCount
 
 
-class DuplicateCount(ComposedMetric):
+class ILikeRatio(ComposedMetric):
     """
-    Given the total count and the distinct count,
-    compute the number of rows that are duplicates
+    Given the total count and LIKE count,
+    compute the LIKE ratio
     """
 
     def required_metrics(self) -> Tuple[str, ...]:
-        return Count.name(), Distinct.name()
+        return Count.name(), ILikeCount.name()
 
     @property
     def metric_type(self):
-        return int
+        return float
 
     def fn(self, res: Dict[str, Any]) -> Optional[float]:
         """
-        Safely compute duplicate count based on the profiler
+        Safely compute null ratio based on the profiler
         results of other Metrics
         """
-        count = res.get(Count.name())
-        distinct_count = res.get(Distinct.name())
+        res_count = res.get(Count.name())
+        res_ilike = res.get(ILikeCount.name())
 
-        if count is not None and distinct_count is not None:
-            return count - distinct_count
+        if res_count and res_ilike is not None:
+            return res_ilike / res_count
 
         return None
