@@ -78,7 +78,7 @@ public class TableDetailsPageTest {
   void openExplorePage() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    if (webDriver.findElement(explorePage.getTableCount()).isDisplayed()) {
+    if (webDriver.findElement(explorePage.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -89,8 +89,8 @@ public class TableDetailsPageTest {
   @Order(2)
   void checkTabs() {
     openExplorePage();
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), tableName);
-    Events.click(webDriver, myDataPage.selectTable());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), tableName);
+    Events.click(webDriver, myDataPage.tableName());
     Events.click(webDriver, tableDetails.profiler());
     WebElement profilerColumn = tableDetails.profilerColumn().get(1);
     Assert.assertTrue(profilerColumn.isDisplayed());
@@ -98,10 +98,10 @@ public class TableDetailsPageTest {
     WebElement lineage = tableDetails.lineageNodes().get(1);
     Assert.assertTrue(lineage.isDisplayed());
     Events.click(webDriver, tableDetails.sampleData());
-    WebElement sampleDataTable = webDriver.findElement(tableDetails.getSampleDataTable());
+    WebElement sampleDataTable = webDriver.findElement(tableDetails.sampleDataTable());
     Assert.assertTrue(sampleDataTable.isDisplayed());
     Events.click(webDriver, tableDetails.manage());
-    WebElement ownerDropdown = webDriver.findElement(tableDetails.clickOwnerDropdown());
+    WebElement ownerDropdown = webDriver.findElement(tableDetails.owner());
     Assert.assertTrue(ownerDropdown.isDisplayed());
   }
 
@@ -151,8 +151,8 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.selectTag());
     Events.click(webDriver, tableDetails.saveTag());
     ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", explorePage.explore());
-    String selectedTag = webDriver.findElement(tableDetails.getSelectedTag()).getText();
-    String TagDisplayed = webDriver.findElement(tableDetails.TagName()).getText();
+    String selectedTag = webDriver.findElement(tableDetails.selectedTag()).getText();
+    String TagDisplayed = webDriver.findElement(tableDetails.breadCrumbTags()).getText();
     Assert.assertEquals(selectedTag, TagDisplayed);
   }
 
@@ -160,13 +160,13 @@ public class TableDetailsPageTest {
   @Order(6)
   void removeTags() {
     openExplorePage();
-    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTag());
+    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.tagName());
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
     webDriver.navigate().refresh();
-    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTag());
+    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTags());
     if (updatedTags.contains(tagDisplayed.get(1))) {
       Assert.fail("Selected Tag is not removed");
     } else {
@@ -201,7 +201,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, explorePage.selectTable());
     Thread.sleep(waitTime);
     Events.click(webDriver, tableDetails.manage());
-    Events.click(webDriver, tableDetails.clickOwnerDropdown());
+    Events.click(webDriver, tableDetails.owner());
     Events.click(webDriver, tableDetails.selectUser());
     Events.click(webDriver, tableDetails.selectTier1());
     Events.click(webDriver, tableDetails.saveManage());
@@ -215,7 +215,7 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.lineage());
     List<WebElement> nodes = tableDetails.lineageNodes();
     // Clicking and checking all the nodes text matches to side drawer text
-    WebElement sideDrawer = webDriver.findElement(tableDetails.sideDrawer());
+    WebElement sideDrawer = webDriver.findElement(tableDetails.sideDrawerLineage());
     for (WebElement e : nodes) {
       e.click();
       Assert.assertEquals(e.getText(), sideDrawer.getText());
@@ -271,8 +271,8 @@ public class TableDetailsPageTest {
   @Order(12)
   public void checkFrequentlyJoinedTables() throws InterruptedException {
     openExplorePage();
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), "fact_sale");
-    Events.click(webDriver, myDataPage.selectTable());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
+    Events.click(webDriver, myDataPage.tableName());
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.joinedTables());
   }
@@ -281,8 +281,8 @@ public class TableDetailsPageTest {
   @Order(13)
   public void checkFrequentlyJoinedColumns() throws InterruptedException {
     openExplorePage();
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), "fact_sale");
-    Events.click(webDriver, myDataPage.selectTable());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
+    Events.click(webDriver, myDataPage.tableName());
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.joinedColumns());
   }

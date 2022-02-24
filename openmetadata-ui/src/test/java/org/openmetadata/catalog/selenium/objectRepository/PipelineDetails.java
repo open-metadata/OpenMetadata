@@ -2,11 +2,13 @@ package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@Getter
 @RequiredArgsConstructor
 public class PipelineDetails {
   @Nonnull WebDriver webDriver;
@@ -19,28 +21,8 @@ public class PipelineDetails {
   By lineageComponents = By.xpath("//span[@data-testid='lineage-entity']");
   By sideDrawerLineage = By.xpath("//header[@class=\"tw-flex tw-justify-between\"]");
 
-  public By sideDrawer() {
-    return sideDrawerLineage;
-  }
-
   public List<WebElement> lineageNodes() {
     return webDriver.findElements(lineageComponents);
-  }
-
-  public By lineage() {
-    return lineage;
-  }
-
-  public By getPipelines() {
-    return pipelines;
-  }
-
-  public By getSelectedTag() {
-    return selectedTag;
-  }
-
-  public By getEditTaskDescription() {
-    return editTaskDescription;
   }
 
   public WebElement getDescriptionBox() {

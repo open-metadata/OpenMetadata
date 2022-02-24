@@ -120,7 +120,7 @@ public class RolesPageTest {
     openRolesPage();
     String roleName = "Data Consumer";
     Events.click(webDriver, common.containsText(roleName));
-    Events.click(webDriver, rolesPage.getAddRuleButton());
+    Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listOperation());
     Events.click(webDriver, rolesPage.selectOperation("UpdateDescription"));
     Events.click(webDriver, rolesPage.listAccess());
@@ -128,8 +128,8 @@ public class RolesPageTest {
     Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(1000);
-    WebElement operation = webDriver.findElement(rolesPage.getOperation());
-    WebElement access = webDriver.findElement(rolesPage.getAccess());
+    WebElement operation = webDriver.findElement(rolesPage.operation());
+    WebElement access = webDriver.findElement(rolesPage.access());
     if (!operation.isDisplayed() && !access.isDisplayed()) {
       Assert.fail("Rules not added");
     }
@@ -168,7 +168,7 @@ public class RolesPageTest {
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.getErrorMessage());
+    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
     if (errorMessage.isDisplayed()) {
       Assert.assertEquals(errorMessage.getText(), "Name is required");
     } else {
@@ -187,7 +187,7 @@ public class RolesPageTest {
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.getErrorMessage());
+    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
     if (errorMessage.isDisplayed()) {
       Assert.assertEquals(errorMessage.getText(), "Display name is required");
     } else {
@@ -213,7 +213,7 @@ public class RolesPageTest {
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.getErrorMessage());
+    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
     if (errorMessage.isDisplayed()) {
       Assert.assertEquals(errorMessage.getText(), "Name already exists");
     } else {
@@ -226,12 +226,12 @@ public class RolesPageTest {
   public void addRuleWithoutOperation() throws InterruptedException {
     addRole();
     Events.click(webDriver, common.containsText(roleDisplayName));
-    Events.click(webDriver, rolesPage.getAddRuleButton());
+    Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
     Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.getErrorMessage());
+    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
     if (errorMessage.isDisplayed()) {
       Assert.assertEquals(errorMessage.getText(), "Operation is required.");
     } else {

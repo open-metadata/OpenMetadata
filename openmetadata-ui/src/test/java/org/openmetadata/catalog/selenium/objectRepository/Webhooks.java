@@ -1,10 +1,12 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+@Getter
 @RequiredArgsConstructor
 public class Webhooks {
   @NotNull WebDriver webDriver;
@@ -20,48 +22,4 @@ public class Webhooks {
   By saveWebhook = By.xpath("//button[@data-testid='save-webhook']");
   By checkWebhook = By.xpath("//button[@data-testid='webhook-link']");
   By toast = By.xpath("(//div[@data-testid='toast']/div)[2]");
-
-  public By getToast() {
-    return toast;
-  }
-
-  public By checkWebhook() {
-    return checkWebhook;
-  }
-
-  public By getSaveWebhook() {
-    return saveWebhook;
-  }
-
-  public By allEntities() {
-    return allEntities;
-  }
-
-  public By getEntityCreatedMenu() {
-    return entityCreatedMenu;
-  }
-
-  public By checkbox() {
-    return checkbox;
-  }
-
-  public By getEndpoint() {
-    return endpoint;
-  }
-
-  public By getDescriptionBox() {
-    return descriptionBox;
-  }
-
-  public By name() {
-    return name;
-  }
-
-  public By webhookLink() {
-    return webhookLink;
-  }
-
-  public By addWebhook() {
-    return addWebhook;
-  }
 }
