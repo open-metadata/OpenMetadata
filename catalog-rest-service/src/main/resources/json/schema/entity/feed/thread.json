@@ -65,6 +65,15 @@
       "type": "boolean",
       "default": false
     },
+    "message": {
+      "description": "The main message of the thread in markdown format",
+      "type": "string"
+    },
+    "postsCount": {
+      "description": "The total count of posts in the thread",
+      "type": "integer",
+      "default": 0
+    },
     "posts": {
       "type": "array",
       "items": {

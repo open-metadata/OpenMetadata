@@ -143,7 +143,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getUsers(Team team) throws IOException {
     List<String> userIds = findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.USER, toBoolean(toInclude(team)));
-    return populateEntityReferences(userIds, Entity.USER);
+    return EntityUtil.populateEntityReferences(userIds, Entity.USER);
   }
 
   private List<EntityReference> getOwns(Team team) throws IOException {
@@ -157,24 +157,7 @@ public class TeamRepository extends EntityRepository<Team> {
   private List<EntityReference> getDefaultRoles(Team team) throws IOException {
     List<String> defaultRoleIds =
         findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.ROLE, toBoolean(toInclude(team)));
-    return populateEntityReferences(defaultRoleIds, Entity.ROLE);
-  }
-
-  private List<EntityReference> populateEntityReferences(List<String> ids, String entityType) throws IOException {
-    List<EntityReference> refs = new ArrayList<>();
-    for (String id : ids) {
-      switch (entityType) {
-        case Entity.USER:
-          refs.add(daoCollection.userDAO().findEntityReferenceById(UUID.fromString(id)));
-          break;
-        case Entity.ROLE:
-          refs.add(daoCollection.roleDAO().findEntityReferenceById(UUID.fromString(id)));
-          break;
-        default:
-          throw new IllegalArgumentException("Unsupported entity type for populating entityReference list");
-      }
-    }
-    return refs;
+    return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {

@@ -1,0 +1,42 @@
+{
+  "source": {
+    "type": "mssql-usage",
+    "config": {
+      "host_port": "localhost:1433",
+      "service_name": "local_mssql",
+      "database": "catalog_test",
+      "query": "select top 50 * from {}.{}",
+      "username": "sa",
+      "password": "test!Password",
+      "duration":2,
+      "table_filter_pattern": {
+        "excludes": ["catalog_test.*"]
+      }
+    }
+  },
+  "processor": {
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage",
+    "config": {
+      "filename": "/tmp/mssql_usage"
+    }
+  },
+  "bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/mssql_usage"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}

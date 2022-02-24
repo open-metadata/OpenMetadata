@@ -901,12 +901,12 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (recordChange(
-          getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength())) {
-        if (updatedColumn.getDataLength() < origColumn.getDataLength()) {
-          // The data length of a column changed. Treat it as backward-incompatible change
-          majorVersionChange = true;
-        }
+      boolean updated =
+          recordChange(
+              getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength());
+      if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
+        // The data length of a column changed. Treat it as backward-incompatible change
+        majorVersionChange = true;
       }
     }
   }

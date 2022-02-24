@@ -38,7 +38,7 @@ public class LineageRepository {
 
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
-    EntityReference ref = Entity.getEntityReference(entityType, UUID.fromString(id));
+    EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id));
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -53,11 +53,11 @@ public class LineageRepository {
   public void addLineage(AddLineage addLineage) throws IOException {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
-    from = Entity.getEntityReference(from.getType(), from.getId());
+    from = Entity.getEntityReferenceById(from.getType(), from.getId());
 
     // Validate to entity
     EntityReference to = addLineage.getEdge().getToEntity();
-    to = Entity.getEntityReference(to.getType(), to.getId());
+    to = Entity.getEntityReferenceById(to.getType(), to.getId());
 
     // Finally, add lineage relationship
     dao.relationshipDAO()
@@ -72,10 +72,10 @@ public class LineageRepository {
   @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) throws IOException {
     // Validate from entity
-    EntityReference from = Entity.getEntityReference(fromEntity, UUID.fromString(fromId));
+    EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId));
 
     // Validate to entity
-    EntityReference to = Entity.getEntityReference(toEntity, UUID.fromString(toId));
+    EntityReference to = Entity.getEntityReferenceById(toEntity, UUID.fromString(toId));
 
     // Finally, delete lineage relationship
     return dao.relationshipDAO()
@@ -105,7 +105,7 @@ public class LineageRepository {
     // Add entityReference details
     for (int i = 0; i < lineage.getNodes().size(); i++) {
       EntityReference ref = lineage.getNodes().get(i);
-      ref = Entity.getEntityReference(ref.getType(), ref.getId());
+      ref = Entity.getEntityReferenceById(ref.getType(), ref.getId());
       lineage.getNodes().set(i, ref);
     }
     return lineage;
