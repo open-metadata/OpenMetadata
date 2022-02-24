@@ -66,7 +66,7 @@ public class FeedRepository {
 
     // Add relationship User -- created --> Thread relationship
     dao.relationshipDAO()
-        .insert(createdBy, thread.getId().toString(), "user", "thread", Relationship.CREATED.ordinal());
+        .insert(createdBy, thread.getId().toString(), Entity.USER, Entity.THREAD, Relationship.CREATED.ordinal());
 
     // Add field relationship data asset Thread -- isAbout ---> entity/entityField
     // relationship
@@ -74,7 +74,7 @@ public class FeedRepository {
         .insert(
             thread.getId().toString(), // from FQN
             about.getFullyQualifiedFieldValue(), // to FQN
-            "thread", // From type
+            Entity.THREAD, // From type
             about.getFullyQualifiedFieldType(), // to Type
             Relationship.IS_ABOUT.ordinal());
 
@@ -84,7 +84,7 @@ public class FeedRepository {
           .insert(
               thread.getId().toString(),
               owner.getId().toString(),
-              "thread",
+              Entity.THREAD,
               owner.getType(),
               Relationship.ADDRESSED_TO.ordinal());
     }
@@ -102,7 +102,7 @@ public class FeedRepository {
                         mention.getFullyQualifiedFieldValue(),
                         thread.getId().toString(),
                         mention.getFullyQualifiedFieldType(),
-                        "thread",
+                        Entity.THREAD,
                         Relationship.MENTIONED_IN.ordinal()));
 
     return thread;
@@ -137,7 +137,8 @@ public class FeedRepository {
     }
     if (!relationAlreadyExists) {
       dao.relationshipDAO()
-          .insert(post.getFrom(), thread.getId().toString(), "user", "thread", Relationship.REPLIED_TO.ordinal());
+          .insert(
+              post.getFrom(), thread.getId().toString(), Entity.USER, Entity.THREAD, Relationship.REPLIED_TO.ordinal());
     }
     return thread;
   }
@@ -153,7 +154,7 @@ public class FeedRepository {
       result =
           dao.feedDAO()
               .listCountByEntityLink(
-                  StringUtils.EMPTY, "thread", StringUtils.EMPTY, Relationship.IS_ABOUT.ordinal(), isResolved);
+                  StringUtils.EMPTY, Entity.THREAD, StringUtils.EMPTY, Relationship.IS_ABOUT.ordinal(), isResolved);
     } else {
       EntityLink entityLink = EntityLink.parse(link);
       EntityReference reference = EntityUtil.validateEntityLink(entityLink);
@@ -165,7 +166,7 @@ public class FeedRepository {
             dao.feedDAO()
                 .listCountByEntityLink(
                     entityLink.getFullyQualifiedFieldValue(),
-                    "thread",
+                    Entity.THREAD,
                     entityLink.getFullyQualifiedFieldType(),
                     Relationship.IS_ABOUT.ordinal(),
                     isResolved);
@@ -200,7 +201,7 @@ public class FeedRepository {
       List<List<String>> result;
 
       // TODO remove hardcoding of thread
-      // For a user entitylink get created or replied relationships to the thread
+      // For a user entityLink get created or replied relationships to the thread
       if (reference.getType().equals(Entity.USER)) {
         threadIds.addAll(getUserThreadIds(reference));
       } else {
@@ -209,7 +210,7 @@ public class FeedRepository {
             dao.fieldRelationshipDAO()
                 .listFromByAllPrefix(
                     entityLink.getFullyQualifiedFieldValue(),
-                    "thread",
+                    Entity.THREAD,
                     entityLink.getFullyQualifiedFieldType(),
                     Relationship.IS_ABOUT.ordinal());
         result.forEach(l -> threadIds.add(l.get(1)));
@@ -251,7 +252,7 @@ public class FeedRepository {
                 user.getName(),
                 user.getType(),
                 Relationship.CREATED.ordinal(),
-                "thread",
+                Entity.THREAD,
                 toBoolean(Include.NON_DELETED)));
     threadIds.addAll(
         dao.relationshipDAO()
@@ -259,7 +260,7 @@ public class FeedRepository {
                 user.getName(),
                 user.getType(),
                 Relationship.REPLIED_TO.ordinal(),
-                "thread",
+                Entity.THREAD,
                 toBoolean(Include.NON_DELETED)));
     return threadIds;
   }

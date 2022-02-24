@@ -117,7 +117,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
-    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi));
+    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(jdbi));
     registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
@@ -242,7 +242,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     catalogApplication.run(args);
   }
 
-  public class ManagedShutdown implements Managed {
+  public static class ManagedShutdown implements Managed {
 
     @Override
     public void start() throws Exception {

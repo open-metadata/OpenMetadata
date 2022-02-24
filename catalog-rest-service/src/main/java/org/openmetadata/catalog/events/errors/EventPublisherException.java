@@ -14,8 +14,4 @@ public class EventPublisherException extends RuntimeException {
   public EventPublisherException(Throwable cause) {
     super(cause);
   }
-
-  public EventPublisherException() {
-    super();
-  }
 }

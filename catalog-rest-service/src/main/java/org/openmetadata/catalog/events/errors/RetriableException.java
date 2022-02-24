@@ -5,17 +5,15 @@ public abstract class RetriableException extends EventPublisherException {
 
   private static final long serialVersionUID = 1L;
 
-  public RetriableException(String message, Throwable cause) {
+  protected RetriableException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public RetriableException(String message) {
+  protected RetriableException(String message) {
     super(message);
   }
 
-  public RetriableException(Throwable cause) {
+  protected RetriableException(Throwable cause) {
     super(cause);
   }
-
-  public RetriableException() {}
 }

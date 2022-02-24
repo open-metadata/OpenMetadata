@@ -85,7 +85,7 @@ public class RoleRepository extends EntityRepository<Role> {
           role.getName());
       return null;
     }
-    return Entity.getEntityReference(Entity.POLICY, UUID.fromString(result.get(0)));
+    return Entity.getEntityReferenceById(Entity.POLICY, UUID.fromString(result.get(0)));
   }
 
   private List<EntityReference> getUsersForRole(@NonNull Role role) throws IOException {

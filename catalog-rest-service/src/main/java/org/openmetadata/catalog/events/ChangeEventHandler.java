@@ -146,7 +146,8 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+  private static ChangeEvent getChangeEvent(
+      EventType eventType, String entityType, EntityInterface<?> entityInterface) {
     return new ChangeEvent()
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
