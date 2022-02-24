@@ -46,6 +46,7 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "parsimonious==0.8.1",
+    "sqllineage==1.3.3",
 }
 
 report_requirements = {
@@ -70,7 +71,7 @@ plugins: Dict[str, Set[str]] = {
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",
     },
-    "bigquery-usage": {"google-cloud-logging", "cachetools", "sqllineage==1.3.3"},
+    "bigquery-usage": {"google-cloud-logging", "cachetools"},
     # "docker": {"docker==5.0.3"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
@@ -102,7 +103,6 @@ plugins: Dict[str, Set[str]] = {
         "sqlalchemy-redshift==0.8.9",
         "psycopg2-binary",
         "GeoAlchemy2",
-        "sqllineage==1.3.3",
     },
     "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
