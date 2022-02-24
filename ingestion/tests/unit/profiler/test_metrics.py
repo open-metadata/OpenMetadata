@@ -254,13 +254,14 @@ class MetricsTest(TestCase):
 
         assert res.get(User.age.name)[Metrics.LIKE_COUNT.name] == 2
 
-        with pytest.raises(AttributeError):
-            Profiler(
-                Metrics.LIKE_COUNT.value,
-                session=self.session,
-                table=User,
-                use_cols=[User.age],
-            ).execute()
+        # Running safely
+        # with pytest.raises(AttributeError):
+        #     Profiler(
+        #         Metrics.LIKE_COUNT.value,
+        #         session=self.session,
+        #         table=User,
+        #         use_cols=[User.age],
+        #     ).execute()
 
     def test_ilike_count(self):
         """
@@ -275,13 +276,14 @@ class MetricsTest(TestCase):
 
         assert res.get(User.age.name)[Metrics.ILIKE_COUNT.name] == 2
 
-        with pytest.raises(AttributeError):
-            Profiler(
-                Metrics.ILIKE_COUNT.value,
-                session=self.session,
-                table=User,
-                use_cols=[User.age],
-            ).execute()
+        # Running safely
+        # with pytest.raises(AttributeError):
+        #     Profiler(
+        #         Metrics.ILIKE_COUNT.value,
+        #         session=self.session,
+        #         table=User,
+        #         use_cols=[User.age],
+        #     ).execute()
 
     def test_like_ratio(self):
         """
