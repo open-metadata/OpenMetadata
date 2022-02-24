@@ -3,7 +3,6 @@ import MarkdownShortcuts from 'quill-markdown-shortcuts';
 import React, {
   forwardRef,
   HTMLAttributes,
-  useEffect,
   useImperativeHandle,
   useState,
 } from 'react';
@@ -41,6 +40,7 @@ interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   className?: string;
   placeHolder?: string;
   onChangeHandler?: (value: string) => void;
+  onSave?: () => void;
 }
 
 const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
@@ -51,10 +51,12 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       placeHolder,
       onChangeHandler,
       defaultValue = '',
+      onSave,
     }: FeedEditorProp,
     ref
   ) => {
     const [value, setValue] = useState<string>(defaultValue);
+
     const handleOnChange = (value: string) => {
       setValue(value);
       onChangeHandler?.(value);
@@ -66,11 +68,18 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
 
         return HTMLToMarkdown.turndown(value);
       },
+      clearEditorValue() {
+        setValue('');
+      },
     }));
 
-    useEffect(() => {
-      setValue(defaultValue);
-    }, [defaultValue]);
+    const onKeyDownHandler = (e: KeyboardEvent) => {
+      if (!(e.shiftKey && e.key === 'Enter')) {
+        if (e.key === 'Enter') {
+          onSave?.();
+        }
+      }
+    };
 
     return (
       <div className={className}>
@@ -81,6 +90,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           theme="snow"
           value={value}
           onChange={handleOnChange}
+          onKeyDown={onKeyDownHandler}
         />
       </div>
     );
