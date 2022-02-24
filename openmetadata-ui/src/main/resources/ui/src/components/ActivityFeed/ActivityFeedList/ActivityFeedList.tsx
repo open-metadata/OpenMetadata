@@ -122,7 +122,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {selctedThreadId === feed.id ? (
                 <Fragment>
-                  {withSidePanel ? (
+                  {withSidePanel && replies - 1 > 3 ? (
                     <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6 tw--mt-4">
                       <p
                         className="link-text tw-text-xs tw-underline"
