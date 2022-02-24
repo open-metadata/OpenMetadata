@@ -198,7 +198,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         timeStamp={feed.postTs}
       />
       <FeedBody
-        className="tw-mx-7 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all"
+        className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all"
         message={feed.message}
       />
       <FeedFooter

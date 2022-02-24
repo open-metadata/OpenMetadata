@@ -124,7 +124,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               {selctedThreadId === feed.id ? (
                 <div className="tw-mb-6">
                   {replies > 3 ? (
-                    <div className="tw-flex tw-gap-3 tw-ml-8 tw--mt-4">
+                    <div className="tw-flex tw-gap-3 tw-ml-9 tw--mt-4">
                       <p
                         className="link-text tw-text-xs tw-underline"
                         onClick={() => {
@@ -137,7 +137,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   ) : (
                     <Fragment>
                       {replies > 0 ? (
-                        <div className="tw-flex tw-mx-7">
+                        <div className="tw-flex tw-mr-7 tw-ml-9">
                           <span>
                             {replies} {replies > 1 ? 'replies' : 'reply'}
                           </span>

@@ -177,7 +177,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         />
 
         <FeedPanelBody
-          className="tw-p-4 tw-pl-8"
+          className="tw-p-4 tw-pl-8 tw-mb-3"
           isLoading={isLoading}
           threadData={threadData as EntityThread}
         />
