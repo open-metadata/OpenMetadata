@@ -1,4 +1,5 @@
 import logging
+import traceback
 import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
@@ -99,7 +100,6 @@ class AtlasSource(Source):
             tbl_entities = table_entity["entities"]
             for tbl_entity in tbl_entities:
                 try:
-
                     tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"]["rdbms_db"]
@@ -137,8 +137,6 @@ class AtlasSource(Source):
 
                     yield topic
 
-                    tbl_entities = table_entity["entities"]
-
                     tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"]["rdbms_db"]
@@ -152,7 +150,7 @@ class AtlasSource(Source):
                     yield created_table
 
                 except Exception as e:
-                    logger.error(e)
+                    logger.error("error occured", e)
                     logger.error(f"Failed to parse {table_entity}")
                     pass
 

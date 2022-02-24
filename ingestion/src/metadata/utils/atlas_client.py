@@ -38,11 +38,11 @@ class AtlasClient:
             base_url=self.config.atlas_host,
             auth_header="Authorization",
             api_version="api",
-            auth_token="Basic {}".format(self.auth_token),
+            auth_token=self.auth_token,
+            auth_token_type="Basic",
         )
 
         self.client = REST(client_config)
-        print(self.client)
         self._use_raw_data = raw_data
 
     def list_entities(self, entity_type="Table") -> List[str]:
@@ -55,7 +55,6 @@ class AtlasClient:
 
     def get_table(self, table):
         response = self.client.get(f"/atlas/v2/entity/bulk?guid={table}")
-        print(response)
         return response
 
 
