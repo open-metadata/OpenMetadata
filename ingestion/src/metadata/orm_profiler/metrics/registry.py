@@ -60,7 +60,7 @@ class Metrics(MetricRegistry):
     MIN = Min
     MIN_LENGTH = MinLength
     NULL_COUNT = NullCount
-    ROW_NUMBER = RowCount
+    ROW_COUNT = RowCount
     STDDEV = StdDev
     SUM = Sum
     UNIQUE_COUNT = UniqueCount

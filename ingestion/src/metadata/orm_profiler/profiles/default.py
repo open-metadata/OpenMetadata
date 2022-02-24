@@ -35,7 +35,7 @@ class DefaultProfiler(Profiler):
     ):
         _metrics = [
             # Table Metrics
-            Metrics.ROW_NUMBER.value,
+            Metrics.ROW_COUNT.value,
             # Column Metrics
             Metrics.MEAN.value,
             Metrics.COUNT.value,
