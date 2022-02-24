@@ -179,6 +179,14 @@
             "$ref": "#/definitions/column"
           },
           "default": null
+        },
+        "columnTests": {
+          "description": "List of column test cases that ran against a table column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../tests/columnTest.json"
+          },
+          "default": null
         }
       },
       "required": ["name", "dataType"],
@@ -592,7 +600,7 @@
       "description": "List of test cases that ran against a table.",
       "type": "array",
       "items": {
-        "$ref": "../../test/tableTest.json"
+        "$ref": "../../tests/tableTest.json"
       },
       "default": null
     },

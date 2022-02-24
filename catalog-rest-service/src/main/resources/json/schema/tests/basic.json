@@ -1,26 +1,12 @@
 {
-  "$id": "https://open-metadata.org/schema/test/basic.json",
+  "$id": "https://open-metadata.org/schema/tests/basic.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Basic",
   "description": "This schema defines basic types that are used by other test schemas.",
   "definitions": {
-    "supportedTestPlatform": {
-      "javaType": "org.openmetadata.catalog.type.SupportedTestPlatform",
-      "description": "This schema defines the platform type to run the tests",
-      "type": "string",
-      "enum": ["SQLAlchemy", "Spark"],
-      "javaEnums": [
-        {
-          "name": "SQLAlchemy"
-        },
-        {
-          "name": "Spark"
-        }
-      ]
-    },
     "testCaseResult": {
       "description": "Schema to capture test case result.",
-      "javaType": "org.openmetadata.catalog.type.TestCaseResult",
+      "javaType": "org.openmetadata.catalog.tests.type.TestCaseResult",
       "type": "object",
       "properties": {
         "executionTime": {
@@ -29,7 +15,7 @@
         },
         "status": {
           "description": "Status of Test Case run.",
-          "javaType": "org.openmetadata.catalog.type.TestCaseStatus",
+          "javaType": "org.openmetadata.catalog.tests.type.TestCaseStatus",
           "type": "string",
           "enum": ["Success", "Failed", "Aborted"],
           "javaEnums": [
@@ -56,7 +42,7 @@
     },
     "testCaseExecutionFrequency": {
       "description": "How often the test case should run.",
-      "javaType": "org.openmetadata.catalog.type.TestCaseExecutionFrequency",
+      "javaType": "org.openmetadata.catalog.tests.type.TestCaseExecutionFrequency",
       "type": "string",
       "enum": ["Hourly", "Daily", "Weekly"],
       "javaEnums": [

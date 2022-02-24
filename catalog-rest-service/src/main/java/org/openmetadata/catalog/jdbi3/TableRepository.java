@@ -46,10 +46,10 @@ import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.data.TableTest;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
@@ -65,7 +65,6 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TestCaseResult;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -268,17 +267,17 @@ public class TableRepository extends EntityRepository<Table> {
         && tableTest.getResults() != null
         && !tableTest.getResults().isEmpty()) {
       TableTest prevTableTest = storedMapTableTests.get(tableTest.getId());
-      List<TestCaseResult> prevTestCaseResults = prevTableTest.getResults();
-      List<TestCaseResult> newTestCaseResults = tableTest.getResults();
+      List<Object> prevTestCaseResults = prevTableTest.getResults();
+      List<Object> newTestCaseResults = tableTest.getResults();
       newTestCaseResults.addAll(prevTestCaseResults);
       tableTest.setResults(newTestCaseResults);
     }
 
     storedMapTableTests.put(tableTest.getId(), tableTest);
-    List<TableTest> updatedQueries = new ArrayList<>(storedMapTableTests.values());
+    List<TableTest> updatedTests = new ArrayList<>(storedMapTableTests.values());
     daoCollection
         .entityExtensionDAO()
-        .insert(tableId.toString(), "table.tableTests", "tableTest", JsonUtils.pojoToJson(updatedQueries));
+        .insert(tableId.toString(), "table.tableTests", "tableTest", JsonUtils.pojoToJson(updatedTests));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withTableTests(getTableTests(table));
   }

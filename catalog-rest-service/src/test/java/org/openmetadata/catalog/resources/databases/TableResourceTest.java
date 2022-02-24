@@ -78,17 +78,21 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.data.TableTest;
-import org.openmetadata.catalog.entity.data.TestCase;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.tests.column.ColumnValuesToBeUnique;
-import org.openmetadata.catalog.entity.tests.table.TableRowCountToEqual;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.tests.TableTest;
+import org.openmetadata.catalog.tests.TableTestCase;
+import org.openmetadata.catalog.tests.table.TableColumnCountToEqual;
+import org.openmetadata.catalog.tests.table.TableRowCountToBeBetween;
+import org.openmetadata.catalog.tests.table.TableRowCountToEqual;
+import org.openmetadata.catalog.tests.type.TestCaseExecutionFrequency;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
+import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -109,9 +113,6 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.type.TestCaseExecutionFrequency;
-import org.openmetadata.catalog.type.TestCaseResult;
-import org.openmetadata.catalog.type.TestCaseStatus;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -1030,12 +1031,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void put_tableTests_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     TableRowCountToEqual tableRowCountToEqual = new TableRowCountToEqual().withValue(100);
-    TestCase testCase =
-        new TestCase().withSchema(TestCase.Schema.TABLE_ROW_COUNT_TO_EQUAL).withConfig(tableRowCountToEqual);
+    TableTestCase tableTestCase =
+        new TableTestCase()
+            .withTestType(TableTestCase.TestType.TABLE_ROW_COUNT_TO_EQUAL)
+            .withConfig(tableRowCountToEqual);
     TableTest tableTest =
         new TableTest()
             .withName("test1")
-            .withTestCase(testCase)
+            .withTableTestCase(tableTestCase)
             .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
     Table putResponse = putTableTest(table.getId(), tableTest, ADMIN_AUTH_HEADERS);
 
@@ -1065,14 +1068,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table = getEntity(table.getId(), "tableTests", ADMIN_AUTH_HEADERS);
     verifyTableTest(table.getTableTests(), List.of(tableTest));
-    ColumnValuesToBeUnique columnValuesToBeUnique =
-        new ColumnValuesToBeUnique().withColumn(table.getColumns().get(0).getName());
-    TestCase testCase2 =
-        new TestCase().withSchema(TestCase.Schema.COLUMN_VALUE_TO_BE_UNIQUE).withConfig(columnValuesToBeUnique);
-    TableTest tableTest1 = new TableTest().withName("column_value_to_be_unique").withTestCase(testCase2);
+    TableRowCountToBeBetween tableRowCountToBeBetween =
+        new TableRowCountToBeBetween().withMinValue(100).withMaxValue(1000);
+    TableTestCase tableTestCase1 =
+        new TableTestCase()
+            .withTestType(TableTestCase.TestType.TABLE_ROW_COUNT_TO_BE_BETWEEN)
+            .withConfig(tableRowCountToBeBetween);
+    TableTest tableTest1 = new TableTest().withName("column_value_to_be_unique").withTableTestCase(tableTestCase1);
     putResponse = putTableTest(table.getId(), tableTest1, ADMIN_AUTH_HEADERS);
-    verifyTableTest(putResponse.getTableTests(), List.of(tableTest));
-
+    verifyTableTest(putResponse.getTableTests(), List.of(tableTest, tableTest1));
     table = getEntity(table.getId(), "tableTests", ADMIN_AUTH_HEADERS);
     verifyTableTest(table.getTableTests(), List.of(tableTest, tableTest1));
   }
@@ -1586,7 +1590,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
-  private void verifyTableTest(List<TableTest> actualTests, List<TableTest> expectedTests) {
+  private void verifyTableTest(List<TableTest> actualTests, List<TableTest> expectedTests) throws IOException {
     assertEquals(actualTests.size(), expectedTests.size());
     Map<String, TableTest> tableTestMap = new HashMap<>();
     for (TableTest test : actualTests) {
@@ -1599,8 +1603,42 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertEquals(test.getDescription(), storedTest.getDescription());
       assertEquals(test.getExecutionFrequency(), storedTest.getExecutionFrequency());
       assertEquals(test.getOwner(), storedTest.getOwner());
-      assertEquals(test.getResults(), storedTest.getResults());
-      assertEquals(test.getTestCase().toString(), storedTest.getTestCase().toString());
+      verifyTestCase(test.getTableTestCase(), storedTest.getTableTestCase());
+      verifyTestCaseResults(test.getResults(), storedTest.getResults());
+    }
+  }
+
+  private void verifyTestCase(TableTestCase expected, TableTestCase actual) {
+    assertEquals(expected.getTestType(), actual.getTestType());
+    if (expected.getTestType() == TableTestCase.TestType.TABLE_COLUMN_COUNT_TO_EQUAL) {
+      TableColumnCountToEqual expectedTest = (TableColumnCountToEqual) expected.getConfig();
+      TableColumnCountToEqual actualTest = JsonUtils.convertValue(actual.getConfig(), TableColumnCountToEqual.class);
+      assertEquals(expectedTest.getValue(), actualTest.getValue());
+    } else if (expected.getTestType() == TableTestCase.TestType.TABLE_ROW_COUNT_TO_BE_BETWEEN) {
+      TableRowCountToBeBetween expectedTest = (TableRowCountToBeBetween) expected.getConfig();
+      TableRowCountToBeBetween actualTest = JsonUtils.convertValue(actual.getConfig(), TableRowCountToBeBetween.class);
+      assertEquals(expectedTest.getMaxValue(), actualTest.getMaxValue());
+      assertEquals(expectedTest.getMinValue(), actualTest.getMinValue());
+    } else if (expected.getTestType() == TableTestCase.TestType.TABLE_ROW_COUNT_TO_EQUAL) {
+      TableRowCountToEqual expectedTest = (TableRowCountToEqual) expected.getConfig();
+      TableRowCountToEqual actualTest = JsonUtils.convertValue(actual.getConfig(), TableRowCountToEqual.class);
+      assertEquals(expectedTest.getValue(), actualTest.getValue());
+    }
+  }
+
+  private void verifyTestCaseResults(List<Object> expected, List<Object> actual) throws IOException {
+    assertEquals(expected.size(), actual.size());
+    Map<Long, TestCaseResult> actualResultMap = new HashMap<>();
+    for (Object a : actual) {
+      TestCaseResult result = JsonUtils.convertValue(a, TestCaseResult.class);
+      actualResultMap.put(result.getExecutionTime(), result);
+    }
+    for (Object e : expected) {
+      TestCaseResult result = JsonUtils.convertValue(e, TestCaseResult.class);
+      TestCaseResult actualResult = actualResultMap.get(result.getExecutionTime());
+      assertNotNull(actualResult);
+      assertEquals(result.getResult(), actualResult.getResult());
+      assertEquals(result.getSampleData(), actualResult.getSampleData());
     }
   }
 
