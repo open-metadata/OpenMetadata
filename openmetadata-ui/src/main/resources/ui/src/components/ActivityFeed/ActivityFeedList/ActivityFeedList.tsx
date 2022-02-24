@@ -137,7 +137,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   ) : (
                     <Fragment>
                       {replies > 0 ? (
-                        <div className="tw-flex tw-mx-7s">
+                        <div className="tw-flex tw-mx-7">
                           <span>
                             {replies} {replies > 1 ? 'replies' : 'reply'}
                           </span>

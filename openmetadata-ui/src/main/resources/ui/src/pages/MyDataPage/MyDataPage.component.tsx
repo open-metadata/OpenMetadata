@@ -162,7 +162,7 @@ const MyDataPage = () => {
           setEntityThread((pre) => {
             return pre.map((thread) => {
               if (thread.id === id) {
-                return { ...thread, posts: posts };
+                return { ...res.data, posts: posts.slice(-3) };
               } else {
                 return thread;
               }
