@@ -234,6 +234,14 @@ class OktaAuthenticationProvider(AuthenticationProvider):
 
 
 class Auth0AuthenticationProvider(AuthenticationProvider):
+    """
+    OAuth authentication implementation
+    Args:
+        config (MetadataServerConfig):
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
