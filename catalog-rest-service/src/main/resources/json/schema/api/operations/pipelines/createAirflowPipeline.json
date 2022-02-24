@@ -87,5 +87,6 @@
       "$ref": "../../../type/entityReference.json"
     }
   },
-  "required": ["name", "service", "startDate", "pipelineConfig"]
+  "required": ["name", "service", "startDate", "pipelineConfig"],
+  "additionalProperties": false
 }

@@ -25,7 +25,8 @@
           },
           "default": null
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -70,5 +71,6 @@
       "description": "DBT manifest file path to extract dbt models and associate with tables.",
       "type": "string"
     }
-  }
+  },
+  "additionalProperties": false
 }

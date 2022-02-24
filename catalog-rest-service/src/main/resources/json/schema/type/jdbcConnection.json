@@ -27,7 +27,8 @@
           "$ref": "#/definitions/connectionUrl"
         }
       },
-      "required": ["driverClass", "connectionUrl"]
+      "required": ["driverClass", "connectionUrl"],
+      "additionalProperties": false
     }
   },
 
@@ -49,7 +50,6 @@
       "type": "string"
     }
   },
-
   "required": ["driverClass", "connectionUrl", "userName", "password"],
   "additionalProperties": false
 }

@@ -39,12 +39,14 @@
           "type": "string",
           "format": "uri"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
     "images": {
       "$ref": "#/definitions/imageList"
     }
-  }
+  },
+  "additionalProperties": false
 }
