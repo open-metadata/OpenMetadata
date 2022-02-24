@@ -267,7 +267,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return ProfileAndTests(
             profile=entity_profile,
-            test=entity_validations,
+            tests=entity_validations,
         )
 
     def close(self):

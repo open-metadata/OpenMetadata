@@ -49,12 +49,6 @@ from metadata.orm_profiler.utils import logger
 logger = logger()
 
 
-class WorkflowConfigException(Exception):
-    """
-    Raised when the workflow is not properly configured
-    """
-
-
 class ProfilerWorkflowConfig(ConfigModel):
     """
     Configurations we expect to find in the
@@ -137,7 +131,7 @@ class ProfilerWorkflow:
             return cls(config)
         except ValidationError as err:
             logger.error("Error trying to parse the Profiler Workflow configuration")
-            raise WorkflowConfigException(f"Error parsing workflow - {err}")
+            raise ValidationError(f"Error parsing workflow - {err}")
 
     def filter_entities(self, tables: List[Table]) -> Iterable[Table]:
         """
@@ -217,7 +211,9 @@ class ProfilerWorkflow:
         """
         for entity in self.list_entities():
             profile_and_tests: ProfileAndTests = self.processor.process(entity)
-            print(profile_and_tests)
+
+            if hasattr(self, "sink"):
+                self.sink.write_record(profile_and_tests)
 
     def print_status(self) -> int:
         click.echo()

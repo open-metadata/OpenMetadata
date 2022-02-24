@@ -14,14 +14,10 @@ Histogram Metric definition
 """
 from typing import Optional
 
+import numpy as np
 from sqlalchemy import and_, func
-from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.orm_profiler.metrics.core import QueryMetric
 from metadata.orm_profiler.orm.functions.concat import ConcatFn
 from metadata.orm_profiler.orm.registry import is_quantifiable
@@ -45,20 +41,27 @@ class Histogram(QueryMetric):
         Build the histogram query
         """
 
+        if not session:
+            raise AttributeError(
+                "We are missing the session attribute to compute the Histogram."
+            )
+
         if not is_quantifiable(self.col.type):
             return None
 
         bins = session.query(
-            ((func.max(self.col) - func.min(self.col)) / self.bins).label("step")
+            ((func.max(self.col) - func.min(self.col)) / float(self.bins - 1)).label(
+                "step"
+            )
         )
         bins_cte = bins.cte("bins")
 
         ranges = session.query(
-            (func.round(self.col / bins_cte.c.step - 0.5) * bins_cte.c.step).label(
+            (func.round(self.col / bins_cte.c.step - 0.5, 0) * bins_cte.c.step).label(
                 "bin_floor"
             ),
             (
-                func.round(self.col / bins_cte.c.step - 0.5) * bins_cte.c.step
+                func.round(self.col / bins_cte.c.step - 0.5, 0) * bins_cte.c.step
                 + bins_cte.c.step
             ).label("bin_ceil"),
         ).join(
@@ -69,6 +72,7 @@ class Histogram(QueryMetric):
         hist = (
             session.query(
                 ranges_cte.c.bin_floor,
+                ranges_cte.c.bin_ceil,
                 ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
                     "bin"
                 ),
@@ -76,6 +80,7 @@ class Histogram(QueryMetric):
             )
             .group_by(
                 ranges_cte.c.bin_floor,
+                ranges_cte.c.bin_ceil,
                 ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
                     "bin"
                 ),

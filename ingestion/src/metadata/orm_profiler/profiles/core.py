@@ -201,7 +201,14 @@ class Profiler(ABC):
         Run QueryMetrics
         """
         for metric in self.query_metrics:
-            query_res = metric.query(session=self.session).all()
+
+            metric_query = metric.query(session=self.session)
+            # We might not compute some metrics based on the column type.
+            # In those cases, the `query` function returns None
+            if not metric_query:
+                continue
+
+            query_res = metric_query.all()
 
             # query_res has the shape of List[Row], where each row is a dict,
             # e.g., [{colA: 1, colB: 2},...]
@@ -247,7 +254,7 @@ class SingleProfiler(Profiler):
     Returns a single ROW
     """
 
-    def sql_col_run(self) -> Dict[str, Any]:
+    def sql_col_run(self):
         """
         Run the profiler and store its results
 
@@ -260,5 +267,3 @@ class SingleProfiler(Profiler):
         if query:
             row = query.first()
             self.results = dict(row)
-
-        return self.results
