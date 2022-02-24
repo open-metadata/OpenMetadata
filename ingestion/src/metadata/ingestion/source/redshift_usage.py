@@ -14,26 +14,19 @@ import logging
 import traceback
 from typing import Any, Dict, Iterable, Iterator, Union
 
-from sqllineage.runner import LineageRunner
-
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.sink.metadata_rest import MetadataRestSink
 from metadata.ingestion.source.redshift import RedshiftConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import get_start_and_end, ingest_lineage
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
 logger = logging.getLogger(__name__)
@@ -104,43 +97,19 @@ class RedshiftUsageSource(Source[TableQuery]):
                 service_name=self.config.service_name,
             )
             yield tq
-            result = LineageRunner(tq.sql)
-            self.get_lineage(result)
+
+            sql = "insert into public.raw_orders select * from public.raw_payments union select * from public.raw_customers;insert into public.raw_customers select * from public.event join public.category;"
+
+            query_info = {
+                "sql": sql,
+                "from_type": "table",
+                "to_type": "table",
+                "service_name": self.config.service_name,
+            }
+            ingest_lineage(query_info, self.metadata_config)
 
     def close(self):
         self.alchemy_helper.close()
 
     def get_status(self) -> SourceStatus:
         return self.status
-
-    def get_lineage(self, result):
-        sink = MetadataRestSink(self.ctx, self.config, self.metadata_config)
-        for intermediate_table in result.intermediate_tables:
-            for source_table in result.source_tables:
-                lineage = self.create_lineage(source_table, intermediate_table)
-                sink.write_record(lineage)
-            for target_table in result.target_tables:
-                lineage = self.create_lineage(intermediate_table, target_table)
-                sink.write_record(lineage)
-        if not result.intermediate_tables:
-            for target_table in result.target_tables:
-                for source_table in result.source_tables:
-                    lineage = self.create_lineage(source_table, target_table)
-                    sink.write_record(lineage)
-
-    def create_lineage(self, from_table, to_table):
-        try:
-            from_fqdn = f"{self.config.service_name}.{from_table}"
-            from_entity = self.metadata.get_by_name(entity=Table, fqdn=from_fqdn)
-            to_fqdn = f"{self.config.service_name}.{to_table}"
-            to_entity = self.metadata.get_by_name(entity=Table, fqdn=to_fqdn)
-            return AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=from_entity.id.__root__, type="table"
-                    ),
-                    toEntity=EntityReference(id=to_entity.id.__root__, type="table"),
-                )
-            )
-        except Exception:  # pylint: disable=broad-except,unused-variable
-            logger.error(traceback.print_exc())
