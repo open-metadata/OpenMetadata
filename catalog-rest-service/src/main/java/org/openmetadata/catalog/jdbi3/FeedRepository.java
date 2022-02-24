@@ -23,8 +23,12 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
+import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
@@ -45,9 +49,10 @@ public class FeedRepository {
 
   @Transaction
   public Thread create(Thread thread) throws IOException, ParseException {
+    String createdBy = thread.getCreatedBy();
+
     // Validate user creating thread
-    String fromUser = thread.getPosts().get(0).getFrom();
-    dao.userDAO().findEntityByName(fromUser);
+    dao.userDAO().findEntityByName(createdBy);
 
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -60,7 +65,8 @@ public class FeedRepository {
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
 
     // Add relationship User -- created --> Thread relationship
-    dao.relationshipDAO().insert(fromUser, thread.getId().toString(), "user", "thread", Relationship.CREATED.ordinal());
+    dao.relationshipDAO()
+        .insert(createdBy, thread.getId().toString(), Entity.USER, Entity.THREAD, Relationship.CREATED.ordinal());
 
     // Add field relationship data asset Thread -- isAbout ---> entity/entityField
     // relationship
@@ -68,7 +74,7 @@ public class FeedRepository {
         .insert(
             thread.getId().toString(), // from FQN
             about.getFullyQualifiedFieldValue(), // to FQN
-            "thread", // From type
+            Entity.THREAD, // From type
             about.getFullyQualifiedFieldType(), // to Type
             Relationship.IS_ABOUT.ordinal());
 
@@ -78,14 +84,14 @@ public class FeedRepository {
           .insert(
               thread.getId().toString(),
               owner.getId().toString(),
-              "thread",
+              Entity.THREAD,
               owner.getType(),
               Relationship.ADDRESSED_TO.ordinal());
     }
 
     // Create relationship for users, teams, and other entities that are mentioned in the post
     // Multiple mentions of the same entity is handled by taking distinct mentions
-    List<EntityLink> mentions = MessageParser.getEntityLinks(thread.getPosts().get(0).getMessage());
+    List<EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());
 
     mentions.stream()
         .distinct()
@@ -96,7 +102,7 @@ public class FeedRepository {
                         mention.getFullyQualifiedFieldValue(),
                         thread.getId().toString(),
                         mention.getFullyQualifiedFieldType(),
-                        "thread",
+                        Entity.THREAD,
                         Relationship.MENTIONED_IN.ordinal()));
 
     return thread;
@@ -108,7 +114,7 @@ public class FeedRepository {
 
   @Transaction
   public Thread addPostToThread(String id, Post post) throws IOException {
-    // Query 1 - validate user creating thread
+    // Query 1 - validate the user posting the message
     String fromUser = post.getFrom();
     dao.userDAO().findEntityByName(fromUser);
 
@@ -131,72 +137,131 @@ public class FeedRepository {
     }
     if (!relationAlreadyExists) {
       dao.relationshipDAO()
-          .insert(post.getFrom(), thread.getId().toString(), "user", "thread", Relationship.REPLIED_TO.ordinal());
+          .insert(
+              post.getFrom(), thread.getId().toString(), Entity.USER, Entity.THREAD, Relationship.REPLIED_TO.ordinal());
     }
     return thread;
   }
 
   @Transaction
-  public List<Thread> listThreads(String link) throws IOException {
+  public ThreadCount getThreadsCount(String link, boolean isResolved) throws IOException {
+    ThreadCount threadCount = new ThreadCount();
+    List<List<String>> result;
+    List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
+    AtomicInteger totalCount = new AtomicInteger(0);
     if (link == null) {
-      // Not listing thread by data asset or user
-      return JsonUtils.readObjects(dao.feedDAO().list(), Thread.class);
-    }
-    EntityLink entityLink = EntityLink.parse(link);
-    EntityReference reference = EntityUtil.validateEntityLink(entityLink);
-    List<String> threadIds = new ArrayList<>();
-    List<List<String>> result =
-        dao.fieldRelationshipDAO()
-            .listToByPrefix(
-                entityLink.getFullyQualifiedFieldValue(),
-                entityLink.getFullyQualifiedFieldType(),
-                "thread",
-                Relationship.MENTIONED_IN.ordinal());
-    result.forEach(l -> threadIds.add(l.get(1)));
-
-    // TODO remove hardcoding of thread
-    // For a user entitylink get created or replied relationships to the thread
-    if (reference.getType().equals(Entity.USER)) {
-      // TODO: Add user mentioned threads as well
-      threadIds.addAll(
-          dao.relationshipDAO()
-              .findTo(
-                  reference.getName(),
-                  reference.getType(),
-                  Relationship.CREATED.ordinal(),
-                  "thread",
-                  toBoolean(Include.NON_DELETED)));
-      threadIds.addAll(
-          dao.relationshipDAO()
-              .findTo(
-                  reference.getName(),
-                  reference.getType(),
-                  Relationship.REPLIED_TO.ordinal(),
-                  "thread",
-                  toBoolean(Include.NON_DELETED)));
-    } else {
-      // Only data assets are added as about
+      // Get thread count of all entities
       result =
-          dao.fieldRelationshipDAO()
-              .listFromByAllPrefix(
-                  entityLink.getFullyQualifiedFieldValue(),
-                  "thread",
-                  entityLink.getFullyQualifiedFieldType(),
-                  Relationship.IS_ABOUT.ordinal());
-      result.forEach(l -> threadIds.add(l.get(1)));
-    }
-
-    List<Thread> threads = new ArrayList<>();
-    Set<String> uniqueValues = new HashSet<>();
-    for (String t : threadIds) {
-      // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same thread
-      // Don't send duplicated copies of the thread in response
-      if (uniqueValues.add(t)) {
-        threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));
+          dao.feedDAO()
+              .listCountByEntityLink(
+                  StringUtils.EMPTY, Entity.THREAD, StringUtils.EMPTY, Relationship.IS_ABOUT.ordinal(), isResolved);
+    } else {
+      EntityLink entityLink = EntityLink.parse(link);
+      EntityReference reference = EntityUtil.validateEntityLink(entityLink);
+      if (reference.getType().equals(Entity.USER)) {
+        List<String> threadIds = new ArrayList<>(getUserThreadIds(reference));
+        result = dao.feedDAO().listCountByThreads(threadIds, isResolved);
+      } else {
+        result =
+            dao.feedDAO()
+                .listCountByEntityLink(
+                    entityLink.getFullyQualifiedFieldValue(),
+                    Entity.THREAD,
+                    entityLink.getFullyQualifiedFieldType(),
+                    Relationship.IS_ABOUT.ordinal(),
+                    isResolved);
       }
     }
-    // sort the list by thread updated timestamp before returning
-    threads.sort(Comparator.comparing(Thread::getUpdatedAt));
+    result.forEach(
+        l -> {
+          int count = Integer.parseInt(l.get(1));
+          entityLinkThreadCounts.add(new EntityLinkThreadCount().withEntityLink(l.get(0)).withCount(count));
+          totalCount.addAndGet(count);
+        });
+    threadCount.withTotalCount(totalCount.get());
+    threadCount.withCounts(entityLinkThreadCounts);
+    return threadCount;
+  }
+
+  public List<Post> listPosts(String threadId) throws IOException {
+    Thread thread = get(threadId);
+    return thread.getPosts();
+  }
+
+  @Transaction
+  public List<Thread> listThreads(String link, int limitPosts) throws IOException {
+    List<Thread> threads = new ArrayList<>();
+    if (link == null) {
+      // Not listing thread by data asset or user
+      threads = JsonUtils.readObjects(dao.feedDAO().list(), Thread.class);
+    } else {
+      EntityLink entityLink = EntityLink.parse(link);
+      EntityReference reference = EntityUtil.validateEntityLink(entityLink);
+      List<String> threadIds = new ArrayList<>();
+      List<List<String>> result;
+
+      // TODO remove hardcoding of thread
+      // For a user entityLink get created or replied relationships to the thread
+      if (reference.getType().equals(Entity.USER)) {
+        threadIds.addAll(getUserThreadIds(reference));
+      } else {
+        // Only data assets are added as about
+        result =
+            dao.fieldRelationshipDAO()
+                .listFromByAllPrefix(
+                    entityLink.getFullyQualifiedFieldValue(),
+                    Entity.THREAD,
+                    entityLink.getFullyQualifiedFieldType(),
+                    Relationship.IS_ABOUT.ordinal());
+        result.forEach(l -> threadIds.add(l.get(1)));
+      }
+
+      Set<String> uniqueValues = new HashSet<>();
+      for (String t : threadIds) {
+        // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same thread
+        // Don't send duplicated copies of the thread in response
+        if (uniqueValues.add(t)) {
+          threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));
+        }
+      }
+      // sort the list by thread updated timestamp before returning
+      threads.sort(Comparator.comparing(Thread::getUpdatedAt, Comparator.reverseOrder()));
+    }
+    return limitPostsInThreads(threads, limitPosts);
+  }
+
+  private List<Thread> limitPostsInThreads(List<Thread> threads, int limitPosts) {
+    for (Thread t : threads) {
+      List<Post> posts = t.getPosts();
+      if (posts.size() > limitPosts) {
+        // Only keep the last "n" number of posts
+        posts.sort(Comparator.comparing(Post::getPostTs));
+        posts = posts.subList(posts.size() - limitPosts, posts.size());
+        t.withPosts(posts);
+      }
+    }
     return threads;
+  }
+
+  private List<String> getUserThreadIds(EntityReference user) {
+    List<String> threadIds = new ArrayList<>();
+    // TODO: Add user mentioned threads as well
+    threadIds.addAll(
+        dao.relationshipDAO()
+            .findTo(
+                user.getName(),
+                user.getType(),
+                Relationship.CREATED.ordinal(),
+                Entity.THREAD,
+                toBoolean(Include.NON_DELETED)));
+    threadIds.addAll(
+        dao.relationshipDAO()
+            .findTo(
+                user.getName(),
+                user.getType(),
+                Relationship.REPLIED_TO.ordinal(),
+                Entity.THREAD,
+                toBoolean(Include.NON_DELETED)));
+    return threadIds;
   }
 }

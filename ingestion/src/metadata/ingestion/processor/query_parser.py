@@ -67,7 +67,11 @@ class QueryParserProcessor(Processor):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+        cls,
+        config_dict: dict,
+        metadata_config_dict: dict,
+        ctx: WorkflowContext,
+        **kwargs
     ):
         config = QueryParserProcessorConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
@@ -75,9 +79,11 @@ class QueryParserProcessor(Processor):
 
     def process(self, record: TableQuery) -> QueryParserData:
         try:
-            start_date = datetime.datetime.strptime(
-                record.analysis_date, "%Y-%m-%d %H:%M:%S"
-            ).date()
+            start_date = record.analysis_date
+            if isinstance(record.analysis_date, str):
+                start_date = datetime.datetime.strptime(
+                    record.analysis_date, "%Y-%m-%d %H:%M:%S"
+                ).date()
             parser = Parser(record.sql)
             columns_dict = {} if parser.columns_dict is None else parser.columns_dict
             query_parser_data = QueryParserData(

@@ -68,7 +68,7 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
+import { getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
@@ -77,6 +77,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [isSampleDataLoading, setIsSampleDataLoading] =
+    useState<boolean>(false);
+  const [isTableQueriesLoading, setIsTableQueriesLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
@@ -123,6 +125,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   );
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
+  const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -186,7 +189,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableId(id);
         setCurrentVersion(version);
         setTier(getTierTags(tags));
-        setOwner(getOwnerFromId(owner?.id));
+        setOwner(owner);
         setFollowers(followers);
         setDeleted(deleted);
         setSlashedTableName([
@@ -280,6 +283,28 @@ const DatasetDetailsPage: FunctionComponent = () => {
         break;
       }
 
+      case TabSpecificField.TABLE_QUERIES: {
+        if ((tableQueries?.length ?? 0) > 0) {
+          break;
+        } else {
+          setIsTableQueriesLoading(true);
+          getTableDetailsByFQN(tableFQN, tabField)
+            .then((res: AxiosResponse) => {
+              const { tableQueries } = res.data;
+              setTableQueries(tableQueries);
+            })
+            .catch(() =>
+              showToast({
+                variant: 'error',
+                body: 'Error while getting table queries',
+              })
+            )
+            .finally(() => setIsTableQueriesLoading(false));
+
+          break;
+        }
+      }
+
       default:
         break;
     }
@@ -349,7 +374,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           const { version, owner, tags } = res.data;
           setCurrentVersion(version);
           setTableDetails(res.data);
-          setOwner(getOwnerFromId(owner?.id));
+          setOwner(owner);
           setTier(getTierTags(tags));
           resolve();
         })
@@ -493,6 +518,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isQueriesLoading={isTableQueriesLoading}
           isSampleDataLoading={isSampleDataLoading}
           joins={joins}
           lineageLeafNodes={leafNodes}
@@ -505,6 +531,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           slashedTableName={slashedTableName}
           tableDetails={tableDetails}
           tableProfile={tableProfile}
+          tableQueries={tableQueries}
           tableTags={tableTags}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}

@@ -150,8 +150,8 @@ const DashboardDetails = ({
       value:
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
-      placeholderText: owner?.displayName || '',
+          : owner?.displayName || owner?.name || '',
+      placeholderText: owner?.displayName || owner?.name || '',
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
@@ -202,12 +202,7 @@ const DashboardDetails = ({
         : dashboardDetails.tags;
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        owner: newOwner
-          ? {
-              ...dashboardDetails.owner,
-              ...newOwner,
-            }
-          : dashboardDetails.owner,
+        owner: newOwner ? newOwner : dashboardDetails.owner,
         tags: tierTag,
       };
 

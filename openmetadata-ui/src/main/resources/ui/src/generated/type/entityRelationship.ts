@@ -36,9 +36,13 @@ export interface EntityRelationship {
    */
   fromId?: string;
   /**
-   * Describes relationship between the two entities.
+   * Describes relationship between the two entities as an integer.
    */
-  relation: string;
+  relation?: number;
+  /**
+   * Describes relationship between the two entities. Eg: Database --- Contains --> Table
+   */
+  relationshipType: RelationshipType;
   /**
    * Type of the entity towards which the relationship refers to. Examples: `database`,
    * `table`, `metrics` ...
@@ -52,4 +56,30 @@ export interface EntityRelationship {
    * Unique identifier that identifies the entity towards which the relationship refers to.
    */
   toId?: string;
+}
+
+/**
+ * Describes relationship between the two entities. Eg: Database --- Contains --> Table
+ *
+ * This enum captures all the relationships between Catalog entities. Note that the
+ * relationship from is a Strong entity and to is Weak entity when possible.
+ */
+export enum RelationshipType {
+  AddressedTo = 'addressedTo',
+  AppliedTo = 'appliedTo',
+  Contains = 'contains',
+  CreatedBy = 'createdBy',
+  Follows = 'follows',
+  Has = 'has',
+  IsAbout = 'isAbout',
+  JoinedWith = 'joinedWith',
+  MentionedIn = 'mentionedIn',
+  Owns = 'owns',
+  ParentOf = 'parentOf',
+  RelatedTo = 'relatedTo',
+  RepliedTo = 'repliedTo',
+  Reviews = 'reviews',
+  TestedBy = 'testedBy',
+  Upstream = 'upstream',
+  Uses = 'uses',
 }

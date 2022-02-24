@@ -77,6 +77,7 @@ const DatasetDetailsProps = {
   addLineageHandler: jest.fn(),
   removeLineageHandler: jest.fn(),
   entityLineageHandler: jest.fn(),
+  tableQueries: [],
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);

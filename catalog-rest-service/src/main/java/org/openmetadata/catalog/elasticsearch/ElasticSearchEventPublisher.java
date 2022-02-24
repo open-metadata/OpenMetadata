@@ -307,7 +307,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UserESIndex userESIndex = null;
     if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
       User user = (User) event.getEntity();
-      userESIndex = UserESIndex.builder(user, event.getEventType()).build();
+      userESIndex = UserESIndex.builder(user).build();
     }
     switch (event.getEventType()) {
       case ENTITY_CREATED:
@@ -334,7 +334,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     TeamESIndex teamESIndex = null;
     if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
       Team team = (Team) event.getEntity();
-      teamESIndex = TeamESIndex.builder(team, event.getEventType()).build();
+      teamESIndex = TeamESIndex.builder(team).build();
     }
     switch (event.getEventType()) {
       case ENTITY_CREATED:

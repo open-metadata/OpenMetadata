@@ -75,6 +75,10 @@ export interface CreateTopic {
    * Tags for this topic
    */
   tags?: TagLabel[];
+  /**
+   * Contains key/value pair of topic configuration.
+   */
+  topicConfig?: { [key: string]: any };
 }
 
 /**

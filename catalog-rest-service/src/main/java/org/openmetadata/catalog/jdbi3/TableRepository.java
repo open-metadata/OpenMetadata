@@ -367,7 +367,6 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void storeRelationships(Table table) {
     // Add relationship from database to table
-    String databaseId = table.getDatabase().getId().toString();
     addRelationship(table.getDatabase().getId(), table.getId(), DATABASE, TABLE, Relationship.CONTAINS);
 
     // Add table owner relationship
@@ -842,10 +841,12 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
           Column addedColumn = addedColumnMap.get(deleted.getName());
-          if (addedColumn.getDescription().isEmpty() && !deleted.getDescription().isEmpty()) {
+          if ((addedColumn.getDescription() == null || addedColumn.getDescription().isEmpty())
+              && (deleted.getDescription() == null || !deleted.getDescription().isEmpty())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if (addedColumn.getTags().isEmpty() && !deleted.getTags().isEmpty()) {
+          if ((addedColumn.getTags() == null || addedColumn.getTags().isEmpty())
+              && (deleted.getTags() == null || !deleted.getTags().isEmpty())) {
             addedColumn.setTags(deleted.getTags());
           }
         }
@@ -900,12 +901,12 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (recordChange(
-          getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength())) {
-        if (updatedColumn.getDataLength() < origColumn.getDataLength()) {
-          // The data length of a column changed. Treat it as backward-incompatible change
-          majorVersionChange = true;
-        }
+      boolean updated =
+          recordChange(
+              getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength());
+      if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
+        // The data length of a column changed. Treat it as backward-incompatible change
+        majorVersionChange = true;
       }
     }
   }

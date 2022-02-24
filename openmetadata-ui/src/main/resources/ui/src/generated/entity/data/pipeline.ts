@@ -68,6 +68,10 @@ export interface Pipeline {
    */
   pipelineLocation?: string;
   /**
+   * Series of pipeline executions and its status
+   */
+  pipelineStatus?: PipelineStatus[];
+  /**
    * Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
    */
   pipelineUrl?: string;
@@ -186,6 +190,49 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Series of pipeline executions, its status and task status.
+ */
+export interface PipelineStatus {
+  /**
+   * Date where the job was executed.
+   */
+  executionDate?: number;
+  /**
+   * Status at a specific execution date.
+   */
+  executionStatus?: StatusType;
+  /**
+   * Series of task executions and its status
+   */
+  taskStatus?: TaskStatus[];
+}
+
+/**
+ * Status at a specific execution date.
+ *
+ * Enum defining the possible Status.
+ */
+export enum StatusType {
+  Failed = 'Failed',
+  Pending = 'Pending',
+  Successful = 'Successful',
+}
+
+/**
+ * This schema defines a time series of the status of a Pipeline or Task.
+ */
+export interface TaskStatus {
+  /**
+   * Status at a specific execution date.
+   */
+  executionStatus?: StatusType;
+  /**
+   * Name of the Task.
+   */
+  name?: string;
 }
 
 /**

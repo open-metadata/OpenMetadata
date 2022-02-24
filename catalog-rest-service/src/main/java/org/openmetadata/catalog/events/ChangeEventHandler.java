@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -36,7 +35,6 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -148,7 +146,8 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+  private static ChangeEvent getChangeEvent(
+      EventType eventType, String entityType, EntityInterface<?> entityInterface) {
     return new ChangeEvent()
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
@@ -225,12 +224,11 @@ public class ChangeEventHandler implements EventHandler {
       switch (changeType) {
         case ADD:
           message =
-              String.format("Added %s: `*%s*`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
+              String.format("Added %s: `%s`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
           break;
         case UPDATE:
           message =
-              String.format(
-                  "Updated %s to `*%s*`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
+              String.format("Updated %s to `%s`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
           break;
         case DELETE:
           message = String.format("Deleted %s", arrayFieldValue != null ? arrayFieldValue : fieldName);
@@ -238,12 +236,6 @@ public class ChangeEventHandler implements EventHandler {
         default:
           break;
       }
-
-      Post post =
-          new Post()
-              .withFrom(entityInterface.getUpdatedBy())
-              .withMessage(message)
-              .withPostTs(System.currentTimeMillis());
 
       threads.add(
           new Thread()
@@ -253,7 +245,7 @@ public class ChangeEventHandler implements EventHandler {
               .withAbout(link.getLinkString())
               .withUpdatedBy(entityInterface.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis())
-              .withPosts(Collections.singletonList(post)));
+              .withMessage(message));
     }
 
     return threads;

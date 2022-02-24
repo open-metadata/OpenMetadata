@@ -39,12 +39,18 @@ const SchemaEditor = ({
     name: CSMode.JAVASCRIPT,
     json: true,
   },
+  options,
+  editorClass,
 }: {
   value: string;
   className?: string;
   mode?: Mode;
+  options?: {
+    [key: string]: string | boolean | Array<string>;
+  };
+  editorClass?: string;
 }) => {
-  const options = {
+  const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
     indentUnit: JSON_TAB_SIZE,
     indentWithTabs: false,
@@ -57,6 +63,7 @@ const SchemaEditor = ({
     gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
     mode,
     readOnly: true,
+    ...options,
   };
   const [internalValue, setInternalValue] = useState(
     getSchemaEditorValue(value)
@@ -72,7 +79,8 @@ const SchemaEditor = ({
   return (
     <div className={className}>
       <CodeMirror
-        options={options}
+        className={editorClass}
+        options={defaultOptions}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
       />

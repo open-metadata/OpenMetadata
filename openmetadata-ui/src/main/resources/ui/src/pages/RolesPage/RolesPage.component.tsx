@@ -494,12 +494,12 @@ const RolesPage = () => {
     }
 
     return (
-      <div className="tw-grid tw-grid-cols-4 tw-gap-x-2">
+      <div className="tw-grid tw-grid-cols-4 tw-gap-4">
         {users.map((user) => (
           <UserCard
             isIconVisible
             item={{
-              description: user.displayName as string,
+              description: (user.displayName ?? user.name) as string,
               name: user.name as string,
               id: user.id,
             }}

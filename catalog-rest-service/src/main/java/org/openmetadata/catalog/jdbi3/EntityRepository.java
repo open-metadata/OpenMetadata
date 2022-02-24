@@ -688,8 +688,7 @@ public abstract class EntityRepository<T> {
       }
       // this could be changed to Include.NON_DELETED because we validate only when creating entities linked to
       // non-deleted entities.
-      Object entity = Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted);
-      return helper(entity).toEntityReference();
+      return helper(Entity.getEntity(entityReference, Fields.EMPTY_FIELDS, isDeleted)).toEntityReference();
     }
 
     /**
@@ -908,12 +907,12 @@ public abstract class EntityRepository<T> {
       this.operation = operation;
     }
 
-    public final void update() throws IOException {
+    public final void update() throws IOException, ParseException {
       update(false);
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
-    public final void update(boolean allowEdits) throws IOException {
+    public final void update(boolean allowEdits) throws IOException, ParseException {
       if (operation.isDelete()) { // DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -930,7 +929,7 @@ public abstract class EntityRepository<T> {
       storeUpdate();
     }
 
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() throws IOException, ParseException {
       // Default implementation. Override this to add any entity specific field updates
     }
 
@@ -1081,17 +1080,17 @@ public abstract class EntityRepository<T> {
       updatedList = Optional.ofNullable(updatedList).orElse(Collections.emptyList());
       for (K stored : origList) {
         // If an entry in the original list is not in updated list, then it is deleted during update
-        K updated = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
-        if (updated == null) {
+        K u = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
+        if (u == null) {
           deletedItems.add(stored);
         }
       }
 
-      for (K updated : updatedList) {
+      for (K U : updatedList) {
         // If an entry in the updated list is not in original list, then it is added during update
-        K stored = origList.stream().filter(c -> typeMatch.test(c, updated)).findAny().orElse(null);
+        K stored = origList.stream().filter(c -> typeMatch.test(c, U)).findAny().orElse(null);
         if (stored == null) { // New column added
-          addedItems.add(updated);
+          addedItems.add(U);
         }
       }
       if (!addedItems.isEmpty()) {

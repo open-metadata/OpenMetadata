@@ -15,15 +15,21 @@ package org.openmetadata.catalog.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import javax.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -32,12 +38,15 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -47,6 +56,81 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   public RoleResourceTest() {
     super(Entity.ROLE, Role.class, RoleList.class, "roles", null, false, false, false, false, false);
+  }
+
+  @Test
+  void defaultRole(TestInfo test) throws IOException {
+    // Check if there is a default role in the beginning. DataConsumer is a default role.
+    List<Role> defaultRoles = getDefaultRoles();
+    assertEquals(1, defaultRoles.size());
+    Role prevDefaultRole = defaultRoles.get(0);
+
+    // Update the default role and check the following:
+    // - the default role has changed
+    // - the previous default role is no longer set as default
+    // - all users have roles set correctly (only current default role should exist)
+    for (int i = 0; i < 2; i++) { // Run two iterations for this test.
+      Role defaultRole = createRolesAndSetDefault(test, 7, i * 10);
+      defaultRoles = getDefaultRoles();
+      assertEquals(1, defaultRoles.size());
+      assertEquals(defaultRole.getId(), defaultRoles.get(0).getId());
+      assertNotEquals(defaultRole.getId(), prevDefaultRole.getId());
+
+      List<User> users = new UserResourceTest().listEntities(Map.of("fields", "roles"), ADMIN_AUTH_HEADERS).getData();
+      for (User user : users) {
+        boolean defaultRoleSet = false, prevDefaultRoleExists = false;
+
+        for (EntityReference role : user.getRoles()) {
+          if (role.getId().equals(defaultRole.getId())) {
+            defaultRoleSet = true;
+          }
+          if (role.getId().equals(prevDefaultRole.getId())) {
+            prevDefaultRoleExists = true;
+          }
+        }
+        if (!defaultRoleSet) {
+          fail(String.format("Default role %s was not set for user %s", defaultRole.getName(), user.getName()));
+        }
+        if (prevDefaultRoleExists) {
+          fail(
+              String.format(
+                  "Previous default role %s has not been removed for user %s",
+                  prevDefaultRole.getName(), user.getName()));
+        }
+      }
+      prevDefaultRole = defaultRole;
+    }
+  }
+
+  public List<Role> getDefaultRoles() throws HttpResponseException {
+    return listEntities(Map.of("default", "true"), ADMIN_AUTH_HEADERS).getData();
+  }
+
+  /**
+   * Creates the given number of roles and sets one of them as the default role.
+   *
+   * @return the default role
+   */
+  public Role createRolesAndSetDefault(TestInfo test, @Positive int numberOfRoles, @Positive int offset)
+      throws IOException {
+    // Create a set of roles.
+    for (int i = 0; i < numberOfRoles; i++) {
+      CreateRole create = createRequest(test, offset + i);
+      createAndCheckRole(create, ADMIN_AUTH_HEADERS);
+    }
+
+    // Set one of the roles as default.
+    Role role =
+        getEntityByName(
+            getEntityName(test, offset + new Random().nextInt(numberOfRoles)),
+            Collections.emptyMap(),
+            RoleResource.FIELDS,
+            ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(role);
+    role.setDefault(true);
+    ChangeDescription change = getChangeDescription(role.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("default").withOldValue(false).withNewValue(true));
+    return patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -78,7 +162,6 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Test
   void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create table without any attributes
     Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(role);
@@ -107,6 +190,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     userResourceTest.createEntity(
         userResourceTest.createRequest(role.getName() + "user2", "", "", null).withRoles(List.of(role.getId())),
         ADMIN_AUTH_HEADERS);
+    // Assign two arbitrary teams this role for testing.
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    teamResourceTest.createEntity(
+        teamResourceTest.createRequest(role.getName() + "team1", "", "", null).withDefaultRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS);
+    teamResourceTest.createEntity(
+        teamResourceTest.createRequest(role.getName() + "team2", "", "", null).withDefaultRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS);
   }
 
   /** Validate returned fields GET .../roles/{id}?fields="..." or GET .../roles/name/{name}?fields="..." */
@@ -122,13 +213,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
 
     // .../roles?fields=policy,users
-    String fields = "policy,users";
+    String fields = "policy,teams,users";
     role =
         byName
             ? getEntityByName(expectedRole.getName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(expectedRole.getId(), fields, ADMIN_AUTH_HEADERS);
     validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
     TestUtils.validateEntityReference(role.getPolicy());
+    TestUtils.validateEntityReference(role.getTeams());
     TestUtils.validateEntityReference(role.getUsers());
   }
 

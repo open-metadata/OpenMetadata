@@ -110,6 +110,10 @@ export interface Topic {
    */
   tags?: TagLabel[];
   /**
+   * Contains key/value pair of topic configuration.
+   */
+  topicConfig?: { [key: string]: any };
+  /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
    */

@@ -44,7 +44,7 @@ public class UsageRepository {
 
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
-    EntityReference ref = Entity.getEntityReference(entityType, UUID.fromString(id));
+    EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id));
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
@@ -59,7 +59,7 @@ public class UsageRepository {
   @Transaction
   public void create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
-    Entity.getEntityReference(entityType, UUID.fromString(id));
+    Entity.getEntityReferenceById(entityType, UUID.fromString(id));
     addUsage(entityType, id, usage);
   }
 

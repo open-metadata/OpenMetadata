@@ -194,22 +194,29 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const searchHandler = (value: string) => {
+    setIsOpen(false);
+    addToRecentSearched(value);
+    history.push(
+      getExplorePathWithSearch(
+        value,
+        // this is for if user is searching from another page
+        location.pathname.startsWith(ROUTES.EXPLORE)
+          ? appState.explorePageTab
+          : 'tables'
+      )
+    );
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
     if (e.key === 'Enter') {
-      setIsOpen(false);
-
-      addToRecentSearched(target.value);
-      history.push(
-        getExplorePathWithSearch(
-          target.value,
-          // this is for if user is searching from another page
-          location.pathname.startsWith(ROUTES.EXPLORE)
-            ? appState.explorePageTab
-            : 'tables'
-        )
-      );
+      searchHandler(target.value);
     }
+  };
+
+  const handleOnclick = () => {
+    searchHandler(searchValue ?? '');
   };
 
   useEffect(() => {
@@ -243,6 +250,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <NavBar
           handleFeatureModal={handleFeatureModal}
           handleKeyDown={handleKeyDown}
+          handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
           isFeatureModalOpen={isFeatureModalOpen}

@@ -147,6 +147,7 @@ class MetadataRestSink(Sink[Entity]):
                 columns=db_and_table.table.columns,
                 description=db_and_table.table.description,
                 database=db_ref,
+                tableConstraints=db_and_table.table.tableConstraints,
             )
             if db_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
@@ -219,6 +220,7 @@ class MetadataRestSink(Sink[Entity]):
                     db_and_table.database.name.__root__,
                 )
             )
+            logger.debug(traceback.print_exc())
             logger.error(err)
             self.status.failure(f"Table: {db_and_table.table.name.__root__}")
 

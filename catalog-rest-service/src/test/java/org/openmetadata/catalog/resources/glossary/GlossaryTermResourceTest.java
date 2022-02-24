@@ -18,6 +18,7 @@ package org.openmetadata.catalog.resources.glossary;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -114,8 +115,12 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Glossary glossary1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     GlossaryTerm term1 = createTerm(glossary1, null, "term1");
-    createTerm(glossary1, term1, "term11");
-    createTerm(glossary1, term1, "term12");
+    GlossaryTerm term11 = createTerm(glossary1, term1, "term11");
+    GlossaryTerm term12 = createTerm(glossary1, term1, "term12");
+    term1.setChildren(
+        List.of(
+            new GlossaryTermEntityInterface(term11).getEntityReference(),
+            new GlossaryTermEntityInterface(term12).getEntityReference()));
 
     // Create the following glossary
     // glossary2
@@ -126,43 +131,45 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Glossary glossary2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     GlossaryTerm term2 = createTerm(glossary2, null, "term2");
-    createTerm(glossary2, term2, "term21");
-    createTerm(glossary2, term2, "term22");
+    GlossaryTerm term21 = createTerm(glossary2, term2, "term21");
+    GlossaryTerm term22 = createTerm(glossary2, term2, "term22");
+    term2.setChildren(
+        List.of(
+            new GlossaryTermEntityInterface(term21).getEntityReference(),
+            new GlossaryTermEntityInterface(term22).getEntityReference()));
 
     // List terms without any filters
-    ResultList<GlossaryTerm> list = listEntities(null, ADMIN_AUTH_HEADERS);
-    List<String> expectedTerms =
-        Arrays.asList(
-            GLOSSARY_TERM1.getName(),
-            GLOSSARY_TERM2.getName(),
-            "term1",
-            "term11",
-            "term12",
-            "term2",
-            "term21",
-            "term22");
-    assertContains(list, expectedTerms);
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "children,relatedTerms,reviewers,tags");
+    ResultList<GlossaryTerm> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    List<GlossaryTerm> expectedTerms =
+        Arrays.asList(GLOSSARY_TERM1, GLOSSARY_TERM2, term1, term11, term12, term2, term21, term22);
+    assertContains(expectedTerms, list.getData());
 
     // List terms under glossary1
-    Map<String, String> queryParams = new HashMap<>();
+    queryParams = new HashMap<>();
+    queryParams.put("fields", "children,relatedTerms,reviewers,tags");
     queryParams.put("glossary", glossary1.getId().toString());
     list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertContains(list, Arrays.asList("term1", "term11", "term12"));
+    assertContains(Arrays.asList(term1, term11, term12), list.getData());
 
     // List terms under glossary1 parent term1
     queryParams = new HashMap<>();
+    queryParams.put("fields", "children,relatedTerms,reviewers,tags");
     queryParams.put("glossary", glossary1.getId().toString());
     queryParams.put("parent", term1.getId().toString());
     list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertContains(list, Arrays.asList("term11", "term12"));
+    assertContains(Arrays.asList(term11, term12), list.getData());
 
     // List terms under glossary2
     queryParams = new HashMap<>();
+    queryParams.put("fields", "children,relatedTerms,reviewers,tags");
     queryParams.put("glossary", glossary2.getId().toString());
     list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertContains(list, Arrays.asList("term2", "term21", "term22"));
+    assertContains(Arrays.asList(term2, term21, term22), list.getData());
 
     // List terms under glossary 2 but give glossary term1 in glossary 1 as parent
+    queryParams.put("fields", "children,relatedTerms,reviewers,tags");
     queryParams.put("parent", term1.getId().toString());
     Map<String, String> map = Collections.unmodifiableMap(queryParams);
     assertResponse(
@@ -179,9 +186,20 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     return createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
   }
 
-  public void assertContains(ResultList<GlossaryTerm> list, List<String> expectedTerm) {
-    assertEquals(expectedTerm.size(), list.getData().size());
-    list.getData().forEach(term -> assertTrue(expectedTerm.contains(term.getName())));
+  public void assertContains(List<GlossaryTerm> expectedTerms, List<GlossaryTerm> actualTerms)
+      throws HttpResponseException {
+    assertEquals(expectedTerms.size(), actualTerms.size());
+    for (GlossaryTerm expected : expectedTerms) {
+      GlossaryTerm actual =
+          actualTerms.stream().filter(a -> EntityUtil.glossaryTermMatch.test(a, expected)).findAny().orElse(null);
+      assertNotNull(actual, "Expected glossaryTerm " + expected.getFullyQualifiedName() + " not found");
+      assertEquals(expected.getFullyQualifiedName(), actual.getFullyQualifiedName());
+      assertEquals(expected.getSynonyms(), actual.getSynonyms());
+      assertEquals(expected.getParent(), actual.getParent());
+      assertEntityReferenceList(expected.getChildren(), actual.getChildren());
+      assertEntityReferenceList(expected.getReviewers(), actual.getReviewers());
+      TestUtils.validateTags(expected.getTags(), actual.getTags());
+    }
   }
 
   @Override

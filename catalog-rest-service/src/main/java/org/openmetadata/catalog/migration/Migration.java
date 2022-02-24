@@ -18,6 +18,7 @@ import org.openmetadata.catalog.jdbi3.MigrationDAO;
 
 @Slf4j
 public final class Migration {
+  private Migration() {}
 
   /**
    * Run a query to MySQL to retrieve the last migrated Flyway version. If the Flyway table DATABASE_CHANGE_LOG does not

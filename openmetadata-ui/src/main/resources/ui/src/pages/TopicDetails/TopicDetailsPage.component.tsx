@@ -45,11 +45,7 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import {
-  getOwnerFromId,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import {
   getCurrentTopicTab,
   topicDetailsTabs,
@@ -145,7 +141,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         setDescription(description ?? '');
         setSchemaType(schemaType);
         setFollowers(followers);
-        setOwner(getOwnerFromId(owner?.id));
+        setOwner(owner);
         setTier(getTierTags(tags));
         setTags(getTagsWithoutTier(tags));
         setSchemaText(schemaText);
@@ -256,7 +252,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         .then((res) => {
           setTopicDetails(res.data);
           setCurrentVersion(res.data.version);
-          setOwner(getOwnerFromId(res.data.owner?.id));
+          setOwner(res.data.owner);
           setTier(getTierTags(res.data.tags));
           resolve();
         })

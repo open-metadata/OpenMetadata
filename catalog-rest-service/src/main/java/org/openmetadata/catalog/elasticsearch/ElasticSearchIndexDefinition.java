@@ -271,7 +271,6 @@ class ParseTags {
   ParseTags(List<String> tags) {
     if (!tags.isEmpty()) {
       List<String> tagsList = new ArrayList<>(tags);
-      String tierTag = null;
       for (String tag : tagsList) {
         if (tag.toLowerCase().matches("(.*)tier(.*)")) {
           tierTag = tag;
@@ -280,7 +279,6 @@ class ParseTags {
       }
       if (tierTag != null) {
         tagsList.remove(tierTag);
-        this.tierTag = tierTag;
       }
       this.tags = tagsList;
     } else {
@@ -751,7 +749,7 @@ class UserESIndex {
 
   Boolean deleted;
 
-  public static UserESIndexBuilder builder(User user, EventType eventType) {
+  public static UserESIndexBuilder builder(User user) {
     List<String> teams = new ArrayList<>();
     List<String> roles = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
@@ -817,7 +815,7 @@ class TeamESIndex {
 
   Boolean deleted;
 
-  public static TeamESIndexBuilder builder(Team team, EventType eventType) {
+  public static TeamESIndexBuilder builder(Team team) {
     List<String> users = new ArrayList<>();
     List<String> owns = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();

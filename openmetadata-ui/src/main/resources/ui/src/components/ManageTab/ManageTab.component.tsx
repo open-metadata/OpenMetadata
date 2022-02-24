@@ -33,6 +33,7 @@ import Loader from '../Loader/Loader';
 type Props = {
   currentTier?: string;
   currentUser?: string;
+  hideTier?: boolean;
   onSave: (
     owner: TableDetail['owner'],
     tier: TableDetail['tier']
@@ -43,6 +44,7 @@ type Props = {
 const ManageTab: FunctionComponent<Props> = ({
   currentTier = '',
   currentUser = '',
+  hideTier = false,
   onSave,
   hasEditAccess,
 }: Props) => {
@@ -133,6 +135,11 @@ const ManageTab: FunctionComponent<Props> = ({
     setActiveTier(cardId);
   };
 
+  const setInitialLoadingState = () => {
+    setStatus('initial');
+    setLoading(false);
+  };
+
   const handleSave = () => {
     setLoading(true);
     setStatus('waiting');
@@ -146,11 +153,20 @@ const ManageTab: FunctionComponent<Props> = ({
               | 'team',
           }
         : undefined;
-    const newTier = activeTier !== currentTier ? activeTier : undefined;
-    onSave(newOwner, newTier).catch(() => {
-      setStatus('initial');
-      setLoading(false);
-    });
+    if (hideTier) {
+      if (newOwner) {
+        onSave(newOwner, '').catch(() => {
+          setInitialLoadingState();
+        });
+      } else {
+        setInitialLoadingState();
+      }
+    } else {
+      const newTier = activeTier !== currentTier ? activeTier : undefined;
+      onSave(newOwner, newTier).catch(() => {
+        setInitialLoadingState();
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -188,7 +204,9 @@ const ManageTab: FunctionComponent<Props> = ({
   const ownerName = getOwnerById();
 
   useEffect(() => {
-    getTierData();
+    if (!hideTier) {
+      getTierData();
+    }
   }, []);
 
   useEffect(() => {
@@ -229,13 +247,15 @@ const ManageTab: FunctionComponent<Props> = ({
                 <p>You do not have permissions to update the owner.</p>
               </>
             }
-            isOwner={hasEditAccess || Boolean(owner)}
+            isOwner={hasEditAccess || !currentUser}
             permission={Operation.UpdateOwner}
             position="left">
             <Button
               className={classNames('tw-underline', {
                 'tw-opacity-40':
-                  !userPermissions[Operation.UpdateOwner] && !isAuthDisabled,
+                  !userPermissions[Operation.UpdateOwner] &&
+                  !isAuthDisabled &&
+                  !(hasEditAccess || !currentUser),
               })}
               data-testid="owner-dropdown"
               disabled={!listOwners.length}
@@ -275,31 +295,32 @@ const ManageTab: FunctionComponent<Props> = ({
           )}
         </span>
       </div>
-      {isLoadingTierData ? (
-        <Loader />
-      ) : (
-        <div className="tw-flex tw-flex-col" data-testid="cards">
-          {tierData.map((card, i) => (
-            <NonAdminAction
-              html={
-                <>
-                  <p>You need to be owner to perform this action</p>
-                  <p>Claim ownership from above </p>
-                </>
-              }
-              isOwner={hasEditAccess || Boolean(owner)}
-              key={i}
-              permission={Operation.UpdateTags}
-              position="left">
-              <CardListItem
-                card={card}
-                isActive={activeTier === card.id}
-                onSelect={handleCardSelection}
-              />
-            </NonAdminAction>
-          ))}
-        </div>
-      )}
+      {!hideTier &&
+        (isLoadingTierData ? (
+          <Loader />
+        ) : (
+          <div className="tw-flex tw-flex-col" data-testid="cards">
+            {tierData.map((card, i) => (
+              <NonAdminAction
+                html={
+                  <>
+                    <p>You need to be owner to perform this action</p>
+                    <p>Claim ownership from above </p>
+                  </>
+                }
+                isOwner={hasEditAccess || Boolean(owner && !currentUser)}
+                key={i}
+                permission={Operation.UpdateTags}
+                position="left">
+                <CardListItem
+                  card={card}
+                  isActive={activeTier === card.id}
+                  onSelect={handleCardSelection}
+                />
+              </NonAdminAction>
+            ))}
+          </div>
+        ))}
       <div className="tw-mt-6 tw-text-right" data-testid="buttons">
         <Button
           size="regular"

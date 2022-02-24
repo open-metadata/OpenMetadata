@@ -83,6 +83,13 @@ class InvalidEntityException(Exception):
     """
 
 
+class EmptyPayloadException(Exception):
+    """
+    Raise when receiving no data, even if no exception
+    during the API call is received
+    """
+
+
 class EntityList(Generic[T], BaseModel):
     """
     Pydantic Entity list model
@@ -363,6 +370,10 @@ class OpenMetadata(
             )
 
         resp = self.client.put(self.get_suffix(entity), data=data.json())
+        if not resp:
+            raise EmptyPayloadException(
+                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
+            )
         return entity_class(**resp)
 
     def get_by_name(
@@ -398,15 +409,30 @@ class OpenMetadata(
         fields_str = "?fields=" + ",".join(fields) if fields else ""
         try:
             resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
+            if not resp:
+                raise EmptyPayloadException(
+                    f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
+                )
             return entity(**resp)
         except APIError as err:
-            logger.error(
-                "GET %s for %s." "Error %s - %s",
-                entity.__name__,
-                path,
-                err.status_code,
-                err,
-            )
+            if err.status_code == 404:
+                logger.info(
+                    "GET %s for %s. HTTP %s - %s",
+                    entity.__name__,
+                    path,
+                    err.status_code,
+                    err,
+                )
+
+            else:
+                logger.error(
+                    "GET %s for %s." "Error %s - %s",
+                    entity.__name__,
+                    path,
+                    err.status_code,
+                    err,
+                )
+
             return None
 
     def get_entity_reference(
@@ -439,7 +465,7 @@ class OpenMetadata(
         fields: Optional[List[str]] = None,
         after: str = None,
         limit: int = 1000,
-        params: Dict = {},
+        params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -449,7 +475,7 @@ class OpenMetadata(
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
-        url_params = f"&{urllib.parse.urlencode(params)}"
+        url_params = f"&{urllib.parse.urlencode(params)}" if params else ""
         resp = self.client.get(
             f"{suffix}{url_limit}{url_after}{url_fields}{url_params}"
         )

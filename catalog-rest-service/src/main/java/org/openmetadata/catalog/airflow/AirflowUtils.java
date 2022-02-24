@@ -107,7 +107,7 @@ public final class AirflowUtils {
     return OpenMetadataIngestionComponent.builder().type(ingestionType).config(dbConfig).build();
   }
 
-  public static OpenMetadataIngestionComponent makeElasticSearchSinkComponent(AirflowPipeline airflowPipeline) {
+  public static OpenMetadataIngestionComponent makeElasticSearchSinkComponent() {
     Map<String, Object> sinkConfig = new HashMap<>();
     return OpenMetadataIngestionComponent.builder().type("elasticsearch").config(sinkConfig).build();
   }

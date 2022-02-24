@@ -14,8 +14,6 @@ Null Ratio Composed Metric definition
 """
 from typing import Any, Dict, Optional
 
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
 from metadata.orm_profiler.metrics.static.null_count import NullCount
