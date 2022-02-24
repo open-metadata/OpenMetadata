@@ -371,7 +371,7 @@
       "properties": {
         "profileDate": {
           "description": "Data one which profile is taken.",
-          "$ref": "../../type/basic.json#/definitions/timestamp"
+          "$ref": "../../type/basic.json#/definitions/date"
         },
         "columnCount": {
           "description": "No.of columns in the table.",

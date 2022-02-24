@@ -329,7 +329,7 @@ class Profiler(Generic[MetricType]):
         """
         try:
             profile = TableProfile(
-                profileDate=datetime_to_ts(self.profile_date),
+                profileDate=self.profile_date.strftime("%Y-%m-%d"),
                 columnCount=self._table_results.get("columnCount"),  # TODO IMPLEMENT
                 rowCount=self._table_results.get(RowCount.name()),
                 columnProfile=[
