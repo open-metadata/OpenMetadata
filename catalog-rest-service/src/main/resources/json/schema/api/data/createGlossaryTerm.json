@@ -57,5 +57,6 @@
       "default": null
     }
   },
-  "required": ["glossary", "name"]
+  "required": ["glossary", "name"],
+  "additionalProperties": false
 }
