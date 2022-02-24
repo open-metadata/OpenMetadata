@@ -274,7 +274,7 @@
         },
         "valuesCount": {
           "description": "Total count of the values in this column.",
-          "type": "number"
+          "type": "integer"
         },
         "valuesPercentage": {
           "description": "Percentage of values in this column with respect to rowcount.",
@@ -282,47 +282,47 @@
         },
         "validCount": {
           "description": "Total count of valid values in this column.",
-          "type": "number"
+          "type": "integer"
         },
         "duplicateCount": {
           "description": "No.of Rows that contain duplicates in a column.",
-          "type": "number"
+          "type": "integer"
         },
         "nullCount": {
           "description": "No.of null values in a column.",
-          "type": "number"
+          "type": "integer"
         },
-        "nullProportion": {
+        "nullRatio": {
           "description": "No.of null value proportion in columns.",
           "type": "number"
         },
-        "missingPercentage": {
+        "missingRatio": {
           "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
           "type": "number"
         },
         "missingCount": {
           "description": "Missing count is calculated by subtracting valuesCount - validCount.",
-          "type": "number"
+          "type": "integer"
         },
         "uniqueCount": {
           "description": "No. of unique values in the column.",
-          "type": "number"
+          "type": "integer"
         },
-        "uniqueProportion": {
+        "uniqueRatio": {
           "description": "Proportion of number of unique values in a column.",
           "type": "number"
         },
         "distinctCount": {
           "description": "Number of values that contain distinct values.",
-          "type": "number"
+          "type": "integer"
         },
         "min": {
           "description": "Minimum value in a column.",
-          "type": "number"
+          "type": ["number", "integer", "string"]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "type": "number"
+          "type": ["number", "integer", "string"]
         },
         "mean": {
           "description": "Avg value in a column.",
@@ -363,7 +363,7 @@
       "properties": {
         "profileDate": {
           "description": "Data one which profile is taken.",
-          "$ref": "../../type/basic.json#/definitions/date"
+          "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "columnCount": {
           "description": "No.of columns in the table.",
