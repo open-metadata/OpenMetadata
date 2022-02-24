@@ -175,6 +175,7 @@ const MyData: React.FC<MyDataProps> = ({
             <Fragment>
               {getFilterDropDown()}
               <ActivityFeedList
+                withSidePanel
                 className=""
                 feedList={feedData}
                 isLoading={isFeedLoading}

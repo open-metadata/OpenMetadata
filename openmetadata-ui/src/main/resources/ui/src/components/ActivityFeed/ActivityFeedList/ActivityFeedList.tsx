@@ -89,7 +89,6 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onThreadSelect,
   selctedThreadId,
   onThreadIdSelect,
-  withSidePanel,
   postFeed,
   onViewMore,
 }) => {
@@ -122,7 +121,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {selctedThreadId === feed.id ? (
                 <Fragment>
-                  {withSidePanel && replies - 1 > 3 ? (
+                  {replies - 1 > 3 ? (
                     <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6 tw--mt-4">
                       <p
                         className="link-text tw-text-xs tw-underline"

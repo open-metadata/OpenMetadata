@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { FC, HTMLAttributes, useRef } from 'react';
+import SVGIcons from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import FeedEditor from '../../FeedEditor/FeedEditor';
 
@@ -31,16 +33,22 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   const editorRef = useRef<EditorContentRef>();
   const onSaveHandler = () => {
     if (editorRef.current) {
-      onSave?.(editorRef.current?.getEditorValue() ?? '');
+      if (editorRef.current?.getEditorValue()) {
+        onSave?.(editorRef.current?.getEditorValue());
+      }
     }
   };
 
   return (
-    <div className={className}>
+    <div className={classNames('tw-relative', className)}>
       <FeedEditor ref={editorRef} />
-      <div className="tw-flex tw-flex-row tw-items-center tw-justify-end">
-        <Button className={buttonClass} theme="primary" onClick={onSaveHandler}>
-          Send
+      <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
+        <Button
+          className={classNames('tw-bg-gray-400', buttonClass)}
+          size="small"
+          theme="default"
+          onClick={onSaveHandler}>
+          <SVGIcons alt="paper-plane" icon="icon-paper-plane" width="18px" />
         </Button>
       </div>
     </div>
