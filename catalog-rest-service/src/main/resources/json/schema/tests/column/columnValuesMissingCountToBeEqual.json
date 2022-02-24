@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/column/columnValuesMissingCountToBeEqual.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "columnValuesMissingCount",
+  "description": "This schema defines the test ColumnValuesMissingCount. Test the column values missing count to be equal to given number. ",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesMissingCountToBeEqual",
+  "properties": {
+    "missingCountValue": {
+      "description": "No.of missing values to be equal to.",
+      "type": "integer"
+    },
+    "missingValueMatch": {
+      "description": "By default match all null and empty values to be missing. This field allows us to configure additional strings such as N/A, NULL as missing strings as well.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["missingValue"],
+  "additionalProperties": false
+}

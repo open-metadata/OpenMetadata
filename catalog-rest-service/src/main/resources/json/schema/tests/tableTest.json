@@ -1,0 +1,90 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/tableTest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableTest",
+  "description": "TableTest is a test definition to capture data quality tests against tables and columns.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.TableTest",
+  "definitions": {
+    "tableTestCase": {
+      "description": "Table Test Case.",
+      "type": "object",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./table/tableRowCountToEqual.json"
+            },
+            {
+              "$ref": "./table/tableRowCountToBeBetween.json"
+            },
+            {
+              "$ref": "./table/tableColumnCountToEqual.json"
+            }
+          ]
+        },
+        "testType": {
+          "enum": [
+            "tableRowCountToEqual",
+            "tableRowCountToBeBetween",
+            "tableColumnCountToEqual"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this table instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this test case.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "type": "string"
+    },
+    "tableName": {
+      "description": "Table Name for which this test applies.",
+      "type": "string"
+    },
+    "tableTestCase": {
+      "$ref": "#/definitions/tableTestCase"
+    },
+    "executionFrequency": {
+      "$ref": "./basic.json#/definitions/testCaseExecutionFrequency"
+    },
+    "results": {
+      "description": "List of results of the test case.",
+      "type": "array",
+      "items": {
+        "$ref": "./basic.json#/definitions/testCaseResult"
+      }
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "testCase", "tableName"],
+  "additionalProperties": false
+}

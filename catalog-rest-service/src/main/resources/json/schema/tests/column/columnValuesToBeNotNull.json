@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/column/columnValuesToBeNotNull.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "columnValuesToBeNotNull",
+  "description": "This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a column are null. Values must be explicitly null. Empty strings don't count as null. ",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeNotNull",
+  "properties": {},
+  "additionalProperties": false
+}

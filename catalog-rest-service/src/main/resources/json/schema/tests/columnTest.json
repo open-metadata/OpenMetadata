@@ -1,0 +1,106 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/columnTest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ColumnTest",
+  "description": "ColumnTest is a test definition to capture data quality tests against tables and columns.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.ColumnTest",
+  "definitions": {
+    "columnTestCase": {
+      "description": "Column Test Case.",
+      "type": "object",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./column/columnValuesToBeUnique.json"
+            },
+            {
+              "$ref": "./column/columnValuesToBeNotNull.json"
+            },
+            {
+              "$ref": "./column/columnValuesToMatchRegex.json"
+            },
+            {
+              "$ref": "./column/columnValuesToBeNotInSet.json"
+            },
+            {
+              "$ref": "column/columnValuesToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValuesMissingCountToBeEqual.json"
+            },
+            {
+              "$ref": "./column/columnValuesLengthsToBeBetween.json"
+            }
+          ]
+        },
+        "testType": {
+          "enum": [
+            "columnValuesToBeUnique",
+            "columnValuesToBeNotNull",
+            "columnValuesToMatchRegex",
+            "columnValuesToBeNotInSet",
+            "columnValuesToBeBetween",
+            "columnValuesMissingCountToBeEqual",
+            "columnValueLengthsToBeBetween"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this table instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this test case. Name passed by client will be  overridden by  auto generating based on table/column name and test name",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "type": "string"
+    },
+    "columnName": {
+      "description": "Name of the column in a table.",
+      "type": "string"
+    },
+    "testCase": {
+      "$ref": "#/definitions/columnTestCase"
+    },
+    "executionFrequency": {
+      "$ref": "./basic.json#/definitions/testCaseExecutionFrequency"
+    },
+    "results": {
+      "description": "List of results of the test case.",
+      "type": "array",
+      "items": {
+        "$ref": "./basic.json#/definitions/testCaseResult"
+      }
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "column", "testCase"],
+  "additionalProperties": false
+}

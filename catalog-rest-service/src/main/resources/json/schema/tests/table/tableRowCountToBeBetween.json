@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/tableRowCountToBeBetween.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableRowCountToEqual",
+  "description": "This scheam defines the test TableRowCountToBeBetween. Test the number of rows to between to two values.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.table.TableRowCountToBeBetween",
+  "properties": {
+    "minValue": {
+      "description": "Expected number of rows should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",
+      "type": "integer"
+    },
+    "maxValue": {
+      "description": "Expected number of rows should be lower than or equal to {maxValue}. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows",
+      "type": "integer"
+    }
+  },
+  "anyOf": [{ "required": ["minValue"] }, { "required": ["maxValue"] }],
+  "additionalProperties": false
+}
