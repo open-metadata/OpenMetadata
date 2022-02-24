@@ -294,7 +294,11 @@ class Profiler(Generic[MetricType]):
 
             # Init column results dict
             self._column_results[col.name] = {"name": col.name}
-            self.execute_column(col)
+
+            try:
+                self.execute_column(col)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error(f"Error trying to compute profile for {self.table}.{col.name} - {exc}")
 
         return self
 
