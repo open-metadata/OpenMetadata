@@ -97,13 +97,15 @@ const FeedListBody: FC<FeedListBodyProp> = ({
       {updatedFeedList
         .filter((f) => f.relativeDay === relativeDay)
         .map((feed, index) => {
-          const mainFeed = feed.posts?.[0];
-          const replies = feed.posts.length;
-          const repliedUsers = feed.posts
-            .map((f) => f.from)
-            .slice(1)
-            .slice(-3);
-          const lastPost = feed.posts?.[replies - 1];
+          const mainFeed = {
+            message: feed.message,
+            postTs: feed.threadTs,
+            from: feed.createdBy,
+          };
+          const postLength = feed.posts.length;
+          const replies = feed.postsCount;
+          const repliedUsers = feed.posts.map((f) => f.from);
+          const lastPost = feed.posts[postLength - 1];
 
           return (
             <Fragment key={index}>
@@ -113,36 +115,49 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 feed={mainFeed}
                 isEntityFeed={isEntityFeed}
                 isFooterVisible={selctedThreadId !== feed.id}
-                lastReplyTimeStamp={lastPost.postTs}
+                lastReplyTimeStamp={lastPost?.postTs}
                 repliedUsers={repliedUsers}
                 replies={replies}
                 threadId={feed.id}
                 onThreadSelect={onThreadIdSelect}
               />
               {selctedThreadId === feed.id ? (
-                <Fragment>
-                  {replies - 1 > 3 ? (
-                    <div className="tw-flex tw-gap-3 tw-ml-8 tw-mb-6 tw--mt-4">
+                <div className="tw-mb-6">
+                  {replies > 3 ? (
+                    <div className="tw-flex tw-gap-3 tw-ml-8 tw--mt-4">
                       <p
                         className="link-text tw-text-xs tw-underline"
                         onClick={() => {
                           onThreadSelect(selctedThreadId);
                           onViewMore();
                         }}>
-                        View more replies
+                        View all ({replies}) replies
                       </p>
                     </div>
-                  ) : null}
+                  ) : (
+                    <Fragment>
+                      {replies > 0 ? (
+                        <div className="tw-flex tw-mx-7s">
+                          <span>
+                            {replies} {replies > 1 ? 'replies' : 'reply'}
+                          </span>
+                          <span className="tw-flex-auto tw-self-center tw-ml-1.5">
+                            <hr />
+                          </span>
+                        </div>
+                      ) : null}
+                    </Fragment>
+                  )}
                   <LatestReplyFeedList
-                    className="tw-mt-6 tw-ml-8"
-                    feeds={feed?.posts?.slice(1).slice(-3) as Post[]}
+                    className="tw-mt-3 tw-ml-8"
+                    feeds={feed.posts}
                   />
                   <ActivityFeedEditor
                     buttonClass="tw-mr-4"
                     className="tw-ml-5 tw-mr-2"
                     onSave={postFeed}
                   />
-                </Fragment>
+                </div>
               ) : null}
             </Fragment>
           );

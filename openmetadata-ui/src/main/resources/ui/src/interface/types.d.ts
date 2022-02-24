@@ -506,6 +506,8 @@ declare module 'Models' {
     updatedAt: number;
     updatedBy: string;
     resolved: boolean;
+    message: string;
+    postsCount: number;
     posts: Post[];
   }
 

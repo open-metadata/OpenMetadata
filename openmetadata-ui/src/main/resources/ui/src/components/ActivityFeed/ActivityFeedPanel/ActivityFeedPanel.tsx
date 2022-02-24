@@ -92,6 +92,11 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   isLoading,
 }) => {
   const repliesLength = threadData?.posts?.length ?? 0;
+  const mainThread = {
+    message: threadData.message,
+    from: threadData.createdBy,
+    postTs: threadData.threadTs,
+  };
 
   return (
     <Fragment>
@@ -103,20 +108,20 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
             <ActivityFeedCard
               isEntityFeed
               className="tw-mb-3"
-              feed={threadData?.posts?.[0] as Post}
+              feed={mainThread as Post}
             />
           ) : null}
-          {repliesLength > 1 ? (
+          {repliesLength > 0 ? (
             <Fragment>
               <div className="tw-mb-3 tw-flex">
                 <span>
-                  {repliesLength - 1} {repliesLength > 1 ? 'replies' : 'reply'}
+                  {repliesLength} {repliesLength > 1 ? 'replies' : 'reply'}
                 </span>
                 <span className="tw-flex-auto tw-self-center tw-ml-1.5">
                   <hr />
                 </span>
               </div>
-              {threadData?.posts?.slice(1)?.map((reply, key) => (
+              {threadData?.posts?.map((reply, key) => (
                 <ActivityFeedCard
                   isEntityFeed
                   className="tw-mb-3"

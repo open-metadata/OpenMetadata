@@ -131,7 +131,7 @@ const FeedFooter: FC<FeedFooterProp> = ({
   lastReplyTimeStamp,
   isFooterVisible,
 }) => {
-  const repliesCount = isUndefined(replies) ? 0 : replies - 1;
+  const repliesCount = isUndefined(replies) ? 0 : replies;
 
   const getReplyText = (count: number) => {
     if (count === 0) return 'Reply in thread';
