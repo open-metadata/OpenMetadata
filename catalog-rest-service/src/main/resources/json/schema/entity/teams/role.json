@@ -64,6 +64,10 @@
       "description": "If `true`, this role is set as default and will be assigned to all users.",
       "type": "boolean",
       "default": false
+    },
+    "teams": {
+      "description": "Teams that have this role assigned.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
   "required": ["id", "name"],

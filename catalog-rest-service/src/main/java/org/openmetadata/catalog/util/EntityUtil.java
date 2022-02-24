@@ -29,11 +29,13 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -122,6 +124,9 @@ public final class EntityUtil {
   public static final BiPredicate<EventFilter, EventFilter> eventFilterMatch =
       (filter1, filter2) ->
           filter1.getEventType().equals(filter2.getEventType()) && filter1.getEntities().equals(filter2.getEntities());
+
+  public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
+      (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
 
   private EntityUtil() {}
 
@@ -233,9 +238,18 @@ public final class EntityUtil {
     return list;
   }
 
+  public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
+      throws IOException {
+    List<EntityReference> refs = new ArrayList<>(ids.size());
+    for (String id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id)));
+    }
+    return refs;
+  }
+
   public static EntityReference populateEntityReference(EntityReference ref) throws IOException {
     // Note href to entity reference is not added here
-    EntityReference ref2 = Entity.getEntityReference(ref.getType(), ref.getId());
+    EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId());
     return ref.withDescription(ref2.getDescription()).withName(ref2.getName());
   }
 

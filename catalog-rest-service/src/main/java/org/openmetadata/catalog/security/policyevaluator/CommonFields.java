@@ -17,7 +17,9 @@ package org.openmetadata.catalog.security.policyevaluator;
  * CommonFields defines all the fields used within the Rules and Facts for the RulesEngine used by {@link
  * PolicyEvaluator}
  */
-class CommonFields {
+final class CommonFields {
+  private CommonFields() {};
+
   static final String ALLOW = "allow";
   static final String ALLOWED_OPERATIONS = "allowedOperations";
   static final String CHECK_OPERATION = "checkOperation";

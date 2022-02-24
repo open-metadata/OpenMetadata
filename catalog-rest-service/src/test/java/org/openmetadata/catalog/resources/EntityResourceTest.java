@@ -763,7 +763,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     String[] split = entityInterface.getFullyQualifiedName().split("\\.");
     String actualName = split[split.length - 1];
     assertTrue(actualName.contains("foo_DOT_bar"));
-    assertTrue(!actualName.contains("foo.bar"));
+    assertFalse(actualName.contains("foo.bar"));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

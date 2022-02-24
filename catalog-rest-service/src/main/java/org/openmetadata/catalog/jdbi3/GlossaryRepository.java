@@ -38,7 +38,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final Fields GLOSSARY_UPDATE_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "owner,tags");
   private static final Fields GLOSSARY_PATCH_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "owner,tags");
-  private final CollectionDAO dao;
 
   public GlossaryRepository(CollectionDAO dao) {
     super(
@@ -52,12 +51,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         true,
         true,
         false);
-    this.dao = dao;
   }
 
   @Transaction
   public EntityReference getOwnerReference(Glossary glossary) throws IOException {
-    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), glossary.getOwner());
+    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), glossary.getOwner());
   }
 
   @Override
@@ -71,7 +69,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public void prepare(Glossary glossary) throws IOException, ParseException {
     glossary.setOwner(helper(glossary).validateOwnerOrNull());
     // TODO validate reviewers
-    glossary.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), glossary.getTags()));
+    glossary.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), glossary.getTags()));
   }
 
   @Override
@@ -85,9 +83,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     glossary.withOwner(null).withHref(null).withTags(null);
 
     if (update) {
-      dao.glossaryDAO().update(glossary.getId(), JsonUtils.pojoToJson(glossary));
+      daoCollection.glossaryDAO().update(glossary.getId(), JsonUtils.pojoToJson(glossary));
     } else {
-      dao.glossaryDAO().insert(glossary);
+      daoCollection.glossaryDAO().insert(glossary);
     }
 
     // Restore the relationships
