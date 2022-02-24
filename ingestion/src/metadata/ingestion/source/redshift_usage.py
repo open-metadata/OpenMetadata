@@ -98,8 +98,6 @@ class RedshiftUsageSource(Source[TableQuery]):
             )
             yield tq
 
-            sql = "insert into public.raw_orders select * from public.raw_payments union select * from public.raw_customers;insert into public.raw_customers select * from public.event join public.category;"
-
             query_info = {
                 "sql": sql,
                 "from_type": "table",
