@@ -211,6 +211,19 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     onThreadSelect(selctedThreadId);
   }, [feedList]);
 
+  useEffect(() => {
+    const escapeKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    document.addEventListener('keydown', escapeKeyHandler);
+
+    return () => {
+      document.removeEventListener('keydown', escapeKeyHandler);
+    };
+  }, []);
+
   return (
     <div className={classNames(className)}>
       {feedList.length > 0 ? (
