@@ -174,7 +174,7 @@ class Profiler(Generic[MetricType]):
         the necessary ingredients defined in
         `required_metrics` attr
         """
-        names = {metric.name for metric in self.metrics}
+        names = {metric.name() for metric in self.metrics}
         for metric in self.composed_metrics:
             if not set(metric.required_metrics()).issubset(names):
                 raise MissingMetricException(
@@ -279,7 +279,7 @@ class Profiler(Generic[MetricType]):
         self.sql_col_query_run(col)
         self.post_col_run(col)
 
-    def execute(self) -> None:
+    def execute(self) -> "Profiler":
         """
         Run the whole profiling
         """
@@ -295,6 +295,8 @@ class Profiler(Generic[MetricType]):
             # Init column results dict
             self._column_results[col.name] = {"name": col.name}
             self.execute_column(col)
+
+        return self
 
     def get_profile(self) -> TableProfile:
         """
