@@ -11,7 +11,6 @@
 
 import logging
 import traceback
-
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, List
 
@@ -234,8 +233,8 @@ def ingest_lineage(query_info, metadata_config):
         for target_table in result.target_tables:
             for source_table in result.source_tables:
                 create_lineage(source_table, target_table, query_info, metadata)
-                
-                
+
+
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     """
     Provides iterator of result row from SQLAlchemy helper
