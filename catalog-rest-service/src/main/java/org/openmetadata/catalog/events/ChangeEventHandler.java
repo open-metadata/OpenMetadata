@@ -18,13 +18,11 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
@@ -37,7 +35,6 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -54,7 +51,6 @@ public class ChangeEventHandler implements EventHandler {
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
-    SecurityContext securityContext = requestContext.getSecurityContext();
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent != null) {
@@ -77,7 +73,7 @@ public class ChangeEventHandler implements EventHandler {
         List<Thread> threads = getThreads(responseContext);
         if (threads != null) {
           for (var thread : threads) {
-            feedDao.create(thread, securityContext);
+            feedDao.create(thread);
           }
         }
       }
@@ -150,7 +146,8 @@ public class ChangeEventHandler implements EventHandler {
     return null;
   }
 
-  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
+  private static ChangeEvent getChangeEvent(
+      EventType eventType, String entityType, EntityInterface<?> entityInterface) {
     return new ChangeEvent()
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
@@ -185,7 +182,9 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     var entityInterface = Entity.getEntityInterface(entity);
-
+    if (entityInterface.getChangeDescription() == null) {
+      return null;
+    }
     List<FieldChange> fieldsUpdated = entityInterface.getChangeDescription().getFieldsUpdated();
     List<Thread> threads = new ArrayList<>(getThreads(fieldsUpdated, entity, CHANGE_TYPE.UPDATE));
 
@@ -240,12 +239,6 @@ public class ChangeEventHandler implements EventHandler {
           break;
       }
 
-      Post post =
-          new Post()
-              .withFrom(entityInterface.getUpdatedBy())
-              .withMessage(message)
-              .withPostTs(System.currentTimeMillis());
-
       threads.add(
           new Thread()
               .withId(UUID.randomUUID())
@@ -254,7 +247,7 @@ public class ChangeEventHandler implements EventHandler {
               .withAbout(link.getLinkString())
               .withUpdatedBy(entityInterface.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis())
-              .withPosts(Collections.singletonList(post)));
+              .withMessage(message));
     }
 
     return threads;

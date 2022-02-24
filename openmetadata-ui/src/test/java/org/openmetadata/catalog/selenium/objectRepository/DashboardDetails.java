@@ -1,16 +1,14 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class DashboardDetails {
-
-  public WebDriver webDriver;
-
-  public DashboardDetails(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By dashboard = By.xpath("(//button[@data-testid='tab'])[3]");
   By editChartDescription = By.xpath("(//img[@data-testid='image']/parent::button)[3]");

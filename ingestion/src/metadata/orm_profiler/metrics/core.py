@@ -15,7 +15,7 @@ Metric Core definitions
 
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -94,6 +94,9 @@ class Metric(ABC):
         return self.col.type.python_type
 
 
+MetricType = TypeVar("MetricType", bound=Metric)
+
+
 class StaticMetric(Metric, ABC):
     """
     Static metric definition
@@ -164,7 +167,16 @@ class ComposedMetric(Metric, ABC):
     directly in the profiler.
     """
 
-    # TODO: new abstract method with the set of required metrics so that we can validate profilers
+    @abstractmethod
+    def required_metrics(self) -> Tuple[str, ...]:
+        """
+        Return a tuple of the required metrics' names
+        necessary to compute the composed metric.
+
+        This validation will happen at the profiler
+        and will raise an exception if no proper metrics
+        have been passed.
+        """
 
     @abstractmethod
     def fn(self, res: Dict[str, Any]):

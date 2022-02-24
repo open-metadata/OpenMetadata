@@ -12,7 +12,7 @@
 """
 Null Ratio Composed Metric definition
 """
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
@@ -24,6 +24,9 @@ class NullRatio(ComposedMetric):
     Given the total count and null count,
     compute the null ratio
     """
+
+    def required_metrics(self) -> Tuple[str, ...]:
+        return Count.name(), NullCount.name()
 
     @property
     def metric_type(self):

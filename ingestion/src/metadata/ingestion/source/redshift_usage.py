@@ -11,6 +11,7 @@
 
 # This import verifies that the dependencies are available.
 import logging
+import traceback
 from typing import Any, Dict, Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -18,13 +19,14 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.redshift import RedshiftConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import get_start_and_end, ingest_lineage
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,8 @@ class RedshiftUsageSource(Source[TableQuery]):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         self.config = config
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
         start, end = get_start_and_end(config.duration)
         self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
             start_time=start, end_time=end
@@ -93,6 +97,14 @@ class RedshiftUsageSource(Source[TableQuery]):
                 service_name=self.config.service_name,
             )
             yield tq
+
+            query_info = {
+                "sql": sql,
+                "from_type": "table",
+                "to_type": "table",
+                "service_name": self.config.service_name,
+            }
+            ingest_lineage(query_info, self.metadata_config)
 
     def close(self):
         self.alchemy_helper.close()

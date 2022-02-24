@@ -179,6 +179,14 @@
             "$ref": "#/definitions/column"
           },
           "default": null
+        },
+        "columnTests": {
+          "description": "List of column test cases that ran against a table column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../tests/columnTest.json"
+          },
+          "default": null
         }
       },
       "required": ["name", "dataType"],
@@ -585,6 +593,14 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/sqlQuery"
+      },
+      "default": null
+    },
+    "tableTests": {
+      "description": "List of test cases that ran against a table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/tableTest.json"
       },
       "default": null
     },

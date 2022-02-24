@@ -3,7 +3,6 @@ package org.openmetadata.catalog.selenium.pages.roles;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -25,9 +24,6 @@ import org.testng.Assert;
 @Order(19)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class RolesPageTest {
-
-  private static final Logger LOG = Logger.getLogger(RolesPageTest.class.getName());
-
   static WebDriver webDriver;
   static Common common;
   static RolesPage rolesPage;

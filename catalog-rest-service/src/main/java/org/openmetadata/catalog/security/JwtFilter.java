@@ -23,6 +23,7 @@ import io.dropwizard.util.Strings;
 import java.net.URI;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
+import java.util.TimeZone;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
@@ -66,7 +67,7 @@ public class JwtFilter implements ContainerRequestFilter {
     DecodedJWT jwt = JWT.decode(tokenFromHeader);
 
     // Check if expired
-    if (jwt.getExpiresAt().before(Calendar.getInstance().getTime())) {
+    if (jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       throw new AuthenticationException("Expired token!");
     }
     // Validate JWT with public key

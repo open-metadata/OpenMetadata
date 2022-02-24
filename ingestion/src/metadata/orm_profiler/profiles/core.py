@@ -32,6 +32,13 @@ from metadata.orm_profiler.utils import logger
 logger = logger()
 
 
+class MissingMetricException(Exception):
+    """
+    Raise when building the profiler with Composed Metrics
+    and not all the required metrics are present
+    """
+
+
 class Profiler(ABC):
     """
     Core Profiler.
@@ -51,6 +58,8 @@ class Profiler(ABC):
         self._table = table
         self._metrics = metrics
         self._results: Optional[Dict[str, Any]] = None
+
+        self.validate_composed_metric()
 
     @property
     def session(self) -> Session:
@@ -79,14 +88,13 @@ class Profiler(ABC):
         Here we prepare the logic to being able to have
         the complete suite of computed metrics.
         """
-        if not self._results:
-            return None
+        results = self._results if self._results else {}
 
-        results = {
-            metric.name(): self._results.get(metric.name()) for metric in self.metrics
+        response = {
+            metric.name(): results.get(metric.name()) for metric in self.metrics
         }
 
-        return results
+        return response
 
     @results.setter
     def results(self, value: Dict[str, Any]):
@@ -130,6 +138,19 @@ class Profiler(ABC):
     @property
     def query_metrics(self):
         return self._filter_metrics(QueryMetric)
+
+    def validate_composed_metric(self) -> None:
+        """
+        Make sure that all composed metrics have
+        the necessary ingredients defined in
+        `required_metrics` attr
+        """
+        names = {metric.name() for metric in self.metrics}
+        for metric in self.composed_metrics:
+            if not set(metric.required_metrics()).issubset(names):
+                raise MissingMetricException(
+                    f"We need {metric.required_metrics()} for {metric.name()}, but only got {names} in the profiler"
+                )
 
     def build_col_query(self) -> Optional[Query]:
         """
@@ -180,7 +201,14 @@ class Profiler(ABC):
         Run QueryMetrics
         """
         for metric in self.query_metrics:
-            query_res = metric.query(session=self.session).all()
+
+            metric_query = metric.query(session=self.session)
+            # We might not compute some metrics based on the column type.
+            # In those cases, the `query` function returns None
+            if not metric_query:
+                continue
+
+            query_res = metric_query.all()
 
             # query_res has the shape of List[Row], where each row is a dict,
             # e.g., [{colA: 1, colB: 2},...]
@@ -226,7 +254,7 @@ class SingleProfiler(Profiler):
     Returns a single ROW
     """
 
-    def sql_col_run(self) -> Dict[str, Any]:
+    def sql_col_run(self):
         """
         Run the profiler and store its results
 
@@ -239,5 +267,3 @@ class SingleProfiler(Profiler):
         if query:
             row = query.first()
             self.results = dict(row)
-
-        return self.results

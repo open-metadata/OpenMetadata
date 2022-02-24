@@ -79,6 +79,7 @@ public class RoleResource {
 
   public static Role addHref(UriInfo uriInfo, Role role) {
     Entity.withHref(uriInfo, role.getPolicy());
+    Entity.withHref(uriInfo, role.getTeams());
     Entity.withHref(uriInfo, role.getUsers());
     return role;
   }
@@ -104,7 +105,7 @@ public class RoleResource {
     }
   }
 
-  public static final String FIELDS = "policy,users";
+  public static final String FIELDS = "policy,teams,users";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET

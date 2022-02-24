@@ -5,10 +5,6 @@ import org.openmetadata.catalog.events.errors.RetriableException;
 public class ElasticSearchRetriableException extends RetriableException {
   private static final long serialVersionUID = 1L;
 
-  public ElasticSearchRetriableException() {
-    super();
-  }
-
   public ElasticSearchRetriableException(String message, Throwable cause) {
     super(message, cause);
   }

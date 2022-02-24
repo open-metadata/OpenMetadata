@@ -29,6 +29,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
@@ -237,9 +238,18 @@ public final class EntityUtil {
     return list;
   }
 
+  public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
+      throws IOException {
+    List<EntityReference> refs = new ArrayList<>(ids.size());
+    for (String id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id)));
+    }
+    return refs;
+  }
+
   public static EntityReference populateEntityReference(EntityReference ref) throws IOException {
     // Note href to entity reference is not added here
-    EntityReference ref2 = Entity.getEntityReference(ref.getType(), ref.getId());
+    EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId());
     return ref.withDescription(ref2.getDescription()).withName(ref2.getName());
   }
 

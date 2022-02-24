@@ -14,10 +14,13 @@ Test Profiler behavior
 """
 from unittest import TestCase
 
+import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
+from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.profiles.core import MissingMetricException, SingleProfiler
 from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 
 Base = declarative_base()
@@ -61,11 +64,25 @@ class ProfilerTest(TestCase):
         simple = SimpleProfiler(session=self.session, col=User.age, table=User)
         simple.execute()
         assert simple.results == {
-            "MIN": 30,
+            "AVG": 30.5,
             "COUNT": 2,
-            "STDDEV": 0.25,
+            "DISTINCT": 2,
+            "HISTOGRAM": {
+                "bin": ["30.0 to 30.25", "31.0 to 31.25"],
+                "bin_ceil": [30.25, 31.25],
+                "bin_floor": [30.0, 31.0],
+                "count": [1, 1],
+            },
+            "MAX": 31,
+            "MAXLENGTH": None,
+            "MIN": 30,
+            "MINLENGTH": None,
             "NULLCOUNT": 0,
             "NULLRATIO": 0.0,
+            "STDDEV": 0.25,
+            "SUM": 61,
+            "UNIQUECOUNT": 2,
+            "UNIQUERATIO": 1.0,
         }
 
     def test_simple_table_profiler(self):
@@ -75,3 +92,20 @@ class ProfilerTest(TestCase):
         simple = SimpleTableProfiler(session=self.session, table=User)
         simple.execute()
         assert simple.results == {"ROWNUMBER": 2}
+
+    def test_required_metrics(self):
+        """
+        Check that we raise properly MissingMetricException
+        when not building the profiler with all the
+        required ingredients
+        """
+        like = Metrics.LIKE_COUNT(User.name, expression="J%")
+        count = Metrics.COUNT(User.name)
+        like_ratio = Metrics.LIKE_RATIO(User.name)
+
+        # This should run properly
+        SingleProfiler(like, count, like_ratio, session=self.session, table=User)
+
+        with pytest.raises(MissingMetricException):
+            # We are missing ingredients here
+            SingleProfiler(like, like_ratio, session=self.session, table=User)

@@ -1,16 +1,15 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class PipelineDetails {
-  WebDriver webDriver;
-
-  public PipelineDetails(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By pipelines = By.xpath("(//button[@data-testid='tab'])[4]");
   By selectedTag = By.xpath("//span[@class='tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1']");

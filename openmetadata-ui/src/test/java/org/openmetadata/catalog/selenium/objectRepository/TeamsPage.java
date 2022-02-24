@@ -1,16 +1,15 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class TeamsPage {
-  WebDriver webDriver;
-
-  public TeamsPage(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By heading = By.className("tw-heading");
   By teams = By.xpath("//a[@data-testid='terms']");

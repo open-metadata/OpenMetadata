@@ -1,17 +1,16 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class Common {
-  WebDriver webDriver;
+  @Nonnull WebDriver webDriver;
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
-
-  public Common(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
 
   By displayName = By.name("name");
   By descriptionBoldButton = By.cssSelector("[data-testid='boldButton']");

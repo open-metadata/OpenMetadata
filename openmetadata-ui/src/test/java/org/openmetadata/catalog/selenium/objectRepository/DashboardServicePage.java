@@ -1,14 +1,13 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+@RequiredArgsConstructor
 public class DashboardServicePage {
-  WebDriver webDriver;
-
-  public DashboardServicePage(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By dashboardServiceUrl = By.cssSelector("[data-testid='dashboard-url']");
 

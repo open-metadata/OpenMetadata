@@ -15,10 +15,8 @@ package org.openmetadata.catalog.security;
 
 import com.google.common.base.Strings;
 import javax.annotation.Priority;
-import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +27,7 @@ import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequestFilter {
   public static final String X_AUTH_PARAMS_EMAIL_HEADER = "X-Auth-Params-Email";
   public static final String EMAIL_ADDRESS = "emailAddress";
-  private static final String HEALTH_AGENT = "health-agent";
   private static final String HEALTH_END_POINT = "health";
-
-  @Context private HttpServletRequest httpRequest;
 
   @SuppressWarnings("unused")
   private CatalogOpenIdAuthorizationRequestFilter() {}

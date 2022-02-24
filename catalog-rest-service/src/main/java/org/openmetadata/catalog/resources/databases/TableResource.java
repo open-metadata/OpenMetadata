@@ -57,6 +57,8 @@ import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.tests.ColumnTest;
+import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
@@ -106,7 +108,7 @@ public class TableResource {
 
   static final String FIELDS =
       "columns,tableConstraints,usageSummary,owner,"
-          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -499,6 +501,34 @@ public class TableResource {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.addDataModel(UUID.fromString(id), dataModel);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/tableTest")
+  @Operation(summary = "Add table test cases", tags = "tables", description = "Add test cases to the table.")
+  public Table addTableTest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      TableTest tableTest)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Table table = dao.addTableTest(UUID.fromString(id), tableTest);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/columnTest")
+  @Operation(summary = "Add table test cases", tags = "tables", description = "Add test cases to the table.")
+  public Table addColumnTest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      ColumnTest columnTest)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Table table = dao.addColumnTest(UUID.fromString(id), columnTest);
     return addHref(uriInfo, table);
   }
 

@@ -1,0 +1,35 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+SUM Metric definition
+"""
+from sqlalchemy import func
+
+from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.registry import is_quantifiable
+
+
+class Sum(StaticMetric):
+    """
+    SUM Metric
+
+    Given a column, return the sum of its values.
+
+    Only works for quantifiable types
+    """
+
+    @_label
+    def fn(self):
+        if is_quantifiable(self.col.type):
+            return func.sum(self.col)
+
+        return None

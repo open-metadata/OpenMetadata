@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/table/tableRowCountToEqual.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableRowCountToEqual",
+  "description": "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.table.TableRowCountToEqual",
+  "properties": {
+    "value": {
+      "description": "Expected number of rows {value}",
+      "type": "integer"
+    }
+  },
+  "required": ["value"],
+  "additionalProperties": false
+}

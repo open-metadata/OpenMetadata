@@ -1,16 +1,15 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class TableDetails {
-  public WebDriver webDriver;
-
-  public TableDetails(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By manage = By.xpath("//button[@data-testid=\"tab\"][id=\"manage\"]");
   By owner = By.cssSelector("button[data-testid=\"owner-dropdown\"]");

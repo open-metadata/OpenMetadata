@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 import javax.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -78,24 +79,18 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
       List<User> users = new UserResourceTest().listEntities(Map.of("fields", "roles"), ADMIN_AUTH_HEADERS).getData();
       for (User user : users) {
-        boolean defaultRoleSet = false, prevDefaultRoleExists = false;
-
-        for (EntityReference role : user.getRoles()) {
-          if (role.getId().equals(defaultRole.getId())) {
-            defaultRoleSet = true;
-          }
-          if (role.getId().equals(prevDefaultRole.getId())) {
-            prevDefaultRoleExists = true;
-          }
-        }
-        if (!defaultRoleSet) {
-          fail(String.format("Default role %s was not set for user %s", defaultRole.getName(), user.getName()));
-        }
+        UUID prevDefaultRoleId = prevDefaultRole.getId();
+        boolean prevDefaultRoleExists =
+            user.getRoles().stream().anyMatch(role -> role.getId().equals(prevDefaultRoleId));
         if (prevDefaultRoleExists) {
           fail(
               String.format(
                   "Previous default role %s has not been removed for user %s",
                   prevDefaultRole.getName(), user.getName()));
+        }
+        boolean defaultRoleExists = user.getRoles().stream().anyMatch(role -> role.getId().equals(defaultRole.getId()));
+        if (!defaultRoleExists) {
+          fail(String.format("Default role %s was not set for user %s", defaultRole.getName(), user.getName()));
         }
       }
       prevDefaultRole = defaultRole;
@@ -115,7 +110,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       throws IOException {
     // Create a set of roles.
     for (int i = 0; i < numberOfRoles; i++) {
-      CreateRole create = createRequest(test, offset + i + 1);
+      CreateRole create = createRequest(test, offset + i);
       createAndCheckRole(create, ADMIN_AUTH_HEADERS);
     }
 
@@ -190,6 +185,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     userResourceTest.createEntity(
         userResourceTest.createRequest(role.getName() + "user2", "", "", null).withRoles(List.of(role.getId())),
         ADMIN_AUTH_HEADERS);
+    // Assign two arbitrary teams this role for testing.
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    teamResourceTest.createEntity(
+        teamResourceTest.createRequest(role.getName() + "team1", "", "", null).withDefaultRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS);
+    teamResourceTest.createEntity(
+        teamResourceTest.createRequest(role.getName() + "team2", "", "", null).withDefaultRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS);
   }
 
   /** Validate returned fields GET .../roles/{id}?fields="..." or GET .../roles/name/{name}?fields="..." */
@@ -205,13 +208,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
 
     // .../roles?fields=policy,users
-    String fields = "policy,users";
+    String fields = "policy,teams,users";
     role =
         byName
             ? getEntityByName(expectedRole.getName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(expectedRole.getId(), fields, ADMIN_AUTH_HEADERS);
     validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
     TestUtils.validateEntityReference(role.getPolicy());
+    TestUtils.validateEntityReference(role.getTeams());
     TestUtils.validateEntityReference(role.getUsers());
   }
 

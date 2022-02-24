@@ -14,8 +14,9 @@ Test Metrics behavior
 """
 from unittest import TestCase
 
+import pytest
 from numpy.random import normal
-from sqlalchemy import TEXT, Column, Integer, String, create_engine
+from sqlalchemy import TEXT, Column, Integer, String, create_engine, text
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
@@ -194,3 +195,155 @@ class MetricsTest(TestCase):
 
         assert res["HISTOGRAM"]
         assert len(res["HISTOGRAM"]["count"]) == 5
+
+    def test_like_count(self):
+        """
+        Check LIKE count
+        """
+        # In sqlite, LIKE is insensitive by default, so we just check here
+        # that the metrics runs correctly rather than the implementation logic.
+        like = Metrics.LIKE_COUNT(User.name, expression="J%")
+        res = SingleProfiler(like, session=self.session, table=User).execute()
+
+        assert res["LIKECOUNT"] == 2
+
+        like_ko = Metrics.LIKE_COUNT(User.name)
+        with pytest.raises(AttributeError):
+            SingleProfiler(like_ko, session=self.session, table=User).execute()
+
+    def test_ilike_count(self):
+        """
+        Check ILIKE count: case-insensitive LIKE
+        """
+        ilike = Metrics.ILIKE_COUNT(User.name, expression="j%")
+        res = SingleProfiler(ilike, session=self.session, table=User).execute()
+
+        assert res["ILIKECOUNT"] == 2
+
+        ilike_ko = Metrics.ILIKE_COUNT(User.name)
+        with pytest.raises(AttributeError):
+            SingleProfiler(ilike_ko, session=self.session, table=User).execute()
+
+    def test_like_ratio(self):
+        """
+        Check LIKE ratio
+        """
+        like = Metrics.LIKE_COUNT(User.name, expression="J%")
+        count = Metrics.COUNT(User.name)
+        like_ratio = Metrics.LIKE_RATIO(User.name)
+        res = SingleProfiler(
+            like, count, like_ratio, session=self.session, table=User
+        ).execute()
+
+        assert res["LIKERATIO"] == 1.0
+
+    def test_ilike_ratio(self):
+        """
+        Check LIKE ratio
+        """
+        # In sqlite, LIKE is insensitive by default, so we just check here
+        # that the metrics runs correctly rather than the implementation logic.
+        ilike = Metrics.ILIKE_COUNT(User.name, expression="j%")
+        count = Metrics.COUNT(User.name)
+        ilike_ratio = Metrics.ILIKE_RATIO(User.name)
+        res = SingleProfiler(
+            ilike, count, ilike_ratio, session=self.session, table=User
+        ).execute()
+
+        assert res["ILIKERATIO"] == 1.0
+
+    def test_max(self):
+        """
+        Check MAX metric
+        """
+        _max = Metrics.MAX(User.age)
+        res = SingleProfiler(_max, session=self.session, table=User).execute()
+
+        assert res["MAX"] == 31
+
+        _max = Metrics.MAX(User.name)
+        res = SingleProfiler(_max, session=self.session, table=User).execute()
+
+        assert res["MAX"] == "John"
+
+    def test_min_length(self):
+        """
+        Check MIN_LENGTH metric
+        """
+
+        # Integer
+        min_length = Metrics.MIN_LENGTH(col=User.age)
+        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+
+        assert res["MINLENGTH"] is None
+
+        # String
+        min_length = Metrics.MIN_LENGTH(col=User.name)
+        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+
+        assert res["MINLENGTH"] == 4
+
+        # Text
+        min_length = Metrics.MIN_LENGTH(col=User.comments)
+        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+
+        assert res["MINLENGTH"] == 11
+
+    def test_max_length(self):
+        """
+        Check MAX_LENGTH metric
+        """
+
+        # Integer
+        max_length = Metrics.MAX_LENGTH(col=User.age)
+        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+
+        assert res["MAXLENGTH"] is None
+
+        # String
+        max_length = Metrics.MAX_LENGTH(col=User.name)
+        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+
+        assert res["MAXLENGTH"] == 4
+
+        # Text
+        max_length = Metrics.MAX_LENGTH(col=User.comments)
+        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+
+        assert res["MAXLENGTH"] == 19
+
+    def test_sum(self):
+        """
+        Check SUM Metric
+        """
+        _sum = Metrics.SUM(User.age)
+        res = SingleProfiler(_sum, session=self.session, table=User).execute()
+
+        assert res["SUM"] == 61
+
+        _sum = Metrics.SUM(User.name)
+        res = SingleProfiler(_sum, session=self.session, table=User).execute()
+
+        assert res["SUM"] is None
+
+    def test_unique_count(self):
+        """
+        Check Unique Count metric
+        """
+        unique_count = Metrics.UNIQUE_COUNT(User.name)
+        res = SingleProfiler(unique_count, session=self.session, table=User).execute()
+
+        assert res["UNIQUECOUNT"] == 2
+
+    def test_unique_ratio(self):
+        """
+        Check Unique Count metric
+        """
+        count = Metrics.COUNT(User.name)
+        unique_count = Metrics.UNIQUE_COUNT(User.name)
+        unique_ratio = Metrics.UNIQUE_RATIO(User.name)
+        res = SingleProfiler(
+            count, unique_count, unique_ratio, session=self.session, table=User
+        ).execute()
+
+        assert res["UNIQUERATIO"] == 1.0
