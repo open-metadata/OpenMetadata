@@ -76,7 +76,9 @@ class MetricsTest(TestCase):
         Check the Min metric
         """
         min_age = Metrics.MIN.value
-        profiler = Profiler(min_age, session=self.session, table=User, use_cols=[User.age])
+        profiler = Profiler(
+            min_age, session=self.session, table=User, use_cols=[User.age]
+        )
         res = profiler.execute()._column_results
 
         # Note how we can get the result value by passing the metrics name
@@ -87,7 +89,9 @@ class MetricsTest(TestCase):
         Check STD metric
         """
         std_age = Metrics.STDDEV.value
-        profiler = Profiler(std_age, session=self.session, table=User, use_cols=[User.age])
+        profiler = Profiler(
+            std_age, session=self.session, table=User, use_cols=[User.age]
+        )
         res = profiler.execute()._column_results
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
@@ -98,7 +102,9 @@ class MetricsTest(TestCase):
         Check null count
         """
         null_count = Metrics.NULL_COUNT.value
-        profiler = Profiler(null_count, session=self.session, table=User, use_cols=[User.nickname])
+        profiler = Profiler(
+            null_count, session=self.session, table=User, use_cols=[User.nickname]
+        )
         res = profiler.execute()._column_results
 
         assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 1
@@ -114,7 +120,12 @@ class MetricsTest(TestCase):
         null_ratio = Metrics.NULL_RATIO.value
 
         profiler = Profiler(
-            count, null_count, null_ratio, session=self.session, table=User, use_cols=[User.nickname]
+            count,
+            null_count,
+            null_ratio,
+            session=self.session,
+            table=User,
+            use_cols=[User.nickname],
         )
         res = profiler.execute()._column_results
         assert res.get(User.nickname.name).get(Metrics.NULL_RATIO.name) == 0.5
@@ -135,19 +146,31 @@ class MetricsTest(TestCase):
 
         # Integer
         avg = Metrics.MEAN.value
-        res = Profiler(avg, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(avg, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.MEAN.name] == 30.5
 
         # String
         avg = Metrics.MEAN.value
-        res = Profiler(avg, session=self.session, table=User, use_cols=[User.name]).execute()._column_results
+        res = (
+            Profiler(avg, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.name.name)[Metrics.MEAN.name] == 4.0
 
         # Text
         avg = Metrics.MEAN.value
-        res = Profiler(avg, session=self.session, table=User, use_cols=[User.comments]).execute()._column_results
+        res = (
+            Profiler(avg, session=self.session, table=User, use_cols=[User.comments])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.comments.name)[Metrics.MEAN.name] == 15.0
 
@@ -156,7 +179,11 @@ class MetricsTest(TestCase):
         Check distinct count
         """
         dist = Metrics.DISTINCT_COUNT.value
-        res = Profiler(dist, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(dist, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.DISTINCT_COUNT.name] == 2
 
@@ -167,9 +194,18 @@ class MetricsTest(TestCase):
         count = Metrics.COUNT.value
         dist = Metrics.DISTINCT_COUNT.value
         dup_count = Metrics.DUPLICATE_COUNT.value
-        res = Profiler(
-            count, dist, dup_count, session=self.session, table=User, use_cols=[User.age]
-        ).execute()._column_results
+        res = (
+            Profiler(
+                count,
+                dist,
+                dup_count,
+                session=self.session,
+                table=User,
+                use_cols=[User.age],
+            )
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.DUPLICATE_COUNT.name] == 0
 
@@ -192,10 +228,16 @@ class MetricsTest(TestCase):
         self.session.commit()
 
         hist = add_props(bins=7)(Metrics.HISTOGRAM.value)
-        res = Profiler(hist, session=self.session, table=TestHist).execute()._column_results
+        res = (
+            Profiler(hist, session=self.session, table=TestHist)
+            .execute()
+            ._column_results
+        )
 
         assert res.get(TestHist.num.name)[Metrics.HISTOGRAM.name]
-        assert len(res.get(TestHist.num.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 7
+        assert (
+            len(res.get(TestHist.num.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 7
+        )
 
     def test_like_count(self):
         """
@@ -204,24 +246,42 @@ class MetricsTest(TestCase):
         # In sqlite, LIKE is insensitive by default, so we just check here
         # that the metrics runs correctly rather than the implementation logic.
         like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
-        res = Profiler(like, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(like, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.LIKE_COUNT.name] == 2
 
         with pytest.raises(AttributeError):
-            Profiler(Metrics.LIKE_COUNT.value, session=self.session, table=User, use_cols=[User.age]).execute()
+            Profiler(
+                Metrics.LIKE_COUNT.value,
+                session=self.session,
+                table=User,
+                use_cols=[User.age],
+            ).execute()
 
     def test_ilike_count(self):
         """
         Check ILIKE count: case-insensitive LIKE
         """
         ilike = add_props(expression="J%")(Metrics.ILIKE_COUNT.value)
-        res = Profiler(ilike, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(ilike, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.ILIKE_COUNT.name] == 2
 
         with pytest.raises(AttributeError):
-            Profiler(Metrics.ILIKE_COUNT.value, session=self.session, table=User, use_cols=[User.age]).execute()
+            Profiler(
+                Metrics.ILIKE_COUNT.value,
+                session=self.session,
+                table=User,
+                use_cols=[User.age],
+            ).execute()
 
     def test_like_ratio(self):
         """
@@ -230,9 +290,18 @@ class MetricsTest(TestCase):
         like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
         count = Metrics.COUNT.value
         like_ratio = Metrics.LIKE_RATIO.value
-        res = Profiler(
-            like, count, like_ratio, session=self.session, table=User, use_cols=[User.name]
-        ).execute()._column_results
+        res = (
+            Profiler(
+                like,
+                count,
+                like_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.name],
+            )
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.name.name)[Metrics.LIKE_RATIO.name] == 1.0
 
@@ -245,9 +314,18 @@ class MetricsTest(TestCase):
         ilike = add_props(expression="J%")(Metrics.ILIKE_COUNT.value)
         count = Metrics.COUNT.value
         ilike_ratio = Metrics.ILIKE_RATIO.value
-        res = Profiler(
-            ilike, count, ilike_ratio, session=self.session, table=User, use_cols=[User.name]
-        ).execute()._column_results
+        res = (
+            Profiler(
+                ilike,
+                count,
+                ilike_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.name],
+            )
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.name.name)[Metrics.ILIKE_RATIO.name] == 1.0
 
@@ -257,11 +335,19 @@ class MetricsTest(TestCase):
         """
         _max = Metrics.MAX.value
 
-        res = Profiler(_max, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(_max, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.MAX.name] == 31
 
-        res = Profiler(_max, session=self.session, table=User, use_cols=[User.name]).execute()._column_results
+        res = (
+            Profiler(_max, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.name.name)[Metrics.MAX.name] == "John"
 
@@ -273,17 +359,31 @@ class MetricsTest(TestCase):
         min_length = Metrics.MIN_LENGTH.value
 
         # Integer
-        res = Profiler(min_length, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(min_length, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name).get(Metrics.MIN_LENGTH.name) is None
 
         # String
-        res = Profiler(min_length, session=self.session, table=User, use_cols=[User.name]).execute()._column_results
+        res = (
+            Profiler(min_length, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.name.name)[Metrics.MIN_LENGTH.name] == 4
 
         # Text
-        res = Profiler(min_length, session=self.session, table=User, use_cols=[User.comments]).execute()._column_results
+        res = (
+            Profiler(
+                min_length, session=self.session, table=User, use_cols=[User.comments]
+            )
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.comments.name)[Metrics.MIN_LENGTH.name] == 11
 
@@ -294,17 +394,31 @@ class MetricsTest(TestCase):
         max_length = Metrics.MAX_LENGTH.value
 
         # Integer
-        res = Profiler(max_length, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(max_length, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name).get(Metrics.MAX_LENGTH.name) is None
 
         # String
-        res = Profiler(max_length, session=self.session, table=User, use_cols=[User.name]).execute()._column_results
+        res = (
+            Profiler(max_length, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.name.name)[Metrics.MAX_LENGTH.name] == 4
 
         # Text
-        res = Profiler(max_length, session=self.session, table=User, use_cols=[User.comments]).execute()._column_results
+        res = (
+            Profiler(
+                max_length, session=self.session, table=User, use_cols=[User.comments]
+            )
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.comments.name)[Metrics.MAX_LENGTH.name] == 19
 
@@ -314,11 +428,19 @@ class MetricsTest(TestCase):
         """
         _sum = Metrics.SUM.value
 
-        res = Profiler(_sum, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(_sum, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.SUM.name] == 61
 
-        res = Profiler(_sum, session=self.session, table=User, use_cols=[User.name]).execute()._column_results
+        res = (
+            Profiler(_sum, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.name.name).get(Metrics.SUM.name) is None
 
@@ -327,7 +449,13 @@ class MetricsTest(TestCase):
         Check Unique Count metric
         """
         unique_count = Metrics.UNIQUE_COUNT.value
-        res = Profiler(unique_count, session=self.session, table=User, use_cols=[User.age]).execute()._column_results
+        res = (
+            Profiler(
+                unique_count, session=self.session, table=User, use_cols=[User.age]
+            )
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.UNIQUE_COUNT.name] == 2
 
@@ -338,8 +466,17 @@ class MetricsTest(TestCase):
         count = Metrics.COUNT.value
         unique_count = Metrics.UNIQUE_COUNT.value
         unique_ratio = Metrics.UNIQUE_RATIO.value
-        res = Profiler(
-            count, unique_count, unique_ratio, session=self.session, table=User, use_cols=[User.age]
-        ).execute()._column_results
+        res = (
+            Profiler(
+                count,
+                unique_count,
+                unique_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.age],
+            )
+            .execute()
+            ._column_results
+        )
 
         assert res.get(User.age.name)[Metrics.UNIQUE_RATIO.name] == 1.0
