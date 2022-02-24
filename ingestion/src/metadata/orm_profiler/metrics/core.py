@@ -51,6 +51,41 @@ def _label(_fn):
     return inner
 
 
+def add_props(**kwargs):
+    """
+    Sometimes we might need to add some
+    flavour dynamically to our Metrics definition.
+
+    For example, when passing the `bins` for the HISTOGRAM
+    or `expression` for LIKE & ILIKE.
+
+    This function is a class decorator that we can run as:
+    new_hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+
+    new_hist will still be a class, so we can safely pass it
+    to the profiler to be initialized for all the columns.
+    """
+
+    def inner(cls):
+
+        # Create a new cls instance to avoid updating the original ref
+        # In these scenarios, deepcopy(cls) just returns a pointer
+        # to the same reference
+        _new_cls = type("_new_cls", cls.__bases__, dict(cls.__dict__))
+        _orig = cls.__init__
+
+        def _new_init(self, *args, **kw):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+            _orig(self, *args, **kw)
+
+        _new_cls.__init__ = _new_init
+
+        return _new_cls
+
+    return inner
+
+
 class Metric(ABC):
     """
     Parent class metric
