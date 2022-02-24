@@ -49,7 +49,9 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.TableTest;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
@@ -111,7 +113,8 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
-    table.setTableTests(fields.contains("tableTests") ? getTableTests(table) : null);
+    table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
+    getColumnTests(fields.contains("tests"), table);
     return table;
   }
 
@@ -247,39 +250,88 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withTableQueries(getQueries(table));
   }
 
+  @Transaction
   public Table addTableTest(UUID tableId, TableTest tableTest) throws IOException, ParseException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     // if ID is not passed we treat it as a new test case being added
-    if (tableTest.getId() == null) {
-      tableTest.setId(UUID.randomUUID());
-    }
     List<TableTest> storedTableTests = getTableTests(table);
-    Map<UUID, TableTest> storedMapTableTests = new HashMap<>();
+    // we will override any test case name passed by user/client with tableName + testType
+    // our assumption is there is only one instance of a test type as of now.
+    tableTest.setName(table.getName() + "." + tableTest.getTableTestCase().getTestType().toString());
+    Map<String, TableTest> storedMapTableTests = new HashMap<>();
     if (storedTableTests != null) {
       for (TableTest t : storedTableTests) {
-        storedMapTableTests.put(t.getId(), t);
+        storedMapTableTests.put(t.getName(), t);
       }
+    }
+    // new test add UUID
+    if (!storedMapTableTests.containsKey(tableTest.getName())) {
+      tableTest.setId(UUID.randomUUID());
     }
 
     // process test result
-    if (storedMapTableTests.containsKey(tableTest.getId())
+    if (storedMapTableTests.containsKey(tableTest.getName())
         && tableTest.getResults() != null
         && !tableTest.getResults().isEmpty()) {
-      TableTest prevTableTest = storedMapTableTests.get(tableTest.getId());
-      List<Object> prevTestCaseResults = prevTableTest.getResults();
-      List<Object> newTestCaseResults = tableTest.getResults();
+      TableTest prevTableTest = storedMapTableTests.get(tableTest.getName());
+      List<TestCaseResult> prevTestCaseResults = prevTableTest.getResults();
+      List<TestCaseResult> newTestCaseResults = tableTest.getResults();
       newTestCaseResults.addAll(prevTestCaseResults);
       tableTest.setResults(newTestCaseResults);
     }
 
-    storedMapTableTests.put(tableTest.getId(), tableTest);
+    storedMapTableTests.put(tableTest.getName(), tableTest);
     List<TableTest> updatedTests = new ArrayList<>(storedMapTableTests.values());
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableTests", "tableTest", JsonUtils.pojoToJson(updatedTests));
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withTableTests(getTableTests(table));
+  }
+
+  @Transaction
+  public Table addColumnTest(UUID tableId, ColumnTest columnTest) throws IOException, ParseException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    String columnName = columnTest.getColumnName();
+    validateColumn(table, columnName);
+    // we will override any test case name passed by user/client with columnName + testType
+    // our assumption is there is only one instance of a test type as of now.
+    columnTest.setName(columnName + "." + columnTest.getTestCase().getTestType().toString());
+    List<ColumnTest> storedColumnTests = getColumnTests(table, columnName);
+    Map<String, ColumnTest> storedMapColumnTests = new HashMap<>();
+    if (storedColumnTests != null) {
+      for (ColumnTest ct : storedColumnTests) {
+        storedMapColumnTests.put(ct.getName(), ct);
+      }
+    }
+
+    // new test, generate UUID
+    if (!storedMapColumnTests.containsKey(columnTest.getName())) {
+      columnTest.setId(UUID.randomUUID());
+    }
+
+    // process test result
+    if (storedMapColumnTests.containsKey(columnTest.getName())
+        && columnTest.getResults() != null
+        && !columnTest.getResults().isEmpty()) {
+      ColumnTest prevColumnTest = storedMapColumnTests.get(columnTest.getName());
+      List<TestCaseResult> prevTestCaseResults = prevColumnTest.getResults();
+      List<TestCaseResult> newTestCaseResults = columnTest.getResults();
+      newTestCaseResults.addAll(prevTestCaseResults);
+      columnTest.setResults(newTestCaseResults);
+    }
+
+    storedMapColumnTests.put(columnTest.getName(), columnTest);
+    List<ColumnTest> updatedTests = new ArrayList<>(storedMapColumnTests.values());
+    String extension = "table.column." + columnName + ".tests";
+    daoCollection
+        .entityExtensionDAO()
+        .insert(table.getId().toString(), extension, "columnTest", JsonUtils.pojoToJson(updatedTests));
+    setFields(table, Fields.EMPTY_FIELDS);
+    getColumnTests(true, table);
+    return table;
   }
 
   @Transaction
@@ -683,6 +735,19 @@ public class TableRepository extends EntityRepository<Table> {
   private List<TableTest> getTableTests(Table table) throws IOException {
     return JsonUtils.readObjects(
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableTests"), TableTest.class);
+  }
+
+  private List<ColumnTest> getColumnTests(Table table, String columnName) throws IOException {
+    String extension = "table.column." + columnName + ".tests";
+    return JsonUtils.readObjects(
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), ColumnTest.class);
+  }
+
+  private void getColumnTests(boolean setTests, Table table) throws IOException {
+    List<Column> columns = table.getColumns();
+    for (Column c : Optional.ofNullable(columns).orElse(Collections.emptyList())) {
+      c.setColumnTests(setTests ? getColumnTests(table, c.getName()) : null);
+    }
   }
 
   public static class TableEntityInterface implements EntityInterface<Table> {

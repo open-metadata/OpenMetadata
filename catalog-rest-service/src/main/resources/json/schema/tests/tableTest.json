@@ -63,7 +63,7 @@
       "description": "List of results of the test case.",
       "type": "array",
       "items": {
-        "$ref": "./basic.json#/definitions"
+        "$ref": "./basic.json#/definitions/testCaseResult"
       }
     },
     "owner": {
