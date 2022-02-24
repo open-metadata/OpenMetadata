@@ -6,10 +6,12 @@ To be used be OpenMetadata
 import logging
 from typing import List, Optional, Type, TypeVar
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import CreateTagCategoryRequest
 from pydantic import BaseModel
 
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.ingestion.ometa.client import APIError
 
@@ -76,7 +78,9 @@ class OMetaTagMixin:
         resp = self.client.put(path=path, data=tag_category_body.json())
         logger.info(f"Updated tag category: {resp}")
 
-    def create_primary_tag(self, category_name: str, primary_tag_body: CreateTagRequest) -> None:
+    def create_primary_tag(
+        self, category_name: str, primary_tag_body: CreateTagRequest
+    ) -> None:
         """Method to create a primary tag within a category
         Args:
             category_name (str): tag category name
@@ -123,7 +127,10 @@ class OMetaTagMixin:
         logger.info(f"Updated primary tag: {resp}")
 
     def create_secondary_tag(
-        self, category_name: str, primary_tag_fqn: str, secondary_tag_body: CreateTagRequest
+        self,
+        category_name: str,
+        primary_tag_fqn: str,
+        secondary_tag_body: CreateTagRequest,
     ) -> None:
         """Method to create a secondary tag under a primary tag
         Args:
