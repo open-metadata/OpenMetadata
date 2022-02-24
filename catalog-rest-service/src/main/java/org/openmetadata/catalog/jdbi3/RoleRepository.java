@@ -70,6 +70,7 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   public Role setFields(Role role, Fields fields) throws IOException {
     role.setPolicy(fields.contains("policy") ? getPolicyForRole(role) : null);
+    role.setTeams(fields.contains("teams") ? getTeamsForRole(role) : null);
     role.setUsers(fields.contains("users") ? getUsersForRole(role) : null);
     return role;
   }
@@ -90,6 +91,11 @@ public class RoleRepository extends EntityRepository<Role> {
   private List<EntityReference> getUsersForRole(@NonNull Role role) throws IOException {
     List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER, toBoolean(toInclude(role)));
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
+  }
+
+  private List<EntityReference> getTeamsForRole(@NonNull Role role) throws IOException {
+    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM, toBoolean(Include.ALL));
+    return EntityUtil.populateEntityReferences(ids, Entity.TEAM);
   }
 
   @Override
