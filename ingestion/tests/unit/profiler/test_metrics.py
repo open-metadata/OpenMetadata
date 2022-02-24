@@ -194,7 +194,7 @@ class MetricsTest(TestCase):
         res = SingleProfiler(hist, session=self.session, table=TestHist).execute()
 
         assert res["HISTOGRAM"]
-        assert len(res["HISTOGRAM"]["count"]) == 5
+        assert len(res["HISTOGRAM"]["frequencies"]) == 5
 
     def test_like_count(self):
         """
