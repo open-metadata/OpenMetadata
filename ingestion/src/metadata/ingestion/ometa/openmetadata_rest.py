@@ -15,6 +15,8 @@ server configuration and auth.
 import http.client
 import json
 import logging
+import sys
+import traceback
 from typing import List
 
 from pydantic import BaseModel
@@ -172,69 +174,66 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         from okta.jwt import JWT, jwt
         from okta.request_executor import RequestExecutor
 
-        my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
-        issued_time = int(time.time())
-        expiry_time = issued_time + JWT.ONE_HOUR
-        generated_JWT_ID = str(uuid.uuid4())
+        try:
+            my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
+            issued_time = int(time.time())
+            expiry_time = issued_time + JWT.ONE_HOUR
+            generated_JWT_ID = str(uuid.uuid4())
 
-        claims = {
-            "sub": self.config.client_id,
-            "iat": issued_time,
-            "exp": expiry_time,
-            "iss": self.config.client_id,
-            "aud": self.config.org_url,
-            "jti": generated_JWT_ID,
-        }
-        token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
-        config = {
-            "client": {
-                "orgUrl": self.config.org_url,
-                "authorizationMode": "BEARER",
-                "rateLimit": {},
-                "privateKey": self.config.private_key,
-                "clientId": self.config.client_id,
-                "token": token,
-                "scopes": self.config.scopes,
+            claims = {
+                "sub": self.config.client_id,
+                "iat": issued_time,
+                "exp": expiry_time,
+                "iss": self.config.client_id,
+                "aud": self.config.org_url,
+                "jti": generated_JWT_ID,
             }
-        }
-        request_exec = RequestExecutor(
-            config=config, cache=OktaCache(ttl=expiry_time, tti=issued_time)
-        )
-        parameters = {
-            "grant_type": "client_credentials",
-            "scope": " ".join(config["client"]["scopes"]),
-            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-            "client_assertion": token,
-        }
-        encoded_parameters = urlencode(parameters, quote_via=quote)
-        url = f"{self.config.org_url}?" + encoded_parameters
-        token_request_object = await request_exec.create_request(
-            "POST",
-            url,
-            None,
-            {
-                "Accept": "application/json",
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            oauth=True,
-        )
-        _, res_details, res_json, err = await request_exec.fire_request(
-            token_request_object[0]
-        )
-        return json.loads(res_json).get("access_token")
+            token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
+            config = {
+                "client": {
+                    "orgUrl": self.config.org_url,
+                    "authorizationMode": "BEARER",
+                    "rateLimit": {},
+                    "privateKey": self.config.private_key,
+                    "clientId": self.config.client_id,
+                    "token": token,
+                    "scopes": self.config.scopes,
+                }
+            }
+            request_exec = RequestExecutor(
+                config=config, cache=OktaCache(ttl=expiry_time, tti=issued_time)
+            )
+            parameters = {
+                "grant_type": "client_credentials",
+                "scope": " ".join(config["client"]["scopes"]),
+                "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                "client_assertion": token,
+            }
+            encoded_parameters = urlencode(parameters, quote_via=quote)
+            url = f"{self.config.org_url}?" + encoded_parameters
+            token_request_object = await request_exec.create_request(
+                "POST",
+                url,
+                None,
+                {
+                    "Accept": "application/json",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                oauth=True,
+            )
+            _, res_details, res_json, err = await request_exec.fire_request(
+                token_request_object[0]
+            )
+            if err:
+                raise Exception(f"{err}")
+            return json.loads(res_json).get("access_token")
+        except Exception as err:
+            logger.debug(traceback.print_exc())
+            logger.error(err)
+            sys.exit()
 
 
 class Auth0AuthenticationProvider(AuthenticationProvider):
-    """
-    OAuth authentication implementation
-
-    Args:
-        config (MetadataServerConfig):
-
-    Attributes:
-        config (MetadataServerConfig)
-    """
-
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -246,8 +245,7 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         conn = http.client.HTTPSConnection(self.config.domain)
         payload = (
             f"grant_type=client_credentials&client_id={self.config.client_id}"
-            f"&client_secret={self.config.secret_key}"
-            f"&audience=https://{self.config.domain}/api/v2/"
+            f"&client_secret={self.config.secret_key}&audience=https://{self.config.domain}/api/v2/"
         )
         headers = {"content-type": "application/x-www-form-urlencoded"}
         conn.request("POST", f"/{self.config.domain}/oauth/token", payload, headers)
