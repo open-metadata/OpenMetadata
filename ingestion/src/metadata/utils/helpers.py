@@ -14,8 +14,6 @@ import traceback
 from datetime import datetime, timedelta
 from typing import List
 
-from sqllineage.runner import LineageRunner
-
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -230,6 +228,8 @@ def create_lineage(from_table, to_table, query_info, metadata):
 
 
 def ingest_lineage(query_info, metadata_config):
+    from sqllineage.runner import LineageRunner
+
     result = LineageRunner(query_info["sql"])
     metadata = OpenMetadata(metadata_config)
     if result.target_tables and result.intermediate_tables:

@@ -19,7 +19,6 @@ from datetime import datetime
 from typing import Iterable
 
 from google.cloud import logging
-from sqllineage.runner import LineageRunner
 
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
