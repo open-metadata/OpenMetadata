@@ -17,7 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
@@ -29,6 +29,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(7)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TopicDetailsPageTest {
@@ -46,7 +47,6 @@ public class TopicDetailsPageTest {
   TopicDetails topicDetails;
   ExplorePage explorePage;
   MyDataPage myDataPage;
-  private static final Logger LOG = Logger.getLogger(TopicDetails.class.getName());
   int counter = 2;
   String xpath = "//li[@data-testid='breadcrumb-link'][" + counter + "]";
   String description = "Test@1234";

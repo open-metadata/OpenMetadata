@@ -17,7 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
@@ -29,6 +29,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(4)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TableDetailsPageTest {
@@ -51,7 +52,6 @@ public class TableDetailsPageTest {
   TopicDetails topicDetails;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  private static final Logger LOG = Logger.getLogger(TableDetails.class.getName());
 
   @BeforeEach
   public void openMetadataWindow() {
