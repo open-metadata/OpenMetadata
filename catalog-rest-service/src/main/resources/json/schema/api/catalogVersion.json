@@ -18,5 +18,6 @@
       "description": "Build timestamp",
       "$ref": "../type/basic.json#/definitions/timestamp"
     }
-  }
+  },
+  "additionalProperties": false
 }

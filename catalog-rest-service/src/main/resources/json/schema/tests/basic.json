@@ -38,7 +38,8 @@
           "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "testCaseExecutionFrequency": {
       "description": "How often the test case should run.",

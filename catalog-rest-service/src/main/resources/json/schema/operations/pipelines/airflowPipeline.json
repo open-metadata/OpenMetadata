@@ -28,7 +28,8 @@
           "description": "endDate of the pipeline run for this particular execution.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "pipelineConfig": {
       "description": "OpenMetadata Pipeline Config.",

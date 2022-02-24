@@ -97,7 +97,8 @@
             "type": "string"
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "columnName": {
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
@@ -212,7 +213,8 @@
               "joinCount": {
                 "type": "integer"
               }
-            }
+            },
+            "additionalProperties": false
           }
         }
       },
@@ -351,7 +353,8 @@
               "description": "Frequencies of Histogram.",
               "type": "array"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -414,7 +417,8 @@
           "description": "Date on which the query ran.",
           "$ref": "../../type/basic.json#/definitions/date"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "modelType": {
       "$comment": "Currently only DBT model type is supported",
@@ -468,7 +472,8 @@
           "$ref": "../../type/basic.json#/definitions/dateTime"
         }
       },
-      "required": ["modelType", "sql"]
+      "required": ["modelType", "sql"],
+      "additionalProperties": false
     }
   },
   "properties": {
