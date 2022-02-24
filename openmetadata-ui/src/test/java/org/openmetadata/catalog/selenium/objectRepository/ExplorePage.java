@@ -1,16 +1,15 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class ExplorePage {
-  WebDriver webDriver;
-
-  public ExplorePage(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By explore = By.cssSelector("[data-testid='appbar-item'][id='explore']");
   By tableCount = By.xpath("(//span[@data-testid='filter-count'])[1]");

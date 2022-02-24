@@ -1,15 +1,14 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import javax.annotation.Nonnull;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@RequiredArgsConstructor
 public class UserPage {
-  WebDriver webDriver;
-
-  public UserPage(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By rolesList = By.cssSelector("[data-testid='menu-button'][id='menu-button-User']");
   By selectUser = By.xpath("//div[@data-testid='data-container']//p");
