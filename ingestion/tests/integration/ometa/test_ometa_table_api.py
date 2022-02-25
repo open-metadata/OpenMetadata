@@ -16,6 +16,8 @@ import uuid
 from datetime import datetime
 from unittest import TestCase
 
+import pytest
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -39,8 +41,22 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.tests.basic import Status1, TestCaseResult
+from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
+    ColumnValuesToBeBetween,
+)
+from metadata.generated.schema.tests.columnTest import (
+    ColumnTest,
+    ColumnTestCase,
+    TestType1,
+)
+from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
+    TableRowCountToEqual,
+)
+from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase, TestType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.table_queries import TableUsageRequest
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -85,7 +101,9 @@ class OMetaTableTest(TestCase):
 
         cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
 
-        cls.db_reference = EntityReference(id=cls.create_db_entity.id, name="test-db", type="database")
+        cls.db_reference = EntityReference(
+            id=cls.create_db_entity.id, name="test-db", type="database"
+        )
 
         cls.entity = Table(
             id=uuid.uuid4(),
@@ -380,3 +398,126 @@ class OMetaTableTest(TestCase):
         )
 
         assert res.id == entity_ref.id
+
+    def test_add_table_tests(self):
+        """
+        Add tableTests to table instance
+        """
+
+        table = self.metadata.create_or_update(data=self.create)
+
+        table_test = TableTest(
+            name="first_table_test",
+            description="Testing something",
+            tableName="To remove",
+            tableTestCase=TableTestCase(
+                config=TableRowCountToEqual(value=100),
+                testType=TestType.tableRowCountToEqual,
+            ),
+        )
+
+        table_with_test = self.metadata.add_table_test(
+            table=table, table_test=table_test
+        )
+
+        assert len(table_with_test.tableTests) == 1
+        assert table_with_test.tableTests[0].tableTestCase == table_test.tableTestCase
+
+        test_case_result = TestCaseResult(
+            result="some result",
+            executionTime=datetime.now().timestamp(),
+            status=Status1.Success,
+        )
+
+        table_test_with_res = TableTest(
+            name="first_table_test",
+            description="Testing something",
+            tableName="To remove",
+            tableTestCase=TableTestCase(
+                config=TableRowCountToEqual(value=100),
+                testType=TestType.tableRowCountToEqual,
+            ),
+            results=[test_case_result],
+        )
+
+        table_with_test_and_res = self.metadata.add_table_test(
+            table=table, table_test=table_test_with_res
+        )
+
+        assert len(table_with_test_and_res.tableTests[0].results) == 1
+        assert (
+            table_with_test_and_res.tableTests[0].results[0].status == Status1.Success
+        )
+
+    def test_add_column_tests(self):
+        """
+        Add columnTests to table instance
+        """
+
+        table = self.metadata.create_or_update(data=self.create)
+
+        col_test = ColumnTest(
+            name="my column test",
+            columnName="id",
+            testCase=ColumnTestCase(
+                config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
+                testType=TestType1.columnValuesToBeBetween,
+            ),
+        )
+
+        updated_table = self.metadata.add_column_test(table=table, col_test=col_test)
+
+        id_test = next(
+            iter([col for col in updated_table.columns if col.name.__root__ == "id"]),
+            None,
+        )
+
+        assert len(id_test.columnTests) == 1
+        assert id_test.columnTests[0].testCase == col_test.testCase
+
+        # Column needs to exist in the table!
+        with pytest.raises(APIError):
+            ko_test = ColumnTest(
+                name="Bad test",
+                columnName="random_column",
+                testCase=ColumnTestCase(
+                    config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
+                    testType=TestType1.columnValuesToBeBetween,
+                ),
+            )
+
+            self.metadata.add_column_test(table=table, col_test=ko_test)
+
+        col_test_res = TestCaseResult(
+            result="some result",
+            executionTime=datetime.now().timestamp(),
+            status=Status1.Success,
+        )
+
+        col_test_with_res = ColumnTest(
+            name="my column test",
+            columnName="id",
+            testCase=ColumnTestCase(
+                config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
+                testType=TestType1.columnValuesToBeBetween,
+            ),
+            results=[col_test_res],
+        )
+
+        table_with_test_and_res = self.metadata.add_column_test(
+            table=table, col_test=col_test_with_res
+        )
+
+        id_test_res = next(
+            iter(
+                [
+                    col
+                    for col in table_with_test_and_res.columns
+                    if col.name.__root__ == "id"
+                ]
+            ),
+            None,
+        )
+
+        assert len(id_test_res.columnTests[0].results) == 1
+        assert id_test_res.columnTests[0].results[0].status == Status1.Success
