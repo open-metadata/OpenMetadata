@@ -156,7 +156,9 @@ class OpenMetadata(
             base_url=self.config.api_endpoint,
             api_version=self.config.api_version,
             auth_header="Authorization",
-            auth_token=asyncio.run(self._auth_provider.auth_token()),
+            auth_token=asyncio.run(self._auth_provider.auth_token())
+            if self.config.auth_provider_type == "okta"
+            else self._auth_provider.auth_token(),
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
