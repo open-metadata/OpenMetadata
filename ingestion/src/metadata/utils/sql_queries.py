@@ -288,3 +288,20 @@ MSSQL_SQL_USAGE_STATEMENT = """
         ON db.database_id = t.dbid
       ORDER BY s.last_execution_time DESC;
 """
+
+CLICKHOUSE_SQL_USAGE_STATEMENT = """
+        Select
+          query_start_time start_time,
+          DATEADD(query_duration_ms, query_start_time) end_time,
+          databases database_name,
+          user user_name,
+          FALSE aborted,
+          query_id query_id,
+          query query_text,
+          NULL schema_name,
+          tables tables
+        From system.query_log
+        Where start_time between '{start_time}' and '{end_time}'
+        and CAST(type,'Int8') <> 3
+        and CAST(type,'Int8') <> 4
+"""
