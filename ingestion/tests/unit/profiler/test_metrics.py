@@ -14,8 +14,6 @@ Test Metrics behavior
 """
 from unittest import TestCase
 
-import pytest
-from numpy.random import normal
 from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
@@ -214,29 +212,16 @@ class MetricsTest(TestCase):
         Check histogram computation
         """
 
-        # Cook some data first
-        class TestHist(Base):
-            __tablename__ = "test_hist"
-            id = Column(Integer, primary_key=True)
-            num = Column(Integer)
-
-        TestHist.__table__.create(bind=self.engine)
-
-        data = [TestHist(num=int(rand)) for rand in normal(loc=0, scale=10, size=2000)]
-
-        self.session.add_all(data)
-        self.session.commit()
-
-        hist = add_props(bins=7)(Metrics.HISTOGRAM.value)
+        hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
         res = (
-            Profiler(hist, session=self.session, table=TestHist)
+            Profiler(hist, session=self.session, table=User, use_cols=[User.age])
             .execute()
             ._column_results
         )
 
-        assert res.get(TestHist.num.name)[Metrics.HISTOGRAM.name]
+        assert res.get(User.age.name)[Metrics.HISTOGRAM.name]
         assert (
-            len(res.get(TestHist.num.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 7
+            len(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 2  # Too little values
         )
 
     def test_like_count(self):

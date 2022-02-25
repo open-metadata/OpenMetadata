@@ -141,8 +141,6 @@ test = {
     # sklearn integration
     "scikit-learn==1.0.2",
     "pandas==1.3.5",
-    # Metrics sample data gen
-    "numpy==1.22.2",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
