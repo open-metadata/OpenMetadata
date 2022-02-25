@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
+from metadata.ingestion.ometa.client import APIError
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
-            generated_JWT_ID = str(uuid.uuid4())
+            generated_jwt_id = str(uuid.uuid4())
 
             claims = {
                 "sub": self.config.client_id,
@@ -186,7 +187,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 "exp": expiry_time,
                 "iss": self.config.client_id,
                 "aud": self.config.org_url,
-                "jti": generated_JWT_ID,
+                "jti": generated_jwt_id,
             }
             token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
             config = {
@@ -225,7 +226,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 token_request_object[0]
             )
             if err:
-                raise Exception(f"{err}")
+                raise APIError(f"{err}")
             return json.loads(res_json).get("access_token")
         except Exception as err:
             logger.debug(traceback.print_exc())
