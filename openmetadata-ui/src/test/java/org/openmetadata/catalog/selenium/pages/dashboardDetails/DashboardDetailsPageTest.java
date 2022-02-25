@@ -120,7 +120,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(1000);
     webDriver.navigate().refresh();
     Thread.sleep(1000);
-    String breadcrumbTag = webDriver.findElement(common.breadCrumbTag()).getText();
+    String breadcrumbTag = webDriver.findElement(common.breadcrumbTags()).getText();
     Assert.assertEquals(selectedTag, breadcrumbTag);
   }
 
@@ -131,7 +131,7 @@ public class DashboardDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
-    String tagDisplayed = webDriver.findElement(common.breadCrumbTag()).getText();
+    String tagDisplayed = webDriver.findElement(common.breadcrumbTags()).getText();
     Events.click(webDriver, common.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Thread.sleep(waitTime);
@@ -139,7 +139,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    WebElement updatedTags = webDriver.findElement(common.breadCrumbTag());
+    WebElement updatedTags = webDriver.findElement(common.breadcrumbTags());
     if (updatedTags.getText().contains(tagDisplayed)) {
       Assert.fail("SelectedTag is not removed");
     }
