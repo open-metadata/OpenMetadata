@@ -369,11 +369,16 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN)).then(
-      (res: AxiosResponse) => {
+    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+      .then((res: AxiosResponse) => {
         setFeedCount(res.data.totalCount);
-      }
-    );
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching feed count',
+        });
+      });
   };
 
   useEffect(() => {

@@ -867,11 +867,16 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(
-      getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN)
-    ).then((res: AxiosResponse) => {
-      setFeedCount(res.data.totalCount);
-    });
+    getFeedCount(getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN))
+      .then((res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching feed count',
+        });
+      });
   };
 
   useEffect(() => {
