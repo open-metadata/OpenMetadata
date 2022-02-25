@@ -77,7 +77,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
             onClick={onSaveHandler}>
             <SVGIcons
               alt="paper-plane"
-              className="tw-py-1"
+              className="tw-py-1.5"
               icon="icon-paper-plane"
               width="18px"
             />
