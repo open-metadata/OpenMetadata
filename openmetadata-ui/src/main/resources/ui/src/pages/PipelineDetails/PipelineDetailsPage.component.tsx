@@ -26,7 +26,11 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -117,6 +121,7 @@ const PipelineDetailsPage = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -473,6 +478,18 @@ const PipelineDetailsPage = () => {
       });
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      }
+    );
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
   useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -501,6 +518,7 @@ const PipelineDetailsPage = () => {
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}
           entityThread={entityThread}
+          feedCount={feedCount}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}

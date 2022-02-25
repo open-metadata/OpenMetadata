@@ -39,6 +39,7 @@ export interface TopicDetailsProps {
   deleted?: boolean;
   entityThread: EntityThread[];
   isentityThreadLoading: boolean;
+  feedCount: number;
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;

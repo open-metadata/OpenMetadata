@@ -24,7 +24,11 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
-import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import Description from '../../components/common/description/Description';
@@ -95,6 +99,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -113,7 +118,7 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: `Activity Feed (${feedCount})`,
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -363,6 +368,17 @@ const DatabaseDetails: FunctionComponent = () => {
         });
       });
   };
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      }
+    );
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
 
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {

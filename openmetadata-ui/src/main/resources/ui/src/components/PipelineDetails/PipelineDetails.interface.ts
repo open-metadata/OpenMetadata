@@ -52,6 +52,7 @@ export interface PipeLineDetailsProp {
   isLineageLoading?: boolean;
   entityThread: EntityThread[];
   isentityThreadLoading: boolean;
+  feedCount: number;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;

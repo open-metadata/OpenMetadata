@@ -60,6 +60,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
+  feedCount,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -124,7 +125,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: `Activity Feed (${feedCount})`,
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',

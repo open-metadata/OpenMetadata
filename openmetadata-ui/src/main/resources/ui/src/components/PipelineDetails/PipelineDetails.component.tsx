@@ -77,6 +77,7 @@ const PipelineDetails = ({
   isentityThreadLoading,
   entityThread,
   postFeedHandler,
+  feedCount,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -113,7 +114,7 @@ const PipelineDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: `Activity Feed (${feedCount})`,
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',

@@ -25,7 +25,11 @@ import {
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -136,6 +140,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isError, setIsError] = useState(false);
   const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -541,6 +547,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      }
+    );
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -552,6 +566,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
     setEntityLineage({} as EntityLineage);
   }, [datasetFQN]);
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
 
   return (
     <>
@@ -576,6 +594,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           entityLineageHandler={entityLineageHandler}
           entityName={name}
           entityThread={entityThread}
+          feedCount={feedCount}
           followTableHandler={followTable}
           followers={followers}
           isLineageLoading={isLineageLoading}

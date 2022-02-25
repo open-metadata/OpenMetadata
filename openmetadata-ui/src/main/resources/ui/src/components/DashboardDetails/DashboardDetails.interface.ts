@@ -55,6 +55,7 @@ export interface DashboardDetailsProps {
   deleted?: boolean;
   isLineageLoading?: boolean;
   isentityThreadLoading: boolean;
+  feedCount: number;
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;

@@ -92,6 +92,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
+  feedCount,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -147,7 +148,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: `Activity Feed (${feedCount})`,
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',

@@ -25,6 +25,16 @@ export const getAllFeeds: Function = (
   });
 };
 
+export const getFeedCount: Function = (
+  entityLink?: string
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/feed/count`, {
+    params: {
+      entityLink: entityLink,
+    },
+  });
+};
+
 export const postFeed: Function = (data: Feed): Promise<AxiosResponse> => {
   return APIClient.post('/feed', data);
 };

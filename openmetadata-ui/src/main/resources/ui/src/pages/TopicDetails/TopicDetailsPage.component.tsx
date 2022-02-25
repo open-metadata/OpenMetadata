@@ -18,7 +18,11 @@ import { EntityTags, EntityThread, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -86,6 +90,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -345,6 +350,18 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      }
+    );
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
   useEffect(() => {
     fetchTopicDetail(topicFQN);
   }, [topicFQN]);
@@ -366,6 +383,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityName={name}
           entityThread={entityThread}
+          feedCount={feedCount}
           followTopicHandler={followTopic}
           followers={followers}
           isentityThreadLoading={isentityThreadLoading}

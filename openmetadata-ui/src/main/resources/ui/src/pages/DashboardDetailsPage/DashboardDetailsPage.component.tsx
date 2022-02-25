@@ -32,7 +32,11 @@ import {
   patchDashboardDetails,
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
-import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -115,6 +119,7 @@ const DashboardDetailsPage = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -530,6 +535,18 @@ const DashboardDetailsPage = () => {
       });
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      }
+    );
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
   useEffect(() => {
     fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -564,6 +581,7 @@ const DashboardDetailsPage = () => {
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}
           entityThread={entityThread}
+          feedCount={feedCount}
           followDashboardHandler={followDashboard}
           followers={followers}
           isLineageLoading={isLineageLoading}

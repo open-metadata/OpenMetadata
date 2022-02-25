@@ -137,7 +137,7 @@ const TourPage = () => {
             followedData={[]}
             ingestionCount={0}
             ownedData={[]}
-            postFeedHandler={jest.fn()}
+            postFeedHandler={handleOnClick}
             searchResult={myDataSearchResult as unknown as SearchResponse}
             userDetails={AppState.userDetails}
           />
@@ -183,6 +183,7 @@ const TourPage = () => {
             entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}
             entityThread={[]}
+            feedCount={0}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             isNodeLoading={{

@@ -64,6 +64,7 @@ export interface DatasetDetailsProps {
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;
   isentityThreadLoading: boolean;
+  feedCount: number;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;

@@ -28,7 +28,11 @@ import {
 } from '../../axiosAPIs/airflowPipelineAPI';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
-import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
@@ -125,6 +129,7 @@ const ServicePage: FunctionComponent = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -154,7 +159,7 @@ const ServicePage: FunctionComponent = () => {
       count: instanceCount,
     },
     {
-      name: 'Activity Feed',
+      name: `Activity Feed (${feedCount})`,
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -860,6 +865,18 @@ const ServicePage: FunctionComponent = () => {
         });
       });
   };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(
+      getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN)
+    ).then((res: AxiosResponse) => {
+      setFeedCount(res.data.totalCount);
+    });
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
 
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {

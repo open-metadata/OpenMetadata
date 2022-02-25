@@ -81,6 +81,7 @@ const DashboardDetails = ({
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
+  feedCount,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -123,7 +124,7 @@ const DashboardDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: `Activity Feed (${feedCount})`,
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
