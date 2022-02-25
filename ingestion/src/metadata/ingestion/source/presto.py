@@ -9,7 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import re
 from urllib.parse import quote_plus
+
+from pyhive.sqlalchemy_presto import PrestoDialect
+from sqlalchemy import types, util
+from sqlalchemy.databases import mysql
+from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -17,6 +23,54 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+
+_type_map = {
+    "boolean": types.Boolean,
+    "tinyint": mysql.MSTinyInteger,
+    "smallint": types.SmallInteger,
+    "integer": types.Integer,
+    "bigint": types.BigInteger,
+    "real": types.Float,
+    "double": types.Float,
+    "varchar": types.String,
+    "timestamp": types.TIMESTAMP,
+    "date": types.DATE,
+    "varbinary": types.VARBINARY,
+    "char": types.String,
+    "decimal": types.Float,
+    "time": types.TIME,
+}
+
+
+@reflection.cache
+def get_columns(self, connection, table_name, schema=None, **kw):
+    rows = self._get_table_columns(connection, table_name, schema)
+    result = []
+    for row in rows:
+        try:
+            # Take out the more detailed type information
+            # e.g. 'map<int,int>' -> 'map'
+            #      'decimal(10,1)' -> decimal
+            col_type = re.search(r"^\w+", row.Type).group(0)
+            coltype = _type_map[col_type]
+        except KeyError:
+            util.warn(
+                "Did not recognize type '%s' of column '%s'" % (col_type, row.Column)
+            )
+            coltype = types.NullType
+        result.append(
+            {
+                "name": row.Column,
+                "type": coltype,
+                # newer Presto no longer includes this column
+                "nullable": getattr(row, "Null", True),
+                "default": None,
+            }
+        )
+    return result
+
+
+PrestoDialect.get_columns = get_columns
 
 
 class PrestoConfig(SQLConnectionConfig):
