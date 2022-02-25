@@ -1,10 +1,12 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+@Getter
 @RequiredArgsConstructor
 public class RolesPage {
   @Nonnull WebDriver webDriver;
@@ -21,54 +23,6 @@ public class RolesPage {
   By addRule = By.xpath("//button[@data-testid='add-new-rule-button']");
   By operation = By.xpath("(//td[@class='tableBody-cell'])[1]");
   By access = By.xpath("(//td[@class='tableBody-cell'])[2]");
-
-  public By getOperation() {
-    return operation;
-  }
-
-  public By getAccess() {
-    return access;
-  }
-
-  public By getAddRuleButton() {
-    return addRule;
-  }
-
-  public By getErrorMessage() {
-    return errorMessage;
-  }
-
-  public By addRoleButton() {
-    return addRoleButton;
-  }
-
-  public By listOperation() {
-    return listOperation;
-  }
-
-  public By listAccess() {
-    return listAccess;
-  }
-
-  public By ruleToggleButton() {
-    return ruleToggleButton;
-  }
-
-  public By editRuleButton() {
-    return editRuleButton;
-  }
-
-  public By accessValue() {
-    return accessValue;
-  }
-
-  public By deleteRuleButton() {
-    return deleteRuleButton;
-  }
-
-  public By rolesDisplayName() {
-    return rolesDisplayName;
-  }
 
   public By selectOperation(String operation) {
     return By.cssSelector("[value='" + operation + "']");
