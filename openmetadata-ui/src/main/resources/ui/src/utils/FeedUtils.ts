@@ -59,3 +59,10 @@ export const HTMLToMarkdown = new TurndownService({
       return '~~' + content + '~~';
     },
   });
+
+export const getReplyText = (count: number) => {
+  if (count === 0) return 'Reply in thread';
+  if (count === 1) return `${count} Reply`;
+
+  return `${count} Replies`;
+};

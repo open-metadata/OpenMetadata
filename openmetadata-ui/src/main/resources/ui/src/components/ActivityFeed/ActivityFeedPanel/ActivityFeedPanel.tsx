@@ -22,7 +22,7 @@ import React, {
   useState,
 } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { getEntityField } from '../../../utils/FeedUtils';
+import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
 import Loader from '../../Loader/Loader';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -114,9 +114,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
           {repliesLength > 0 ? (
             <Fragment>
               <div className="tw-mb-3 tw-flex">
-                <span>
-                  {repliesLength} {repliesLength > 1 ? 'replies' : 'reply'}
-                </span>
+                <span>{getReplyText(repliesLength)}</span>
                 <span className="tw-flex-auto tw-self-center tw-ml-1.5">
                   <hr />
                 </span>

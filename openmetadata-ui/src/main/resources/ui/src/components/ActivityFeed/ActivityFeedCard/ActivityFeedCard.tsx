@@ -23,6 +23,7 @@ import {
   getEntityField,
   getEntityFQN,
   getEntityType,
+  getReplyText,
 } from '../../../utils/FeedUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
@@ -122,7 +123,7 @@ const FeedBody: FC<FeedBodyProp> = ({ message, className }) => {
   );
 };
 
-const FeedFooter: FC<FeedFooterProp> = ({
+export const FeedFooter: FC<FeedFooterProp> = ({
   repliedUsers,
   replies,
   className,
@@ -132,13 +133,6 @@ const FeedFooter: FC<FeedFooterProp> = ({
   isFooterVisible,
 }) => {
   const repliesCount = isUndefined(replies) ? 0 : replies;
-
-  const getReplyText = (count: number) => {
-    if (count === 0) return 'Reply in thread';
-    if (count === 1) return `${count} reply`;
-
-    return `${count} replies`;
-  };
 
   return (
     <div className={className}>
