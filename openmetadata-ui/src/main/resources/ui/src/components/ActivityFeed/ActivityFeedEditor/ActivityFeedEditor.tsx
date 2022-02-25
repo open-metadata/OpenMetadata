@@ -16,6 +16,7 @@ import React, { FC, HTMLAttributes, useRef, useState } from 'react';
 import { HTMLToMarkdown } from '../../../utils/FeedUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
+import PopOver from '../../common/popover/PopOver';
 import FeedEditor from '../../FeedEditor/FeedEditor';
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
@@ -58,20 +59,30 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
         onSave={onSaveHandler}
       />
       <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
-        <Button
-          className={classNames('tw-bg-gray-400 tw-opacity-80', buttonClass)}
-          disabled={editorValue.length === 0}
+        <PopOver
+          html={
+            <>
+              <strong>Send now</strong>
+            </>
+          }
+          position="top"
           size="small"
-          theme={editorValue.length > 0 ? 'primary' : 'default'}
-          variant="contained"
-          onClick={onSaveHandler}>
-          <SVGIcons
-            alt="paper-plane"
-            className="tw-py-1"
-            icon="icon-paper-plane"
-            width="18px"
-          />
-        </Button>
+          trigger="mouseenter">
+          <Button
+            className={classNames('tw-bg-gray-400 tw-opacity-80', buttonClass)}
+            disabled={editorValue.length === 0}
+            size="small"
+            theme={editorValue.length > 0 ? 'primary' : 'default'}
+            variant="contained"
+            onClick={onSaveHandler}>
+            <SVGIcons
+              alt="paper-plane"
+              className="tw-py-1"
+              icon="icon-paper-plane"
+              width="18px"
+            />
+          </Button>
+        </PopOver>
       </div>
     </div>
   );
