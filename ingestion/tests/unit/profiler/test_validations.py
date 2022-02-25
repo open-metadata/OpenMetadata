@@ -32,7 +32,7 @@ def test_model_conversion():
     raw_validation = parse("count == 100", visitor)[0]
     model = Validation.create(raw_validation)
 
-    assert model.metric == "count"
+    assert model.metric == "valuesCount"
     assert model.operator == op.eq
     assert model.value == 100
 
@@ -46,7 +46,7 @@ def test_model_conversion():
     raw_validation = parse("null_ratio < 0.2", visitor)[0]
     model = Validation.create(raw_validation)
 
-    assert model.metric == "nullRatio"
+    assert model.metric == "nullProportion"
     assert model.operator == op.lt
     assert model.value == 0.2
 
@@ -54,7 +54,7 @@ def test_model_conversion():
     raw_validation = parse("null_ratio >= 5.4", visitor)[0]
     model = Validation.create(raw_validation)
 
-    assert model.metric == "nullRatio"
+    assert model.metric == "nullProportion"
     assert model.operator == op.ge
     assert model.value == 5.4
 
@@ -93,7 +93,7 @@ def test_validate():
     """
     Make sure that we are properly flagging validation results
     """
-    results = {"count": 100}
+    results = {"valuesCount": 100}
 
     raw_validation = parse("count == 100", visitor)[0]
     validation = Validation.create(raw_validation)
@@ -105,7 +105,7 @@ def test_validate():
 
     assert not validation.validate(results).valid
 
-    results = {"nullRatio": 0.2}
+    results = {"nullProportion": 0.2}
 
     raw_validation = parse("Null_Ratio < 0.3", visitor)[0]
     validation = Validation.create(raw_validation)

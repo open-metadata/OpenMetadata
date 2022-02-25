@@ -27,7 +27,7 @@ class UniqueRatio(ComposedMetric):
 
     @classmethod
     def name(cls):
-        return "uniqueRatio"
+        return "uniqueProportion"
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:

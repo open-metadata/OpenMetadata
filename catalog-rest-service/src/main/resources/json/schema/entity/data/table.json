@@ -276,7 +276,7 @@
         },
         "valuesCount": {
           "description": "Total count of the values in this column.",
-          "type": "integer"
+          "type": "number"
         },
         "valuesPercentage": {
           "description": "Percentage of values in this column with respect to rowcount.",
@@ -284,33 +284,33 @@
         },
         "validCount": {
           "description": "Total count of valid values in this column.",
-          "type": "integer"
+          "type": "number"
         },
         "duplicateCount": {
           "description": "No.of Rows that contain duplicates in a column.",
-          "type": "integer"
+          "type": "number"
         },
         "nullCount": {
           "description": "No.of null values in a column.",
-          "type": "integer"
+          "type": "number"
         },
-        "nullRatio": {
+        "nullProportion": {
           "description": "No.of null value proportion in columns.",
           "type": "number"
         },
-        "missingRatio": {
+        "missingPercentage": {
           "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
           "type": "number"
         },
         "missingCount": {
           "description": "Missing count is calculated by subtracting valuesCount - validCount.",
-          "type": "integer"
+          "type": "number"
         },
         "uniqueCount": {
           "description": "No. of unique values in the column.",
-          "type": "integer"
+          "type": "number"
         },
-        "uniqueRatio": {
+        "uniqueProportion": {
           "description": "Proportion of number of unique values in a column.",
           "type": "number"
         },
@@ -325,6 +325,14 @@
         "max": {
           "description": "Maximum value in a column.",
           "type": ["number", "integer", "string"]
+        },
+        "minLength": {
+          "description": "Minimum string length in a column.",
+          "type": "number"
+        },
+        "maxLength": {
+          "description": "Maximum string length in a column.",
+          "type": "number"
         },
         "mean": {
           "description": "Avg value in a column.",

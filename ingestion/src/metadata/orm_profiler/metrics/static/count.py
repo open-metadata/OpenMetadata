@@ -26,7 +26,7 @@ class Count(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "count"
+        return "valuesCount"
 
     def metric_type(self):
         return int
