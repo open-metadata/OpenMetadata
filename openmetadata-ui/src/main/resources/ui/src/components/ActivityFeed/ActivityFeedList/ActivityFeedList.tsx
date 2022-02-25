@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityThread, Post } from 'Models';
+import { EntityThread } from 'Models';
 import React, {
   FC,
   Fragment,
@@ -24,7 +24,9 @@ import React, {
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import Onboarding from '../../onboarding/Onboarding';
-import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import ActivityFeedCard, {
+  FeedFooter,
+} from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 
@@ -37,9 +39,7 @@ interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
 interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
   relativeDay: string;
 }
-interface LatestReplyFeedListProp extends HTMLAttributes<HTMLDivElement> {
-  feeds: Post[];
-}
+
 interface FeedListBodyProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<FeedListSeparatorProp, 'relativeDay'>,
@@ -69,28 +69,15 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
   );
 };
 
-const LatestReplyFeedList: FC<LatestReplyFeedListProp> = ({
-  className,
-  feeds,
-}) => {
-  return (
-    <div className={className}>
-      {feeds.map((feed, index) => (
-        <ActivityFeedCard className="tw-mb-6" feed={feed} key={index} />
-      ))}
-    </div>
-  );
-};
-
 const FeedListBody: FC<FeedListBodyProp> = ({
   updatedFeedList,
   relativeDay,
   isEntityFeed,
   onThreadSelect,
-  selctedThreadId,
   onThreadIdSelect,
   postFeed,
   onViewMore,
+  selctedThreadId,
 }) => {
   return (
     <Fragment>
@@ -114,51 +101,43 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 entityLink={feed.about}
                 feed={mainFeed}
                 isEntityFeed={isEntityFeed}
-                isFooterVisible={selctedThreadId !== feed.id}
-                lastReplyTimeStamp={lastPost?.postTs}
-                repliedUsers={repliedUsers}
-                replies={replies}
-                threadId={feed.id}
-                onThreadSelect={onThreadIdSelect}
               />
-              {selctedThreadId === feed.id ? (
-                <div className="tw-mb-6">
-                  {replies > 3 ? (
-                    <div className="tw-flex tw-gap-3 tw-ml-9 tw--mt-4">
-                      <p
-                        className="link-text tw-text-xs tw-underline"
-                        onClick={() => {
-                          onThreadSelect(selctedThreadId);
-                          onViewMore();
-                        }}>
-                        View all ({replies}) replies
-                      </p>
-                    </div>
-                  ) : (
-                    <Fragment>
-                      {replies > 0 ? (
-                        <div className="tw-flex tw-mr-7 tw-ml-9">
-                          <span>
-                            {replies} {replies > 1 ? 'replies' : 'reply'}
-                          </span>
-                          <span className="tw-flex-auto tw-self-center tw-ml-1.5">
-                            <hr />
-                          </span>
-                        </div>
-                      ) : null}
-                    </Fragment>
-                  )}
-                  <LatestReplyFeedList
-                    className="tw-mt-3 tw-ml-9"
-                    feeds={feed.posts}
+              <ActivityFeedCard
+                className="tw-mb-6 tw-ml-9"
+                feed={lastPost}
+                isEntityFeed={isEntityFeed}
+              />
+              <div className="tw-mb-6">
+                <div className="tw-ml-9 tw-flex tw-mb-6">
+                  <FeedFooter
+                    isFooterVisible
+                    lastReplyTimeStamp={lastPost?.postTs}
+                    repliedUsers={repliedUsers}
+                    replies={replies}
+                    threadId={feed.id}
+                    onThreadSelect={(id: string) => {
+                      onThreadIdSelect('');
+                      onThreadSelect(id);
+                      onViewMore();
+                    }}
                   />
+                  <span className="tw-mx-1.5 tw-mt-1 tw-inline-block tw-text-gray-400">
+                    |
+                  </span>
+                  <p
+                    className="link-text tw-text-xs tw-mt-1.5"
+                    onClick={() => onThreadIdSelect(feed.id)}>
+                    Repy
+                  </p>
+                </div>
+                {selctedThreadId === feed.id ? (
                   <ActivityFeedEditor
                     buttonClass="tw-mr-4"
                     className="tw-ml-5 tw-mr-2"
                     onSave={postFeed}
                   />
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </Fragment>
           );
         })}
@@ -204,11 +183,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   };
 
   const postFeed = (value: string) => {
-    postFeedHandler?.(value, selctedThreadId);
+    postFeedHandler?.(value, selectedThread?.id ?? selctedThreadId);
   };
 
   useEffect(() => {
-    onThreadSelect(selctedThreadId);
+    onThreadSelect(selectedThread?.id ?? selctedThreadId);
   }, [feedList]);
 
   useEffect(() => {
