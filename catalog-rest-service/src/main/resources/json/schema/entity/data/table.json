@@ -316,7 +316,7 @@
         },
         "distinctCount": {
           "description": "Number of values that contain distinct values.",
-          "type": "integer"
+          "type": "number"
         },
         "min": {
           "description": "Minimum value in a column.",
