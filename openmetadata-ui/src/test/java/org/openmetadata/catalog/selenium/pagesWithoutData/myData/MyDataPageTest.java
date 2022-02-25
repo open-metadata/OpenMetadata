@@ -53,28 +53,28 @@ public class MyDataPageTest {
   @Order(2)
   public void checkOverview() {
     checkWhatsNew();
-    String tablesCount = webDriver.findElement(common.overviewFilterCount("tables")).getAttribute("innerHTML");
+    String tablesCount = webDriver.findElement(common.overviewFilterCount("tables")).getText();
     Assert.assertEquals(tablesCount, "0");
 
-    String topicsCount = webDriver.findElement(common.overviewFilterCount("topics")).getAttribute("innerHTML");
+    String topicsCount = webDriver.findElement(common.overviewFilterCount("topics")).getText();
     Assert.assertEquals(topicsCount, "0");
 
-    String dashboardsCount = webDriver.findElement(common.overviewFilterCount("dashboards")).getAttribute("innerHTML");
+    String dashboardsCount = webDriver.findElement(common.overviewFilterCount("dashboards")).getText();
     Assert.assertEquals(dashboardsCount, "0");
 
-    String pipelinesCount = webDriver.findElement(common.overviewFilterCount("pipelines")).getAttribute("innerHTML");
+    String pipelinesCount = webDriver.findElement(common.overviewFilterCount("pipelines")).getText();
     Assert.assertEquals(pipelinesCount, "0");
 
-    String servicesCount = webDriver.findElement(common.overviewFilterCount("service")).getAttribute("innerHTML");
+    String servicesCount = webDriver.findElement(common.overviewFilterCount("service")).getText();
     Assert.assertEquals(servicesCount, "0");
 
-    String ingestionCount = webDriver.findElement(common.overviewFilterCount("ingestion")).getAttribute("innerHTML");
+    String ingestionCount = webDriver.findElement(common.overviewFilterCount("ingestion")).getText();
     Assert.assertEquals(ingestionCount, "0");
 
-    String usersCount = webDriver.findElement(common.overviewFilterCount("user")).getAttribute("innerHTML");
-    Assert.assertEquals(usersCount, "0");
+    String usersCount = webDriver.findElement(common.overviewFilterCount("user")).getText();
+    Assert.assertEquals(usersCount, "1");
 
-    String teamsCount = webDriver.findElement(common.overviewFilterCount("terms")).getAttribute("innerHTML");
+    String teamsCount = webDriver.findElement(common.overviewFilterCount("terms")).getText();
     Assert.assertEquals(teamsCount, "0");
   }
 

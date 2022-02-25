@@ -10,6 +10,7 @@ import org.openqa.selenium.WebElement;
 @RequiredArgsConstructor
 public class Common {
   @Nonnull WebDriver webDriver;
+
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
 
   By displayName = By.name("name");
@@ -79,6 +80,21 @@ public class Common {
   By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
   By addTag = By.xpath("//div[@data-testid='tag-conatiner']");
   By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])[1]");
+  By ingestionTab = By.xpath("//button[@data-testid='tab'][@id='ingestions']");
+  By addIngestion = By.cssSelector("button[data-testid='add-new-ingestion-button']");
+  By name = By.cssSelector("[data-testid='name']");
+
+  public By name() {
+    return name;
+  }
+
+  public By addIngestion() {
+    return addIngestion;
+  }
+
+  public By ingestionTab() {
+    return ingestionTab;
+  }
 
   public By breadCrumbTag() {
     return breadCrumbTags;
