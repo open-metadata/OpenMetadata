@@ -1,6 +1,7 @@
 import base64
 import json
 from typing import List
+from urllib import response
 
 from pydantic import SecretStr
 
@@ -19,6 +20,7 @@ class AtlasSourceConfig(ConfigModel):
     service_name: str
     service_type: str = "Hive"
     host_port: str
+    entity_types: dict
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
@@ -31,17 +33,16 @@ class AtlasSourceConfig(ConfigModel):
 class AtlasClient:
     def __init__(self, config: AtlasSourceConfig, raw_data: bool = False):
         self.config = config
-        self.config.password = config.password.get_secret_value()
-        self.auth_token = generate_http_basic_token(config.user_name, config.password)
-
+        self.auth_token = generate_http_basic_token(
+            config.user_name, config.password.get_secret_value()
+        )
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.atlas_host,
             auth_header="Authorization",
             api_version="api",
             auth_token=self.auth_token,
-            auth_token_type="Basic",
+            auth_token_mode="Basic",
         )
-
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
@@ -55,6 +56,13 @@ class AtlasClient:
 
     def get_table(self, table):
         response = self.client.get(f"/atlas/v2/entity/bulk?guid={table}")
+        return response
+
+    def get_lineage(self, source_guid):
+        response = self.client.get(f"/atlas/v2/lineage/{source_guid}")
+        if "error" in response.keys():
+            raise APIError(response["error"])
+
         return response
 
 

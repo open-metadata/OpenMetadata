@@ -101,7 +101,7 @@ class ClientConfig(ConfigModel):
     auth_header: Optional[str] = None
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
-    auth_token_type: Optional[str] = None
+    auth_token_mode: Optional[str] = None
 
 
 # pylint: disable=too-many-instance-attributes
@@ -121,7 +121,7 @@ class REST:
         self._retry_wait = self.config.retry_wait
         self._retry_codes = self.config.retry_codes
         self._auth_token = self.config.auth_token
-        self._auth_token_type = self.config.auth_token_type
+        self._auth_token_mode = self.config.auth_token_mode
 
     # pylint: disable=too-many-arguments
     def _request(
@@ -139,7 +139,7 @@ class REST:
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":
                 self.config.expires_in = time.time() + expiry - 120
-        headers[self.config.auth_header] = f"{self._auth_token_type} {self.config.access_token}"
+        headers[self.config.auth_header] = f"{self._auth_token_mode} {self.config.access_token}"
         
         opts = {
             "headers": headers,
