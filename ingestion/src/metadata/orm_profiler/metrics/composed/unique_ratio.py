@@ -25,7 +25,12 @@ class UniqueRatio(ComposedMetric):
     compute the unique ratio
     """
 
-    def required_metrics(self) -> Tuple[str, ...]:
+    @classmethod
+    def name(cls):
+        return "uniqueProportion"
+
+    @classmethod
+    def required_metrics(cls) -> Tuple[str, ...]:
         return Count.name(), UniqueCount.name()
 
     @property

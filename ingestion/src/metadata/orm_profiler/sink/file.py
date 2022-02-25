@@ -12,6 +12,7 @@
 """
 Profiler File Sink
 """
+import json
 from pathlib import Path
 
 from metadata.config.common import ConfigModel
@@ -58,16 +59,8 @@ class FileSink(Sink[Entity]):
         if self.wrote_something:
             self.file.write("\n")
 
-        self.file.write(f"Profile for: {record.profile.table.fullyQualifiedName}\n")
-        self.file.write(f"Table Profile results:\n")
-        for metric, value in record.profile.table_profiler.results.items():
-            self.file.write(f"\t{metric}: {value}\n")
-        self.file.write("Column Profile results:\n")
-
-        for col_profiler in record.profile.column_profilers:
-            self.file.write(f"\tColumn [{col_profiler.column}]:\n")
-            for metric, value in col_profiler.profiler.results.items():
-                self.file.write(f"\t\t{metric}: {value}\n")
+        self.file.write(f"Profile for: {record.table.fullyQualifiedName}\n")
+        self.file.write(f"{record.profile.json()}\n")
 
         if record.tests:
             self.file.write(f"\nTest results:\n")
@@ -90,7 +83,7 @@ class FileSink(Sink[Entity]):
                         )
 
         self.wrote_something = True
-        self.report.records_written(record.profile.table.fullyQualifiedName)
+        self.report.records_written(record.table.fullyQualifiedName)
 
     def get_status(self):
         return self.report

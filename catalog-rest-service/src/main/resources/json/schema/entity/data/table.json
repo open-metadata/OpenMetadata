@@ -320,10 +320,18 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "type": "number"
+          "type": ["number", "integer", "string"]
         },
         "max": {
           "description": "Maximum value in a column.",
+          "type": ["number", "integer", "string"]
+        },
+        "minLength": {
+          "description": "Minimum string length in a column.",
+          "type": "number"
+        },
+        "maxLength": {
+          "description": "Maximum string length in a column.",
           "type": "number"
         },
         "mean": {

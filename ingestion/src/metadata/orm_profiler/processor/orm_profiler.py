@@ -21,21 +21,16 @@ from typing import List
 from sqlalchemy.orm import DeclarativeMeta, InstrumentedAttribute, Session
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.orm_profiler.api.models import (
-    ColumnProfiler,
-    ProfileAndTests,
-    ProfilerProcessorConfig,
-    ProfilerResult,
-)
+from metadata.orm_profiler.api.models import ProfileAndTests, ProfilerProcessorConfig
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiles.core import Profiler, SingleProfiler
-from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
+from metadata.orm_profiler.profiles.core import Profiler
+from metadata.orm_profiler.profiles.default import DefaultProfiler
 from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.core import Validation
 from metadata.orm_profiler.validations.models import TestDef
@@ -108,53 +103,25 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return cls(ctx, config, metadata_config, session=session)
 
-    def build_table_profiler(self, table) -> Profiler:
-        """
-        Prepare the profiler for table tests
-
-        table is of type DeclarativeMeta
-        """
-        if not self.config.profiler:
-            return SimpleTableProfiler(session=self.session, table=table)
-
-        metrics = [Metrics.init(name) for name in self.config.profiler.table_metrics]
-
-        return SingleProfiler(*metrics, session=self.session, table=table)
-
-    def build_column_profiler(
-        self, table, column: InstrumentedAttribute
-    ) -> ColumnProfiler:
+    def build_profiler(self, orm) -> Profiler:
         """
         Given a column from the entity, build the profiler
 
         table is of type DeclarativeMeta
         """
         if not self.config.profiler:
-            return ColumnProfiler(
-                column=column.name,
-                profiler=SimpleProfiler(session=self.session, col=column, table=table),
-            )
+            return DefaultProfiler(session=self.session, table=orm)
 
-        metrics = [
-            Metrics.init(name, col=column) for name in self.config.profiler.metrics
-        ]
+        # Here we will need to add the logic to pass kwargs to the metrics
+        metrics = [Metrics.get(name) for name in self.config.profiler.metrics]
 
-        return ColumnProfiler(
-            column=column.name,
-            profiler=SingleProfiler(*metrics, session=self.session, table=table),
+        return Profiler(
+            *metrics,
+            session=self.session,
+            table=orm,
         )
 
-    def safe_profile_exec(self, profiler: Profiler, elem: str) -> None:
-        """
-        Safely execute the profiler and if there are
-        any issues, add the status as a failure.
-        """
-        try:
-            profiler.execute()
-        except Exception as exc:  # pylint: disable=broad-except
-            self.status.failure(f"Error trying to compute profile for {elem} - {exc}")
-
-    def profile_entity(self, orm, table: Table) -> ProfilerResult:
+    def profile_entity(self, orm, table: Table) -> TableProfile:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers
@@ -166,28 +133,13 @@ class OrmProfilerProcessor(Processor[Table]):
             raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
 
         # Prepare the profilers for all table columns
-        res = ProfilerResult(
-            table=table,
-            table_profiler=self.build_table_profiler(orm),
-            column_profilers=[
-                self.build_column_profiler(orm, col) for col in orm.__table__.c
-            ],
-        )
+        profiler = self.build_profiler(orm)
 
         logger.info(f"Executing profilers for {table.fullyQualifiedName}...")
-
-        # Execute Table Profiler
-        self.safe_profile_exec(res.table_profiler, table.fullyQualifiedName)
-
-        # Execute all column profilers
-        for col_profiler in res.column_profilers:
-            self.safe_profile_exec(
-                col_profiler.profiler,
-                f"{table.fullyQualifiedName}.{col_profiler.column}",
-            )
+        profiler.execute()
 
         self.status.processed(table.fullyQualifiedName)
-        return res
+        return profiler.get_profile()
 
     def log_validation(self, name: str, validation: Validation) -> None:
         """
@@ -199,7 +151,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 f"{name}: Expected value {validation.value} vs. Real value {validation.computed_metric}"
             )
 
-    def validate_entity(self, orm, profiler_results: ProfilerResult) -> TestDef:
+    def validate_entity(self, orm, profiler_results: TableProfile) -> TestDef:
         """
         Given a table, check if it has any tests pending.
 
@@ -213,9 +165,7 @@ class OrmProfilerProcessor(Processor[Table]):
         if not isinstance(orm, DeclarativeMeta):
             raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
 
-        logger.info(
-            f"Checking validations for {profiler_results.table.fullyQualifiedName}..."
-        )
+        logger.info(f"Checking validations for {orm}...")
 
         # We have all validations parsed at read-time
         test_def: TestDef = self.config.tests
@@ -223,27 +173,28 @@ class OrmProfilerProcessor(Processor[Table]):
         # Compute all validations against the profiler results
         for test in test_def.table_tests:
             for validation in test.expression:
-                validation.validate(profiler_results.table_profiler.results)
+                # Pass the whole dict, although we just want columnCount & rowCount
+                validation.validate(profiler_results.dict())
                 self.log_validation(name=test.name, validation=validation)
 
         for column_res in test_def.column_tests:
             for test in column_res.columns:
-                profiler = next(
+                col_profiler_res = next(
                     iter(
-                        col_profiler.profiler
-                        for col_profiler in profiler_results.column_profilers
-                        if col_profiler.column == test.column
+                        col_profiler
+                        for col_profiler in profiler_results.columnProfile
+                        if col_profiler.name == test.column
                     ),
                     None,
                 )
-                if profiler is None:
+                if col_profiler_res is None:
                     self.status.warning(
                         f"Cannot find a profiler that computed the column {test.column} for {column_res.table}."
                         + f" Skipping validation {test}"
                     )
 
                 for validation in test.expression:
-                    validation.validate(profiler.results)
+                    validation.validate(col_profiler_res.dict())
                     self.log_validation(name=test.name, validation=validation)
 
         return test_def
@@ -265,10 +216,13 @@ class OrmProfilerProcessor(Processor[Table]):
         if self.config.tests:
             entity_validations = self.validate_entity(orm_table, entity_profile)
 
-        return ProfileAndTests(
+        res = ProfileAndTests(
+            table=record,
             profile=entity_profile,
             tests=entity_validations,
         )
+
+        return res
 
     def close(self):
         """
