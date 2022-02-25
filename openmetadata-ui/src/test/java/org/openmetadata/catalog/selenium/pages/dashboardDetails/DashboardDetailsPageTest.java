@@ -75,7 +75,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     Thread.sleep(3000);
-    if (webDriver.findElement(common.getTableCount()).isDisplayed()) {
+    if (webDriver.findElement(common.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -115,7 +115,7 @@ public class DashboardDetailsPageTest {
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
     Thread.sleep(waitTime);
     Events.click(webDriver, common.tagListItem());
-    String selectedTag = webDriver.findElement(dashboardDetails.getSelectedTag()).getText();
+    String selectedTag = webDriver.findElement(dashboardDetails.selectedTag()).getText();
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(1000);
     webDriver.navigate().refresh();
@@ -184,12 +184,12 @@ public class DashboardDetailsPageTest {
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
     Thread.sleep(waitTime);
     Events.click(webDriver, common.tagListItem());
-    String selectedTag = webDriver.findElement(dashboardDetails.getSelectedTag()).getText();
+    String selectedTag = webDriver.findElement(dashboardDetails.selectedTag()).getText();
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    String chartTags = webDriver.findElement(dashboardDetails.getChartTags()).getText();
+    String chartTags = webDriver.findElement(dashboardDetails.chartTags()).getText();
     if (!chartTags.contains(selectedTag)) {
       Assert.fail("Tags not added");
     }
@@ -202,7 +202,7 @@ public class DashboardDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
-    String tagDisplayed = webDriver.findElement(dashboardDetails.getChartTags()).getText();
+    String tagDisplayed = webDriver.findElement(dashboardDetails.chartTags()).getText();
     Events.click(webDriver, dashboardDetails.addChartTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Thread.sleep(waitTime);
@@ -210,7 +210,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    WebElement updatedTags = webDriver.findElement(dashboardDetails.getChartTags());
+    WebElement updatedTags = webDriver.findElement(dashboardDetails.chartTags());
     if (updatedTags.getText().contains(tagDisplayed)) {
       Assert.fail("SelectedTag is not removed");
     }
@@ -226,7 +226,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
-    Events.click(webDriver, common.clickUsers());
+    Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
     Events.click(webDriver, common.saveManage());

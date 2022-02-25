@@ -547,7 +547,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     DatabaseServiceMetadataPipeline metadataPipeline =
-        JsonUtils.convertValue(airflowPipeline.getPipelineConfig(), DatabaseServiceMetadataPipeline.class);
+        JsonUtils.convertValue(airflowPipeline.getPipelineConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
     assertEquals(ingestionPipeline.getConcurrency(), airflowPipeline.getConcurrency());
     // there should be one airflow task that encompases all of metadata pipeline config
     assertEquals(1, ingestionPipeline.getTasks().size());

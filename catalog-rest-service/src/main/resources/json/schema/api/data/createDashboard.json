@@ -49,5 +49,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "service"]
+  "required": ["name", "service"],
+  "additionalProperties": false
 }

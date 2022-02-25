@@ -28,5 +28,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "databaseConnection"]
+  "required": ["name", "serviceType", "databaseConnection"],
+  "additionalProperties": false
 }

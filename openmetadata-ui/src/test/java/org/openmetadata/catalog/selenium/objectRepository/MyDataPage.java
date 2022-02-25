@@ -1,10 +1,12 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+@Getter
 @RequiredArgsConstructor
 public class MyDataPage {
 
@@ -37,128 +39,8 @@ public class MyDataPage {
   By recentlyViewed = By.xpath("//*[@id=\"left-panel\"]/div/div[3]/div/a/button");
   By recentSearch = By.xpath("//button[@data-testid=\"recently-searched\"]");
   By recentSearchWithSpace = By.cssSelector("[data-testid='Recently-Search- ']");
-  By Docs = By.xpath("//a[@data-testid=\"menu-item-Docs\"]");
-  By API = By.xpath("//a[@data-testid=\"menu-item-API\"]");
-  By Slack = By.xpath("//a[@data-testid=\"menu-item-Slack\"]");
+  By docs = By.xpath("//a[@data-testid=\"menu-item-Docs\"]");
+  By api = By.xpath("//a[@data-testid=\"menu-item-API\"]");
+  By slack = By.xpath("//a[@data-testid=\"menu-item-Slack\"]");
   By userName = By.cssSelector("[data-testid='greeting-text']");
-
-  public By closeWhatsNew() {
-    return closeWhatsNew;
-  }
-
-  public By openWhatsNew() {
-    return openWhatsNew;
-  }
-
-  public By page2() {
-    return page2;
-  }
-
-  public By changeLog() {
-    return changeLog;
-  }
-
-  public By getVersion() {
-    return version;
-  }
-
-  public By getTables() {
-    return tables;
-  }
-
-  public By getTopics() {
-    return topics;
-  }
-
-  public By getDashboard() {
-    return dashboard;
-  }
-
-  public By getPipelines() {
-    return pipelines;
-  }
-
-  public By getServices() {
-    return services;
-  }
-
-  public By getUsers() {
-    return users;
-  }
-
-  public By getTeams() {
-    return teams;
-  }
-
-  public By getSearchBox() {
-    return searchBox;
-  }
-
-  public By selectTable() {
-    return tableName;
-  }
-
-  public By clickExplore() {
-    return explore;
-  }
-
-  public By openSettings() {
-    return settings;
-  }
-
-  public By getTags() {
-    return tags;
-  }
-
-  public By getIngestions() {
-    return ingestions;
-  }
-
-  public By clickHome() {
-    return home;
-  }
-
-  public By profile() {
-    return profile;
-  }
-
-  public By logout() {
-    return logout;
-  }
-
-  public By help() {
-    return help;
-  }
-
-  public By following() {
-    return following;
-  }
-
-  public By recentlyViewed() {
-    return recentlyViewed;
-  }
-
-  public By recentSearch() {
-    return recentSearch;
-  }
-
-  public By recentSearchWithSpace() {
-    return recentSearchWithSpace;
-  }
-
-  public By docs() {
-    return Docs;
-  }
-
-  public By api() {
-    return API;
-  }
-
-  public By slack() {
-    return Slack;
-  }
-
-  public By userName() {
-    return userName;
-  }
 }

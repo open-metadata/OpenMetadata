@@ -99,7 +99,7 @@ class RedshiftUsageSource(Source[TableQuery]):
             yield tq
 
             query_info = {
-                "sql": sql,
+                "sql": tq.sql,
                 "from_type": "table",
                 "to_type": "table",
                 "service_name": self.config.service_name,
