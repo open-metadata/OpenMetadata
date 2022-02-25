@@ -149,7 +149,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                     </Fragment>
                   )}
                   <LatestReplyFeedList
-                    className="tw-mt-3 tw-ml-8"
+                    className="tw-mt-3 tw-ml-9"
                     feeds={feed.posts}
                   />
                   <ActivityFeedEditor

@@ -20,11 +20,13 @@ const Avatar = ({
   width = '36',
   textClass = '',
   className = '',
+  type = 'circle',
 }: {
   name: string;
   width?: string;
   textClass?: string;
   className?: string;
+  type?: 'circle' | 'square';
 }) => {
   const { color, character } = getRandomColor(name);
 
@@ -37,7 +39,7 @@ const Avatar = ({
       style={{
         height: `${width}px`,
         width: `${width}px`,
-        borderRadius: '50%',
+        borderRadius: type === 'circle' ? '50%' : '4px',
         background: color,
         color: 'black',
         fontSize: `${Number(width) / 2}px`,

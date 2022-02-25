@@ -75,7 +75,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
 }) => {
   return (
     <div className={classNames('tw-flex tw-mb-1.5', className)}>
-      <Avatar name={createdBy} width="30" />
+      <Avatar name={createdBy} type="square" width="30" />
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
         {createdBy}
         {entityFQN && entityType && entityFQN ? (
@@ -151,6 +151,7 @@ const FeedFooter: FC<FeedFooterProp> = ({
               className="tw-mt-0.5 tw-mx-0.5"
               key={i}
               name={u}
+              type="square"
               width="22"
             />
           ))}
@@ -202,7 +203,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         message={feed.message}
       />
       <FeedFooter
-        className="tw-ml-7 tw-mt-2"
+        className="tw-ml-9 tw-mt-3"
         isFooterVisible={isFooterVisible}
         lastReplyTimeStamp={lastReplyTimeStamp}
         repliedUsers={repliedUsers}
