@@ -43,7 +43,6 @@ public class TeamsPageTest {
   static String URL = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static String teamDisplayName = faker.name().lastName();
   static Actions actions;
   static WebDriverWait wait;
@@ -51,7 +50,6 @@ public class TeamsPageTest {
   TeamsPage teamsPage;
   ExplorePage explorePage;
   MyDataPage myDataPage;
-  String teamsFilterCountXpath = "//div[@data-testid='terms-summary']//span[@data-testid='filter-count']";
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
   String xpath = "//p[@title = '" + teamDisplayName + "']";
@@ -92,7 +90,7 @@ public class TeamsPageTest {
     Events.click(webDriver, teamsPage.addTeam()); // add team
     Events.sendKeys(webDriver, teamsPage.name(), faker.name().firstName()); // name
     Events.sendKeys(webDriver, teamsPage.displayName(), teamDisplayName); // displayname
-    Events.sendKeys(webDriver, teamsPage.enterDescripiton(), faker.address().toString());
+    Events.sendKeys(webDriver, teamsPage.enterDescription(), faker.address().toString());
     Events.click(webDriver, teamsPage.saveTeam());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
@@ -118,7 +116,7 @@ public class TeamsPageTest {
     // Select the created listed team
     for (WebElement c : checkbox) {
       c.click();
-      selectedUser.add(webDriver.findElement(teamsPage.getSelectedUser()).getText());
+      selectedUser.add(webDriver.findElement(teamsPage.selectedUser()).getText());
       counter = counter + 1;
       if (counter == 10) {
         break;
@@ -129,7 +127,7 @@ public class TeamsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
 
-    List<WebElement> checkUser = webDriver.findElements(teamsPage.getSelectedUser());
+    List<WebElement> checkUser = webDriver.findElements(teamsPage.selectedUser());
     List<String> getUser = new ArrayList<>();
     for (WebElement c : checkUser) {
       getUser.add(c.getText());
@@ -149,11 +147,11 @@ public class TeamsPageTest {
     createTeam();
     // Select the created listed team
     Events.click(webDriver, By.xpath(xpath));
-    Events.click(webDriver, teamsPage.editDescripiton());
-    wait.until(ExpectedConditions.presenceOfElementLocated(teamsPage.getEditDescriptionBox()));
-    Events.click(webDriver, teamsPage.getEditDescriptionBox());
-    Events.sendKeys(webDriver, teamsPage.getEditDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, teamsPage.getEditDescriptionBox(), sendKeys);
+    Events.click(webDriver, teamsPage.editDescription());
+    wait.until(ExpectedConditions.presenceOfElementLocated(teamsPage.editDescriptionBox()));
+    Events.click(webDriver, teamsPage.editDescriptionBox());
+    Events.sendKeys(webDriver, teamsPage.editDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, teamsPage.editDescriptionBox(), sendKeys);
     Events.click(webDriver, teamsPage.saveDescription());
     String description = webDriver.findElement(common.descriptionContainer()).getText();
     Thread.sleep(2000);
@@ -168,7 +166,7 @@ public class TeamsPageTest {
     Thread.sleep(waitTime);
     // Select the created listed team
     Events.click(webDriver, By.xpath(xpath));
-    Events.click(webDriver, teamsPage.getAsset()); // Assets
+    Events.click(webDriver, teamsPage.asset()); // Assets
     Events.click(webDriver, explorePage.explore()); // Explore
     String table = webDriver.findElement(common.selectTable()).getText();
     Events.click(webDriver, common.selectTable());
@@ -178,11 +176,11 @@ public class TeamsPageTest {
     Events.click(webDriver, common.selectUser()); // Select User/Team
     Events.click(webDriver, common.saveManage()); // Save
     Thread.sleep(waitTime);
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.click(webDriver, myDataPage.home());
     Events.click(webDriver, teamsPage.teams());
     Events.click(webDriver, By.xpath(xpath));
     Thread.sleep(waitTime);
-    Events.click(webDriver, teamsPage.getAsset());
+    Events.click(webDriver, teamsPage.asset());
     String asset = webDriver.findElement(teamsPage.dataContainer()).getText();
     if (!asset.contains(table)) {
       Assert.fail("Asset not added");
@@ -200,7 +198,7 @@ public class TeamsPageTest {
     // Events.click(webDriver,teamsPage.getAsset());
     Events.click(webDriver, teamsPage.dataContainer());
     Thread.sleep(waitTime);
-    String ownerName = webDriver.findElement(teamsPage.getOwnerName()).getText();
+    String ownerName = webDriver.findElement(teamsPage.ownerName()).getText();
     Events.click(webDriver, teamsPage.ownerLink());
     String displayName = webDriver.findElement(By.xpath(xpath)).getText();
     if (!ownerName.equalsIgnoreCase(displayName)) {
@@ -217,17 +215,17 @@ public class TeamsPageTest {
       webDriver.navigate().back();
       Events.click(webDriver, myDataPage.openWhatsNew()); // What's New
     }
-    String teamsListCount = String.valueOf(webDriver.findElements(teamsPage.getTeamsCount()).size());
+    String teamsListCount = String.valueOf(webDriver.findElements(teamsPage.teamsCount()).size());
     Thread.sleep(waitTime);
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.click(webDriver, myDataPage.home());
     Thread.sleep(waitTime);
-    String teamsFilterCount = webDriver.findElement(teamsPage.getTeamsFilterCount()).getText();
+    String teamsFilterCount = webDriver.findElement(teamsPage.teamsFilterCount()).getText();
     Events.click(webDriver, explorePage.explore()); // Tables
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.manage()); // Manage
     Events.click(webDriver, common.ownerDropdown()); // Owner
     Thread.sleep(waitTime);
-    String teamsCount = webDriver.findElement(teamsPage.getTeamsDropdownCount()).getText();
+    String teamsCount = webDriver.findElement(teamsPage.teamsDropdownCount()).getText();
     if (!teamsCount.equals(teamsListCount) && teamsListCount.equals(teamsFilterCount)) {
       Assert.fail("Team count is mismatched");
     }
@@ -245,18 +243,18 @@ public class TeamsPageTest {
       Events.click(webDriver, teamsPage.addTeam()); // add team
       Events.sendKeys(webDriver, teamsPage.name(), firstName); // name
       Events.sendKeys(webDriver, teamsPage.displayName(), teamDisplayName); // displayname
-      Events.sendKeys(webDriver, teamsPage.enterDescripiton(), faker.address().toString());
+      Events.sendKeys(webDriver, teamsPage.editDescription(), faker.address().toString());
       Events.click(webDriver, teamsPage.saveTeam());
       Thread.sleep(waitTime);
     }
     Thread.sleep(waitTime);
-    WebElement errorMessage = webDriver.findElement(teamsPage.getErrorMessage());
+    WebElement errorMessage = webDriver.findElement(teamsPage.errorMessage());
     if (!errorMessage.isDisplayed()) {
       Assert.fail();
     }
     webDriver.navigate().back();
     Events.click(webDriver, teamsPage.teams());
-    List<WebElement> teamsList = webDriver.findElements(teamsPage.getTeamsCount());
+    List<WebElement> teamsList = webDriver.findElements(teamsPage.teamsCount());
     List<String> teamNames = new ArrayList<>();
     for (WebElement e : teamsList) {
       teamNames.add(e.getText());

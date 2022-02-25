@@ -2,11 +2,13 @@ package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@Getter
 @RequiredArgsConstructor
 public class TeamsPage {
   @Nonnull WebDriver webDriver;
@@ -23,7 +25,7 @@ public class TeamsPage {
   By saveUser = By.cssSelector("[data-testid='AddUserSave']");
   By selectedUser = By.xpath("//div[@data-testid='data-container']/p[1]");
   By editDescription = By.xpath("//button[@data-testid='edit-description']");
-  By save = By.xpath("//button[@data-testid='save']");
+  By saveDescription = By.xpath("//button[@data-testid='save']");
   By editDescriptionBox = By.xpath("//div[@class='DraftEditor-editorContainer']");
   By asset = By.xpath("//button[@data-testid='assets']");
   By searchInput = By.xpath("//input[@data-testid='searchInputText']");
@@ -35,95 +37,11 @@ public class TeamsPage {
   By teamsDropdownCount = By.xpath("//button[@data-testid='tab']/span/span[@data-testid='filter-count']");
   By errorMessage = By.xpath("//strong[@data-testid='error-message']");
 
-  public By getErrorMessage() {
-    return errorMessage;
-  }
-
-  public By getTeamsDropdownCount() {
-    return teamsDropdownCount;
-  }
-
-  public By getTeamsCount() {
-    return teamsCount;
-  }
-
-  public By getTeamsFilterCount() {
-    return teamsFilterCount;
-  }
-
-  public By ownerLink() {
-    return ownerLink;
-  }
-
-  public By getOwnerName() {
-    return ownerName;
-  }
-
-  public By dataContainer() {
-    return dataContainer;
-  }
-
-  public By searchInput() {
-    return searchInput;
-  }
-
-  public By getAsset() {
-    return asset;
-  }
-
-  public By getEditDescriptionBox() {
-    return editDescriptionBox;
-  }
-
-  public By saveDescription() {
-    return save;
-  }
-
-  public By getSelectedUser() {
-    return selectedUser;
-  }
-
   public List<WebElement> checkboxAddUser() {
     return webDriver.findElements(checkboxAddUser);
   }
 
-  public By saveUser() {
-    return saveUser;
-  }
-
-  public By addNewUser() {
-    return addNewUser;
-  }
-
   public WebElement heading() {
     return webDriver.findElement(heading);
-  }
-
-  public By teams() {
-    return teams;
-  }
-
-  public By addTeam() {
-    return addTeam;
-  }
-
-  public By name() {
-    return name;
-  }
-
-  public By displayName() {
-    return displayName;
-  }
-
-  public By enterDescripiton() {
-    return enterDescription;
-  }
-
-  public By saveTeam() {
-    return saveTeam;
-  }
-
-  public By editDescripiton() {
-    return editDescription;
   }
 }
