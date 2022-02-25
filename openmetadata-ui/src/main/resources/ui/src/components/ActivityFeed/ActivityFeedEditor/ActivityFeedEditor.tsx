@@ -69,18 +69,16 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
           size="small"
           trigger="mouseenter">
           <Button
-            className={classNames('tw-bg-gray-400 tw-opacity-80', buttonClass)}
+            className={classNames(
+              'tw-bg-gray-400 tw-py-0.5 tw-px-1 tw-rounded',
+              buttonClass
+            )}
             disabled={editorValue.length === 0}
-            size="small"
+            size="custom"
             theme={editorValue.length > 0 ? 'primary' : 'default'}
             variant="contained"
             onClick={onSaveHandler}>
-            <SVGIcons
-              alt="paper-plane"
-              className="tw-py-1.5"
-              icon="icon-paper-plane"
-              width="18px"
-            />
+            <SVGIcons alt="paper-plane" icon="icon-paper-plane" width="18px" />
           </Button>
         </PopOver>
       </div>
