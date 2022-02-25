@@ -102,42 +102,55 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 feed={mainFeed}
                 isEntityFeed={isEntityFeed}
               />
-              <ActivityFeedCard
-                className="tw-mb-6 tw-ml-9"
-                feed={lastPost}
-                isEntityFeed={isEntityFeed}
-              />
-              <div className="tw-mb-6">
-                <div className="tw-ml-9 tw-flex tw-mb-6">
-                  <FeedFooter
-                    isFooterVisible
-                    lastReplyTimeStamp={lastPost?.postTs}
-                    repliedUsers={repliedUsers}
-                    replies={replies}
-                    threadId={feed.id}
-                    onThreadSelect={(id: string) => {
-                      onThreadIdSelect('');
-                      onThreadSelect(id);
-                      onViewMore();
-                    }}
+              {postLength > 0 ? (
+                <Fragment>
+                  <ActivityFeedCard
+                    className="tw-mb-6 tw-ml-9"
+                    feed={lastPost}
+                    isEntityFeed={isEntityFeed}
                   />
-                  <span className="tw-mx-1.5 tw-mt-1 tw-inline-block tw-text-gray-400">
-                    |
-                  </span>
-                  <p
-                    className="link-text tw-text-xs tw-mt-1.5"
-                    onClick={() => onThreadIdSelect(feed.id)}>
-                    Repy
-                  </p>
-                </div>
-                {selctedThreadId === feed.id ? (
-                  <ActivityFeedEditor
-                    buttonClass="tw-mr-4"
-                    className="tw-ml-5 tw-mr-2"
-                    onSave={postFeed}
-                  />
-                ) : null}
-              </div>
+                  <div className="tw-mb-6">
+                    <div className="tw-ml-9 tw-flex tw-mb-6">
+                      <FeedFooter
+                        isFooterVisible
+                        lastReplyTimeStamp={lastPost?.postTs}
+                        repliedUsers={repliedUsers}
+                        replies={replies}
+                        threadId={feed.id}
+                        onThreadSelect={(id: string) => {
+                          onThreadIdSelect('');
+                          onThreadSelect(id);
+                          onViewMore();
+                        }}
+                      />
+                      <span className="tw-mx-1.5 tw-mt-1 tw-inline-block tw-text-gray-400">
+                        |
+                      </span>
+                      <p
+                        className="link-text tw-text-xs tw-mt-1.5 tw-underline"
+                        onClick={() => onThreadIdSelect(feed.id)}>
+                        Reply
+                      </p>
+                    </div>
+                    {selctedThreadId === feed.id ? (
+                      <ActivityFeedEditor
+                        buttonClass="tw-mr-4"
+                        className="tw-ml-5 tw-mr-2"
+                        onSave={postFeed}
+                      />
+                    ) : null}
+                  </div>
+                </Fragment>
+              ) : (
+                <p
+                  className="link-text tw-undeline tw-ml-9 tw--mt-3"
+                  onClick={() => {
+                    onThreadSelect(feed.id);
+                    onViewMore();
+                  }}>
+                  Reply
+                </p>
+              )}
             </Fragment>
           );
         })}
