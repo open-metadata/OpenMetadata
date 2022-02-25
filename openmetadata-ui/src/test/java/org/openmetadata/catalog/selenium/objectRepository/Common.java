@@ -86,38 +86,6 @@ public class Common {
   By addIngestion = By.cssSelector("button[data-testid='add-new-ingestion-button']");
   By name = By.cssSelector("[data-testid='name']");
 
-  public By name() {
-    return name;
-  }
-
-  public By addIngestion() {
-    return addIngestion;
-  }
-
-  public By ingestionTab() {
-    return ingestionTab;
-  }
-
-  public By breadCrumbTag() {
-    return breadCrumbTags;
-  }
-
-  public By addTag() {
-    return addTag;
-  }
-
-  public By selectTable() {
-    return selectTable;
-  }
-
-  public By topics() {
-    return topics;
-  }
-
-  public By version() {
-    return version;
-  }
-
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
   }
