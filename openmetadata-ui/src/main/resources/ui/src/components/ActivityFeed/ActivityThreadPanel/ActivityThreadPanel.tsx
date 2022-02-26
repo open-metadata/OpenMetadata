@@ -13,7 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { EntityThread } from 'Models';
+import { isUndefined } from 'lodash';
+import { EntityThread, Post } from 'Models';
 import React, {
   FC,
   Fragment,
@@ -21,14 +22,16 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
+import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
+  getReplyText,
 } from '../../../utils/FeedUtils';
 import ActivityFeedCard, {
   FeedFooter,
 } from '../ActivityFeedCard/ActivityFeedCard';
+import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedListSeparator } from '../ActivityFeedList/ActivityFeedList';
 import {
   FeedPanelHeader,
@@ -38,16 +41,29 @@ import {
 interface ActivityThreadPanelProp extends HTMLAttributes<HTMLDivElement> {
   threadLink: string;
   open?: boolean;
+  postFeedHandler: (value: string, id: string) => void;
   onCancel: () => void;
 }
 
 interface ActivityThreadListProp extends HTMLAttributes<HTMLDivElement> {
   threads: EntityThread[];
+  selectedThreadId: string;
+  postFeed: (value: string) => void;
+  onThreadIdSelect: (value: string) => void;
+  onThreadSelect: (value: string) => void;
+}
+interface ActivityThreadProp extends HTMLAttributes<HTMLDivElement> {
+  selectedThread: EntityThread;
+  postFeed: (value: string) => void;
 }
 
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
   className,
   threads,
+  selectedThreadId,
+  postFeed,
+  onThreadIdSelect,
+  onThreadSelect,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -97,28 +113,33 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               repliedUsers={repliedUsers}
                               replies={replies}
                               threadId={thread.id}
+                              onThreadSelect={() => onThreadSelect(thread.id)}
                             />
                             <span className="tw-mx-1.5 tw-mt-1 tw-inline-block tw-text-gray-400">
                               |
                             </span>
-                            <p className="link-text tw-text-xs tw-mt-1.5 tw-underline">
+                            <p
+                              className="link-text tw-text-xs tw-mt-1.5 tw-underline"
+                              onClick={() => onThreadIdSelect(thread.id)}>
                               Reply
                             </p>
                           </div>
-                          {/* {selctedThreadId === feed.id ? (
-                            <ActivityFeedEditor
-                              buttonClass="tw-mr-4"
-                              className="tw-ml-5 tw-mr-2"
-                              onSave={postFeed}
-                            />
-                          ) : null} */}
                         </div>
                       </Fragment>
                     ) : (
-                      <p className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6">
+                      <p
+                        className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6"
+                        onClick={() => onThreadIdSelect(thread.id)}>
                         Reply
                       </p>
                     )}
+                    {selectedThreadId === thread.id ? (
+                      <ActivityFeedEditor
+                        buttonClass="tw-mr-4"
+                        className="tw-ml-5 tw-mr-2 tw-mb-6"
+                        onSave={postFeed}
+                      />
+                    ) : null}
                   </Fragment>
                 );
               })}
@@ -129,21 +150,124 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   );
 };
 
+const ActivityThread: FC<ActivityThreadProp> = ({
+  className,
+  selectedThread,
+  postFeed,
+}) => {
+  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
+  const repliesLength = threadData?.posts?.length ?? 0;
+  const mainThread = {
+    message: threadData.message,
+    from: threadData.createdBy,
+    postTs: threadData.threadTs,
+  };
+
+  useEffect(() => {
+    getFeedById(selectedThread.id).then((res: AxiosResponse) => {
+      setThreadData(res.data);
+    });
+  }, [selectedThread]);
+
+  return (
+    <Fragment>
+      <div className={className}>
+        {threadData ? (
+          <ActivityFeedCard
+            isEntityFeed
+            className="tw-mb-3"
+            feed={mainThread as Post}
+          />
+        ) : null}
+        {repliesLength > 0 ? (
+          <Fragment>
+            <div className="tw-mb-3 tw-flex">
+              <span>{getReplyText(repliesLength)}</span>
+              <span className="tw-flex-auto tw-self-center tw-ml-1.5">
+                <hr />
+              </span>
+            </div>
+            {threadData?.posts?.map((reply, key) => (
+              <ActivityFeedCard
+                isEntityFeed
+                className="tw-mb-3"
+                feed={reply}
+                key={key}
+              />
+            ))}
+          </Fragment>
+        ) : null}
+        <ActivityFeedEditor
+          buttonClass="tw-mr-4"
+          className="tw-ml-5 tw-mr-2 tw-my-6"
+          onSave={postFeed}
+        />
+      </div>
+    </Fragment>
+  );
+};
+
 const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   threadLink,
   className,
   onCancel,
   open,
+  postFeedHandler,
 }) => {
   const [threads, setThreads] = useState<EntityThread[]>([]);
+  const [selectedThread, setSelectedThread] = useState<EntityThread>();
+  const [selectedThreadId, setSelectedThreadId] = useState<string>('');
 
   const entityField = getEntityField(threadLink);
 
-  useEffect(() => {
+  const getThreads = () => {
     getAllFeeds(threadLink).then((res: AxiosResponse) => {
       const { data } = res.data;
       setThreads(data);
     });
+  };
+
+  const postFeed = (value: string) => {
+    postFeedHandler?.(value, selectedThread?.id ?? selectedThreadId);
+    setTimeout(() => {
+      getThreads();
+    }, 500);
+  };
+
+  const onThreadIdSelect = (id: string) => {
+    setSelectedThreadId(id);
+  };
+
+  const onThreadSelect = (id: string) => {
+    const thread = threads.find((f) => f.id === id);
+    if (thread) {
+      setSelectedThread(thread);
+    }
+  };
+
+  const onBack = () => {
+    setSelectedThread(undefined);
+  };
+
+  useEffect(() => {
+    const escapeKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    document.addEventListener('keydown', escapeKeyHandler);
+
+    return () => {
+      document.removeEventListener('keydown', escapeKeyHandler);
+    };
+  }, []);
+
+  useEffect(() => {
+    onThreadSelect(selectedThread?.id as string);
+  }, [threads]);
+
+  useEffect(() => {
+    getThreads();
   }, [threadLink]);
 
   return (
@@ -165,7 +289,29 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           entityField={entityField as string}
           onCancel={onCancel}
         />
-        <ActivityThreadList className="tw-py-6 tw-pl-5" threads={threads} />
+        {!isUndefined(selectedThread) ? (
+          <Fragment>
+            <p
+              className="tw-py-3 tw-cursor-pointer link-text tw-pl-5"
+              onClick={onBack}>
+              {'< Back'}
+            </p>
+            <ActivityThread
+              className="tw-pb-6 tw-pl-5"
+              postFeed={postFeed}
+              selectedThread={selectedThread}
+            />
+          </Fragment>
+        ) : (
+          <ActivityThreadList
+            className="tw-py-6 tw-pl-5"
+            postFeed={postFeed}
+            selectedThreadId={selectedThreadId}
+            threads={threads}
+            onThreadIdSelect={onThreadIdSelect}
+            onThreadSelect={onThreadSelect}
+          />
+        )}
       </div>
     </div>
   );

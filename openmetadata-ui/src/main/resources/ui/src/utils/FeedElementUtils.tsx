@@ -34,7 +34,11 @@ export const getFieldThreadElement = (
   return !isEmpty(threadValue) ? (
     <p
       className="tw-text-right link-text"
-      onClick={() => onThreadLinkSelect?.(threadValue.entityLink)}>
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onThreadLinkSelect?.(threadValue.entityLink);
+      }}>
       <i className="far fa-comment" /> {threadValue.count} threads
     </p>
   ) : null;

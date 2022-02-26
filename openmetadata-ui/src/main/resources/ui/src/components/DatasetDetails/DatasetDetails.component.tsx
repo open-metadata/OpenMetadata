@@ -517,6 +517,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 {threadLink ? (
                   <ActivityThreadPanel
                     open={Boolean(threadLink)}
+                    postFeedHandler={postFeedHandler}
                     threadLink={threadLink}
                     onCancel={onThreadPanelClose}
                   />
