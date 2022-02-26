@@ -54,7 +54,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                 coltype = coltype(
                     *args,
                 )
-            print(row.Type)
         except KeyError:
             util.warn(
                 "Did not recognize type '%s' of column '%s'" % (col_type, row.Column)
