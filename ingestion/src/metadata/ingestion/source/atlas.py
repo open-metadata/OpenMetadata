@@ -118,7 +118,7 @@ class AtlasSource(Source):
                         db = self._get_database(db_entity["displayText"])
                         table_name = tbl_attrs["name"]
                         fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
-                        tbl_description = tbl_attrs["description"] or " "
+                        tbl_description = tbl_attrs["description"]
 
                         om_table_entity = Table(
                             id=uuid.uuid4(),
