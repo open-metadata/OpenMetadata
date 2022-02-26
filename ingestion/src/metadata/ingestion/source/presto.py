@@ -44,7 +44,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             # e.g. 'map<int,int>' -> 'map'
             #      'decimal(10,1)' -> decimal
             col_type = re.search(r"^\w+", row.Type).group(0)
-            # col_type_len = re.search(r"\(\d+\)", row.Type).group(0)
             coltype = _type_map[col_type]
 
             charlen = re.search(r"\(([\d]+)\)", row.Type)
