@@ -332,7 +332,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             <ActivityFeedEditor
               buttonClass="tw-mr-4"
               className="tw-ml-5 tw-mr-2 tw-mb-6"
-              placeHolder="Create a thread"
+              placeHolder="Enter a message"
               onSave={onPostThread}
             />
           </Fragment>
