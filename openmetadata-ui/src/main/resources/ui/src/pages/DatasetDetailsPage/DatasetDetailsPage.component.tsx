@@ -30,6 +30,7 @@ import {
   getAllFeeds,
   getFeedCount,
   postFeedById,
+  postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
@@ -55,6 +56,7 @@ import {
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   EntityReference,
   Table,
@@ -569,6 +571,23 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res: AxiosResponse) => {
+        setEntityThread((pre) => [...pre, res.data]);
+        showToast({
+          variant: 'success',
+          body: 'Thread is created successfully',
+        });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while creating thread',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -599,6 +618,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           addLineageHandler={addLineageHandler}
           columns={columns}
           columnsUpdateHandler={columnsUpdateHandler}
+          createThread={createThread}
           dataModel={tableDetails.dataModel}
           datasetFQN={tableFQN}
           deleted={deleted}

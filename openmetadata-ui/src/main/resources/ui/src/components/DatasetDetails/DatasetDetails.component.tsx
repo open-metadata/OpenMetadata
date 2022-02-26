@@ -96,6 +96,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
+  createThread,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -516,6 +517,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
                 {threadLink ? (
                   <ActivityThreadPanel
+                    createThread={createThread}
                     open={Boolean(threadLink)}
                     postFeedHandler={postFeedHandler}
                     threadLink={threadLink}

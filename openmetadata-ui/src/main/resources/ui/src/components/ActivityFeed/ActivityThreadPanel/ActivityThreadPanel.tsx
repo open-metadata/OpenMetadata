@@ -22,7 +22,9 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import AppState from '../../../AppState';
 import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { CreateThread } from '../../../generated/api/feed/createThread';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
@@ -43,6 +45,7 @@ interface ActivityThreadPanelProp extends HTMLAttributes<HTMLDivElement> {
   open?: boolean;
   postFeedHandler: (value: string, id: string) => void;
   onCancel: () => void;
+  createThread: (data: CreateThread) => void;
 }
 
 interface ActivityThreadListProp extends HTMLAttributes<HTMLDivElement> {
@@ -213,6 +216,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   onCancel,
   open,
   postFeedHandler,
+  createThread,
 }) => {
   const [threads, setThreads] = useState<EntityThread[]>([]);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
@@ -247,6 +251,19 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
 
   const onBack = () => {
     setSelectedThread(undefined);
+  };
+
+  const onPostThread = (value: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+    const data = {
+      message: value,
+      from: currentUser,
+      about: threadLink,
+    };
+    createThread(data);
+    setTimeout(() => {
+      getThreads();
+    }, 500);
   };
 
   useEffect(() => {
@@ -303,14 +320,22 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             />
           </Fragment>
         ) : (
-          <ActivityThreadList
-            className="tw-py-6 tw-pl-5"
-            postFeed={postFeed}
-            selectedThreadId={selectedThreadId}
-            threads={threads}
-            onThreadIdSelect={onThreadIdSelect}
-            onThreadSelect={onThreadSelect}
-          />
+          <Fragment>
+            <ActivityThreadList
+              className="tw-py-6 tw-pl-5"
+              postFeed={postFeed}
+              selectedThreadId={selectedThreadId}
+              threads={threads}
+              onThreadIdSelect={onThreadIdSelect}
+              onThreadSelect={onThreadSelect}
+            />
+            <ActivityFeedEditor
+              buttonClass="tw-mr-4"
+              className="tw-ml-5 tw-mr-2 tw-mb-6"
+              placeHolder="Create a thread"
+              onSave={onPostThread}
+            />
+          </Fragment>
         )}
       </div>
     </div>

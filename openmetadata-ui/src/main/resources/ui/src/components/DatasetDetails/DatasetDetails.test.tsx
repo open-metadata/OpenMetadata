@@ -83,6 +83,7 @@ const DatasetDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  createThread: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
