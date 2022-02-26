@@ -27,6 +27,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -212,24 +213,19 @@ public class TagsPageTest {
   @Test
   @Order(10)
   public void addTagWithExistingName() throws InterruptedException {
+    String tagName = faker.name().firstName();
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTagsPage();
-    Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, common.addTagButton());
-    Events.sendKeys(webDriver, common.displayName(), "Personals");
-    Events.click(webDriver, common.descriptionSaveButton());
-    Events.click(webDriver, common.headerItem("explore"));
-    Events.click(webDriver, tagsPage.tableLink());
-    Events.click(webDriver, common.editAssociatedTagButton());
-    Events.click(webDriver, common.enterAssociatedTagName());
-    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "Personals");
-    Events.click(webDriver, common.tagListItem());
-    Events.click(webDriver, common.saveAssociatedTag());
-    Events.click(webDriver, common.headerSettings());
-    Events.click(webDriver, tagsPage.headerSettingsTags());
-    Events.click(webDriver, common.containsText("PersonalData"));
-    Thread.sleep(2000);
-    String usageCount = webDriver.findElement(tagsPage.aTagUsageCountElementIndex(1)).getAttribute("innerHTML");
-    Assert.assertEquals(usageCount, "0");
+    for(int i=0;i<2;i++){
+      Events.click(webDriver, common.containsText("PersonalData"));
+      Events.click(webDriver, common.addTagButton());
+      Thread.sleep(waitTime);
+      Events.sendKeys(webDriver, common.displayName(), tagName);
+      Events.click(webDriver, common.descriptionSaveButton());
+    }
+    WebElement errorMessage = webDriver.findElement(common.errorMessage());
+    Assert.assertTrue(errorMessage.isDisplayed());
+    Assert.assertEquals(errorMessage.getText(),"Name already exists");
   }
 
   @Test
@@ -268,6 +264,7 @@ public class TagsPageTest {
   @Test
   @Order(13)
   public void addSelfAssociatedTag() throws Exception {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
     actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
@@ -275,11 +272,10 @@ public class TagsPageTest {
     Events.click(webDriver, common.enterAssociatedTagName());
     try {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
-      WebElement sameTag = webDriver.findElement(common.tagListItem());
-      if (sameTag.isDisplayed()) {
+      if (webDriver.findElement(common.tagListItem()).isDisplayed()) {
         Assert.fail();
       }
-    } catch (TimeoutException exception) {
+    } catch (NoSuchElementException exception) {
       LOG.info("Success");
     }
   }

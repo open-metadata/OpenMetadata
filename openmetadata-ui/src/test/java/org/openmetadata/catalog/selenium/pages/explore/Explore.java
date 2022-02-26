@@ -8,18 +8,17 @@ import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @Slf4j
 class Explore {
-  WebDriver webDriver;
+  static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
@@ -57,6 +56,7 @@ class Explore {
   @Test
   @Order(1)
   void openExplorePage() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     if (webDriver.findElement(explorePage.tableCount()).isDisplayed()) {
@@ -212,17 +212,20 @@ class Explore {
   @Test
   @Order(7)
   void checkLastUpdatedSort() throws InterruptedException {
-    String sendKeys = "Description Added";
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    String sendKeys = "Description addded";
     openExplorePage();
     // Adding description to check last updated sort
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
+    new WebDriverWait(webDriver, 10).until(
+            webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
     Events.click(webDriver, explorePage.explore());
     Events.click(webDriver, explorePage.lastWeekSortDesc());
     Events.click(webDriver, explorePage.lastWeekSortAesc());
+    Thread.sleep(1000);
     WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
     Assert.assertEquals(sendKeys, descriptionCheck.getText());
   }

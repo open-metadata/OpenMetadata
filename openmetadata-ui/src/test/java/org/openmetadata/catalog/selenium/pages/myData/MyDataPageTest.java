@@ -144,72 +144,44 @@ public class MyDataPageTest {
   @Test
   @Order(4)
   void checkExplore() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.explore());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/tables");
-    try {
-      if (webDriver.findElement(explorePage.tables()).isDisplayed()) {
-        LOG.info("Tables is displayed");
-      }
-    } catch (Exception e) {
-      Assert.fail();
-    }
+    Assert.assertTrue(webDriver.findElement(explorePage.tables()).isDisplayed());
   }
 
   @Test
   @Order(5)
   void checkHeaders() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.settings());
     Events.click(webDriver, myDataPage.teams());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/teams");
-    try {
-      if (teamsPage.heading().isDisplayed()) {
-        LOG.info("Teams Heading is displayed");
-      }
-    } catch (Exception e) {
-      Assert.fail();
-    }
+    Assert.assertTrue(teamsPage.heading().isDisplayed());
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
     Events.click(webDriver, myDataPage.users());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/user-list");
-    try {
-      if (userListPage.allUsers().isDisplayed()) {
-        LOG.info("All users is displayed");
-      }
-    } catch (Exception e) {
-      Assert.fail();
-    }
+    Assert.assertTrue(userListPage.allUsers().isDisplayed());
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
     Events.click(webDriver, myDataPage.tags());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/tags");
-    try {
-      if (webDriver.findElement(tagsPage.addTagButton()).isDisplayed()) {
-        LOG.info("Tag categories is displayed");
-      }
-    } catch (Exception e) {
-      Assert.fail();
-    }
+    Assert.assertTrue(webDriver.findElement(tagsPage.addTagButton()).isDisplayed());
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
     Events.click(webDriver, myDataPage.services());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/services");
-    try {
-      if (webDriver.findElement(common.serviceName()).isDisplayed()) {
-        LOG.info("Database Service is displayed");
-      }
-    } catch (Exception e) {
-      Assert.fail();
-    }
+    Assert.assertTrue(webDriver.findElement(common.serviceName()).isDisplayed());
     webDriver.navigate().back();
   }
 
@@ -240,11 +212,13 @@ public class MyDataPageTest {
 
   @Test
   @Order(7)
-  void checkFollowingTab() {
+  void checkFollowingTab() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
     Events.click(webDriver, myDataPage.tableName());
+    Thread.sleep(waitTime);
     String follow = webDriver.findElement(tableDetails.follow()).getText();
     if (follow.equals("Unfollow")) {
       Events.click(webDriver, tableDetails.follow());
@@ -253,7 +227,7 @@ public class MyDataPageTest {
       Events.click(webDriver, tableDetails.follow());
     }
     Events.click(webDriver, myDataPage.home());
-    String tableName = myDataPage.following().toString();
+    String tableName = webDriver.findElement(myDataPage.following()).getText();
     Assert.assertEquals(tableName, "Started Following " + table);
   }
 
@@ -272,6 +246,7 @@ public class MyDataPageTest {
   @Test
   @Order(8)
   public void checkRecentlySearched() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), searchCriteria);
@@ -283,7 +258,7 @@ public class MyDataPageTest {
         Assert.assertEquals(recentSearch.getText(), searchCriteria);
       }
     } catch (Exception e) {
-      Assert.fail();
+      Assert.fail(searchCriteria+" not displayed in recent search");
     }
   }
 

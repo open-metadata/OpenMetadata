@@ -121,9 +121,10 @@ public class DashboardServiceTestPage {
   @Test
   @Order(4)
   public void checkConnectionConfigTab() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openDashboardServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, dashboardServicePage.dashboardName());
     Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
     Events.sendKeys(webDriver, dashboardServicePage.dashboardServiceUrl(), "1");
     Events.sendKeys(webDriver, common.serviceUsername(), "1");

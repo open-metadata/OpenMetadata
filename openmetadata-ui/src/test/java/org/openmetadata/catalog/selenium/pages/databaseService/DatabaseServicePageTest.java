@@ -32,6 +32,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 @Order(8)
@@ -55,6 +56,7 @@ public class DatabaseServicePageTest {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
+    options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
     databaseServicePage = new DatabaseServicePage(webDriver);
@@ -67,9 +69,9 @@ public class DatabaseServicePageTest {
   @Test
   @Order(1)
   public void openDatabaseServicePage() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
-    Thread.sleep(waitTime);
-    Events.click(webDriver, common.headerSettings()); // Setting
+    wait.until(ExpectedConditions.elementToBeClickable(common.headerSettings())).click();
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
     Thread.sleep(waitTime);
   }

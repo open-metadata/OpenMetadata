@@ -3,6 +3,7 @@ package org.openmetadata.catalog.selenium.objectRepository;
 import java.util.List;
 import javax.annotation.Nonnull;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -11,7 +12,7 @@ import org.openqa.selenium.WebElement;
 @Getter
 @RequiredArgsConstructor
 public class Common {
-  @Nonnull WebDriver webDriver;
+  @NonNull WebDriver webDriver;
 
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
 
@@ -24,8 +25,8 @@ public class Common {
   By editTagCategoryDescription = By.cssSelector("[data-testid='edit-description']");
   By editDescriptionSaveButton = By.cssSelector("[data-testid='save']");
   By closeWhatsNew = By.cssSelector("[data-testid='closeWhatsNew']");
-  By headerSettings = By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']");
-  By explore = By.xpath("[data-testid='appbar-item'][id='explore']");
+  By headerSettings = By.xpath("(//button[@data-testid=\"menu-button\"])[1]");
+  By explore = By.cssSelector("[data-testid='appbar-item'][id='explore']");
   By headerSettingsServices = By.cssSelector("[data-testid='menu-item-Services']");
   By addServiceButton = By.cssSelector("[data-testid='add-service-button']");
   By noServicesAddServiceButton = By.cssSelector("[data-testid='add-new-user-button']");
@@ -85,10 +86,7 @@ public class Common {
   By ingestionTab = By.xpath("//button[@data-testid='tab'][@id='ingestions']");
   By addIngestion = By.cssSelector("button[data-testid='add-new-ingestion-button']");
   By name = By.cssSelector("[data-testid='name']");
-
-  public By breadcrumbTags() {
-    return breadCrumbTags;
-  }
+  By viewMore = By.xpath("//p[@class='link-text tw-text-xs']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);

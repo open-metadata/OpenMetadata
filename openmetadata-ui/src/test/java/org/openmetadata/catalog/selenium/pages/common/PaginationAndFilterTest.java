@@ -162,7 +162,7 @@ public class PaginationAndFilterTest {
     Events.sendKeys(webDriver, common.searchBar(), "dim_api_client");
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
+    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton()));
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 4; i++) {
@@ -177,7 +177,7 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, common.selectFilterExplore("shopify"));
     Thread.sleep(2000);
     Object filteredResults = webDriver.findElements(common.searchResultsList()).size();
-    String databaseCount = webDriver.findElement(common.exploreFilterCount("shopify")).getAttribute("innerHTML");
+    String databaseCount = webDriver.findElement(common.exploreFilterCount("shopify")).getText();
     Assert.assertEquals(databaseCount, filteredResults.toString());
   }
 

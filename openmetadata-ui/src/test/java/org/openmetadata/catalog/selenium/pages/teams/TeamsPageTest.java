@@ -99,7 +99,6 @@ public class TeamsPageTest {
       webDriver.findElement(By.xpath(xpath));
     } catch (NoSuchElementException e) {
       Assert.fail("Team not added");
-      System.out.println("xpath" + xpath);
     }
   }
 

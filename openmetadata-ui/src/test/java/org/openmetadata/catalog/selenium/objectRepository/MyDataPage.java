@@ -31,7 +31,7 @@ public class MyDataPage {
   By settings = By.xpath("(//button[@data-testid=\"menu-button\"])[1]");
   By tags = By.xpath("//a[@data-testid=\"menu-item-Tags\"]");
   By ingestions = By.linkText("Ingestions");
-  By home = By.cssSelector("[data-testid='image']");
+  By home = By.id("openmetadata_logo");
   By profile = By.cssSelector("[data-testid='dropdown-profile']");
   By logout = By.cssSelector("[data-testid='menu-item-Logout']");
   By help = By.xpath("(//button[@data-testid=\"menu-button\"])[2]");

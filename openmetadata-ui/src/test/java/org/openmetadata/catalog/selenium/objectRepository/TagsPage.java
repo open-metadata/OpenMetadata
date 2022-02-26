@@ -15,6 +15,7 @@ package org.openmetadata.catalog.selenium.objectRepository;
 
 import javax.annotation.Nonnull;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -22,7 +23,7 @@ import org.openqa.selenium.WebDriver;
 @Getter
 @RequiredArgsConstructor
 public class TagsPage {
-  @Nonnull WebDriver webDriver;
+  @NonNull WebDriver webDriver;
 
   By closeWhatsNew = By.cssSelector("[data-testid='closeWhatsNew']");
   By addTagButton = By.cssSelector("[data-testid='add-new-tag-button']");
