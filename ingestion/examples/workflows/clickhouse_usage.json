@@ -1,0 +1,41 @@
+{
+    "source": {
+      "type": "clickhouse-usage",
+      "config": {
+        "username":"default",
+        "password":"",
+        "database": "default",
+        "service_name": "local_clickhouse",
+        "schema_filter_pattern": {
+          "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]
+        },
+        "duration":2
+      }
+    },
+    "processor": {
+      "type": "query-parser",
+      "config": {
+        "filter": ""
+      }
+    },
+    "stage": {
+      "type": "table-usage",
+      "config": {
+        "filename": "/tmp/clickhouse_usage"
+      }
+    },
+    "bulk_sink": {
+      "type": "metadata-usage",
+      "config": {
+        "filename": "/tmp/clickhouse_usage"
+      }
+    },
+    "metadata_server": {
+      "type": "metadata-server",
+      "config": {
+        "api_endpoint": "http://localhost:8585/api",
+        "auth_provider_type": "no-auth"
+      }
+    }
+  }
+  
