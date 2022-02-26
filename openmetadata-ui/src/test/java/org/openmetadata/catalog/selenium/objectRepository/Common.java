@@ -36,7 +36,7 @@ public class Common {
   By saveServiceButton = By.cssSelector("[data-testid='deploy-button']");
   By saveEditedService = By.cssSelector("[data-testid='save-button']");
   By saveConnectionConfig = By.cssSelector("[data-testid='saveManageTab']");
-  By searchResults = By.cssSelector("[data-testid='search-results']");
+  By searchResults = By.cssSelector("[data-testid='no-search-results']");
   By searchBar = By.cssSelector("[data-testid='searchBox']");
   By searchSuggestion = By.cssSelector("[data-testid='data-name']");
   By editAssociatedTagButton = By.xpath("//div[@data-testid='tag-conatiner']//span");

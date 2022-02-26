@@ -26,7 +26,7 @@ public class ExplorePage {
   By pagination = By.xpath("//div[@data-testid=\"pagination-button\"]");
   By bigQueryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"BigQuery\"]");
   By serviceName = By.xpath("//div[@data-testid=\"checkbox-label\"]");
-  By countService = By.xpath("(//span[@data-testid=\"filter-count\"])");
+  By serviceCount = By.xpath("//div[@data-testid='filter-containers-0']//span/span");
   By errorMessage = By.xpath("//p[@data-testid=\"no-search-results\"]");
   By glueCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Glue\"]");
   By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
@@ -53,7 +53,7 @@ public class ExplorePage {
   }
 
   public List<WebElement> serviceCount() {
-    return webDriver.findElements(countService);
+    return webDriver.findElements(serviceCount);
   }
 
   public List<WebElement> selectedCheckbox() {

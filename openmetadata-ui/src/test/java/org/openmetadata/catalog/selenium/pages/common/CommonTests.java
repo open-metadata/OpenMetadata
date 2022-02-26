@@ -83,7 +83,7 @@ public class CommonTests {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openHomePage();
     Events.click(webDriver, common.selectOverview("tables"));
-    Events.sendKeys(webDriver, common.searchBar(), "dim_location");
+    Events.sendKeys(webDriver, common.searchBar(), "dim_customer");
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
@@ -96,7 +96,7 @@ public class CommonTests {
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(2000);
     Object tagCount = webDriver.findElements(common.containsText("#PersonalData.Personal")).size();
-    Assert.assertEquals(tagCount, 2);
+    Assert.assertEquals(tagCount, 1);
   }
 
   @Test
@@ -189,20 +189,21 @@ public class CommonTests {
   public void addMultipleTagsCheck() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openHomePage();
-    Events.sendKeys(webDriver, common.searchBar(), "raw_product_catalog");
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyraw_product_catalog"));
+    Events.sendKeys(webDriver, common.searchBar(), "raw_order");
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyraw_order"));
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 10; i++) {
+    for (int i = 0; i <= 5; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
       Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(2000);
     Object tagCount = webDriver.findElements(common.tagCount()).size();
-    Assert.assertEquals(tagCount, 11);
+    Assert.assertEquals(tagCount, 6);
   }
 
   @Test
@@ -217,7 +218,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.displayName(), "personalData");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
+    String errorMessage = webDriver.findElement(common.errorMessage()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(errorMessage, "Name already exists");
   }
@@ -230,12 +231,12 @@ public class CommonTests {
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, common.noServicesAddServiceButton());
+    Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "personal");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
+    String errorMessage = webDriver.findElement(common.errorMessage()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(errorMessage, "Name already exists");
   }
@@ -252,7 +253,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.displayName(), "P");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
+    String errorMessage = webDriver.findElement(common.errorMessage()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
   }
@@ -269,7 +270,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.displayName(), "PersonalData-DataPlatform-PersonalData");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
+    String errorMessage = webDriver.findElement(common.errorMessage()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
   }
@@ -287,7 +288,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.displayName(), "P");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
+    String errorMessage = webDriver.findElement(common.errorMessage()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
   }
@@ -305,7 +306,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.displayName(), "PersonalData-DataPlatform-PersonalData");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
+    String errorMessage = webDriver.findElement(common.errorMessage()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(errorMessage, "Name size must be between 2 and 25");
   }
@@ -320,7 +321,7 @@ public class CommonTests {
     Thread.sleep(2000);
     Object tagCount = webDriver.findElements(common.tagCountSearch()).size() - 1;
     Thread.sleep(2000);
-    String matchesInDescription = webDriver.findElement(common.matchesInDescription()).getAttribute("innerHTML");
+    String matchesInDescription = webDriver.findElement(common.matchesInDescription()).getText();
     Assert.assertEquals((tagCount + " in Description,"), matchesInDescription);
   }
 
@@ -386,13 +387,13 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), "!");
     Events.sendEnter(webDriver, common.searchBar());
     Thread.sleep(2000);
-    String search1 = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+    String search1 = webDriver.findElement(common.noSearchResult()).getText();
     Assert.assertEquals(search1, "No matching data assets found for !");
     webDriver.navigate().back();
     Events.sendKeys(webDriver, common.searchBar(), "{");
     Events.sendEnter(webDriver, common.searchBar());
     try {
-      String search2 = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+      String search2 = webDriver.findElement(common.noSearchResult()).getText();
       Assert.assertEquals(search2, "No matching data assets found for {");
     } catch (NoSuchElementException exception) {
       LOG.info("Search results are not similar for no data found!");
@@ -407,7 +408,7 @@ public class CommonTests {
     Events.click(webDriver, common.selectOverview("dashboards"));
     Events.sendKeys(webDriver, common.searchBar(), "sales");
     Events.sendEnter(webDriver, common.searchBar());
-    String resultsCount = webDriver.findElement(common.resultsCount()).getAttribute("innerHTML");
+    String resultsCount = webDriver.findElement(common.resultsCount()).getText();
     Object matchesCount = webDriver.findElements(common.matchesStats()).size();
     Assert.assertEquals(matchesCount + " results", resultsCount);
   }
@@ -420,7 +421,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), "dim_product_variant");
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    Events.click(webDriver, common.entityTabIndex(4));
+    Events.click(webDriver, common.entityTabIndex(5));
     Events.click(webDriver, common.editLineageButton());
   }
 

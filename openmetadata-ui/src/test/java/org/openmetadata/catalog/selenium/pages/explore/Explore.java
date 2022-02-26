@@ -119,6 +119,7 @@ class Explore {
   @Test
   @Order(4)
   void checkDashboardCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());

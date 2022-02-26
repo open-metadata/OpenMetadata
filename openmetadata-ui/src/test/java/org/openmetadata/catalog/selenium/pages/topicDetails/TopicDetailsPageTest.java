@@ -58,7 +58,7 @@ public class TopicDetailsPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     common = new Common(webDriver);
     topicDetails = new TopicDetails(webDriver);
     explorePage = new ExplorePage(webDriver);
@@ -125,15 +125,14 @@ public class TopicDetailsPageTest {
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      selectedTag[i] = common.tagListItem().toString();
+      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    List<WebElement> TagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
-    Thread.sleep(waitTime);
-    for (int j = 0; j < TagDisplayed.size(); j++) {
-      Assert.assertEquals(TagDisplayed.get(j).getText(), selectedTag[j]);
-    }
+    Thread.sleep(2000);
+    Object tagCount = webDriver.findElements(common.tagCount()).size();
+    Assert.assertEquals(tagCount, 3);
   }
 
   @Test

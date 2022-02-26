@@ -58,7 +58,6 @@ public class TeamsPageTest {
   public void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
-    options.addArguments("--no-sandbox");
     options.addArguments("--disable-dev-shm-usage");
     options.addArguments("--headless");
     webDriver = new ChromeDriver(options);
@@ -98,7 +97,7 @@ public class TeamsPageTest {
     try {
       webDriver.findElement(By.xpath(xpath));
     } catch (NoSuchElementException e) {
-      Assert.fail("Team not added");
+      Assert.fail(e+"Team not added");
     }
   }
 
