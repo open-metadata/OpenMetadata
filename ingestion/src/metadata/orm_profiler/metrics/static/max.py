@@ -24,6 +24,10 @@ class Max(StaticMetric):
     Given a column, return the max value.
     """
 
+    @classmethod
+    def name(cls):
+        return "max"
+
     @_label
     def fn(self):
         return func.max(self.col)

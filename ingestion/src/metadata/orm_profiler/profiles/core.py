@@ -12,22 +12,26 @@
 """
 Main Profile definition and queries to execute
 """
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict, Generic, List, Optional, Tuple, Type
 
-from sqlalchemy.orm import DeclarativeMeta, Query
+from pydantic import ValidationError
+from sqlalchemy import Column, inspect
+from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 
+from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    Metric,
+    MetricType,
     QueryMetric,
     StaticMetric,
-    TimeMetric,
 )
+from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.utils import logger
+from metadata.utils.helpers import datetime_to_ts
 
 logger = logger()
 
@@ -39,7 +43,7 @@ class MissingMetricException(Exception):
     """
 
 
-class Profiler(ABC):
+class Profiler(Generic[MetricType]):
     """
     Core Profiler.
 
@@ -49,7 +53,21 @@ class Profiler(ABC):
     - A tuple of metrics, from which we will construct queries.
     """
 
-    def __init__(self, *metrics: Metric, session: Session, table):
+    def __init__(
+        self,
+        *metrics: Type[MetricType],
+        session: Session,
+        table,
+        profile_date: datetime = datetime.now(),
+        ignore_cols: Optional[List[str]] = None,
+        use_cols: Optional[List[Column]] = None,
+    ):
+        """
+        :param metrics: Metrics to run. We are receiving the uninitialized classes
+        :param session: Where to run the queries
+        :param table: DeclarativeMeta containing table info
+        :param ignore_cols: List of columns to ignore when computing the profile
+        """
 
         if not isinstance(table, DeclarativeMeta):
             raise ValueError(f"Table {table} should be a DeclarativeMeta.")
@@ -57,7 +75,17 @@ class Profiler(ABC):
         self._session = session
         self._table = table
         self._metrics = metrics
-        self._results: Optional[Dict[str, Any]] = None
+        self._ignore_cols = ignore_cols
+        self._use_cols = use_cols
+
+        self._profile_date = profile_date
+
+        # Initialize profiler results
+        self._table_results: Dict[str, Any] = {}
+        self._column_results: Dict[str, Any] = {}
+
+        # We will get columns from the property
+        self._columns: Optional[List[Column]] = None
 
         self.validate_composed_metric()
 
@@ -70,74 +98,75 @@ class Profiler(ABC):
         return self._table
 
     @property
-    def metrics(self) -> Tuple[Metric]:
+    def metrics(self) -> Tuple[Type[MetricType], ...]:
         return self._metrics
 
     @property
-    def results(self) -> Optional[Dict[str, Any]]:
+    def ignore_cols(self) -> List[str]:
+        return self._ignore_cols
+
+    @property
+    def use_cols(self) -> List[Column]:
         """
-        Iterate over the _metrics to pick up
-        all values from _results dict.
+        Columns to use.
 
-        Note that if some Metric does not run against
-        a specific column (e.g., STDDEV only runs against
-        numerical columns), then the metric won't appear
-        in _results. However, we still want that
-        result to be available, even if it is `None`.
-
-        Here we prepare the logic to being able to have
-        the complete suite of computed metrics.
+        If it is informed, we'll use them as columns
+        instead of picking up all table's columns
+        and ignoring the specified ones.
         """
-        results = self._results if self._results else {}
+        return self._use_cols
 
-        response = {
-            metric.name(): results.get(metric.name()) for metric in self.metrics
-        }
+    @property
+    def profile_date(self) -> datetime:
+        return self._profile_date
 
-        return response
-
-    @results.setter
-    def results(self, value: Dict[str, Any]):
+    @property
+    def columns(self) -> List[Column]:
         """
-        If we have not yet computed any result, use the
-        incoming value, otherwise, update the dict.
+        Return the list of columns to profile
+        by skipping the columns to ignore.
         """
 
-        if not isinstance(value, dict):
-            raise ValueError(
-                f"Trying to set value {value} to profiler results, but value should be a dict."
-            )
+        if self.use_cols:
+            return self.use_cols
 
-        if not self._results:
-            self._results = value
-        else:
-            self._results.update(value)
+        ignore = self.ignore_cols if self.ignore_cols else {}
 
-    def _filter_metrics(self, _type: type):  # Type of class is `type`
+        if not self._columns:
+            self._columns = [
+                column for column in inspect(self.table).c if column.name not in ignore
+            ]
+
+        return self._columns
+
+    def _filter_metrics(self, _type: Type[MetricType]) -> List[Type[MetricType]]:
         """
         Filter metrics by type
         """
-        return [metric for metric in self.metrics if isinstance(metric, _type)]
+        return [metric for metric in self.metrics if issubclass(metric, _type)]
 
     @property
-    def static_metrics(self):
+    def static_metrics(self) -> List[Type[StaticMetric]]:
         return self._filter_metrics(StaticMetric)
 
     @property
-    def time_metrics(self):
-        return self._filter_metrics(TimeMetric)
-
-    @property
-    def composed_metrics(self):
+    def composed_metrics(self) -> List[Type[ComposedMetric]]:
         return self._filter_metrics(ComposedMetric)
 
     @property
-    def custom_metrics(self):
+    def custom_metrics(self) -> List[Type[CustomMetric]]:
         return self._filter_metrics(CustomMetric)
 
     @property
-    def query_metrics(self):
+    def query_metrics(self) -> List[Type[QueryMetric]]:
         return self._filter_metrics(QueryMetric)
+
+    @staticmethod
+    def get_col_metrics(metrics: List[Type[MetricType]]) -> List[Type[MetricType]]:
+        """
+        Filter list of metrics for column metrics with allowed types
+        """
+        return [metric for metric in metrics if metric.is_col_metric()]
 
     def validate_composed_metric(self) -> None:
         """
@@ -149,60 +178,49 @@ class Profiler(ABC):
         for metric in self.composed_metrics:
             if not set(metric.required_metrics()).issubset(names):
                 raise MissingMetricException(
-                    f"We need {metric.required_metrics()} for {metric.name()}, but only got {names} in the profiler"
+                    f"We need {metric.required_metrics()} for {metric.name}, but only got {names} in the profiler"
                 )
 
-    def build_col_query(self) -> Optional[Query]:
+    def sql_col_run(self, col: Column):
         """
-        Build the query with all the column static metrics.
+        Run the profiler and store its results
 
-        Can return None if no metric has an allowed
-        type. In that case, we cannot build an empty
-        query.
+        This should only execute column metrics.
         """
+        logger.info("Running SQL Profiler...")
 
-        allowed_metrics = [
-            metric.fn()
-            for metric in self.static_metrics
-            if metric.col
-            is not None  # If metric is None, it is a table metric and gets executed in `sql_table_run`
-            and metric.col.type.__class__ not in NOT_COMPUTE
-        ]
+        col_metrics = self.get_col_metrics(self.static_metrics)
 
-        if not allowed_metrics:
+        if not col_metrics:
             return
 
-        query = self.session.query(*allowed_metrics)
+        query = self.session.query(*[metric(col).fn() for metric in col_metrics])
 
-        return query
-
-    @abstractmethod
-    def sql_col_run(self):
-        """
-        Run the profiler and obtain the results,
-        e.g. build_query().first(), or all()
-
-        Data should be saved under self.results
-        """
+        row = query.first()
+        self._column_results[col.name].update(dict(row))
 
     def sql_table_run(self):
         """
         Run Table Static metrics
         """
         # Table metrics do not have column informed
-        table_metrics = [metric for metric in self.static_metrics if metric.col is None]
+        table_metrics = [
+            metric for metric in self.static_metrics if not metric.is_col_metric()
+        ]
 
         for metric in table_metrics:
-            row = self.session.query(metric.fn()).select_from(self.table).first()
-            self.results = dict(row)
+            row = self.session.query(metric().fn()).select_from(self.table).first()
+            self._table_results.update(dict(row))
 
-    def sql_query_run(self):
+    def sql_col_query_run(self, col: Column) -> None:
         """
         Run QueryMetrics
         """
-        for metric in self.query_metrics:
 
-            metric_query = metric.query(session=self.session)
+        for metric in self.get_col_metrics(self.query_metrics):
+
+            metric_query = metric(col).query(session=self.session)
+
             # We might not compute some metrics based on the column type.
             # In those cases, the `query` function returns None
             if not metric_query:
@@ -215,9 +233,9 @@ class Profiler(ABC):
             # We are going to transform this into a Dict[List] by pivoting, so that
             # data = {colA: [1,2,3], colB: [4,5,6]...}
             data = {k: [dic[k] for dic in query_res] for k in dict(query_res[0])}
-            self.results = {metric.name(): data}
+            self._column_results[col.name].update({metric.name(): data})
 
-    def post_run(self):
+    def post_col_run(self, col: Column):
         """
         Run this after the metrics have been computed
 
@@ -226,44 +244,102 @@ class Profiler(ABC):
 
         logger.info("Running post Profiler...")
 
-        if not self._results:
+        current_col_results: Dict[str, Any] = self._column_results.get(col.name)
+        if not current_col_results:
+            logger.error(
+                "We do not have any results to base our Composed Metrics. Stopping!"
+            )
             return
 
-        for metric in self.composed_metrics:
+        for metric in self.get_col_metrics(self.composed_metrics):
             # Composed metrics require the results as an argument
-            self._results[metric.name()] = metric.fn(self.results)
 
-    def execute(self) -> Optional[Dict[str, Any]]:
+            self._column_results[col.name][metric.name()] = metric(col).fn(
+                current_col_results
+            )
+
+    def execute_table(self) -> None:
+        """
+        Run table metrics
+
+        So far we only support Static Metrics
+        for Table Metrics
+        """
+        self.sql_table_run()
+
+    def execute_column(self, col: Column) -> None:
+        """
+        Run the profiler on all the columns that
+        have been green-lighted.
+
+        We can assume from this point onwards that
+        columns are of allowed types
+        """
+        self.sql_col_run(col)
+        self.sql_col_query_run(col)
+        self.post_col_run(col)
+
+    def execute(self) -> "Profiler":
         """
         Run the whole profiling
         """
-        self.sql_table_run()
-        self.sql_col_run()
-        self.sql_query_run()
-        self.post_run()
 
-        return self.results
+        self.execute_table()
 
+        for col in self.columns:
 
-class SingleProfiler(Profiler):
-    """
-    Basic Profiler.
+            # Skip not supported types
+            if col.type.__class__ in NOT_COMPUTE:
+                continue
 
-    Passing a set of metrics, it runs them all.
+            # Init column results dict
+            self._column_results[col.name] = {"name": col.name}
 
-    Returns a single ROW
-    """
+            try:
+                self.execute_column(col)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error(
+                    f"Error trying to compute profile for {self.table}.{col.name} - {exc}"
+                )
 
-    def sql_col_run(self):
+        return self
+
+    def get_profile(self) -> TableProfile:
         """
-        Run the profiler and store its results
+        After executing the profiler, get all results
+        and convert them to TableProfile.
 
-        This should only execute column metrics.
+        We store the results in the shape:
+
+        _table_results
+        {
+            "columnCount": ...,
+            "rowCount": ...,
+        }
+
+        _column_results
+        {
+            "column_name_A": {
+                "metric1": ...,
+                "metric2": ...,
+            }
+        }
+
+        We need to transform it to TableProfile
         """
-        logger.info("Running SQL Profiler...")
+        try:
+            profile = TableProfile(
+                profileDate=self.profile_date.strftime("%Y-%m-%d"),
+                columnCount=self._table_results.get("columnCount"),  # TODO IMPLEMENT
+                rowCount=self._table_results.get(RowCount.name()),
+                columnProfile=[
+                    ColumnProfile(**self._column_results.get(col.name))
+                    for col in self.columns
+                ],
+            )
 
-        query = self.build_col_query()
+            return profile
 
-        if query:
-            row = query.first()
-            self.results = dict(row)
+        except ValidationError as err:
+            logger.error(f"Cannot transform profiler results to TableProfile {err}")
+            raise err

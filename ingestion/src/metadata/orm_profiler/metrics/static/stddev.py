@@ -58,6 +58,10 @@ class StdDev(StaticMetric):
     Given a column, return the Standard Deviation value.
     """
 
+    @classmethod
+    def name(cls):
+        return "stddev"
+
     def metric_type(self):
         return float
 

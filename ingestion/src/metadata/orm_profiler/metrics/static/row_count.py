@@ -17,12 +17,23 @@ from sqlalchemy import func
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
-class RowNumber(StaticMetric):
+class RowCount(StaticMetric):
     """
     ROW_NUMBER Metric
 
     Count all rows on a table
     """
+
+    @classmethod
+    def name(cls):
+        return "rowCount"
+
+    @classmethod
+    def is_col_metric(cls) -> bool:
+        """
+        Mark the class as a Table Metric
+        """
+        return False
 
     def metric_type(self):
         return int

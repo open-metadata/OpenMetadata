@@ -50,6 +50,10 @@ class MinLength(StaticMetric):
     Only works for concatenable types
     """
 
+    @classmethod
+    def name(cls):
+        return "minLength"
+
     def metric_type(self):
         return int
 

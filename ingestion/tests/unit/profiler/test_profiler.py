@@ -18,10 +18,12 @@ import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.entity.data.table import ColumnProfile, Histogram
 from metadata.orm_profiler.engines import create_and_bind_session
+from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import MissingMetricException, SingleProfiler
-from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
+from metadata.orm_profiler.profiles.core import MissingMetricException, Profiler
+from metadata.orm_profiler.profiles.default import DefaultProfiler
 
 Base = declarative_base()
 
@@ -61,37 +63,49 @@ class ProfilerTest(TestCase):
         """
         Check our pre-cooked profiler
         """
-        simple = SimpleProfiler(session=self.session, col=User.age, table=User)
+        simple = DefaultProfiler(session=self.session, table=User)
         simple.execute()
-        assert simple.results == {
-            "AVG": 30.5,
-            "COUNT": 2,
-            "DISTINCT": 2,
-            "HISTOGRAM": {
-                "bin": ["30.0 to 30.25", "31.0 to 31.25"],
-                "bin_ceil": [30.25, 31.25],
-                "bin_floor": [30.0, 31.0],
-                "count": [1, 1],
-            },
-            "MAX": 31,
-            "MAXLENGTH": None,
-            "MIN": 30,
-            "MINLENGTH": None,
-            "NULLCOUNT": 0,
-            "NULLRATIO": 0.0,
-            "STDDEV": 0.25,
-            "SUM": 61,
-            "UNIQUECOUNT": 2,
-            "UNIQUERATIO": 1.0,
-        }
 
-    def test_simple_table_profiler(self):
-        """
-        Check the default table profiler
-        """
-        simple = SimpleTableProfiler(session=self.session, table=User)
-        simple.execute()
-        assert simple.results == {"ROWNUMBER": 2}
+        profile = simple.get_profile()
+
+        assert profile.rowCount == 2
+
+        age_profile = next(
+            iter(
+                [
+                    col_profile
+                    for col_profile in profile.columnProfile
+                    if col_profile.name == "age"
+                ]
+            ),
+            None,
+        )
+
+        assert age_profile == ColumnProfile(
+            name="age",
+            valuesCount=2,
+            valuesPercentage=None,
+            validCount=None,
+            duplicateCount=None,
+            nullCount=0,
+            nullProportion=0.0,
+            missingPercentage=None,
+            missingCount=None,
+            uniqueCount=2,
+            uniqueProportion=1.0,
+            distinctCount=2,
+            min=30.0,
+            max=31.0,
+            minLength=None,
+            maxLength=None,
+            mean=30.5,
+            sum=61.0,
+            stddev=0.25,
+            variance=None,
+            histogram=Histogram(
+                boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
+            ),
+        )
 
     def test_required_metrics(self):
         """
@@ -99,13 +113,22 @@ class ProfilerTest(TestCase):
         when not building the profiler with all the
         required ingredients
         """
-        like = Metrics.LIKE_COUNT(User.name, expression="J%")
-        count = Metrics.COUNT(User.name)
-        like_ratio = Metrics.LIKE_RATIO(User.name)
+        like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
+        count = Metrics.COUNT.value
+        like_ratio = Metrics.LIKE_RATIO.value
 
         # This should run properly
-        SingleProfiler(like, count, like_ratio, session=self.session, table=User)
+        Profiler(
+            like,
+            count,
+            like_ratio,
+            session=self.session,
+            table=User,
+            use_cols=[User.age],
+        )
 
         with pytest.raises(MissingMetricException):
             # We are missing ingredients here
-            SingleProfiler(like, like_ratio, session=self.session, table=User)
+            Profiler(
+                like, like_ratio, session=self.session, table=User, use_cols=[User.age]
+            )

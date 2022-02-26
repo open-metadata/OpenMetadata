@@ -24,6 +24,10 @@ class UniqueCount(StaticMetric):
     Given a column, count the number of unique values
     """
 
+    @classmethod
+    def name(cls):
+        return "uniqueCount"
+
     def metric_type(self):
         return int
 
