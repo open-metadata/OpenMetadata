@@ -54,7 +54,7 @@ class AtlasSource(Source):
     atlas_client: AtlasClient
     status: AtlasSourceStatus
     tables: List[str]
-    current_entity_type: str
+    topics: List[str]
 
     def __init__(
         self,
@@ -89,9 +89,12 @@ class AtlasSource(Source):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        for entity_type in self.config.entity_types:
-            self.tables = self.atlas_client.list_entities(entity_type=entity_type)
-            self.current_entity_type = entity_type
+        self.tables = self.atlas_client.list_entities(
+            entity_type=self.config.entity_type["Table"]
+        )
+        self.topics = self.atlas_client.list_entities(
+            entity_type=self.config.entity_type["Topic"]
+        )
 
     def next_record(self):
         yield from self._parse_table_entity()
@@ -102,72 +105,71 @@ class AtlasSource(Source):
     def get_status(self) -> SourceStatus:
         return self.status
 
+    def _parse_entity(self):
+        if self.tables:
+            self._parse_table_entity()
+        if self.topics:
+            self._parse_topic_entity()
+
+    def _parse_topic_entity(self):
+        for topic in self.topics:
+            topic_entity = self.atlas_client.get_entity(topic)
+            tpc_entities = topic_entity["entities"]
+            for tpc_entity in tpc_entities:
+                try:
+                    tpc_attrs = tpc_entity["attributes"]
+                    topic_name = tpc_attrs["name"]
+                    topic = CreateTopicRequest(
+                        name=topic_name[0:63],
+                        service=EntityReference(
+                            id=self.message_service.id, type="messagingService"
+                        ),
+                        partitions=1,
+                    )
+
+                    yield topic
+                    yield from self.ingest_lineage(tpc_entity["guid"])
+
+                except Exception as e:
+                    logger.error("error occured", e)
+                    logger.error(f"Failed to parse {topic_entity}")
+
     def _parse_table_entity(self):
         for table in self.tables:
-            table_entity = self.atlas_client.get_table(table)
+            table_entity = self.atlas_client.get_entity(table)
             tbl_entities = table_entity["entities"]
             for tbl_entity in tbl_entities:
                 try:
-                    if self.current_entity_type["entity_type"] == "atlas_lineage":
+                    tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
+                    tbl_attrs = tbl_entity["attributes"]
+                    db_entity = tbl_entity["relationshipAttributes"]["db"]
+                    db = self._get_database(db_entity["displayText"])
+                    table_name = tbl_attrs["name"]
+                    fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+                    tbl_description = tbl_attrs["description"]
 
-                        tbl_columns = self._parse_table_columns(
-                            table_entity, tbl_entity
-                        )
-                        tbl_attrs = tbl_entity["attributes"]
-                        db_entity = tbl_entity["relationshipAttributes"]["db"]
-                        db = self._get_database(db_entity["displayText"])
-                        table_name = tbl_attrs["name"]
-                        fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
-                        tbl_description = tbl_attrs["description"]
+                    om_table_entity = Table(
+                        id=uuid.uuid4(),
+                        name=table_name,
+                        description=tbl_description,
+                        fullyQualifiedName=fqn,
+                        columns=tbl_columns,
+                    )
 
-                        om_table_entity = Table(
-                            id=uuid.uuid4(),
-                            name=table_name,
-                            description=tbl_description,
-                            fullyQualifiedName=fqn,
-                            columns=tbl_columns,
-                        )
+                    table_and_db = OMetaDatabaseAndTable(
+                        table=om_table_entity, database=db
+                    )
+                    yield table_and_db
 
-                        table_and_db = OMetaDatabaseAndTable(
-                            table=om_table_entity, database=db
-                        )
-                        yield table_and_db
+                    om_table_entity = CreateTableRequest(
+                        name=table_name,
+                        columns=tbl_columns,
+                        database=db.id,
+                        fullyQualifiedName=fqn,
+                    )
 
-                    if self.current_entity_type["entity_type"] == "atlas_kafka":
-
-                        tbl_attrs = tbl_entity["attributes"]
-                        table_name = tbl_attrs["name"]
-
-                        topic = CreateTopicRequest(
-                            name=table_name[0:63],
-                            service=EntityReference(
-                                id=self.message_service.id, type="messagingService"
-                            ),
-                            partitions=1,
-                        )
-
-                        yield topic
-
-                    if self.current_entity_type["entity_type"] == "atlas_rdbms":
-
-                        tbl_columns = self._parse_table_columns(
-                            table_entity, tbl_entity
-                        )
-                        tbl_attrs = tbl_entity["attributes"]
-                        db_entity = tbl_entity["relationshipAttributes"]["db"]
-                        db = self._get_database(db_entity["displayText"])
-                        table_name = tbl_attrs["name"]
-                        fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
-                        om_table_entity = CreateTableRequest(
-                            name=table_name,
-                            columns=tbl_columns,
-                            database=db.id,
-                            fullyQualifiedName=fqn,
-                        )
-
-                        created_table = self.metadata.create_or_update(om_table_entity)
-                        yield created_table
-
+                    created_table = self.metadata.create_or_update(om_table_entity)
+                    yield created_table
                     yield from self.ingest_lineage(tbl_entity["guid"])
 
                 except Exception as e:
@@ -210,7 +212,7 @@ class AtlasSource(Source):
     def ingest_lineage(self, source_guid) -> Iterable[AddLineageRequest]:
         lineage_response = self.atlas_client.get_lineage(source_guid)
         lineage_relations = lineage_response["relations"]
-        tbl_entity = self.atlas_client.get_table(lineage_response["baseEntityGuid"])
+        tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
         for key in tbl_entity["referredEntities"].keys():
             tbl_attrs = tbl_entity["referredEntities"][key]["attributes"]
             db_entity = tbl_entity["db"]
