@@ -12,7 +12,7 @@
 import re
 from urllib.parse import quote_plus
 
-from pyhive.sqlalchemy_presto import PrestoDialect
+from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
 from sqlalchemy import types, util
 from sqlalchemy.databases import mysql
 from sqlalchemy.engine import reflection
@@ -24,22 +24,14 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
-_type_map = {
-    "boolean": types.Boolean,
-    "tinyint": mysql.MSTinyInteger,
-    "smallint": types.SmallInteger,
-    "integer": types.Integer,
-    "bigint": types.BigInteger,
-    "real": types.Float,
-    "double": types.Float,
-    "varchar": types.String,
-    "timestamp": types.TIMESTAMP,
-    "date": types.DATE,
-    "varbinary": types.VARBINARY,
-    "char": types.String,
-    "decimal": types.Float,
-    "time": types.TIME,
-}
+_type_map.update(
+    {
+        "char": types.CHAR,
+        "decimal": types.Float,
+        "time": types.TIME,
+        "varchar": types.VARCHAR,
+    }
+)
 
 
 @reflection.cache
@@ -52,7 +44,17 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             # e.g. 'map<int,int>' -> 'map'
             #      'decimal(10,1)' -> decimal
             col_type = re.search(r"^\w+", row.Type).group(0)
+            # col_type_len = re.search(r"\(\d+\)", row.Type).group(0)
             coltype = _type_map[col_type]
+
+            charlen = re.search(r"\(([\d]+)\)", row.Type)
+            if charlen:
+                charlen = charlen.group(1)
+                args = (int(charlen),)
+                coltype = coltype(
+                    *args,
+                )
+            print(row.Type)
         except KeyError:
             util.warn(
                 "Did not recognize type '%s' of column '%s'" % (col_type, row.Column)
