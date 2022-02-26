@@ -1,3 +1,4 @@
+import json
 import logging
 import traceback
 import uuid
@@ -78,6 +79,8 @@ class AtlasSource(Source):
             metadata_config,
         )
         self.atlas_client = AtlasClient(config)
+        f = open(self.config.entity_types)
+        self.config.entity_types = json.load(f)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -94,7 +97,7 @@ class AtlasSource(Source):
         yield from self._parse_table_entity()
 
     def close(self):
-        pass
+        return super().close()
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -115,11 +118,7 @@ class AtlasSource(Source):
                         db = self._get_database(db_entity["displayText"])
                         table_name = tbl_attrs["name"]
                         fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
-                        tbl_description = (
-                            tbl_attrs["description"]
-                            if tbl_attrs["description"] is not None
-                            else " "
-                        )
+                        tbl_description = tbl_attrs["description"] or " "
 
                         om_table_entity = Table(
                             id=uuid.uuid4(),
@@ -174,7 +173,6 @@ class AtlasSource(Source):
                 except Exception as e:
                     logger.error("error occured", e)
                     logger.error(f"Failed to parse {table_entity}")
-                    pass
 
     def _parse_table_columns(self, table_response, tbl_entity) -> List[Column]:
         om_cols = []
@@ -209,12 +207,10 @@ class AtlasSource(Source):
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
-    def ingest_lineage(
-        self, source_guid, om_table_entity
-    ) -> Iterable[AddLineageRequest]:
-        lineageResponse = self.atlas_client.get_lineage(source_guid)
-        lineage_relations = lineageResponse["relations"]
-        tbl_entity = self.atlas_client.get_table(lineageResponse["baseEntityGuid"])
+    def ingest_lineage(self, source_guid) -> Iterable[AddLineageRequest]:
+        lineage_response = self.atlas_client.get_lineage(source_guid)
+        lineage_relations = lineage_response["relations"]
+        tbl_entity = self.atlas_client.get_table(lineage_response["baseEntityGuid"])
         for key in tbl_entity["referredEntities"].keys():
             tbl_attrs = tbl_entity["referredEntities"][key]["attributes"]
             db_entity = tbl_entity["db"]
@@ -226,7 +222,7 @@ class AtlasSource(Source):
             )
             for edge in lineage_relations:
                 if (
-                    lineageResponse["guidEntityMap"][edge["toEntityId"]]["typeName"]
+                    lineage_response["guidEntityMap"][edge["toEntityId"]]["typeName"]
                     == "processor"
                 ):
                     continue
@@ -235,7 +231,6 @@ class AtlasSource(Source):
                 db = self._get_database(db_entity["displayText"])
                 table_name = tbl_attrs["name"]
                 fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
-                fqn = f"{self.config.service_name}.{db.name}.{table_name}"
                 to_entity_ref = self.get_lineage_entity_ref(
                     fqn, self.metadata_config, "table"
                 )

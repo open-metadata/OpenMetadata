@@ -101,7 +101,7 @@ class ClientConfig(ConfigModel):
     auth_header: Optional[str] = None
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
-    auth_token_mode: Optional[str] = None
+    auth_token_mode: Optional[str] = "Bearer"
 
 
 # pylint: disable=too-many-instance-attributes

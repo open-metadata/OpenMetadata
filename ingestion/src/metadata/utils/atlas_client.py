@@ -1,7 +1,6 @@
 import base64
 import json
-from typing import List
-from urllib import response
+from typing import Any, List
 
 from pydantic import SecretStr
 
@@ -20,7 +19,7 @@ class AtlasSourceConfig(ConfigModel):
     service_name: str
     service_type: str = "Hive"
     host_port: str
-    entity_types: dict
+    entity_types: Any
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:

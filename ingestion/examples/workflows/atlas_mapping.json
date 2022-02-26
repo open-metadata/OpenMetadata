@@ -1,0 +1,9 @@
+{
+    "atlas_rdbms": {
+      "rdbms_table": {
+        "db": "rdbms_db",
+        "column": "rdbms_column"
+      }
+    },
+    "atlas_topic": ["kafka_topic","kafka_topic_2"]
+  }
