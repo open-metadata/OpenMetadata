@@ -49,6 +49,8 @@ const PLAEHOLDER_ROUTE_VERSION = ':version';
 const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
+const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
+const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -157,6 +159,10 @@ export const ROUTES = {
   WEBHOOKS: '/webhooks',
   ADD_WEBHOOK: '/add-webhook',
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
+  GLOSSARY: '/glossary',
+  ADD_GLOSSARY: '/add-glossary',
+  GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
+  GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -275,6 +281,20 @@ export const getTeamDetailsPath = (teamName: string) => {
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
   path = path.replace(PLACEHOLDER_WEBHOOK_NAME, webhookName);
+
+  return path;
+};
+
+export const getGlossaryTermsPath = (
+  glossaryName: string,
+  glossaryTerm = ''
+) => {
+  let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
+
+  if (glossaryTerm) {
+    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
+  }
 
   return path;
 };

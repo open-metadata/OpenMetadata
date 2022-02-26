@@ -208,6 +208,14 @@ declare module 'Models' {
     entityType?: string;
   };
 
+  export type FormatedUsersData = {
+    name: string;
+    displayName: string;
+    email: string;
+    type: string;
+    id: string;
+  };
+
   export type NewUser = {
     name: string;
     email: string;

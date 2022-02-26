@@ -54,6 +54,21 @@ export const formatDataResponse = (hits) => {
   return formattedData;
 };
 
+export const formatUsersResponse = (res) => {
+  const { hits } = res.data.hits;
+  const users = hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.display_name,
+      email: d._source.email,
+      type: d._source.entity_type,
+      id: d._source.user_id,
+    };
+  });
+
+  return users;
+};
+
 const formatPost = (post) => {
   return {
     title: post.from,

@@ -130,7 +130,7 @@ const UserCard = ({
         )}
 
         <div
-          className={classNames('tw-flex tw-flex-col', {
+          className={classNames('tw-flex tw-justify-center tw-flex-col', {
             'tw-pl-2': !isDataset,
           })}
           data-testid="data-container">
@@ -146,13 +146,15 @@ const UserCard = ({
                 title={item.description}>
                 {item.description}
               </p>
-              <p
-                className={classNames(
-                  isActionVisible ? 'tw-truncate tw-w-32' : null
-                )}
-                title={isIconVisible ? item.name : capitalize(item.name)}>
-                {isIconVisible ? item.name : capitalize(item.name)}
-              </p>
+              {item.name && (
+                <p
+                  className={classNames(
+                    isActionVisible ? 'tw-truncate tw-w-32' : null
+                  )}
+                  title={isIconVisible ? item.name : capitalize(item.name)}>
+                  {isIconVisible ? item.name : capitalize(item.name)}
+                </p>
+              )}
             </>
           )}
         </div>
