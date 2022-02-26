@@ -31,7 +31,7 @@ export type OidcUser = {
   profile: UserProfile;
 };
 
-export type AuthenticatorRef = {
-  invokeLogin: () => string;
-  invokeLogout: () => string;
-};
+export interface AuthenticatorRef {
+  invokeLogin: () => void;
+  invokeLogout: () => void;
+}

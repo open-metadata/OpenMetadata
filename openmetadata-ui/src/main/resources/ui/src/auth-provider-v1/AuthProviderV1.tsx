@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const history = useHistory();
   const showToast = useToastContext();
 
-  const authenticatorRef = useRef<AuthenticatorRef>();
+  const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const oidcUserToken = localStorage.getItem(oidcTokenKey);
 

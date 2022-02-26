@@ -1,18 +1,34 @@
-import PropTypes from 'prop-types';
-import { forwardRef, useImperativeHandle } from 'react';
-import { useGoogleLogin, useGoogleLogout } from 'react-google-login';
-import { useAuthContext } from '../auth-provider-v1/AuthProviderV1';
-import { refreshTokenSetup } from '../auth-provider-v1/refreshToken';
+// import PropTypes from 'prop-types';
+import React, {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useImperativeHandle,
+} from 'react';
+import {
+  GoogleLoginResponse,
+  useGoogleLogin,
+  useGoogleLogout,
+} from 'react-google-login';
 import { oidcTokenKey } from '../constants/constants';
+import { useAuthContext } from './AuthProviderV1';
+import { AuthenticatorRef, OidcUser } from './AuthProviderV1.interface';
+import { refreshTokenSetup } from './refreshToken';
 
-const GoogleAuthenticator = forwardRef(
-  ({ children, onLoginSuccess, onLogoutSuccess }, ref) => {
+interface Props {
+  children: ReactNode;
+  onLoginSuccess: (user: OidcUser) => void;
+  onLogoutSuccess: () => void;
+}
+
+const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
+  ({ children, onLoginSuccess, onLogoutSuccess }: Props, ref) => {
     const { authConfig, setIsAuthenticated } = useAuthContext();
 
     const googleClientLogin = useGoogleLogin({
       clientId: authConfig.clientId,
       onSuccess: (res) => {
-        const { tokenObj, profileObj } = res;
+        const { tokenObj, profileObj } = res as GoogleLoginResponse;
         const user = {
           // eslint-disable-next-line @typescript-eslint/camelcase
           id_token: tokenObj.id_token,
@@ -40,15 +56,15 @@ const GoogleAuthenticator = forwardRef(
 
     const googleClientLogout = useGoogleLogout({
       clientId: authConfig.clientId,
-      onLogoutSuccess: (res) => {
+      onLogoutSuccess: () => {
         // eslint-disable-next-line no-console
-        console.log('Logout Success: currentUser:', res);
+        console.log('Logout Success!');
         setIsAuthenticated(false);
         onLogoutSuccess();
       },
-      onFailure: (res) => {
+      onFailure: () => {
         // eslint-disable-next-line no-console
-        console.log('Logout failed: res:', res);
+        console.log('Logout failed!');
       },
       cookiePolicy: 'single_host_origin',
     });
@@ -62,15 +78,15 @@ const GoogleAuthenticator = forwardRef(
       },
     }));
 
-    return children;
+    return <Fragment>{children}</Fragment>;
   }
 );
 
-GoogleAuthenticator.propTypes = {
-  children: PropTypes.node,
-  onLoginSuccess: PropTypes.func,
-  onLogoutSuccess: PropTypes.func,
-};
+// GoogleAuthenticator.propTypes = {
+//   children: PropTypes.node,
+//   onLoginSuccess: PropTypes.func,
+//   onLogoutSuccess: PropTypes.func,
+// };
 
 GoogleAuthenticator.displayName = 'GoogleAuthenticator';
 
