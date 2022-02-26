@@ -28,7 +28,7 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutMappingRequest;
-import org.elasticsearch.xcontent.XContentType;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
@@ -435,7 +435,7 @@ class TableESIndex extends ElasticSearchIndex {
     return tableESIndexBuilder;
   }
 
-  private static List<FlattenColumn> parseColumns(
+  public static List<FlattenColumn> parseColumns(
       List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
     Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
     List<String> tags = new ArrayList<>();

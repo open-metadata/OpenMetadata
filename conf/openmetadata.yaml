@@ -118,6 +118,14 @@ elasticsearch:
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
 
+atlas:
+  host: ${ATLAS_HOST:-136.243.150.188}
+  port: ${ATLAS_PORT:-21000}
+  username: ${ATLAS_USER:-admin}
+  password: ${ATLAS_PASSWORD:-admin}
+  scheme: ${ATLAS_HTTP_SCHEME:-http}
+  tableEntityName: ${ATLAS_TABLE_ENTITY_NAME:-Table}
+
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
