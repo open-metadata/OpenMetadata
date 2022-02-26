@@ -47,7 +47,7 @@ interface FeedPanelBodyProp extends HTMLAttributes<HTMLDivElement> {
   isLoading: boolean;
 }
 
-const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
+export const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
   entityField,
   className,
@@ -79,7 +79,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   );
 };
 
-const FeedPanelOverlay: FC<FeedPanelOverlayProp> = ({
+export const FeedPanelOverlay: FC<FeedPanelOverlayProp> = ({
   className,
   onCancel,
 }) => {

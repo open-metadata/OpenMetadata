@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityThread } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityFieldThreads,
+  EntityThread,
+  EntityThreadField,
+} from 'Models';
 import TurndownService from 'turndown';
 import { EntityRegEx } from '../constants/feed.constants';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
@@ -65,4 +70,28 @@ export const getReplyText = (count: number) => {
   if (count === 1) return `${count} Reply`;
 
   return `${count} Replies`;
+};
+
+export const getEntityFieldThreadCounts = (
+  field: EntityThreadField,
+  entityFieldThreadCount: EntityFieldThreadCount[]
+) => {
+  const entityFieldThreads: EntityFieldThreads[] = [];
+
+  entityFieldThreadCount.map((fieldCount) => {
+    const entityField = getEntityField(fieldCount.entityLink);
+    if (entityField?.startsWith(field)) {
+      entityFieldThreads.push({
+        entityLink: fieldCount.entityLink,
+        count: fieldCount.count,
+        entityField,
+      });
+    }
+  });
+
+  return entityFieldThreads;
+};
+
+export const getThreadField = (value: string, separator = '/') => {
+  return value.split(separator).slice(-2);
 };

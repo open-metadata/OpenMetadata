@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { upperCase } from 'lodash';
 import { EntityTags, TableDetail } from 'Models';
 import React from 'react';
 import AppState from '../AppState';
@@ -26,7 +27,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
-import { Column, Table } from '../generated/entity/data/table';
+import { Column, DataType, Table } from '../generated/entity/data/table';
 import { TagLabel } from '../generated/type/tagLabel';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
@@ -260,4 +261,32 @@ export const makeData = (
   }));
 
   return data;
+};
+
+export const getDataTypeString = (dataType: string): string => {
+  switch (upperCase(dataType)) {
+    case DataType.String:
+    case DataType.Char:
+    case DataType.Text:
+    case DataType.Varchar:
+    case DataType.Mediumtext:
+    case DataType.Mediumblob:
+    case DataType.Blob:
+      return 'varchar';
+    case DataType.Timestamp:
+    case DataType.Time:
+      return 'timestamp';
+    case DataType.Int:
+    case DataType.Float:
+    case DataType.Smallint:
+    case DataType.Bigint:
+    case DataType.Numeric:
+    case DataType.Tinyint:
+      return 'numeric';
+    case DataType.Boolean:
+    case DataType.Enum:
+      return 'boolean';
+    default:
+      return dataType;
+  }
 };

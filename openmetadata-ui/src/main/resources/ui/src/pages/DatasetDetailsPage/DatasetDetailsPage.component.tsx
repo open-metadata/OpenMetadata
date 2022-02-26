@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import {
+  EntityFieldThreadCount,
   EntityTags,
   EntityThread,
   LeafNodes,
@@ -142,6 +143,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
 
   const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -357,6 +361,20 @@ const DatasetDetailsPage: FunctionComponent = () => {
     fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
   }, [activeTab]);
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN))
+      .then((res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feed count',
+        });
+      });
+  };
+
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
     const jsonPatch = compare(tableDetails, updatedData);
 
@@ -373,6 +391,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setCurrentVersion(version);
         setTableDetails(res.data);
         setDescription(description);
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
@@ -393,6 +412,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableDetails(res.data);
         setColumns(columns);
         setTableTags(getTableTags(columns || []));
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
@@ -413,6 +433,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setTableDetails(res.data);
           setOwner(owner);
           setTier(getTierTags(tags));
+          getEntityFeedCount();
           resolve();
         })
         .catch((err: AxiosError) => {
@@ -537,6 +558,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               }
             });
           });
+          getEntityFeedCount();
         }
       })
       .catch(() => {
@@ -545,14 +567,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           body: 'Error while posting feed',
         });
       });
-  };
-
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN)).then(
-      (res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-      }
-    );
   };
 
   useEffect(() => {
@@ -590,6 +604,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={name}

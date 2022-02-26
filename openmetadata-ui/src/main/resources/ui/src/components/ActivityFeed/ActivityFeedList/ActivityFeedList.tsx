@@ -53,7 +53,7 @@ interface FeedListBodyProp
   onViewMore: () => void;
 }
 
-const FeedListSeparator: FC<FeedListSeparatorProp> = ({
+export const FeedListSeparator: FC<FeedListSeparatorProp> = ({
   className,
   relativeDay,
 }) => {

@@ -12,6 +12,7 @@
  */
 
 import {
+  EntityFieldThreadCount,
   EntityTags,
   EntityThread,
   LeafNodes,
@@ -65,6 +66,7 @@ export interface DatasetDetailsProps {
   isQueriesLoading?: boolean;
   isentityThreadLoading: boolean;
   feedCount: number;
+  entityFieldThreadCount: EntityFieldThreadCount[];
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;

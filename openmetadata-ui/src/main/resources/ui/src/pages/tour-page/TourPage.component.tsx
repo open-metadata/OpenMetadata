@@ -179,6 +179,7 @@ const TourPage = () => {
             datasetFQN={mockDatasetData.datasetFQN}
             description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
+            entityFieldThreadCount={[]}
             entityLineage={mockDatasetData.entityLineage}
             entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}
