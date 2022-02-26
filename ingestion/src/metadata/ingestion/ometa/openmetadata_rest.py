@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
+from metadata.ingestion.ometa.client import APIError
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +89,11 @@ class NoOpAuthenticationProvider(AuthenticationProvider):
     def create(cls, config: MetadataServerConfig):
         return cls(config)
 
-    def auth_token(self) -> str:
-        return "no_token"
+    def auth_token(self):
+        pass
+
+    def get_access_token(self):
+        return ("no_token", None)
 
 
 class GoogleAuthenticationProvider(AuthenticationProvider):
@@ -110,7 +114,12 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         )
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
-        return credentials.token
+        self.generated_auth_token = credentials.token
+        self.expiry = credentials.expiry
+
+    def get_access_token(self):
+        self.auth_token()
+        return (self.generated_auth_token, self.expiry)
 
 
 class OktaAuthenticationProvider(AuthenticationProvider):
@@ -138,15 +147,14 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
-            generated_JWT_ID = str(uuid.uuid4())
-
+            generated_jwt_id = str(uuid.uuid4())
             claims = {
                 "sub": self.config.client_id,
                 "iat": issued_time,
                 "exp": expiry_time,
                 "iss": self.config.client_id,
                 "aud": self.config.org_url,
-                "jti": generated_JWT_ID,
+                "jti": generated_jwt_id,
             }
             token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
             config = {
@@ -185,15 +193,31 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 token_request_object[0]
             )
             if err:
-                raise Exception(f"{err}")
-            return json.loads(res_json).get("access_token")
+                raise APIError(f"{err}")
+            response_dict = json.loads(res_json)
+            self.generated_auth_token = response_dict.get("access_token")
+            self.expiry = response_dict.get("expires_in")
         except Exception as err:
             logger.debug(traceback.print_exc())
             logger.error(err)
             sys.exit()
 
+    def get_access_token(self):
+        import asyncio
+
+        asyncio.run(self.auth_token())
+        return (self.generated_auth_token, self.expiry)
+
 
 class Auth0AuthenticationProvider(AuthenticationProvider):
+    """
+    OAuth authentication implementation
+    Args:
+        config (MetadataServerConfig):
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
     def __init__(self, config: MetadataServerConfig):
         self.config = config
 
@@ -212,4 +236,9 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         res = conn.getresponse()
         data = res.read()
         token = json.loads(data.decode("utf-8"))
-        return token["access_token"]
+        self.generated_auth_token = token["access_token"]
+        self.expiry = token["expires_in"]
+
+    def get_access_token(self):
+        self.auth_token()
+        return (self.generated_auth_token, self.expiry)

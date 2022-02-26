@@ -27,4 +27,18 @@ class AuthenticationProvider(metaclass=ABCMeta):
 
     @abstractmethod
     def auth_token(self) -> str:
-        pass
+        """
+        Authentication token
+
+        Returns:
+            str
+        """
+
+    @abstractmethod
+    def get_access_token(self):
+        """
+        Authentication token
+
+        Returns:
+            str
+        """
