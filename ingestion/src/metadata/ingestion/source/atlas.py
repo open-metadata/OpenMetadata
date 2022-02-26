@@ -86,6 +86,9 @@ class AtlasSource(Source):
             raise FileNotFoundError()
         f = open(self.config.entity_types)
         self.config.entity_types = json.load(f)
+        print(
+            "-============",
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -94,12 +97,14 @@ class AtlasSource(Source):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        self.tables = self.atlas_client.list_entities(
-            entity_type=self.config.entity_types["Table"]
-        )
-        self.topics = self.atlas_client.list_entities(
-            entity_type=self.config.entity_types["Topic"]
-        )
+        for table in self.config.entity_types["Table"].keys():
+            self.tables = self.atlas_client.list_entities(
+                entity_type=self.config.entity_types["Table"][table]
+            )
+        for topic in self.config.entity_types["Table"].keys():
+            self.topics = self.atlas_client.list_entities(
+                entity_type=self.config.entity_types["Topic"][topic]
+            )
 
     def next_record(self):
         if self.tables:
@@ -144,7 +149,7 @@ class AtlasSource(Source):
                 try:
                     tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
                     tbl_attrs = tbl_entity["attributes"]
-                    db_entity = tbl_entity["relationshipAttributes"]["db"]
+                    db_entity = self.config.entity_types["Table"][table]["db"]
                     db = self._get_database(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
                     fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
@@ -163,15 +168,6 @@ class AtlasSource(Source):
                     )
                     yield table_and_db
 
-                    om_table_entity = CreateTableRequest(
-                        name=table_name,
-                        columns=tbl_columns,
-                        database=db.id,
-                        fullyQualifiedName=fqn,
-                    )
-
-                    created_table = self.metadata.create_or_update(om_table_entity)
-                    yield created_table
                     yield from self.ingest_lineage(tbl_entity["guid"])
 
                 except Exception as e:
