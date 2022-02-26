@@ -80,6 +80,7 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String THREAD = "thread";
+  public static final String TAG = "tag";
 
   //
   // Policies

@@ -16,6 +16,7 @@ from typing import Iterable, List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -38,6 +39,7 @@ class MetadataTablesRestSourceConfig(ConfigModel):
     include_pipelines: Optional[bool] = True
     include_users: Optional[bool] = True
     include_teams: Optional[bool] = True
+    include_glossary_terms: Optional[bool] = True
     limit_records: int = 1000
 
 
@@ -99,6 +101,15 @@ class MetadataSourceStatus(SourceStatus):
         """
         self.success.append(user_name)
         logger.info("User Scanned: %s", user_name)
+
+    def scanned_glossary_term(self, glossary_term: str) -> None:
+        """scanned glossary method
+
+        Args:
+            glossary_term (str)
+        """
+        self.success.append(glossary_term)
+        logger.info("Glossary Term Scanned: %s", glossary_term)
 
     # pylint: disable=unused-argument
     def filtered(
@@ -169,6 +180,7 @@ class MetadataSource(Source[Entity]):
         yield from self.fetch_pipeline()
         yield from self.fetch_users()
         yield from self.fetch_teams()
+        yield from self.fetch_glossary_terms()
 
     def fetch_table(self) -> Table:
         """Fetch table method
@@ -314,6 +326,28 @@ class MetadataSource(Source[Entity]):
                 if team_entities.after is None:
                     break
                 after = team_entities.after
+
+    def fetch_glossary_terms(self) -> GlossaryTerm:
+        """fetch glossary terms method
+
+        Returns:
+            GlossaryTerm:
+        """
+        if self.config.include_glossary_terms:
+            after = None
+            while True:
+                glossary_term_entities = self.metadata.list_entities(
+                    entity=GlossaryTerm,
+                    fields=[],
+                    after=after,
+                    limit=self.config.limit_records,
+                )
+                for glossary_term in glossary_term_entities.entities:
+                    self.status.scanned_team(glossary_term.name)
+                    yield glossary_term
+                if glossary_term_entities.after is None:
+                    break
+                after = glossary_term_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status
