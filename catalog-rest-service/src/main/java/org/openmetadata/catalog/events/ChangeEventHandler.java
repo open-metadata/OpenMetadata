@@ -183,7 +183,7 @@ public class ChangeEventHandler implements EventHandler {
     }
 
     var entityInterface = Entity.getEntityInterface(entity);
-    if (entityInterface == null || entityInterface.getChangeDescription() == null) {
+    if (entityInterface.getChangeDescription() == null) {
       return null;
     }
     List<FieldChange> fieldsUpdated = entityInterface.getChangeDescription().getFieldsUpdated();
