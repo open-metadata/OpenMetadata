@@ -14,7 +14,6 @@ from urllib.parse import quote_plus
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
 from sqlalchemy import types, util
-from sqlalchemy.databases import mysql
 from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.services.databaseService import (
