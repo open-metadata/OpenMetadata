@@ -147,7 +147,7 @@ class AtlasSource(Source):
             tbl_entities = table_entity["entities"]
             for tbl_entity in tbl_entities:
                 try:
-                    tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
+                    tbl_columns = self._parse_table_columns(table_entity, table)
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = self.config.entity_types["Table"][table]["db"]
                     db = self._get_database(db_entity["displayText"])
@@ -174,9 +174,9 @@ class AtlasSource(Source):
                     logger.error("error occured", e)
                     logger.error(f"Failed to parse {table_entity}")
 
-    def _parse_table_columns(self, table_response, tbl_entity) -> List[Column]:
+    def _parse_table_columns(self, table_response, table) -> List[Column]:
         om_cols = []
-        col_entities = tbl_entity["relationshipAttributes"]["columns"]
+        col_entities = self.config.entity_types["Table"][table]["column"]
         referred_entities = table_response["referredEntities"]
         ordinal_pos = 1
         for col in col_entities:
