@@ -162,6 +162,9 @@ class Workflow:
             if hasattr(self, "sink"):
                 self.sink.write_record(processed_record)
                 self.report["sink"] = self.sink.get_status().as_obj()
+        if hasattr(self, "bulk_sink"):
+            self.bulk_sink.write_records()
+            self.report["Bulk_Sink"] = self.bulk_sink.get_status().as_obj()
 
     def stop(self):
         if hasattr(self, "processor"):
@@ -169,8 +172,6 @@ class Workflow:
         if hasattr(self, "stage"):
             self.stage.close()
         if hasattr(self, "bulk_sink"):
-            self.bulk_sink.write_records()
-            self.report["Bulk_Sink"] = self.bulk_sink.get_status().as_obj()
             self.bulk_sink.close()
         if hasattr(self, "sink"):
             self.sink.close()
