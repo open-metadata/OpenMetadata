@@ -40,7 +40,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSourceStatus
-from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.utils.helpers import get_dashboard_service_or_create, ingest_lineage
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
@@ -134,8 +134,8 @@ class MetabaseSource(Source[Entity]):
         return cls(config, metadata_config, ctx)
 
     def next_record(self) -> Iterable[Entity]:
-        # yield from self.get_dashboards()
-        yield from self.get_cards()
+        yield from self.get_dashboards()
+        self.get_cards()
 
     def get_charts(self, charts) -> Iterable[Chart]:
         """Get chart method
@@ -272,13 +272,14 @@ class MetabaseSource(Source[Entity]):
                         .get("native", {})
                         .get("query", "")
                     )
+
                 query_info = {
                     "sql": raw_query,
                     "from_type": "table",
                     "to_type": "table",
                     "service_name": self.config.service_name,
                 }
-                self.ingest_lineage(query_info, self.metadata_config)
+                ingest_lineage(query_info, self.metadata_config)
             except Exception as e:
                 logger.error(repr(e))
 
@@ -288,7 +289,6 @@ class MetabaseSource(Source[Entity]):
         if resp_dashboards.status_code == 200:
             for dashboard in resp_dashboards.json():
                 resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
-                print("db_id===============>", dashboard["id"])
                 dashboard_details = resp_dashboard.json()
                 card_list = dashboard_details["ordered_cards"]
-                yield from ingest_lineage(card_list, self.metadata_config)
+                self.get_card_detail(card_list)
