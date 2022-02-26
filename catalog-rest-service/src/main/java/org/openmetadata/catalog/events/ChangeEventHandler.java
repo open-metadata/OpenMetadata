@@ -24,6 +24,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -207,7 +208,7 @@ public class ChangeEventHandler implements EventHandler {
       String fieldName = field.getName();
       String arrayFieldName = null;
       String arrayFieldValue = null;
-      String newFieldValue = field.getNewValue().toString();
+      String newFieldValue = field.getNewValue() != null ? field.getNewValue().toString() : StringUtils.EMPTY;
       if (fieldName.contains(".")) {
         String[] fieldNameParts = fieldName.split("\\.");
         // For array type, it should have 3 ex: columns.comment.description
