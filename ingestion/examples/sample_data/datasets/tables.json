@@ -1453,8 +1453,8 @@
     },
     {
       "id": "9c96042f-311a-4826-b5b2-8658914e2ee8",
-      "name": "dim_customer",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer",
+      "name": "customer_dim",
+      "fullyQualifiedName": "bigquery_gcp.shopify.customer_dim",
       "description": "The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.",
       "version": 0.1,
       "updatedAt": 1638354087492,
@@ -1467,7 +1467,7 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the customer. This is the primary key column for this table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+          "fullyQualifiedName": "bigquery_gcp.shopify.customer_dim.customer_id",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1

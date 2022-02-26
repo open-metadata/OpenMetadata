@@ -142,6 +142,14 @@ elasticsearch:
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
 
+atlas:
+  host: ${ATLAS_HOST:-136.243.150.188}
+  port: ${ATLAS_PORT:-21000}
+  username: ${ATLAS_USER:-admin}
+  password: ${ATLAS_PASSWORD:-admin}
+  scheme: ${ATLAS_HTTP_SCHEME:-http}
+  tableEntityName: ${ATLAS_TABLE_ENTITY_NAME:-Table}
+
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
