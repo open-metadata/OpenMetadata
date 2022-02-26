@@ -119,8 +119,11 @@ class NoOpAuthenticationProvider(AuthenticationProvider):
     def create(cls, config: MetadataServerConfig):
         return cls(config)
 
-    def auth_token(self) -> str:
-        return "no_token"
+    def auth_token(self):
+        pass
+
+    def get_access_token(self):
+        return ("no_token", None)
 
 
 class GoogleAuthenticationProvider(AuthenticationProvider):
@@ -151,7 +154,12 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         )
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
-        return credentials.token
+        self.generated_auth_token = credentials.token
+        self.expiry = credentials.expiry
+
+    def get_access_token(self):
+        self.auth_token()
+        return (self.generated_auth_token, self.expiry)
 
 
 class OktaAuthenticationProvider(AuthenticationProvider):
@@ -180,7 +188,6 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
             generated_jwt_id = str(uuid.uuid4())
-
             claims = {
                 "sub": self.config.client_id,
                 "iat": issued_time,
@@ -227,11 +234,19 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             )
             if err:
                 raise APIError(f"{err}")
-            return json.loads(res_json).get("access_token")
+            response_dict = json.loads(res_json)
+            self.generated_auth_token = response_dict.get("access_token")
+            self.expiry = response_dict.get("expires_in")
         except Exception as err:
             logger.debug(traceback.print_exc())
             logger.error(err)
             sys.exit()
+
+    def get_access_token(self):
+        import asyncio
+
+        asyncio.run(self.auth_token())
+        return (self.generated_auth_token, self.expiry)
 
 
 class Auth0AuthenticationProvider(AuthenticationProvider):
@@ -261,4 +276,9 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         res = conn.getresponse()
         data = res.read()
         token = json.loads(data.decode("utf-8"))
-        return token["access_token"]
+        self.generated_auth_token = token["access_token"]
+        self.expiry = token["expires_in"]
+
+    def get_access_token(self):
+        self.auth_token()
+        return (self.generated_auth_token, self.expiry)
