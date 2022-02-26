@@ -1,6 +1,5 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
-import javax.annotation.Nonnull;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;

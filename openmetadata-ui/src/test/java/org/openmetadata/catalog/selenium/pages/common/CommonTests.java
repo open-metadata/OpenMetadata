@@ -140,7 +140,7 @@ public class CommonTests {
     Events.click(webDriver, common.descriptionSaveButton());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
-    Assert.assertEquals(errorMessage.getText(),"Name with space is not allowed");
+    Assert.assertEquals(errorMessage.getText(), "Name with space is not allowed");
     webDriver.navigate().refresh();
     URL tagUrl = new URL(url + urlTag);
     HttpURLConnection http = (HttpURLConnection) tagUrl.openConnection();
@@ -356,8 +356,8 @@ public class CommonTests {
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), tableName);
     actions.moveToElement(webDriver.findElement(common.searchSuggestion()));
-    Events.click(webDriver,common.searchSuggestion());
-    //Events.click(webDriver, common.searchSuggestion());
+    Events.click(webDriver, common.searchSuggestion());
+    // Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton()));
     Events.click(webDriver, common.editAssociatedTagButton());
@@ -373,7 +373,7 @@ public class CommonTests {
     Events.click(webDriver, common.saveAssociatedTag());
     Object tagsCount = webDriver.findElements(common.tagCount()).size();
     webDriver.get("http://localhost:8585/explore/tables");
-    Events.click(webDriver,common.viewMore());
+    Events.click(webDriver, common.viewMore());
     Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
     Assert.assertEquals(tagsFilterCount.toString(), tagsCount.toString());
   }
@@ -436,7 +436,7 @@ public class CommonTests {
     try {
       WebElement searchResult = wait.until(ExpectedConditions.presenceOfElementLocated(common.searchResults()));
       if (searchResult.isDisplayed()) {
-        Assert.assertEquals(searchResult.getText(),"No matching data assets found for "+sendKeys);
+        Assert.assertEquals(searchResult.getText(), "No matching data assets found for " + sendKeys);
       }
     } catch (TimeoutException exception) {
       throw new TimeoutException("No search results found");

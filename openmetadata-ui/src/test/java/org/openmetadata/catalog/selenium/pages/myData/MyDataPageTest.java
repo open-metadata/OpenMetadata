@@ -258,7 +258,7 @@ public class MyDataPageTest {
         Assert.assertEquals(recentSearch.getText(), searchCriteria);
       }
     } catch (Exception e) {
-      Assert.fail(searchCriteria+" not displayed in recent search");
+      Assert.fail(searchCriteria + " not displayed in recent search");
     }
   }
 

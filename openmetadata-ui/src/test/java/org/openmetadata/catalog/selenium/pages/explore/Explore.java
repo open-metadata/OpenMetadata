@@ -12,7 +12,6 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -220,8 +219,10 @@ class Explore {
     Events.click(webDriver, tableDetails.editDescriptionButton());
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
-    new WebDriverWait(webDriver, 10).until(
-            webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
+    new WebDriverWait(webDriver, 10)
+        .until(
+            webDriver ->
+                ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
     Events.click(webDriver, explorePage.explore());
     Events.click(webDriver, explorePage.lastWeekSortDesc());
     Events.click(webDriver, explorePage.lastWeekSortAesc());

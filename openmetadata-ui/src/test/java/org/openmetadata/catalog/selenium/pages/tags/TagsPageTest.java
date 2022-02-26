@@ -28,7 +28,6 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -216,7 +215,7 @@ public class TagsPageTest {
     String tagName = faker.name().firstName();
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTagsPage();
-    for(int i=0;i<2;i++){
+    for (int i = 0; i < 2; i++) {
       Events.click(webDriver, common.containsText("PersonalData"));
       Events.click(webDriver, common.addTagButton());
       Thread.sleep(waitTime);
@@ -225,7 +224,7 @@ public class TagsPageTest {
     }
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
-    Assert.assertEquals(errorMessage.getText(),"Name already exists");
+    Assert.assertEquals(errorMessage.getText(), "Name already exists");
   }
 
   @Test
