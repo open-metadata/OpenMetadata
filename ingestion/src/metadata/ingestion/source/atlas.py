@@ -3,6 +3,7 @@ import logging
 import traceback
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
@@ -79,6 +80,10 @@ class AtlasSource(Source):
             metadata_config,
         )
         self.atlas_client = AtlasClient(config)
+        path = Path(self.config.entity_types)
+        if path.is_file():
+            logger.error(f"File not found {self.config.entity_types}")
+            raise FileNotFoundError()
         f = open(self.config.entity_types)
         self.config.entity_types = json.load(f)
 
@@ -90,26 +95,23 @@ class AtlasSource(Source):
 
     def prepare(self):
         self.tables = self.atlas_client.list_entities(
-            entity_type=self.config.entity_type["Table"]
+            entity_type=self.config.entity_types["Table"]
         )
         self.topics = self.atlas_client.list_entities(
-            entity_type=self.config.entity_type["Topic"]
+            entity_type=self.config.entity_types["Topic"]
         )
 
     def next_record(self):
-        yield from self._parse_table_entity()
+        if self.tables:
+            yield from self._parse_table_entity()
+        if self.topics:
+            yield from self._parse_topic_entity()
 
     def close(self):
         return super().close()
 
     def get_status(self) -> SourceStatus:
         return self.status
-
-    def _parse_entity(self):
-        if self.tables:
-            self._parse_table_entity()
-        if self.topics:
-            self._parse_topic_entity()
 
     def _parse_topic_entity(self):
         for topic in self.topics:
