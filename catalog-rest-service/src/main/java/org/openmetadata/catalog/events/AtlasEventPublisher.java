@@ -105,7 +105,7 @@ public class AtlasEventPublisher extends AbstractEventPublisher {
             if (fieldChange.getName().contains("tags")) {
               List<String> tags = parseTags((String) fieldChange.getNewValue());
               // if there are new tags in OM add them to Atlas
-              addOpenMetadataTagsToAtlas(table, tags);
+              addOpenMetadataTagsToAtlas(tags);
               addTagsToAtlas(tableGuid, tags);
             }
           }
@@ -142,7 +142,7 @@ public class AtlasEventPublisher extends AbstractEventPublisher {
     return entities.get(0).get("guid").asText();
   }
 
-  private void addOpenMetadataTagsToAtlas(Table table, List<String> tags)
+  private void addOpenMetadataTagsToAtlas(List<String> tags)
       throws URISyntaxException, IOException, InterruptedException {
     String url = atlasUrl + TAG_CREATE;
     for (String tag : tags) {
