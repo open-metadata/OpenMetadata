@@ -32,7 +32,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private static final Fields UPDATE_FIELDS = new Fields(MessagingServiceResource.FIELD_LIST, "owner");
+  private static final Fields UPDATE_FIELDS = new Fields(MessagingServiceResource.ALLOWED_FIELDS, "owner");
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(

@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -110,7 +109,7 @@ public class TopicResource {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Topic.class);
 
   @GET
   @Operation(
@@ -159,7 +158,7 @@ public class TopicResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Topic> topics;
     if (before != null) { // Reverse paging
@@ -219,7 +218,7 @@ public class TopicResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -252,7 +251,7 @@ public class TopicResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Topic topic = dao.getByName(uriInfo, fqn, fields, include);
     addHref(uriInfo, topic);
     return Response.ok(topic).build();
@@ -329,7 +328,7 @@ public class TopicResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, "owner");
     Topic topic = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(topic).getEntityReference(), patch);
@@ -355,7 +354,6 @@ public class TopicResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException, ParseException {
     Topic topic = getTopic(securityContext, create);
-    ;
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(topic));
     PutResponse<Topic> response = dao.createOrUpdate(uriInfo, topic);
     addHref(uriInfo, response.getEntity());

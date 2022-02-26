@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -104,13 +105,22 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   /** Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
-    // .../charts?fields=owner
-    String fields = "owner";
+    String fields = "";
     chart =
         byName
             ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(chart.getOwner(), chart.getService(), chart.getServiceType());
+    assertListNotNull(chart.getService(), chart.getServiceType());
+    assertListNull(chart.getOwner(), chart.getFollowers(), chart.getTags());
+
+    // .../charts?fields=owner
+    fields = "owner,followers,tags";
+    chart =
+        byName
+            ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(chart.getService(), chart.getServiceType());
+    assertListNotNull(chart.getOwner(), chart.getFollowers(), chart.getTags());
   }
 
   @Override
@@ -138,11 +148,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
         createRequest.getOwner());
     assertNotNull(chart.getServiceType());
     assertService(createRequest.getService(), chart.getService());
-  }
-
-  @Override
-  public void validateUpdatedEntity(Chart updatedEntity, CreateChart request, Map<String, String> authHeaders) {
-    validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   @Override

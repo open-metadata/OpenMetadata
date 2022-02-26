@@ -136,28 +136,23 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
-    // .../databases?fields=owner
-    String fields = "owner";
+    String fields = "";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(database.getOwner(), database.getService(), database.getServiceType());
-    assertListNull(database.getTables(), database.getUsageSummary());
+    assertListNotNull(database.getService(), database.getServiceType());
+    assertListNull(database.getOwner(), database.getTables(), database.getUsageSummary(), database.getLocation());
 
-    // .../databases?fields=owner,tables,usageSummary
-    fields = "owner,tables,usageSummary";
+    fields = "owner,tables,usageSummary,location";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(
-        database.getOwner(),
-        database.getService(),
-        database.getServiceType(),
-        database.getTables(),
-        database.getUsageSummary());
-    TestUtils.validateEntityReference(database.getTables());
+    assertListNotNull(database.getService(), database.getServiceType());
+    // Fields usageSummary and location are not set during creation - tested elsewhere
+    assertListNotNull(database.getOwner(), database.getTables() /*database.getUsageSummary(), database.getLocation()*/);
+    TestUtils.validateEntityReferences(database.getTables());
   }
 
   @Override
@@ -185,11 +180,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Validate service
     assertNotNull(database.getServiceType());
     assertService(createRequest.getService(), database.getService());
-  }
-
-  @Override
-  public void validateUpdatedEntity(Database updatedEntity, CreateDatabase request, Map<String, String> authHeaders) {
-    validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   @Override

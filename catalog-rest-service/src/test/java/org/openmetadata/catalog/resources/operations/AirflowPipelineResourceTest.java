@@ -32,6 +32,7 @@ import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -152,13 +153,6 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         createRequest.getOwner());
     assertEquals(createRequest.getConcurrency(), ingestion.getConcurrency());
     validatePipelineConfig(createRequest.getPipelineConfig(), ingestion.getPipelineConfig());
-  }
-
-  @Override
-  public void validateUpdatedEntity(
-      AirflowPipeline ingestion, CreateAirflowPipeline request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(ingestion, request, authHeaders);
   }
 
   @Override
@@ -516,8 +510,15 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
    */
   @Override
   public void validateGetWithDifferentFields(AirflowPipeline ingestion, boolean byName) throws HttpResponseException {
-    // .../Pipelines?fields=owner
-    String fields = "owner";
+    String fields = "";
+    ingestion =
+        byName
+            ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(ingestion.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(ingestion.getService());
+    assertListNull(ingestion.getOwner());
+
+    fields = "owner";
     ingestion =
         byName
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -232,6 +233,9 @@ class OpenMetadata(
 
         if issubclass(entity, Glossary):
             return "/glossaries"
+
+        if issubclass(entity, GlossaryTerm):
+            return "/glossaryTerms"
 
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
             return "/roles"

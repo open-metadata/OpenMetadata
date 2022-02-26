@@ -15,12 +15,12 @@ package org.openmetadata.catalog.resources.mlmodels;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -362,40 +362,22 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   @Override
   public void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
     // .../models?fields=owner
-    String fields = "owner";
+    String fields = "";
     model =
         byName
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertNotNull(model.getOwner(), model.getAlgorithm());
-    assertNull(model.getDashboard());
+    assertListNull(
+        model.getOwner(), model.getDashboard(), model.getFollowers(), model.getTags(), model.getUsageSummary());
 
     // .../models?fields=mlFeatures,mlHyperParameters
-    fields = "mlFeatures,mlHyperParameters";
+    fields = "owner,dashboard,followers,tags,usageSummary";
     model =
         byName
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(model.getAlgorithm(), model.getMlFeatures(), model.getMlHyperParameters());
-    assertNull(model.getDashboard());
-
-    // .../models?fields=owner,algorithm
-    fields = "owner,algorithm";
-    model =
-        byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(model.getOwner(), model.getAlgorithm());
-    assertNull(model.getDashboard());
-
-    // .../models?fields=owner,algorithm, dashboard
-    fields = "owner,algorithm,dashboard";
-    model =
-        byName
-            ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(model.getOwner(), model.getAlgorithm(), model.getDashboard());
-    TestUtils.validateEntityReference(model.getDashboard());
+    assertListNotNull(
+        model.getOwner(), model.getDashboard(), model.getFollowers(), model.getTags(), model.getUsageSummary());
   }
 
   @Override
@@ -409,12 +391,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         .withDisplayName(displayName)
         .withOwner(owner)
         .withDashboard(DASHBOARD_REFERENCE);
-  }
-
-  @Override
-  public void validateUpdatedEntity(MlModel mlModel, CreateMlModel request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(mlModel, request, authHeaders);
   }
 
   @Override
@@ -436,7 +412,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     validateMlFeatureSources(expected.getMlFeatures(), updated.getMlFeatures());
 
     TestUtils.validateTags(expected.getTags(), updated.getTags());
-    TestUtils.validateEntityReference(updated.getFollowers());
+    TestUtils.validateEntityReferences(updated.getFollowers());
   }
 
   @Override
@@ -500,7 +476,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     validateMlFeatureSources(createRequest.getMlFeatures(), createdEntity.getMlFeatures());
 
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
-    TestUtils.validateEntityReference(createdEntity.getFollowers());
+    TestUtils.validateEntityReferences(createdEntity.getFollowers());
   }
 
   @Override

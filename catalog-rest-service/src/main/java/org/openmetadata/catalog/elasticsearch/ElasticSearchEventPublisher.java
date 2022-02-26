@@ -34,6 +34,7 @@ import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -91,6 +92,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.TEAM:
             updateRequest = updateTeam(event);
+            break;
+          case Entity.GLOSSARY_TERM:
+            updateRequest = updateGlossaryTerm(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
@@ -344,6 +348,33 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         break;
       case ENTITY_UPDATED:
         scriptedTeamUpsert(teamESIndex, updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        break;
+    }
+
+    return updateRequest;
+  }
+
+  private UpdateRequest updateGlossaryTerm(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    GlossaryTermESIndex glossaryESIndex = null;
+    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+      GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
+      glossaryESIndex = GlossaryTermESIndex.builder(glossaryTerm, event.getEventType()).build();
+    }
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        String json = JsonUtils.pojoToJson(glossaryESIndex);
+        updateRequest.doc(json, XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        break;
+      case ENTITY_UPDATED:
+        scriptedUpsert(glossaryESIndex, updateRequest);
         break;
       case ENTITY_SOFT_DELETED:
         softDeleteEntity(updateRequest);
