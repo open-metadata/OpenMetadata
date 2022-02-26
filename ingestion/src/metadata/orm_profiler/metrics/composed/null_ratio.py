@@ -25,7 +25,12 @@ class NullRatio(ComposedMetric):
     compute the null ratio
     """
 
-    def required_metrics(self) -> Tuple[str, ...]:
+    @classmethod
+    def name(cls):
+        return "nullProportion"
+
+    @classmethod
+    def required_metrics(cls) -> Tuple[str, ...]:
         return Count.name(), NullCount.name()
 
     @property

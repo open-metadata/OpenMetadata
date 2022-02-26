@@ -36,6 +36,10 @@ class Histogram(QueryMetric):
     - For a concatenable (str, text...) return the AVG length
     """
 
+    @classmethod
+    def name(cls):
+        return "histogram"
+
     def query(self, session: Optional[Session] = None):
         """
         Build the histogram query
@@ -49,8 +53,10 @@ class Histogram(QueryMetric):
         if not is_quantifiable(self.col.type):
             return None
 
+        num_bins = self.bins if hasattr(self, "bins") else 5
+
         bins = session.query(
-            ((func.max(self.col) - func.min(self.col)) / float(self.bins - 1)).label(
+            ((func.max(self.col) - func.min(self.col)) / float(num_bins - 1)).label(
                 "step"
             )
         )
@@ -71,18 +77,16 @@ class Histogram(QueryMetric):
 
         hist = (
             session.query(
-                ranges_cte.c.bin_floor,
-                ranges_cte.c.bin_ceil,
                 ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
-                    "bin"
+                    "boundaries"
                 ),
-                func.count().label("count"),
+                func.count().label("frequencies"),
             )
             .group_by(
                 ranges_cte.c.bin_floor,
                 ranges_cte.c.bin_ceil,
                 ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
-                    "bin"
+                    "boundaries"
                 ),
             )
             .order_by(ranges_cte.c.bin_floor)

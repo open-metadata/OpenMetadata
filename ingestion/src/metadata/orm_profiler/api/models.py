@@ -19,7 +19,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
 from metadata.orm_profiler.validations.models import TestDef
@@ -28,17 +28,6 @@ from metadata.orm_profiler.validations.models import TestDef
 class WorkflowResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
-
-
-class ColumnProfiler(WorkflowResult):
-    column: str
-    profiler: Profiler
-
-
-class ProfilerResult(WorkflowResult):
-    table: Table  # Table Entity
-    table_profiler: Profiler  # Profiler with table results
-    column_profilers: List[ColumnProfiler]  # Profiler with col results
 
 
 class ProfilerProcessorConfig(BaseModel):
@@ -59,5 +48,6 @@ class ProfileAndTests(BaseModel):
     the ran tests, if any.
     """
 
-    profile: ProfilerResult
+    table: Table
+    profile: TableProfile
     tests: Optional[TestDef] = None

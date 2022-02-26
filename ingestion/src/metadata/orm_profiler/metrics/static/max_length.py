@@ -50,6 +50,10 @@ class MaxLength(StaticMetric):
     Only works for concatenable types
     """
 
+    @classmethod
+    def name(cls):
+        return "maxLength"
+
     def metric_type(self):
         return int
 
