@@ -307,11 +307,16 @@ class AzureAuthenticationProvider(AuthenticationProvider):
             client_credential=self.config.secret_key,
             authority=self.config.authority,
         )
-        result = app.acquire_token_for_client(scopes=self.config.scopes)
+        token = app.acquire_token_for_client(scopes=self.config.scopes)
         try:
-            return result["access_token"]
+            self.generated_auth_token = token["access_token"]
+            self.expiry = token["expires_in"]
+
         except KeyError as err:
             logger.error(f"Invalid Credentials - {err}")
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             sys.exit(1)
+    def get_access_token(self):
+        self.auth_token()
+        return (self.generated_auth_token, self.expiry)
