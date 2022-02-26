@@ -50,8 +50,8 @@ import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
-  static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
-  static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
+  static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.ALLOWED_FIELDS, null);
+  static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.ALLOWED_FIELDS, null);
 
   public RoleRepository(CollectionDAO dao) {
     super(

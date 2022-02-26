@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static java.util.List.of;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -22,8 +23,6 @@ import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -332,8 +331,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
     Team team2 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
-    List<UUID> teams = List.of(team1.getId(), team2.getId());
-    List<UUID> team = List.of(team1.getId());
+    List<UUID> teams = of(team1.getId(), team2.getId());
+    List<UUID> team = of(team1.getId());
 
     // user0 is part of no teams
     // user1 is part of team1
@@ -539,8 +538,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     change = getChangeDescription(user.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("roles").withOldValue(Arrays.asList(role1)));
     change.getFieldsAdded().add(new FieldChange().withName("roles").withNewValue(Arrays.asList(role2)));
-    change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(List.of(team2)));
-    change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(List.of(team3)));
+    change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(of(team2)));
+    change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(of(team3)));
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("timezone").withOldValue(timezone).withNewValue(timezone1));
@@ -643,22 +642,19 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
-    // .../teams?fields=profile
-    String fields = "profile";
+    String fields = "";
     user =
         byName
             ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertNotNull(user.getProfile());
-    assertNull(user.getTeams());
+    assertListNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
 
-    // .../teams?fields=profile,teams
-    fields = "profile, teams";
+    fields = "profile,roles,teams,follows,owns";
     user =
         byName
             ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(user.getProfile(), user.getTeams());
+    assertListNotNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
   }
 
   @Override
@@ -696,12 +692,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
 
-    if (!expectedOwnedEntities.isEmpty()) {
-      assertEquals(expectedOwnedEntities.size(), userAfterDeletion.getOwns().size());
-      for (EntityReference ref : expectedOwnedEntities) {
-        TestUtils.existsInEntityReferenceList(userAfterDeletion.getOwns(), ref.getId(), true);
-      }
-    }
+    TestUtils.assertEntityReferenceList(expectedOwnedEntities, userAfterDeletion.getOwns());
   }
 
   @Override
@@ -719,11 +710,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     for (UUID roleId : Optional.ofNullable(createRequest.getRoles()).orElse(Collections.emptyList())) {
       expectedRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
     }
-    if (!expectedRoles.isEmpty()) {
-      assertEquals(expectedRoles.size(), user.getRoles().size());
-      for (EntityReference role : expectedRoles) {
-        TestUtils.existsInEntityReferenceList(user.getRoles(), role.getId(), true);
-      }
+    if (expectedRoles.isEmpty()) {
+      // Default role of data consumer is added when roles are not assigned to a user during create
+      TestUtils.assertEntityReferenceList(List.of(DATA_CONSUMER_ROLE_REFERENCE), user.getRoles());
+    } else {
+      TestUtils.assertEntityReferenceList(expectedRoles, user.getRoles());
     }
 
     List<EntityReference> expectedTeams = new ArrayList<>();
@@ -734,11 +725,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
     }
-  }
-
-  @Override
-  public void validateUpdatedEntity(User user, CreateUser request, Map<String, String> authHeaders) {
-    validateCreatedEntity(user, request, authHeaders);
   }
 
   @Override

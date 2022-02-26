@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -111,8 +112,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
-    Map<String, Object> topicConfig = new HashMap<>();
-
     CreateTopic createTopic =
         createRequest(test)
             .withOwner(USER_OWNER1)
@@ -227,7 +226,14 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   @Override
   public void validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
     // .../topics?fields=owner
-    String fields = "owner";
+    String fields = "";
+    topic =
+        byName
+            ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNull(topic.getOwner(), topic.getFollowers(), topic.getFollowers());
+
+    fields = "owner, followers, tags";
     topic =
         byName
             ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -274,12 +280,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertService(createRequest.getService(), topic.getService());
     // TODO add other fields
     TestUtils.validateTags(createRequest.getTags(), topic.getTags());
-  }
-
-  @Override
-  public void validateUpdatedEntity(Topic topic, CreateTopic request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(topic, request, authHeaders);
   }
 
   @Override

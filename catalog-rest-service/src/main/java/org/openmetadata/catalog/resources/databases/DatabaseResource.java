@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -113,7 +112,7 @@ public class DatabaseResource {
   }
 
   static final String FIELDS = "owner,tables,usageSummary,location";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Database.class);
 
   @GET
   @Operation(
@@ -162,7 +161,7 @@ public class DatabaseResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Database> databases;
 
@@ -226,7 +225,7 @@ public class DatabaseResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Database database = dao.get(uriInfo, id, fields, include);
     addHref(uriInfo, database);
     return Response.ok(database).build();
@@ -261,7 +260,7 @@ public class DatabaseResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Database database = dao.getByName(uriInfo, fqn, fields, include);
     addHref(uriInfo, database);
     return Response.ok(database).build();
@@ -339,7 +338,7 @@ public class DatabaseResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Database database = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(database).getEntityReference(), patch);
@@ -379,7 +378,7 @@ public class DatabaseResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "location");
+    Fields fields = new Fields(ALLOWED_FIELDS, "location");
     dao.deleteLocation(id);
     Database database = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, database);

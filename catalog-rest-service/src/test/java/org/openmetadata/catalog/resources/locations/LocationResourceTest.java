@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -101,12 +102,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Override
-  public void validateUpdatedEntity(Location location, CreateLocation request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(location, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(Location expected, Location patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
@@ -121,7 +116,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     assertEquals(expected.getService(), patched.getService());
     assertEquals(expected.getServiceType(), patched.getServiceType());
     TestUtils.validateTags(expected.getTags(), patched.getTags());
-    TestUtils.validateEntityReference(patched.getFollowers());
+    TestUtils.validateEntityReferences(patched.getFollowers());
   }
 
   @Override
@@ -230,14 +225,21 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   /** Validate returned fields GET .../locations/{id}?fields="..." or GET .../locations/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
-    // .../locations?fields=owner
-    String fields = "owner";
+    String fields = "";
     location =
         byName
             ? getEntityByName(location.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(location.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(location.getOwner(), location.getService(), location.getServiceType());
-    // TODO add other fields
+    assertListNotNull(location.getService(), location.getServiceType());
+    assertListNull(location.getOwner(), location.getFollowers(), location.getTags());
+
+    fields = "owner,followers,tags";
+    location =
+        byName
+            ? getEntityByName(location.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(location.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(location.getService(), location.getServiceType());
+    assertListNotNull(location.getOwner(), location.getFollowers(), location.getTags());
   }
 
   public static LocationList listPrefixes(

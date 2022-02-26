@@ -13,9 +13,11 @@
 
 package org.openmetadata.catalog;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -76,10 +78,10 @@ public final class Entity {
   // Not deleted to ensure the ordinal value of the entities after this remains the same
   public static final String UNUSED = "unused";
   public static final String BOTS = "bots";
+  public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
-  public static final String THREAD = "thread";
   public static final String TAG = "tag";
 
   //
@@ -267,6 +269,14 @@ public final class Entity {
 
   public static String getEntityTypeFromObject(Object object) {
     return CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+  }
+
+  /**
+   * Get list of all the entity field names from JsonPropertyOrder annotation from generated java class from entity.json
+   */
+  public static <T> List<String> getEntityFields(Class<T> clz) {
+    JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
+    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */

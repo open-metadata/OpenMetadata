@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -112,7 +111,7 @@ public class GlossaryResource {
   }
 
   static final String FIELDS = "owner,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Glossary.class);
 
   @GET
   @Valid
@@ -157,7 +156,7 @@ public class GlossaryResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Glossary> glossary;
     if (before != null) { // Reverse paging
@@ -198,7 +197,7 @@ public class GlossaryResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -231,7 +230,7 @@ public class GlossaryResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Glossary glossary = dao.getByName(uriInfo, name, fields, include);
     return addHref(uriInfo, glossary);
   }
@@ -328,7 +327,7 @@ public class GlossaryResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Glossary glossary = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(glossary).getEntityReference(), patch);

@@ -47,10 +47,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
-  private static final Fields POLICY_UPDATE_FIELDS =
-      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
-  private static final Fields POLICY_PATCH_FIELDS =
-      new Fields(PolicyResource.FIELD_LIST, "displayName,description,owner,policyUrl,enabled,rules,location");
+  private static final Fields POLICY_UPDATE_FIELDS = new Fields(PolicyResource.ALLOWED_FIELDS, "owner,location");
+  private static final Fields POLICY_PATCH_FIELDS = new Fields(PolicyResource.ALLOWED_FIELDS, "owner,location");
   public static final String ENABLED = "enabled";
 
   private final PolicyEvaluator policyEvaluator;
@@ -92,12 +90,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public Policy setFields(Policy policy, Fields fields) throws IOException, ParseException {
-    policy.setDisplayName(fields.contains("displayName") ? policy.getDisplayName() : null);
-    policy.setDescription(fields.contains("description") ? policy.getDescription() : null);
     policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
-    policy.setPolicyUrl(fields.contains("policyUrl") ? policy.getPolicyUrl() : null);
-    policy.setEnabled(fields.contains(ENABLED) ? policy.getEnabled() : null);
-    policy.setRules(fields.contains("rules") ? policy.getRules() : null);
     policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     return policy;
   }

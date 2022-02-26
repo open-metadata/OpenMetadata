@@ -42,8 +42,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
-  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,roles,teams");
+  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
+  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
 
   public UserRepository(CollectionDAO dao) {
     super(
