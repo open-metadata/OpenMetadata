@@ -13,6 +13,7 @@
 
 import { Operation } from 'fast-json-patch';
 import {
+  EntityFieldThreadCount,
   EntityTags,
   EntityThread,
   LeafNodes,
@@ -20,6 +21,7 @@ import {
   LoadingNodeState,
   TableDetail,
 } from 'Models';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
@@ -56,6 +58,8 @@ export interface DashboardDetailsProps {
   isLineageLoading?: boolean;
   isentityThreadLoading: boolean;
   feedCount: number;
+  entityFieldThreadCount: EntityFieldThreadCount[];
+  createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;
   unfollowDashboardHandler: () => void;
