@@ -13,6 +13,7 @@ import logging
 import os
 import pathlib
 import sys
+import traceback
 from typing import List, Optional, Tuple
 
 import click
@@ -82,6 +83,7 @@ def ingest(config: str) -> None:
         workflow = Workflow.create(workflow_config)
     except ValidationError as e:
         click.echo(e, err=True)
+        logger.debug(traceback.print_exc())
         sys.exit(1)
 
     workflow.execute()
