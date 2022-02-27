@@ -42,7 +42,7 @@ from metadata.ingestion.source.sql_source_common import (
     SQLConnectionConfig,
     SQLSourceStatus,
 )
-from metadata.orm_profiler.api.models import ProfileAndTests, ProfilerProcessorConfig
+from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.engines import create_and_bind_session, get_engine
 from metadata.orm_profiler.utils import logger
 
@@ -210,7 +210,7 @@ class ProfilerWorkflow:
         Run the profiling and tests
         """
         for entity in self.list_entities():
-            profile_and_tests: ProfileAndTests = self.processor.process(entity)
+            profile_and_tests: ProfilerResponse = self.processor.process(entity)
 
             if hasattr(self, "sink"):
                 self.sink.write_record(profile_and_tests)
