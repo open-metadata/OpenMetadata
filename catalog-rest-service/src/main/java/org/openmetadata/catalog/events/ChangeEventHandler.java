@@ -19,23 +19,24 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
-import org.openmetadata.catalog.resources.feeds.MessageParser;
+import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
-import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -71,7 +72,7 @@ public class ChangeEventHandler implements EventHandler {
 
         // Add a new thread to the entity for every change event
         // for the event to appear in activity feeds
-        List<Thread> threads = getThreads(responseContext);
+        List<Thread> threads = getThreads(responseContext, changeEvent);
         if (threads != null) {
           for (var thread : threads) {
             feedDao.create(thread);
@@ -170,76 +171,30 @@ public class ChangeEventHandler implements EventHandler {
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
-  private enum CHANGE_TYPE {
-    UPDATE,
-    ADD,
-    DELETE
-  }
-
-  private List<Thread> getThreads(ContainerResponseContext responseContext) {
+  private List<Thread> getThreads(ContainerResponseContext responseContext, ChangeEvent changeEvent) {
     Object entity = responseContext.getEntity();
     if (entity == null) {
       return null; // Response has no entity to produce change event from
     }
 
     var entityInterface = Entity.getEntityInterface(entity);
-    if (entityInterface.getChangeDescription() == null) {
+    // entityInterface can be null in case of Tags
+    // TODO: remove this null check when entityInterface should never be null
+    if (entityInterface == null || entityInterface.getChangeDescription() == null) {
       return null;
     }
-    List<FieldChange> fieldsUpdated = entityInterface.getChangeDescription().getFieldsUpdated();
-    List<Thread> threads = new ArrayList<>(getThreads(fieldsUpdated, entity, CHANGE_TYPE.UPDATE));
 
-    List<FieldChange> fieldsAdded = entityInterface.getChangeDescription().getFieldsAdded();
-    threads.addAll(getThreads(fieldsAdded, entity, CHANGE_TYPE.ADD));
-
-    List<FieldChange> fieldsDeleted = entityInterface.getChangeDescription().getFieldsDeleted();
-    threads.addAll(getThreads(fieldsDeleted, entity, CHANGE_TYPE.DELETE));
-    return threads;
+    return getThreads(entity, entityInterface.getChangeDescription(), changeEvent);
   }
 
-  private List<Thread> getThreads(List<FieldChange> fields, Object entity, CHANGE_TYPE changeType) {
+  private List<Thread> getThreads(Object entity, ChangeDescription changeDescription, ChangeEvent changeEvent) {
     List<Thread> threads = new ArrayList<>();
     var entityInterface = Entity.getEntityInterface(entity);
-    EntityReference entityReference = Entity.getEntityReference(entity);
-    String entityType = entityReference.getType();
-    String entityFQN = entityReference.getName();
-    for (var field : fields) {
-      // if field name has dots, then it is an array field
-      String fieldName = field.getName();
-      String arrayFieldName = null;
-      String arrayFieldValue = null;
-      String newFieldValue = field.getNewValue() != null ? field.getNewValue().toString() : StringUtils.EMPTY;
-      if (fieldName.contains(".")) {
-        String[] fieldNameParts = fieldName.split("\\.");
-        // For array type, it should have 3 ex: columns.comment.description
-        fieldName = fieldNameParts[0];
-        if (fieldNameParts.length == 3) {
-          arrayFieldName = fieldNameParts[1];
-          arrayFieldValue = fieldNameParts[2];
-        }
-      }
 
-      MessageParser.EntityLink link =
-          new MessageParser.EntityLink(entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, entity, changeEvent);
 
-      // Create an automated post
-      String message = null;
-      switch (changeType) {
-        case ADD:
-          message =
-              String.format("Added %s: `%s`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
-          break;
-        case UPDATE:
-          message =
-              String.format("Updated %s to `%s`", arrayFieldValue != null ? arrayFieldValue : fieldName, newFieldValue);
-          break;
-        case DELETE:
-          message = String.format("Deleted %s", arrayFieldValue != null ? arrayFieldValue : fieldName);
-          break;
-        default:
-          break;
-      }
-
+    // Create an automated thread
+    for (var link : messages.keySet()) {
       threads.add(
           new Thread()
               .withId(UUID.randomUUID())
@@ -248,7 +203,7 @@ public class ChangeEventHandler implements EventHandler {
               .withAbout(link.getLinkString())
               .withUpdatedBy(entityInterface.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis())
-              .withMessage(message));
+              .withMessage(messages.get(link)));
     }
 
     return threads;

@@ -213,6 +213,13 @@
       <version>2.17.1</version>
     </dependency>
 
+    <!-- Diff util to compute diffs in plain text -->
+    <dependency>
+      <groupId>io.github.java-diff-utils</groupId>
+      <artifactId>java-diff-utils</artifactId>
+      <version>4.11</version>
+    </dependency>
+
     <!--test dependencies-->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
