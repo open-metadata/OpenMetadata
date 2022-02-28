@@ -15,6 +15,7 @@ Defines the ORM Profiler processor
 For each table, we compute its profiler
 and run the validations.
 """
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
@@ -22,8 +23,13 @@ from typing import List, Optional
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.entity.data.table import (
+    Table,
+    TableProfile,
+)
 from metadata.generated.schema.tests.basic import Status1, TestCaseResult
+from metadata.generated.schema.tests.columnTest import ColumnTest
+from metadata.generated.schema.tests.tableTest import TableTest
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -33,11 +39,10 @@ from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.profiles.default import DefaultProfiler
-from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.core import validate
 from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
-logger = logger()
+logger = logging.getLogger("ORM Profiler Workflow")
 
 
 @dataclass
@@ -154,23 +159,84 @@ class OrmProfilerProcessor(Processor[Table]):
         if not result.status == Status1.Success:
             self.status.failure(f"{name}: {result.result}")
 
-    def validate_entity(
-        self, orm, table: Table, profiler_results: TableProfile
+    def run_table_test(
+        self, table_test: TableTest, profiler_results: TableProfile
+    ) -> Optional[TestCaseResult]:
+        """
+        Run & log the table test against the TableProfile
+        :param table_test: Table Test to run
+        :param profiler_results: Table profiler with informed metrics
+        :return: TestCaseResult
+        """
+        if table_test.name in self.status.tests:
+            logger.info(
+                f"Test {table_test.name} has already been computed in this execution."
+            )
+            return None
+
+        test_case_result: TestCaseResult = validate(
+            table_test.tableTestCase.config,
+            table_profile=profiler_results,
+            execution_date=self.execution_date,
+        )
+        self.log_test_result(name=table_test.name, result=test_case_result)
+        return test_case_result
+
+    def run_column_test(
+        self, col_test: ColumnTest, profiler_results: TableProfile
+    ) -> Optional[TestCaseResult]:
+        """
+        Run & log the column test against the ColumnProfile
+        :param col_test: Column Test to run
+        :param profiler_results: Table profiler with informed metrics
+        :return: TestCaseResult
+        """
+        if col_test.name in self.status.tests:
+            logger.info(
+                f"Test {col_test.name} has already been computed in this execution."
+            )
+            return None
+
+        # Check if we computed a profile for the required column
+        col_profiler_res = next(
+            iter(
+                col_profiler
+                for col_profiler in profiler_results.columnProfile
+                if col_profiler.name == col_test.columnName
+            ),
+            None,
+        )
+        if col_profiler_res is None:
+            msg = (
+                f"Cannot find a profiler that computed the column {col_test.columnName}"
+                + f" Skipping validation {col_test.name}"
+            )
+            self.status.failure(msg)
+            return TestCaseResult(
+                executionTime=self.execution_date.timestamp(),
+                status=Status1.Aborted,
+                result=msg,
+            )
+
+        test_case_result: TestCaseResult = validate(
+            col_test.testCase.config,
+            col_profiler_res,
+            execution_date=self.execution_date,
+        )
+        self.log_test_result(name=col_test.name, result=test_case_result)
+        return test_case_result
+
+    def validate_config_tests(
+        self, table: Table, profiler_results: TableProfile
     ) -> Optional[TestDef]:
         """
-        Given a table, check if it has any tests pending.
-
-        If so, run the Validations against the profiler_results
-        and return the computed Validations.
-
-        The result will have the shape {test_name: Validation}
-
-        Type of entity is DeclarativeMeta
+        Here we take care of new incoming tests in the workflow
+        definition. Run them and prepare the new TestDef
+        of the record, that will be sent to the sink to
+        update the Table Entity.
         """
-        if not isinstance(orm, DeclarativeMeta):
-            raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
 
-        logger.info(f"Checking validations for {orm}...")
+        logger.info(f"Checking validations for {table.fullyQualifiedName}...")
 
         test_suite: TestSuite = self.config.test_suite
 
@@ -188,49 +254,89 @@ class OrmProfilerProcessor(Processor[Table]):
             return None
 
         # Compute all validations against the profiler results
-
-        # Table Tests
         for table_test in my_record_tests.table_tests:
-            test_case_result: TestCaseResult = validate(
-                table_test.tableTestCase.config,
-                table_profile=profiler_results,
-                execution_date=self.execution_date,
+            test_case_result = self.run_table_test(
+                table_test=table_test,
+                profiler_results=profiler_results,
             )
-            table_test.results = [test_case_result]
-            self.log_test_result(name=table_test.name, result=test_case_result)
+            if test_case_result:
+                table_test.results = [test_case_result]
 
-        # Column Tests
         for column_test in my_record_tests.column_tests:
-            # Check if we computed a profile for the required column
-            col_profiler_res = next(
-                iter(
-                    col_profiler
-                    for col_profiler in profiler_results.columnProfile
-                    if col_profiler.name == column_test.columnName
-                ),
-                None,
+            test_case_result = self.run_column_test(
+                col_test=column_test,
+                profiler_results=profiler_results,
             )
-            if col_profiler_res is None:
-                self.status.failure(
-                    f"Cannot find a profiler that computed the column {column_test.columnName}"
-                    f" for {table.fullyQualifiedName}. Skipping validation {column_test}"
-                )
-                column_test.results = [
-                    TestCaseResult(
-                        executionTime=self.execution_date.timestamp(),
-                        status=Status1.Aborted,
-                    )
-                ]
-
-            test_case_result: TestCaseResult = validate(
-                column_test.testCase.config,
-                col_profiler_res,
-                execution_date=self.execution_date,
-            )
-            column_test.results = [test_case_result]
-            self.log_test_result(name=column_test.name, result=test_case_result)
+            if test_case_result:
+                column_test.results = [test_case_result]
 
         return my_record_tests
+
+    def validate_entity_tests(
+        self,
+        table: Table,
+        profiler_results: TableProfile,
+        config_tests: Optional[TestDef],
+    ) -> Optional[TestDef]:
+        """
+        This method checks the tests that are
+        configured at entity level, i.e., have been
+        stored via the API at some other point in time.
+
+        If we find a test that has already been run
+        from the workflow config, we will skip it
+        and trust the workflow input.
+
+        :param table: OpenMetadata Table Entity being processed
+        :param profiler_results: TableProfile with computed metrics
+        :param config_tests: Results of running the configuration tests
+        """
+
+        record_tests = (
+            TestDef(
+                table=config_tests.table,
+                table_tests=config_tests.table_tests
+                if config_tests.table_tests
+                else [],
+                column_tests=config_tests.column_tests
+                if config_tests.column_tests
+                else [],
+            )
+            if config_tests
+            else TestDef(table=table.fullyQualifiedName, table_tests=[], column_tests=[])
+        )
+
+        # Fetch all table tests, if any
+        table_tests = (
+            table_test for table_test in table.tableTests if table.tableTests
+        )
+        for table_test in table_tests:
+            test_case_result = self.run_table_test(
+                table_test=table_test,
+                profiler_results=profiler_results,
+            )
+            if test_case_result:
+                table_test.results = [test_case_result]
+                record_tests.table_tests.append(table_test)
+
+        # For all columns, check if any of them has tests and fetch them
+        col_tests = (
+            col_test
+            for col in table.columns
+            for col_test in (col.columnTests or [])  # columnTests is optional, so it might be a list or None
+            if col.columnTests
+        )
+        for column_test in col_tests:
+            if column_test:
+                test_case_result = self.run_column_test(
+                    col_test=column_test,
+                    profiler_results=profiler_results,
+                )
+                if test_case_result:
+                    column_test.results = [test_case_result]
+                    record_tests.column_tests.append(column_test)
+
+        return record_tests
 
     def process(self, record: Table) -> ProfilerResponse:
         """
@@ -244,9 +350,13 @@ class OrmProfilerProcessor(Processor[Table]):
 
         entity_profile = self.profile_entity(orm_table, record)
 
-        record_tests = None
+        # First, check if we have any tests directly configured in the workflow
+        config_tests = None
         if self.config.test_suite:
-            record_tests = self.validate_entity(orm_table, record, entity_profile)
+            config_tests = self.validate_config_tests(record, entity_profile)
+
+        # Then, Check if the entity has any tests
+        record_tests = self.validate_entity_tests(record, entity_profile, config_tests)
 
         res = ProfilerResponse(
             table=record,
