@@ -50,8 +50,13 @@ export const getOwnershipCount: Function = (
   );
 };
 
+export const fetchAuthenticationConfig: Function =
+  (): Promise<AxiosResponse> => {
+    return APIClient.get('/config/auth');
+  };
+
 export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get('/config/auth');
+  return APIClient.get('/config/authorizer');
 };
 
 export const getSuggestions: Function = (
