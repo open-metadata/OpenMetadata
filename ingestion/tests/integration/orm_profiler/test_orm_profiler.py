@@ -120,35 +120,40 @@ class ProfilerWorkflowTest(TestCase):
             "config": {
                 "profiler": {
                     "name": "my_profiler",
-                    "metrics": ["row_count", "min", "COUNT", "null_count"],
+                    "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
                 },
-                "tests": {
-                    "name": "my_tests",
-                    "table_tests": [
+                "test_suite": {
+                    "name": "My Test Suite",
+                    "tests": [
                         {
-                            "name": "check row number",
-                            "table": "test_sqlite.main.users",
-                            "expression": "row_count == 2",
-                        }
-                    ],
-                    "column_tests": [
-                        {
-                            "name": "some column tests",
-                            "table": "test_sqlite.main.users",
-                            "columns": [
+                            "table": "test_sqlite.main.users",  # FQDN
+                            "table_tests": [
                                 {
-                                    "name": "check name count",
-                                    "column": "name",
-                                    "expression": "count < 10"
+                                    "tableName": "To be removed from here",  # TODO remove this from def
+                                    "name": "My Table test",
+                                    "tableTestCase": {
+                                        "config": {
+                                            "value": 100,
+                                        },
+                                        "testType": "tableRowCountToEqual",
+                                    },
                                 },
+                            ],
+                            "column_tests": [
                                 {
-                                    "name": "check null count",
-                                    "column": "nickname",
-                                    "expression": "null_count == 0"
+                                    "columnName": "age",
+                                    "name": "My Col test",
+                                    "testCase": {
+                                        "config": {
+                                            "minValue": 0,
+                                            "maxValue": 99,
+                                        },
+                                        "testType": "columnValuesToBeBetween",
+                                    },
                                 }
-                            ]
-                        }
-                    ]
+                            ],
+                        },
+                    ],
                 }
             }
         }

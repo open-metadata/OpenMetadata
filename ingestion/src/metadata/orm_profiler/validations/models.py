@@ -15,15 +15,9 @@ JSON workflows to the profiler
 """
 from typing import List
 
-from parsimonious import ParseError
-from pydantic import BaseModel, validator
-
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.tests.columnTest import ColumnTest
 from metadata.generated.schema.tests.tableTest import TableTest
-from metadata.orm_profiler.utils import logger
-from metadata.orm_profiler.validations.core import Validation
-from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
 
 
 class TestDef(ConfigModel):

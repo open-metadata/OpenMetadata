@@ -15,15 +15,12 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional
-
-from pydantic import BaseModel
+from typing import Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import Table, TableProfile
-from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
-from metadata.orm_profiler.validations.models import TestSuite
+from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 
 class ProfilerProcessorConfig(ConfigModel):
@@ -46,4 +43,4 @@ class ProfilerResponse(ConfigModel):
 
     table: Table
     profile: TableProfile
-    test_suite: Optional[TestSuite] = None
+    record_tests: Optional[TestDef] = None

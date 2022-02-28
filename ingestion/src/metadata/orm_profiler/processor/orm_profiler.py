@@ -16,24 +16,26 @@ For each table, we compute its profiler
 and run the validations.
 """
 from dataclasses import dataclass, field
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 
-from sqlalchemy.orm import DeclarativeMeta, InstrumentedAttribute, Session
+from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.tests.basic import Status1, TestCaseResult
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.orm_profiler.api.models import ProfileAndTests, ProfilerProcessorConfig
+from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.profiles.default import DefaultProfiler
 from metadata.orm_profiler.utils import logger
-from metadata.orm_profiler.validations.core import Validation
-from metadata.orm_profiler.validations.models import TestDef
+from metadata.orm_profiler.validations.core import validate
+from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 logger = logger()
 
@@ -77,6 +79,8 @@ class OrmProfilerProcessor(Processor[Table]):
 
         self.report = {"tests": {}}
 
+        self.execution_date = datetime.now()
+
         # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
 
@@ -119,6 +123,7 @@ class OrmProfilerProcessor(Processor[Table]):
             *metrics,
             session=self.session,
             table=orm,
+            profile_date=self.execution_date,
         )
 
     def profile_entity(self, orm, table: Table) -> TableProfile:
@@ -141,17 +146,17 @@ class OrmProfilerProcessor(Processor[Table]):
         self.status.processed(table.fullyQualifiedName)
         return profiler.get_profile()
 
-    def log_validation(self, name: str, validation: Validation) -> None:
+    def log_test_result(self, name: str, result: TestCaseResult) -> None:
         """
-        Log validation results
+        Log test case results
         """
         self.status.tested(name)
-        if not validation.valid:
-            self.status.failure(
-                f"{name}: Expected value {validation.value} vs. Real value {validation.computed_metric}"
-            )
+        if not result.status == Status1.Success:
+            self.status.failure(f"{name}: {result.result}")
 
-    def validate_entity(self, orm, profiler_results: TableProfile) -> TestDef:
+    def validate_entity(
+        self, orm, table: Table, profiler_results: TableProfile
+    ) -> Optional[TestDef]:
         """
         Given a table, check if it has any tests pending.
 
@@ -167,43 +172,70 @@ class OrmProfilerProcessor(Processor[Table]):
 
         logger.info(f"Checking validations for {orm}...")
 
-        # We have all validations parsed at read-time
-        test_def: TestDef = self.config.tests
+        test_suite: TestSuite = self.config.test_suite
+
+        # Check if I have tests for the table I am processing
+        my_record_tests = next(
+            iter(
+                test
+                for test in test_suite.tests
+                if test.table == table.fullyQualifiedName
+            ),
+            None,
+        )
+
+        if not my_record_tests:
+            return None
 
         # Compute all validations against the profiler results
-        for test in test_def.table_tests:
-            for validation in test.expression:
-                # Pass the whole dict, although we just want columnCount & rowCount
-                validation.validate(profiler_results.dict())
-                self.log_validation(name=test.name, validation=validation)
 
-        for column_res in test_def.column_tests:
-            for test in column_res.columns:
-                col_profiler_res = next(
-                    iter(
-                        col_profiler
-                        for col_profiler in profiler_results.columnProfile
-                        if col_profiler.name == test.column
-                    ),
-                    None,
+        # Table Tests
+        for table_test in my_record_tests.table_tests:
+            test_case_result: TestCaseResult = validate(
+                table_test.tableTestCase.config,
+                table_profile=profiler_results,
+                execution_date=self.execution_date,
+            )
+            table_test.results = [test_case_result]
+            self.log_test_result(name=table_test.name, result=test_case_result)
+
+        # Column Tests
+        for column_test in my_record_tests.column_tests:
+            # Check if we computed a profile for the required column
+            col_profiler_res = next(
+                iter(
+                    col_profiler
+                    for col_profiler in profiler_results.columnProfile
+                    if col_profiler.name == column_test.columnName
+                ),
+                None,
+            )
+            if col_profiler_res is None:
+                self.status.failure(
+                    f"Cannot find a profiler that computed the column {column_test.columnName}"
+                    f" for {table.fullyQualifiedName}. Skipping validation {column_test}"
                 )
-                if col_profiler_res is None:
-                    self.status.warning(
-                        f"Cannot find a profiler that computed the column {test.column} for {column_res.table}."
-                        + f" Skipping validation {test}"
+                column_test.results = [
+                    TestCaseResult(
+                        executionTime=self.execution_date.timestamp(),
+                        status=Status1.Aborted,
                     )
+                ]
 
-                for validation in test.expression:
-                    validation.validate(col_profiler_res.dict())
-                    self.log_validation(name=test.name, validation=validation)
+            test_case_result: TestCaseResult = validate(
+                column_test.testCase.config,
+                col_profiler_res,
+                execution_date=self.execution_date,
+            )
+            column_test.results = [test_case_result]
+            self.log_test_result(name=column_test.name, result=test_case_result)
 
-        return test_def
+        return my_record_tests
 
-    def process(self, record: Table) -> ProfileAndTests:
+    def process(self, record: Table) -> ProfilerResponse:
         """
         Run the profiling and tests
         """
-
         # Convert entity to ORM. Fetch the db by ID to make sure we use the proper db name
         database = self.metadata.get_by_id(
             entity=Database, entity_id=record.database.id
@@ -212,14 +244,14 @@ class OrmProfilerProcessor(Processor[Table]):
 
         entity_profile = self.profile_entity(orm_table, record)
 
-        entity_validations = None
-        if self.config.tests:
-            entity_validations = self.validate_entity(orm_table, entity_profile)
+        record_tests = None
+        if self.config.test_suite:
+            record_tests = self.validate_entity(orm_table, record, entity_profile)
 
-        res = ProfileAndTests(
+        res = ProfilerResponse(
             table=record,
             profile=entity_profile,
-            tests=entity_validations,
+            record_tests=record_tests,
         )
 
         return res
