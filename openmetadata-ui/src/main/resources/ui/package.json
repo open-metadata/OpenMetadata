@@ -45,6 +45,7 @@
     "process": "^0.11.10",
     "prop-types": "^15.7.2",
     "quill-markdown-shortcuts": "^0.0.10",
+    "quill-mention": "^3.1.0",
     "react": "^16.14.0",
     "react-codemirror2": "^7.2.1",
     "react-copy-to-clipboard": "^5.0.4",

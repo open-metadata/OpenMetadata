@@ -13,14 +13,17 @@
 
 import classNames from 'classnames';
 import MarkdownShortcuts from 'quill-markdown-shortcuts';
+import 'quill-mention';
 import React, {
   forwardRef,
   HTMLAttributes,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
-import { HTMLToMarkdown } from '../../utils/FeedUtils';
+import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
+import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import './FeedEditor.css';
 
@@ -29,22 +32,6 @@ const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
   return delta.compose(new Delta().retain(delta.length(), { strike: true }));
-};
-
-const modules = {
-  toolbar: {
-    container: [
-      ['bold', 'italic', 'strike'],
-      ['blockquote', 'code-block'],
-      [{ list: 'ordered' }, { list: 'bullet' }],
-      ['link'],
-    ],
-  },
-
-  markdownShortcuts: {},
-  clipboard: {
-    matchers: [['del, strike', strikethrough]],
-  },
 };
 
 interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
@@ -56,6 +43,34 @@ interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: () => void;
 }
 
+const modules = {
+  toolbar: {
+    container: [
+      ['bold', 'italic', 'strike'],
+      ['blockquote', 'code-block'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['link'],
+      ['insertMention', 'insertRef'],
+    ],
+    handlers: {
+      insertMention: insertMention,
+      insertRef: insertRef,
+    },
+  },
+  mention: {
+    allowedChars: /^[A-Za-z0-9]*$/,
+    mentionDenotationChars: ['@', '#'],
+    source: matcher,
+    showDenotationChar: false,
+    renderLoading: () => 'Loading...',
+  },
+
+  markdownShortcuts: {},
+  clipboard: {
+    matchers: [['del, strike', strikethrough]],
+  },
+};
+
 const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   (
     {
@@ -64,11 +79,12 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       placeHolder,
       onChangeHandler,
       defaultValue = '',
-      onSave,
-    }: FeedEditorProp,
+    }: // onSave,
+    FeedEditorProp,
     ref
   ) => {
     const [value, setValue] = useState<string>(defaultValue);
+    const editorRef = useRef<ReactQuill>(null);
 
     const handleOnChange = (value: string) => {
       setValue(value);
@@ -89,7 +105,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     const onKeyDownHandler = (e: KeyboardEvent) => {
       if (!(e.shiftKey && e.key === 'Enter')) {
         if (e.key === 'Enter') {
-          onSave?.();
+          // onSave?.();
         }
       }
     };
@@ -100,6 +116,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           className={classNames('editor-container', editorClass)}
           modules={modules}
           placeholder={placeHolder ?? 'Enter a reply'}
+          ref={editorRef}
           theme="snow"
           value={value}
           onChange={handleOnChange}

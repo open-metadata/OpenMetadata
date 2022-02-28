@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import React, { FC, HTMLAttributes, useRef, useState } from 'react';
-import { HTMLToMarkdown } from '../../../utils/FeedUtils';
+import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
@@ -46,7 +46,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
       if (editorRef.current?.getEditorValue()) {
         setEditorValue('');
         editorRef.current?.clearEditorValue();
-        onSave?.(editorRef.current?.getEditorValue());
+        onSave?.(getBackendFormat(editorRef.current?.getEditorValue()));
       }
     }
   };

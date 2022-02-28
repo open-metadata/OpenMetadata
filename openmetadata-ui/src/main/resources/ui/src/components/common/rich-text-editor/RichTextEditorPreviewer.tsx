@@ -12,9 +12,9 @@
  */
 
 import classNames from 'classnames';
-import React, { useEffect, useState } from 'react';
+import { uniqueId } from 'lodash';
+import React, { Fragment, useEffect, useState } from 'react';
 import ReactMarkdown, { PluggableList } from 'react-markdown';
-import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 import { isValidUrl } from '../../../utils/CommonUtils';
@@ -90,11 +90,31 @@ const RichTextEditorPreviewer = ({
                 link = `https://${href}`;
               }
               return (
-                <Link to={{ pathname: link }} target="_blank">
+                <a href={link} target="_blank" {...props}>
                   {children}
-                </Link>
+                </a>
               );
             }
+          },
+          p: ({ node, children, ...props }) => {
+            const newChildren = children?.map((child) => {
+              const childValue = (child?.valueOf() as unknown as { props: any })
+                .props;
+              if (childValue?.href) {
+                return (
+                  <a key={uniqueId()} href={childValue?.href} target="_blank">
+                    {childValue?.children}
+                  </a>
+                );
+              } else {
+                return <Fragment key={uniqueId()}>{child}</Fragment>;
+              }
+            });
+            return (
+              <p {...props} key={uniqueId()}>
+                {newChildren}
+              </p>
+            );
           },
         }}
         remarkPlugins={[gfm] as unknown as PluggableList | undefined}

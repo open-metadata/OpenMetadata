@@ -9808,6 +9808,13 @@ quill-markdown-shortcuts@^0.0.10:
   dependencies:
     quill "^1.3.1"
 
+quill-mention@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/quill-mention/-/quill-mention-3.1.0.tgz#acf0bf21524b627e9304f63534e6d2b8c59ab4fd"
+  integrity sha512-uyjGK8QPJHEcjvNc3wUJy6a05Oiu+6JJ0N9SFAwjYHYThgMzlKucyD975fq28Mr1it8ZFRNiRMPa0sCiVOAEwA==
+  dependencies:
+    quill "^1.3.7"
+
 quill@^1.3.1, quill@^1.3.7:
   version "1.3.7"
   resolved "https://registry.yarnpkg.com/quill/-/quill-1.3.7.tgz#da5b2f3a2c470e932340cdbf3668c9f21f9286e8"
