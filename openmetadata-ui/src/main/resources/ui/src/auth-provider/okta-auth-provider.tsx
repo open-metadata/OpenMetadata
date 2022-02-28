@@ -1,11 +1,32 @@
-import { OktaAuth } from '@okta/okta-auth-js';
-import { Security } from '@okta/okta-react';
-import PropTypes from 'prop-types';
-import React from 'react';
-import { oidcTokenKey } from '../constants/constants';
-import { useAuthContext } from './AuthProviderV1';
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
-export const OktaAuthProvider = ({ children, onLoginSuccess }) => {
+import { IDToken, OktaAuth } from '@okta/okta-auth-js';
+import { Security } from '@okta/okta-react';
+import React, { FunctionComponent, ReactNode } from 'react';
+import { oidcTokenKey } from '../constants/constants';
+import { useAuthContext } from './AuthProvider';
+import { OidcUser } from './AuthProvider.interface';
+
+interface Props {
+  children: ReactNode;
+  onLoginSuccess: (user: OidcUser) => void;
+}
+
+export const OktaAuthProvider: FunctionComponent<Props> = ({
+  children,
+  onLoginSuccess,
+}: Props) => {
   const { authConfig, setIsAuthenticated } = useAuthContext();
   const { clientId, issuer, redirectUri, scopes, pkce } = authConfig;
   const oktaAuth = new OktaAuth({
@@ -15,15 +36,14 @@ export const OktaAuthProvider = ({ children, onLoginSuccess }) => {
     scopes,
     pkce,
   });
-  // const history = useHistory();
 
   const triggerLogin = async () => {
     await oktaAuth.signInWithRedirect();
   };
 
-  const restoreOriginalUri = async (_oktaAuth /* , _originalUri */) => {
-    // history.replace(toRelativeUrl(originalUri || '/', window.location.origin));
-    const { idToken } = _oktaAuth?.authStateManager?._authState;
+  const restoreOriginalUri = async (_oktaAuth: OktaAuth) => {
+    const idToken =
+      _oktaAuth?.authStateManager?._authState?.idToken || ({} as IDToken);
     localStorage.setItem(oidcTokenKey, idToken?.idToken || '');
     _oktaAuth
       .getUser()
@@ -36,9 +56,10 @@ export const OktaAuthProvider = ({ children, onLoginSuccess }) => {
           id_token: idToken.idToken,
           scope: idToken.scopes.join(),
           profile: {
-            email: info.email,
-            name: info.name,
-            picture: info.imageUrl || '',
+            email: info.email || '',
+            name: info.name || '',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            picture: (info as any).imageUrl || '',
             locale: info.locale || '',
           },
         };
@@ -59,7 +80,6 @@ export const OktaAuthProvider = ({ children, onLoginSuccess }) => {
       await triggerLogin();
     } else {
       // Ask the user to trigger the login process during token autoRenew process
-      //   setAuthRequiredModalOpen(true);
     }
   };
 
@@ -71,11 +91,6 @@ export const OktaAuthProvider = ({ children, onLoginSuccess }) => {
       {children}
     </Security>
   );
-};
-
-OktaAuthProvider.propTypes = {
-  children: PropTypes.node,
-  onLoginSuccess: PropTypes.func,
 };
 
 export default OktaAuthProvider;

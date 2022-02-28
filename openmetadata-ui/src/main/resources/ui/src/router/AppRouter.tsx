@@ -11,15 +11,53 @@
  *  limitations under the License.
  */
 
-import React, { FunctionComponent } from 'react';
-import AuthProvider from '../auth-provider/AuthProvider';
+import React from 'react';
+import { Redirect, Route, Switch } from 'react-router-dom';
+import { useAuthContext } from '../auth-provider/AuthProvider';
+import Appbar from '../components/app-bar/Appbar';
+import Loader from '../components/Loader/Loader';
+import { ROUTES } from '../constants/constants';
+import SigninPage from '../pages/login';
+import PageNotFound from '../pages/page-not-found';
 import AuthenticatedAppRouter from './AuthenticatedAppRouter';
 
-const AppRouter: FunctionComponent = () => {
-  return (
-    <AuthProvider childComponentType={AuthenticatedAppRouter}>
-      <AuthenticatedAppRouter />
-    </AuthProvider>
+const AppRouter = () => {
+  const {
+    isAuthDisabled,
+    isAuthenticated,
+    loading,
+    isSigningIn,
+    getCallBackComponent,
+  } = useAuthContext();
+  const callbackComponent = getCallBackComponent();
+
+  return loading ? (
+    <Loader />
+  ) : (
+    <>
+      <Appbar />
+      <Switch>
+        <Route exact path={ROUTES.HOME}>
+          {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
+            <Redirect to={ROUTES.SIGNIN} />
+          ) : (
+            <Redirect to={ROUTES.MY_DATA} />
+          )}
+        </Route>
+        {!isSigningIn ? (
+          <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+        ) : null}
+        {callbackComponent ? (
+          <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+        ) : null}
+        <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+        {isAuthDisabled || isAuthenticated ? (
+          <AuthenticatedAppRouter />
+        ) : (
+          <Redirect to={ROUTES.SIGNIN} />
+        )}
+      </Switch>
+    </>
   );
 };
 

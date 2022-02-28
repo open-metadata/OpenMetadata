@@ -12,25 +12,15 @@
  */
 
 import React, { FunctionComponent } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
-import { AuthProvider } from './auth-provider/AuthProvider';
-import { ToastContextProvider } from './contexts/ToastContext';
-import AppRouter from './router/AppRouter';
+import AuthProvider from '../auth-provider-old/AuthProvider';
+import AuthenticatedAppRouter from './AuthenticatedAppRouter';
 
-const App: FunctionComponent = () => {
+const AppRouter: FunctionComponent = () => {
   return (
-    <div className="main-container">
-      <ToastContextProvider>
-        <Router>
-          <div className="content-wrapper" data-testid="content-wrapper">
-            <AuthProvider>
-              <AppRouter />
-            </AuthProvider>
-          </div>
-        </Router>
-      </ToastContextProvider>
-    </div>
+    <AuthProvider childComponentType={AuthenticatedAppRouter}>
+      <AuthenticatedAppRouter />
+    </AuthProvider>
   );
 };
 
-export default App;
+export default AppRouter;

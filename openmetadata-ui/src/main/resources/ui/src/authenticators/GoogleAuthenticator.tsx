@@ -1,4 +1,16 @@
-// import PropTypes from 'prop-types';
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import React, {
   forwardRef,
   Fragment,
@@ -10,10 +22,13 @@ import {
   useGoogleLogin,
   useGoogleLogout,
 } from 'react-google-login';
+import { useAuthContext } from '../auth-provider/AuthProvider';
+import {
+  AuthenticatorRef,
+  OidcUser,
+} from '../auth-provider/AuthProvider.interface';
+import { refreshTokenSetup } from '../auth-provider/refreshToken';
 import { oidcTokenKey } from '../constants/constants';
-import { useAuthContext } from './AuthProviderV1';
-import { AuthenticatorRef, OidcUser } from './AuthProviderV1.interface';
-import { refreshTokenSetup } from './refreshToken';
 
 interface Props {
   children: ReactNode;
@@ -57,8 +72,6 @@ const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const googleClientLogout = useGoogleLogout({
       clientId: authConfig.clientId,
       onLogoutSuccess: () => {
-        // eslint-disable-next-line no-console
-        console.log('Logout Success!');
         setIsAuthenticated(false);
         onLogoutSuccess();
       },
@@ -81,12 +94,6 @@ const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
     return <Fragment>{children}</Fragment>;
   }
 );
-
-// GoogleAuthenticator.propTypes = {
-//   children: PropTypes.node,
-//   onLoginSuccess: PropTypes.func,
-//   onLogoutSuccess: PropTypes.func,
-// };
 
 GoogleAuthenticator.displayName = 'GoogleAuthenticator';
 

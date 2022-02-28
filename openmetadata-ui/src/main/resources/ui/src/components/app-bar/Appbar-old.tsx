@@ -19,7 +19,6 @@ import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useLocation, useRouteMatch } from 'react-router-dom';
 import appState from '../../AppState';
-import { useAuthContext } from '../../auth-provider-v1/AuthProviderV1';
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
@@ -29,6 +28,7 @@ import {
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
+import { userSignOut } from '../../utils/AuthUtils';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
@@ -39,14 +39,13 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { isFirstTimeUser } = useAuth(location.pathname);
   const {
+    isAuthenticatedRoute,
+    isSignedIn,
+    isFirstTimeUser,
     isAuthDisabled,
-    isAuthenticated,
-    isProtectedRoute,
     isTourRoute,
-    onLogoutHandler,
-  } = useAuthContext();
+  } = useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
@@ -191,26 +190,33 @@ const Appbar: React.FC = (): JSX.Element => {
       name: 'Logout',
       to: '',
       disabled: false,
-      method: onLogoutHandler,
+      method: userSignOut,
     },
   ];
+
+  const searchHandler = (value: string) => {
+    setIsOpen(false);
+    addToRecentSearched(value);
+    history.push(
+      getExplorePathWithSearch(
+        value,
+        // this is for if user is searching from another page
+        location.pathname.startsWith(ROUTES.EXPLORE)
+          ? appState.explorePageTab
+          : 'tables'
+      )
+    );
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
     if (e.key === 'Enter') {
-      setIsOpen(false);
-
-      addToRecentSearched(target.value);
-      history.push(
-        getExplorePathWithSearch(
-          target.value,
-          // this is for if user is searching from another page
-          location.pathname.startsWith(ROUTES.EXPLORE)
-            ? appState.explorePageTab
-            : 'tables'
-        )
-      );
+      searchHandler(target.value);
     }
+  };
+
+  const handleOnclick = () => {
+    searchHandler(searchValue ?? '');
   };
 
   useEffect(() => {
@@ -240,12 +246,11 @@ const Appbar: React.FC = (): JSX.Element => {
 
   return (
     <>
-      {isProtectedRoute(location.pathname) &&
-      (isAuthDisabled || isAuthenticated) &&
-      !isTourRoute(location.pathname) ? (
+      {isAuthenticatedRoute && isSignedIn && !isTourRoute ? (
         <NavBar
           handleFeatureModal={handleFeatureModal}
           handleKeyDown={handleKeyDown}
+          handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
           isFeatureModalOpen={isFeatureModalOpen}
