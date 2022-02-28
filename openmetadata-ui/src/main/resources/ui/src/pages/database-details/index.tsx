@@ -181,7 +181,6 @@ const DatabaseDetails: FunctionComponent = () => {
             url: service.name
               ? getServiceDetailsPath(
                   service.name,
-                  serviceType,
                   ServiceCategory.DATABASE_SERVICES
                 )
               : '',

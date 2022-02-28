@@ -247,7 +247,6 @@ const DashboardDetailsPage = () => {
             url: service.name
               ? getServiceDetailsPath(
                   service.name,
-                  serviceType,
                   ServiceCategory.DASHBOARD_SERVICES
                 )
               : '',
