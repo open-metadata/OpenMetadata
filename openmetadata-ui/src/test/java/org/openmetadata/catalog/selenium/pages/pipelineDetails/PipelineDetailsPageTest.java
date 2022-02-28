@@ -63,7 +63,7 @@ public class PipelineDetailsPageTest {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     common = new Common(webDriver);
     pipelineDetails = new PipelineDetails(webDriver);
