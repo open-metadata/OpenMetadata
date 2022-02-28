@@ -14,7 +14,6 @@ ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints
 RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 COPY ingestion /ingestion
 
-# TODO: deprecate install all in favor of the minimum airflow requirements
 RUN pip install ".[airflow-container]" openmetadata-airflow-managed-apis
 RUN airflow db init
 RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
