@@ -23,10 +23,13 @@ of logging these issues.
 from functools import singledispatch
 
 from metadata.generated.schema.tests.basic import TestCaseResult
-
 from metadata.orm_profiler.utils import logger
-from metadata.orm_profiler.validations.column.column_values_to_be_between import column_values_to_be_between
-from metadata.orm_profiler.validations.table.table_row_count_to_equal import table_row_count_to_equal
+from metadata.orm_profiler.validations.column.column_values_to_be_between import (
+    column_values_to_be_between,
+)
+from metadata.orm_profiler.validations.table.table_row_count_to_equal import (
+    table_row_count_to_equal,
+)
 
 logger = logger()
 
