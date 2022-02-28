@@ -12,6 +12,7 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -58,6 +59,7 @@ class Explore {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
+    wait.until(ExpectedConditions.visibilityOf(webDriver.findElement(explorePage.tableCount())));
     if (webDriver.findElement(explorePage.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
@@ -68,6 +70,7 @@ class Explore {
   @Test
   @Order(2)
   void checkTableCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     WebElement tabCount = webDriver.findElement(explorePage.tableCount());
     int tableCount = Integer.parseInt(tabCount.getText());
@@ -93,6 +96,7 @@ class Explore {
   @Test
   @Order(3)
   void checkTopicCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
@@ -146,6 +150,7 @@ class Explore {
   @Test
   @Order(5)
   void checkPipelineCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
@@ -172,6 +177,7 @@ class Explore {
   @Test
   @Order(6)
   void checkBasics() throws Exception {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     // Doing add tags first to get Tags checkbox in the left panel
     Events.click(webDriver, explorePage.selectTable());
@@ -235,6 +241,7 @@ class Explore {
   @Test
   @Order(8)
   void checkRandomTableCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.bigQueryCheckbox());
     Events.click(webDriver, explorePage.shopifyCheckbox());
@@ -256,6 +263,7 @@ class Explore {
   @Test
   @Order(9)
   public void checkRandomTopicCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -276,6 +284,7 @@ class Explore {
   @Test
   @Order(10)
   void checkRandomDashboardCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -296,6 +305,7 @@ class Explore {
   @Test
   @Order(11)
   void checkRandomPipelineCount() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -316,6 +326,7 @@ class Explore {
   @Test
   @Order(12)
   void checkSearchBarInvalidValue() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), searchCriteria);
