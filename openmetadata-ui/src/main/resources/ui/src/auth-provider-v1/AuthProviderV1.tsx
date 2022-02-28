@@ -316,7 +316,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
-            onLogoutHandler();
+            resetUserDetails(true);
           } else if (status === ClientErrors.FORBIDDEN) {
             showToast({
               variant: 'error',

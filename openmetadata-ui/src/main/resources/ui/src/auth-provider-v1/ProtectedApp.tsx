@@ -51,7 +51,11 @@ const ProtectedApp = () => {
           <Route component={callbackComponent} path={ROUTES.CALLBACK} />
         ) : null}
         <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-        {isAuthDisabled || isAuthenticated ? <AuthenticatedAppRouter /> : null}
+        {isAuthDisabled || isAuthenticated ? (
+          <AuthenticatedAppRouter />
+        ) : (
+          <Redirect to={ROUTES.SIGNIN} />
+        )}
       </Switch>
     </>
   );
