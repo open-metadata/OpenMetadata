@@ -45,6 +45,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
+    "parsimonious==0.8.1",
     "sqllineage==1.3.3",
 }
 
