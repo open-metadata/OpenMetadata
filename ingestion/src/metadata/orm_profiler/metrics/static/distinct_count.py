@@ -17,12 +17,16 @@ from sqlalchemy import distinct, func
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
-class Distinct(StaticMetric):
+class DistinctCount(StaticMetric):
     """
     Distinct COUNT Metric
 
     Given a column, return the Distinct count. Ignores NULL values
     """
+
+    @classmethod
+    def name(cls):
+        return "distinctCount"
 
     def metric_type(self):
         return int

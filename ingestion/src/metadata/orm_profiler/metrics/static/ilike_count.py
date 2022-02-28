@@ -25,6 +25,10 @@ class ILikeCount(StaticMetric):
     rows that match it
     """
 
+    @classmethod
+    def name(cls):
+        return "iLikeCount"
+
     def metric_type(self):
         return int
 

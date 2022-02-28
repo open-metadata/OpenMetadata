@@ -2,11 +2,13 @@ package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@Getter
 @RequiredArgsConstructor
 public class Common {
   @Nonnull WebDriver webDriver;
@@ -64,7 +66,7 @@ public class Common {
   By breadCrumb = By.xpath("//li[@data-testid='breadcrumb-link']");
   By descriptionContainer = By.xpath("//div[@data-testid='description']/div/p");
   By manage = By.xpath("//button[@data-testid='tab'][contains(text(),'Manage')]");
-  By selectTier = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
+  By selectTier1 = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
   By difference = By.xpath("//span[@class='diff-added']");
   By searchBox = By.xpath("//input[@data-testid=\"searchBox\"]");
   By follow = By.cssSelector("button[data-testid='follow-button']");
@@ -78,166 +80,26 @@ public class Common {
   By topics = By.xpath("(//button[@data-testid='tab'])[2]");
   By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
   By addTag = By.xpath("//div[@data-testid='tag-conatiner']");
-  By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])[1]");
-
-  public By breadCrumbTag() {
-    return breadCrumbTags;
-  }
-
-  public By addTag() {
-    return addTag;
-  }
-
-  public By selectTable() {
-    return selectTable;
-  }
-
-  public By topics() {
-    return topics;
-  }
-
-  public By version() {
-    return version;
-  }
+  By breadCrumbTag = By.xpath("(//span[@data-testid='tags'])[1]");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
-  }
-
-  public By editDescriptionButton() {
-    return editDescriptionButton;
-  }
-
-  public By editDescriptionBox() {
-    return editDescriptionBox;
-  }
-
-  public By saveManage() {
-    return saveManage;
-  }
-
-  public By selectUser() {
-    return selectUser;
-  }
-
-  public By clickUsers() {
-    return users;
-  }
-
-  public By clickFollow() {
-    return follow;
-  }
-
-  public By difference() {
-    return difference;
-  }
-
-  public By selectTier1() {
-    return selectTier;
-  }
-
-  public By manage() {
-    return manage;
-  }
-
-  public By descriptionContainer() {
-    return descriptionContainer;
-  }
-
-  public By displayName() {
-    return displayName;
-  }
-
-  public By descriptionBoldButton() {
-    return descriptionBoldButton;
-  }
-
-  public By descriptionItalicButton() {
-    return descriptionItalicButton;
-  }
-
-  public By descriptionLinkButton() {
-    return descriptionLinkButton;
-  }
-
-  public By descriptionSaveButton() {
-    return descriptionSaveButton;
-  }
-
-  public By addDescriptionString() {
-    return addDescriptionString;
-  }
-
-  public By editTagCategoryDescription() {
-    return editTagCategoryDescription;
-  }
-
-  public By editDescriptionSaveButton() {
-    return editDescriptionSaveButton;
   }
 
   public By containsText(String matchingText) {
     return By.xpath("//*[text()[contains(.,'" + matchingText + "')]] ");
   }
 
-  public By closeWhatsNew() {
-    return closeWhatsNew;
-  }
-
-  public By headerSettings() {
-    return headerSettings;
-  }
-
-  public By headerSettingsServices() {
-    return headerSettingsServices;
-  }
-
-  public By addServiceButton() {
-    return addServiceButton;
-  }
-
-  public By noServicesAddServiceButton() {
-    return noServicesAddServiceButton;
-  }
-
   public By serviceType(String serviceType) {
     return By.cssSelector("[data-testid='" + serviceType + "']");
-  }
-
-  public By serviceName() {
-    return serviceName;
-  }
-
-  public By serviceUsername() {
-    return serviceUsername;
-  }
-
-  public By servicePassword() {
-    return servicePassword;
-  }
-
-  public By nextButton() {
-    return nextButton;
-  }
-
-  public By saveServiceButton() {
-    return saveServiceButton;
   }
 
   public By deleteServiceButton(String serviceName) {
     return By.cssSelector("[data-testid='delete-service-" + serviceName + "']");
   }
 
-  public By saveEditedService() {
-    return saveEditedService;
-  }
-
   public By serviceDetailsTabs(String tab) {
     return By.cssSelector("[data-testid='tab'][id='" + tab + "']");
-  }
-
-  public By saveConnectionConfig() {
-    return saveConnectionConfig;
   }
 
   public By selectServiceTab(int index) {
@@ -260,40 +122,8 @@ public class Common {
     return By.cssSelector("[data-testid='checkbox'][id='" + filter + "']");
   }
 
-  public By searchResults() {
-    return searchResults;
-  }
-
-  public By searchBar() {
-    return searchBar;
-  }
-
   public By headerItem(String item) {
     return By.cssSelector("[data-testid='appbar-item'][id='" + item + "']");
-  }
-
-  public By searchSuggestion() {
-    return searchSuggestion;
-  }
-
-  public By editAssociatedTagButton() {
-    return editAssociatedTagButton;
-  }
-
-  public By enterAssociatedTagName() {
-    return enterAssociatedTagName;
-  }
-
-  public By tagListItem() {
-    return tagListItem;
-  }
-
-  public By saveAssociatedTag() {
-    return saveAssociatedTag;
-  }
-
-  public By searchResultsList() {
-    return searchResultsList;
   }
 
   public By exploreFilterCount(String filter) {
@@ -308,107 +138,19 @@ public class Common {
     return By.cssSelector("[data-testid='data-name'][id='" + result + "']");
   }
 
-  public By ownerDropdown() {
-    return ownerDropdown;
-  }
-
-  public By ownerSearchBox() {
-    return ownerSearchBox;
-  }
-
-  public By closeErrorMessage() {
-    return closeErrorMessage;
-  }
-
-  public By serviceUrl() {
-    return serviceUrl;
-  }
-
-  public By servicePort() {
-    return servicePort;
-  }
-
-  public By databaseName() {
-    return databaseName;
-  }
-
-  public By addTagCategory() {
-    return addTagCategory;
-  }
-
-  public By addTagButton() {
-    return addTagButton;
-  }
-
-  public By tagCount() {
-    return tagCount;
-  }
-
-  public By errorMessage() {
-    return errorMessage;
-  }
-
-  public By matchesInDescription() {
-    return matchesInDescription;
-  }
-
-  public By tagCountSearch() {
-    return tagCountSearch;
-  }
-
   public By tourNavigationArrow(String arrow) {
     return By.cssSelector("[data-tour-elem='" + arrow + "']");
-  }
-
-  public By tagFilterCount() {
-    return tagFilterCount;
-  }
-
-  public By noSearchResult() {
-    return noSearchResult;
-  }
-
-  public By resultsCount() {
-    return resultsCount;
-  }
-
-  public By matchesStats() {
-    return matchesStats;
-  }
-
-  public By editLineageButton() {
-    return editLineageButton;
   }
 
   public By whatsNewDotButtons(int index) {
     return By.xpath("//ul[@class='slick-dots testid-dots-button']//li[" + index + "]");
   }
 
-  public By whatsNewModalChangeLogs() {
-    return whatsNewModalChangeLogs;
-  }
-
   public By overviewFilterCount(String entity) {
     return By.xpath("//div[@data-testid='" + entity + "-summary']//span[@data-testid='filter-count']");
   }
 
-  public By explore() {
-    return explore;
-  }
-
-  public By getTableCount() {
-    return tableCount;
-  }
-
-  public By removeAssociatedTag() {
-    return removeAssociatedTag;
-  }
-
   public List<WebElement> breadCrumb() {
     return webDriver.findElements(breadCrumb);
-  }
-
-  public By getSearchBox() {
-    return searchBox;
   }
 }

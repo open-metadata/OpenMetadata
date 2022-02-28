@@ -6,6 +6,8 @@ import random
 import unittest
 from unittest import TestCase
 
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import CreateTagCategoryRequest
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -20,14 +22,13 @@ class OMetaTagMixinPost(TestCase):
 
     unittest.TestLoader.sortTestMethodsUsing = None
 
-    def setUp(self) -> None:
-        server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
-        self.metadata = OpenMetadata(server_config)
+    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    metadata = OpenMetadata(server_config)
 
     def test_a_create_tag_categories(self):
         """Test POST category Mixin method"""
 
-        tag_category = TagCategory(
+        tag_category = CreateTagCategoryRequest(
             categoryType="Descriptive", description="test tag", name=CATEGORY_NAME
         )
 
@@ -37,7 +38,7 @@ class OMetaTagMixinPost(TestCase):
     def test_b_create_primary_tag(self):
         """Test POST primary tag Mixin method"""
 
-        primary_tag_category = Tag(
+        primary_tag_category = CreateTagRequest(
             name=PRIMARY_TAG_NAME,
             description="test tag",
         )
@@ -45,10 +46,10 @@ class OMetaTagMixinPost(TestCase):
         self.metadata.create_primary_tag(CATEGORY_NAME, primary_tag_category)
         assert True
 
-    def test_c_create_primary_tag(self):
+    def test_c_create_secondary_tag(self):
         """Test POST secondary tag Mixin method"""
 
-        secondary_tag_category = Tag(
+        secondary_tag_category = CreateTagRequest(
             name=SECONDARY_TAG_NAME,
             description="test tag",
         )
@@ -117,7 +118,7 @@ class OMetaTagMixinPut(TestCase):
         """Test put tag category"""
 
         rand_name = random.getrandbits(64)
-        updated_tag_category = TagCategory(
+        updated_tag_category = CreateTagCategoryRequest(
             categoryType="Descriptive", description="test tag", name=f"{rand_name}"
         )
 
@@ -129,7 +130,7 @@ class OMetaTagMixinPut(TestCase):
         """Test put tag category"""
 
         rand_name = random.getrandbits(64)
-        updated_primary_tag = Tag(description="test tag", name=f"{rand_name}")
+        updated_primary_tag = CreateTagRequest(description="test tag", name=f"{rand_name}")
 
         self.metadata.update_primary_tag(
             CATEGORY_NAME, PRIMARY_TAG_NAME, updated_primary_tag
@@ -141,7 +142,7 @@ class OMetaTagMixinPut(TestCase):
         """Test put tag category"""
 
         rand_name = random.getrandbits(64)
-        updated_secondary_tag = Tag(description="test tag", name=f"{rand_name}")
+        updated_secondary_tag = CreateTagRequest(description="test tag", name=f"{rand_name}")
 
         self.metadata.update_secondary_tag(
             CATEGORY_NAME, PRIMARY_TAG_NAME, SECONDARY_TAG_NAME, updated_secondary_tag

@@ -35,8 +35,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class TeamRepository extends EntityRepository<Team> {
-  static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users,defaultRoles");
-  static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users,defaultRoles");
+  static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.ALLOWED_FIELDS, "profile,users,defaultRoles");
+  static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.ALLOWED_FIELDS, "profile,users,defaultRoles");
 
   public TeamRepository(CollectionDAO dao) {
     super(
@@ -86,7 +86,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public Team setFields(Team team, Fields fields) throws IOException {
     if (!fields.contains("profile")) {
-      team.setProfile(null);
+      team.setProfile(null); // Clear the profile attribute, if it was not requested
     }
     team.setUsers(fields.contains("users") ? getUsers(team) : null);
     team.setOwns(fields.contains("owns") ? getOwns(team) : null);

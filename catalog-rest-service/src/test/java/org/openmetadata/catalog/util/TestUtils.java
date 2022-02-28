@@ -225,7 +225,7 @@ public final class TestUtils {
     }
   }
 
-  public static void validateEntityReference(List<EntityReference> list) {
+  public static void validateEntityReferences(List<EntityReference> list) {
     Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(TestUtils::validateEntityReference);
   }
 
@@ -255,10 +255,6 @@ public final class TestUtils {
     updatedExpectedList.sort(EntityUtil.compareTagLabel);
     actualList.sort(EntityUtil.compareTagLabel);
     assertEquals(updatedExpectedList, actualList);
-  }
-
-  public static Map<String, String> userAuthHeaders() {
-    return authHeaders("test@open-metadata.org");
   }
 
   public static void checkUserFollowing(
@@ -296,7 +292,7 @@ public final class TestUtils {
     if (expected == actual) { // Take care of both being null
       return;
     }
-    validateEntityReference(actual);
+    validateEntityReferences(actual);
     if (expected != null) {
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {

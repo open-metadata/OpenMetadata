@@ -24,7 +24,8 @@
           "type": "string"
         }
       },
-      "required": ["message", "from"]
+      "required": ["message", "from"],
+      "additionalProperties": false
     }
   },
   "properties": {

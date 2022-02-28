@@ -14,10 +14,12 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
+@Getter
 @RequiredArgsConstructor
 public class TagsPage {
   @Nonnull WebDriver webDriver;
@@ -34,52 +36,12 @@ public class TagsPage {
   By headerSettingsTags = By.cssSelector("[data-testid='menu-item-Tags']");
   By sortBy = By.cssSelector("[data-testid='sortBy']");
 
-  public By addTagButton() {
-    return addTagButton;
-  }
-
-  public By editTagDescription() {
-    return editTagDescription;
-  }
-
-  public By addAssociatedTagButton() {
-    return addAssociatedTagButton;
-  }
-
-  public By removeAssociatedTag() {
-    return removeAssociatedTag;
-  }
-
-  public By closeWhatsNew() {
-    return closeWhatsNew;
-  }
-
-  public By tables() {
-    return tables;
-  }
-
   public By tagFilter(String tagCategoryDisplayName, String tagDisplayName) {
     return By.cssSelector("[data-testid='checkbox'][id='" + tagCategoryDisplayName + "." + tagDisplayName + "']");
   }
 
-  public By tableLink() {
-    return tableLink;
-  }
-
-  public By lastTableLink() {
-    return lastTableLink;
-  }
-
-  public By tagUsageCount() {
-    return tagUsageCount;
-  }
-
   public By usageCountElementIndex(int index) {
     return By.xpath("(//a[@data-testid='usage-count'])[" + index + "]");
-  }
-
-  public By headerSettingsTags() {
-    return headerSettingsTags;
   }
 
   public By spanTagUsageCountElementIndex(int index) {
@@ -96,9 +58,5 @@ public class TagsPage {
 
   public By headerItem(String item) {
     return By.cssSelector("[data-testid='appbar-item'][id='" + item + "']");
-  }
-
-  public By sortBy() {
-    return sortBy;
   }
 }

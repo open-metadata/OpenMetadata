@@ -92,7 +92,8 @@
           "default": null
         }
       },
-      "required": ["id", "name"]
+      "required": ["id", "name"],
+      "additionalProperties": false
     },
     "pipelineStatus": {
       "description": "Series of pipeline executions, its status and task status.",

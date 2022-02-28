@@ -23,18 +23,18 @@ from metadata.orm_profiler.metrics.composed.ilike_ratio import ILikeRatio
 from metadata.orm_profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
 from metadata.orm_profiler.metrics.composed.unique_ratio import UniqueRatio
-from metadata.orm_profiler.metrics.static.avg import Avg
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.distinct import Distinct
+from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
 from metadata.orm_profiler.metrics.static.histogram import Histogram
 from metadata.orm_profiler.metrics.static.ilike_count import ILikeCount
 from metadata.orm_profiler.metrics.static.like_count import LikeCount
 from metadata.orm_profiler.metrics.static.max import Max
 from metadata.orm_profiler.metrics.static.max_length import MaxLength
+from metadata.orm_profiler.metrics.static.mean import Mean
 from metadata.orm_profiler.metrics.static.min import Min
 from metadata.orm_profiler.metrics.static.min_length import MinLength
 from metadata.orm_profiler.metrics.static.null_count import NullCount
-from metadata.orm_profiler.metrics.static.row_number import RowNumber
+from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
@@ -49,9 +49,9 @@ class Metrics(MetricRegistry):
     """
 
     # Static Metrics
-    AVG = Avg
+    MEAN = Mean
     COUNT = Count
-    DISTINCT = Distinct
+    DISTINCT_COUNT = DistinctCount
     HISTOGRAM = Histogram
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount
@@ -60,7 +60,7 @@ class Metrics(MetricRegistry):
     MIN = Min
     MIN_LENGTH = MinLength
     NULL_COUNT = NullCount
-    ROW_NUMBER = RowNumber
+    ROW_COUNT = RowCount
     STDDEV = StdDev
     SUM = Sum
     UNIQUE_COUNT = UniqueCount

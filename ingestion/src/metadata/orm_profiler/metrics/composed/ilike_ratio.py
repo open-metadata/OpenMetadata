@@ -21,11 +21,16 @@ from metadata.orm_profiler.metrics.static.ilike_count import ILikeCount
 
 class ILikeRatio(ComposedMetric):
     """
-    Given the total count and LIKE count,
-    compute the LIKE ratio
+    Given the total count and ILIKE count,
+    compute the ILIKE ratio
     """
 
-    def required_metrics(self) -> Tuple[str, ...]:
+    @classmethod
+    def name(cls):
+        return "iLikeRatio"
+
+    @classmethod
+    def required_metrics(cls) -> Tuple[str, ...]:
         return Count.name(), ILikeCount.name()
 
     @property

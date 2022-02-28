@@ -223,12 +223,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public void validateUpdatedEntity(
-      PipelineService updatedEntity, CreatePipelineService request, Map<String, String> authHeaders) {
-    validateCreatedEntity(updatedEntity, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(PipelineService expected, PipelineService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
@@ -240,18 +234,19 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
 
   @Override
   public void validateGetWithDifferentFields(PipelineService service, boolean byName) throws HttpResponseException {
-    String fields = "owner";
+    String fields = "";
     service =
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(
-        service.getHref(),
-        service.getOwner(),
-        service.getVersion(),
-        service.getUpdatedBy(),
-        service.getServiceType(),
-        service.getUpdatedAt());
+    TestUtils.assertListNull(service.getOwner());
+
+    fields = "owner";
+    service =
+        byName
+            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+    TestUtils.assertListNotNull(service.getOwner());
   }
 
   @Override

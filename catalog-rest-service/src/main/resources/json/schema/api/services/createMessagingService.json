@@ -37,5 +37,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "brokers"]
+  "required": ["name", "serviceType", "brokers"],
+  "additionalProperties": false
 }

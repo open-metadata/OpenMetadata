@@ -35,9 +35,9 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
   private static final Fields AIRFLOW_PIPELINE_UPDATE_FIELDS =
-      new Fields(AirflowPipelineResource.FIELD_LIST, "pipelineConfig,scheduleInterval,owner,tags");
+      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, "owner");
   private static final Fields AIRFLOW_PIPELINE_PATCH_FIELDS =
-      new Fields(AirflowPipelineResource.FIELD_LIST, "pipelineConfig,scheduleInterval,owner,tags");
+      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, "owner");
 
   public AirflowPipelineRepository(CollectionDAO dao) {
     super(
@@ -66,10 +66,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   @Override
   public AirflowPipeline setFields(AirflowPipeline airflowPipeline, Fields fields) throws IOException, ParseException {
-    airflowPipeline.setDisplayName(airflowPipeline.getDisplayName());
     airflowPipeline.setService(getService(airflowPipeline));
-    airflowPipeline.setPipelineConfig(airflowPipeline.getPipelineConfig());
-    airflowPipeline.setScheduleInterval(airflowPipeline.getScheduleInterval());
     airflowPipeline.setOwner(fields.contains("owner") ? getOwner(airflowPipeline) : null);
     return airflowPipeline;
   }
@@ -99,7 +96,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     EntityReference owner = airflowPipeline.getOwner();
     EntityReference service = airflowPipeline.getService();
 
-    // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
+    // Don't store owner. Build it on the fly based on relationships
     airflowPipeline.withOwner(null).withService(null).withHref(null);
 
     store(airflowPipeline.getId(), airflowPipeline, update);

@@ -14,14 +14,13 @@ Test Metrics behavior
 """
 from unittest import TestCase
 
-import pytest
-from numpy.random import normal
-from sqlalchemy import TEXT, Column, Integer, String, create_engine, text
+from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.engines import create_and_bind_session
+from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import SingleProfiler
+from metadata.orm_profiler.profiles.core import Profiler
 
 Base = declarative_base()
 
@@ -74,58 +73,69 @@ class MetricsTest(TestCase):
         """
         Check the Min metric
         """
-        min_age = Metrics.MIN(col=User.age)
-        min_profiler = SingleProfiler(min_age, session=self.session, table=User)
-        res = min_profiler.execute()
+        min_age = Metrics.MIN.value
+        profiler = Profiler(
+            min_age, session=self.session, table=User, use_cols=[User.age]
+        )
+        res = profiler.execute()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(Metrics.MIN.name) == 30
+        assert res.get(User.age.name).get(Metrics.MIN.name) == 30
 
     def test_std(self):
         """
         Check STD metric
         """
-        std_age = Metrics.STDDEV(col=User.age)
-        std_profiler = SingleProfiler(std_age, session=self.session, table=User)
-        res = std_profiler.execute()
+        std_age = Metrics.STDDEV.value
+        profiler = Profiler(
+            std_age, session=self.session, table=User, use_cols=[User.age]
+        )
+        res = profiler.execute()._column_results
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
-        assert res.get(Metrics.STDDEV.name) == 0.25
+        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
 
     def test_null_count(self):
         """
         Check null count
         """
-        null_count = Metrics.NULL_COUNT(col=User.nickname)
-        nc_profiler = SingleProfiler(null_count, session=self.session, table=User)
-        res = nc_profiler.execute()
+        null_count = Metrics.NULL_COUNT.value
+        profiler = Profiler(
+            null_count, session=self.session, table=User, use_cols=[User.nickname]
+        )
+        res = profiler.execute()._column_results
 
-        assert res.get(Metrics.NULL_COUNT.name) == 1
+        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 1
 
     def test_null_ratio(self):
         """
         Check composed metric run
         """
-        count = Metrics.COUNT(col=User.nickname)
-        null_count = Metrics.NULL_COUNT(col=User.nickname)
+        count = Metrics.COUNT.value
+        null_count = Metrics.NULL_COUNT.value
 
         # Build the ratio based on the other two metrics
-        null_ratio = Metrics.NULL_RATIO(col=User.nickname)
+        null_ratio = Metrics.NULL_RATIO.value
 
-        composed_profiler = SingleProfiler(
-            count, null_count, null_ratio, session=self.session, table=User
+        profiler = Profiler(
+            count,
+            null_count,
+            null_ratio,
+            session=self.session,
+            table=User,
+            use_cols=[User.nickname],
         )
-        res = composed_profiler.execute()
-        assert res.get(Metrics.NULL_RATIO.name) == 0.5
+        res = profiler.execute()._column_results
+        assert res.get(User.nickname.name).get(Metrics.NULL_RATIO.name) == 0.5
 
     def test_table_count(self):
         """
         Check Table Metric run
         """
-        table_count = Metrics.ROW_NUMBER()
-        profiler = SingleProfiler(table_count, session=self.session, table=User)
-        res = profiler.execute()
-        assert res.get(Metrics.ROW_NUMBER.name) == 2
+        table_count = Metrics.ROW_COUNT.value
+        profiler = Profiler(table_count, session=self.session, table=User)
+        res = profiler.execute()._table_results
+        assert res.get(Metrics.ROW_COUNT.name) == 2
 
     def test_avg(self):
         """
@@ -133,68 +143,86 @@ class MetricsTest(TestCase):
         """
 
         # Integer
-        avg = Metrics.AVG(col=User.age)
-        res = SingleProfiler(avg, session=self.session, table=User).execute()
+        avg = Metrics.MEAN.value
+        res = (
+            Profiler(avg, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        assert res["AVG"] == 30.5
+        assert res.get(User.age.name)[Metrics.MEAN.name] == 30.5
 
         # String
-        avg = Metrics.AVG(col=User.name)
-        res = SingleProfiler(avg, session=self.session, table=User).execute()
+        avg = Metrics.MEAN.value
+        res = (
+            Profiler(avg, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
-        assert res["AVG"] == 4.0
+        assert res.get(User.name.name)[Metrics.MEAN.name] == 4.0
 
         # Text
-        avg = Metrics.AVG(col=User.comments)
-        res = SingleProfiler(avg, session=self.session, table=User).execute()
+        avg = Metrics.MEAN.value
+        res = (
+            Profiler(avg, session=self.session, table=User, use_cols=[User.comments])
+            .execute()
+            ._column_results
+        )
 
-        assert res["AVG"] == 15.0
+        assert res.get(User.comments.name)[Metrics.MEAN.name] == 15.0
 
     def test_distinct(self):
         """
         Check distinct count
         """
-        dist = Metrics.DISTINCT(col=User.age)
-        res = SingleProfiler(dist, session=self.session, table=User).execute()
+        dist = Metrics.DISTINCT_COUNT.value
+        res = (
+            Profiler(dist, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        assert res["DISTINCT"] == 2
+        assert res.get(User.age.name)[Metrics.DISTINCT_COUNT.name] == 2
 
     def test_duplicate_count(self):
         """
         Check composed duplicate count
         """
-        count = Metrics.COUNT(col=User.name)
-        dist = Metrics.DISTINCT(col=User.name)
-        dup_count = Metrics.DUPLICATE_COUNT(col=User.name)
-        res = SingleProfiler(
-            count, dist, dup_count, session=self.session, table=User
-        ).execute()
+        count = Metrics.COUNT.value
+        dist = Metrics.DISTINCT_COUNT.value
+        dup_count = Metrics.DUPLICATE_COUNT.value
+        res = (
+            Profiler(
+                count,
+                dist,
+                dup_count,
+                session=self.session,
+                table=User,
+                use_cols=[User.age],
+            )
+            .execute()
+            ._column_results
+        )
 
-        assert res["DUPLICATECOUNT"] == 0
+        assert res.get(User.age.name)[Metrics.DUPLICATE_COUNT.name] == 0
 
     def test_histogram(self):
         """
         Check histogram computation
         """
 
-        # Cook some data first
-        class TestHist(Base):
-            __tablename__ = "test_hist"
-            id = Column(Integer, primary_key=True)
-            num = Column(Integer)
+        hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+        res = (
+            Profiler(hist, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        TestHist.__table__.create(bind=self.engine)
-
-        data = [TestHist(num=int(rand)) for rand in normal(loc=0, scale=10, size=2000)]
-
-        self.session.add_all(data)
-        self.session.commit()
-
-        hist = Metrics.HISTOGRAM(TestHist.num, bins=5)
-        res = SingleProfiler(hist, session=self.session, table=TestHist).execute()
-
-        assert res["HISTOGRAM"]
-        assert len(res["HISTOGRAM"]["count"]) == 5
+        assert res.get(User.age.name)[Metrics.HISTOGRAM.name]
+        assert (
+            len(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 2  # Too little values
+        )
 
     def test_like_count(self):
         """
@@ -202,40 +230,67 @@ class MetricsTest(TestCase):
         """
         # In sqlite, LIKE is insensitive by default, so we just check here
         # that the metrics runs correctly rather than the implementation logic.
-        like = Metrics.LIKE_COUNT(User.name, expression="J%")
-        res = SingleProfiler(like, session=self.session, table=User).execute()
+        like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
+        res = (
+            Profiler(like, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        assert res["LIKECOUNT"] == 2
+        assert res.get(User.age.name)[Metrics.LIKE_COUNT.name] == 2
 
-        like_ko = Metrics.LIKE_COUNT(User.name)
-        with pytest.raises(AttributeError):
-            SingleProfiler(like_ko, session=self.session, table=User).execute()
+        # Running safely
+        # with pytest.raises(AttributeError):
+        #     Profiler(
+        #         Metrics.LIKE_COUNT.value,
+        #         session=self.session,
+        #         table=User,
+        #         use_cols=[User.age],
+        #     ).execute()
 
     def test_ilike_count(self):
         """
         Check ILIKE count: case-insensitive LIKE
         """
-        ilike = Metrics.ILIKE_COUNT(User.name, expression="j%")
-        res = SingleProfiler(ilike, session=self.session, table=User).execute()
+        ilike = add_props(expression="J%")(Metrics.ILIKE_COUNT.value)
+        res = (
+            Profiler(ilike, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        assert res["ILIKECOUNT"] == 2
+        assert res.get(User.age.name)[Metrics.ILIKE_COUNT.name] == 2
 
-        ilike_ko = Metrics.ILIKE_COUNT(User.name)
-        with pytest.raises(AttributeError):
-            SingleProfiler(ilike_ko, session=self.session, table=User).execute()
+        # Running safely
+        # with pytest.raises(AttributeError):
+        #     Profiler(
+        #         Metrics.ILIKE_COUNT.value,
+        #         session=self.session,
+        #         table=User,
+        #         use_cols=[User.age],
+        #     ).execute()
 
     def test_like_ratio(self):
         """
         Check LIKE ratio
         """
-        like = Metrics.LIKE_COUNT(User.name, expression="J%")
-        count = Metrics.COUNT(User.name)
-        like_ratio = Metrics.LIKE_RATIO(User.name)
-        res = SingleProfiler(
-            like, count, like_ratio, session=self.session, table=User
-        ).execute()
+        like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
+        count = Metrics.COUNT.value
+        like_ratio = Metrics.LIKE_RATIO.value
+        res = (
+            Profiler(
+                like,
+                count,
+                like_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.name],
+            )
+            .execute()
+            ._column_results
+        )
 
-        assert res["LIKERATIO"] == 1.0
+        assert res.get(User.name.name)[Metrics.LIKE_RATIO.name] == 1.0
 
     def test_ilike_ratio(self):
         """
@@ -243,107 +298,172 @@ class MetricsTest(TestCase):
         """
         # In sqlite, LIKE is insensitive by default, so we just check here
         # that the metrics runs correctly rather than the implementation logic.
-        ilike = Metrics.ILIKE_COUNT(User.name, expression="j%")
-        count = Metrics.COUNT(User.name)
-        ilike_ratio = Metrics.ILIKE_RATIO(User.name)
-        res = SingleProfiler(
-            ilike, count, ilike_ratio, session=self.session, table=User
-        ).execute()
+        ilike = add_props(expression="J%")(Metrics.ILIKE_COUNT.value)
+        count = Metrics.COUNT.value
+        ilike_ratio = Metrics.ILIKE_RATIO.value
+        res = (
+            Profiler(
+                ilike,
+                count,
+                ilike_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.name],
+            )
+            .execute()
+            ._column_results
+        )
 
-        assert res["ILIKERATIO"] == 1.0
+        assert res.get(User.name.name)[Metrics.ILIKE_RATIO.name] == 1.0
 
     def test_max(self):
         """
         Check MAX metric
         """
-        _max = Metrics.MAX(User.age)
-        res = SingleProfiler(_max, session=self.session, table=User).execute()
+        _max = Metrics.MAX.value
 
-        assert res["MAX"] == 31
+        res = (
+            Profiler(_max, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        _max = Metrics.MAX(User.name)
-        res = SingleProfiler(_max, session=self.session, table=User).execute()
+        assert res.get(User.age.name)[Metrics.MAX.name] == 31
 
-        assert res["MAX"] == "John"
+        res = (
+            Profiler(_max, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.MAX.name] == "John"
 
     def test_min_length(self):
         """
         Check MIN_LENGTH metric
         """
 
-        # Integer
-        min_length = Metrics.MIN_LENGTH(col=User.age)
-        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+        min_length = Metrics.MIN_LENGTH.value
 
-        assert res["MINLENGTH"] is None
+        # Integer
+        res = (
+            Profiler(min_length, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.age.name).get(Metrics.MIN_LENGTH.name) is None
 
         # String
-        min_length = Metrics.MIN_LENGTH(col=User.name)
-        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+        res = (
+            Profiler(min_length, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
-        assert res["MINLENGTH"] == 4
+        assert res.get(User.name.name)[Metrics.MIN_LENGTH.name] == 4
 
         # Text
-        min_length = Metrics.MIN_LENGTH(col=User.comments)
-        res = SingleProfiler(min_length, session=self.session, table=User).execute()
+        res = (
+            Profiler(
+                min_length, session=self.session, table=User, use_cols=[User.comments]
+            )
+            .execute()
+            ._column_results
+        )
 
-        assert res["MINLENGTH"] == 11
+        assert res.get(User.comments.name)[Metrics.MIN_LENGTH.name] == 11
 
     def test_max_length(self):
         """
         Check MAX_LENGTH metric
         """
+        max_length = Metrics.MAX_LENGTH.value
 
         # Integer
-        max_length = Metrics.MAX_LENGTH(col=User.age)
-        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+        res = (
+            Profiler(max_length, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        assert res["MAXLENGTH"] is None
+        assert res.get(User.age.name).get(Metrics.MAX_LENGTH.name) is None
 
         # String
-        max_length = Metrics.MAX_LENGTH(col=User.name)
-        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+        res = (
+            Profiler(max_length, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
 
-        assert res["MAXLENGTH"] == 4
+        assert res.get(User.name.name)[Metrics.MAX_LENGTH.name] == 4
 
         # Text
-        max_length = Metrics.MAX_LENGTH(col=User.comments)
-        res = SingleProfiler(max_length, session=self.session, table=User).execute()
+        res = (
+            Profiler(
+                max_length, session=self.session, table=User, use_cols=[User.comments]
+            )
+            .execute()
+            ._column_results
+        )
 
-        assert res["MAXLENGTH"] == 19
+        assert res.get(User.comments.name)[Metrics.MAX_LENGTH.name] == 19
 
     def test_sum(self):
         """
         Check SUM Metric
         """
-        _sum = Metrics.SUM(User.age)
-        res = SingleProfiler(_sum, session=self.session, table=User).execute()
+        _sum = Metrics.SUM.value
 
-        assert res["SUM"] == 61
+        res = (
+            Profiler(_sum, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
 
-        _sum = Metrics.SUM(User.name)
-        res = SingleProfiler(_sum, session=self.session, table=User).execute()
+        assert res.get(User.age.name)[Metrics.SUM.name] == 61
 
-        assert res["SUM"] is None
+        res = (
+            Profiler(_sum, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name).get(Metrics.SUM.name) is None
 
     def test_unique_count(self):
         """
         Check Unique Count metric
         """
-        unique_count = Metrics.UNIQUE_COUNT(User.name)
-        res = SingleProfiler(unique_count, session=self.session, table=User).execute()
+        unique_count = Metrics.UNIQUE_COUNT.value
+        res = (
+            Profiler(
+                unique_count, session=self.session, table=User, use_cols=[User.age]
+            )
+            .execute()
+            ._column_results
+        )
 
-        assert res["UNIQUECOUNT"] == 2
+        assert res.get(User.age.name)[Metrics.UNIQUE_COUNT.name] == 2
 
     def test_unique_ratio(self):
         """
         Check Unique Count metric
         """
-        count = Metrics.COUNT(User.name)
-        unique_count = Metrics.UNIQUE_COUNT(User.name)
-        unique_ratio = Metrics.UNIQUE_RATIO(User.name)
-        res = SingleProfiler(
-            count, unique_count, unique_ratio, session=self.session, table=User
-        ).execute()
+        count = Metrics.COUNT.value
+        unique_count = Metrics.UNIQUE_COUNT.value
+        unique_ratio = Metrics.UNIQUE_RATIO.value
+        res = (
+            Profiler(
+                count,
+                unique_count,
+                unique_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.age],
+            )
+            .execute()
+            ._column_results
+        )
 
-        assert res["UNIQUERATIO"] == 1.0
+        assert res.get(User.age.name)[Metrics.UNIQUE_RATIO.name] == 1.0

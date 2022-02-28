@@ -45,13 +45,12 @@ class ProfilerDef(BaseModel):
     """
 
     name: str  # Profiler name
-    table_metrics: List[str]  # names of supported table metrics
     metrics: List[str]  # names of currently supported Static and Composed metrics
     time_metrics: List[TimeMetricDef] = None
     custom_metrics: List[CustomMetricDef] = None
     # rule_metrics: ...
 
-    @validator("metrics", "table_metrics", each_item=True)
+    @validator("metrics", each_item=True)
     def valid_metric(cls, value):  # cls as per pydantic docs
         """
         Validate that the input metrics are correctly named

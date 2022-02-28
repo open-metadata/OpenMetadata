@@ -59,7 +59,7 @@ class Explore {
   void openExplorePage() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    if (webDriver.findElement(explorePage.getTableCount()).isDisplayed()) {
+    if (webDriver.findElement(explorePage.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -70,7 +70,7 @@ class Explore {
   @Order(2)
   void checkTableCount() {
     openExplorePage();
-    WebElement tabCount = webDriver.findElement(explorePage.getTableCount());
+    WebElement tabCount = webDriver.findElement(explorePage.tableCount());
     int tableCount = Integer.parseInt(tabCount.getText());
     int getServiceCount = 0;
     List<WebElement> listOfItems = explorePage.serviceName();
@@ -96,7 +96,7 @@ class Explore {
   void checkTopicCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    WebElement topCount = webDriver.findElement(explorePage.getTopicCount());
+    WebElement topCount = webDriver.findElement(explorePage.topicCount());
     int topicCount = Integer.parseInt(topCount.getText());
     int getServiceCount = 0;
     List<WebElement> listOfItems = explorePage.serviceName();
@@ -122,7 +122,7 @@ class Explore {
   void checkDashboardCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
-    WebElement dashCount = webDriver.findElement(explorePage.getDashboardCount());
+    WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
     int dashboardCount = Integer.parseInt(dashCount.getText());
     int getServiceCount = 0;
     List<WebElement> listOfItems = explorePage.serviceName();
@@ -148,7 +148,7 @@ class Explore {
   void checkPipelineCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
-    WebElement pipCount = webDriver.findElement(explorePage.getPipelineCount());
+    WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
     int pipelineCount = Integer.parseInt(pipCount.getText());
     int getServiceCount = 0;
     List<WebElement> listOfItems = explorePage.serviceName();
@@ -223,7 +223,7 @@ class Explore {
     Events.click(webDriver, explorePage.explore());
     Events.click(webDriver, explorePage.lastWeekSortDesc());
     Events.click(webDriver, explorePage.lastWeekSortAesc());
-    WebElement descriptionCheck = webDriver.findElement(explorePage.descriptionCheck());
+    WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
     Assert.assertEquals(sendKeys, descriptionCheck.getText());
   }
 
@@ -313,8 +313,8 @@ class Explore {
   void checkSearchBarInvalidValue() throws InterruptedException {
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), searchCriteria);
-    Events.sendEnter(webDriver, myDataPage.getSearchBox());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), searchCriteria);
+    Events.sendEnter(webDriver, myDataPage.searchBox());
     try {
       WebElement errorMessage = webDriver.findElement(explorePage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "No matching data assets found for " + searchCriteria);

@@ -222,12 +222,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
-  public void validateUpdatedEntity(
-      DashboardService service, CreateDashboardService request, Map<String, String> authHeaders) {
-    validateCreatedEntity(service, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(DashboardService expected, DashboardService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
@@ -239,18 +233,19 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Override
   public void validateGetWithDifferentFields(DashboardService service, boolean byName) throws HttpResponseException {
-    String fields = "owner";
+    String fields = "";
     service =
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(
-        service.getHref(),
-        service.getOwner(),
-        service.getVersion(),
-        service.getUpdatedBy(),
-        service.getServiceType(),
-        service.getUpdatedAt());
+    TestUtils.assertListNull(service.getOwner());
+
+    fields = "owner";
+    service =
+        byName
+            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+    TestUtils.assertListNotNull(service.getOwner());
   }
 
   @Override

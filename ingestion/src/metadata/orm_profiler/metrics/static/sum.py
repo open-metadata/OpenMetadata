@@ -27,6 +27,10 @@ class Sum(StaticMetric):
     Only works for quantifiable types
     """
 
+    @classmethod
+    def name(cls):
+        return "sum"
+
     @_label
     def fn(self):
         if is_quantifiable(self.col.type):

@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.security;
 
-import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
-
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
@@ -28,6 +26,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -38,7 +37,6 @@ public class NoopAuthorizer implements Authorizer {
 
   private static final String fieldsParam = "roles,teams";
   private UserRepository userRepository;
-  private String username = "anonymous";
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
@@ -75,7 +73,8 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   private void addAnonymousUser() {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    String username = "anonymous";
     try {
       userRepository.getByName(null, username, fields);
     } catch (EntityNotFoundException ex) {

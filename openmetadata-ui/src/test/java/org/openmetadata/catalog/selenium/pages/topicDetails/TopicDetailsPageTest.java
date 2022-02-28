@@ -75,7 +75,7 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     Thread.sleep(3000);
-    if (webDriver.findElement(common.getTableCount()).isDisplayed()) {
+    if (webDriver.findElement(common.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -87,7 +87,7 @@ public class TopicDetailsPageTest {
   public void checkTabs() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.sendKeys(webDriver, common.getSearchBox(), topic);
+    Events.sendKeys(webDriver, common.searchBox(), topic);
     Events.click(webDriver, topicDetails.topicName());
     Events.click(webDriver, topicDetails.config());
     Events.click(webDriver, common.manage());
@@ -98,16 +98,16 @@ public class TopicDetailsPageTest {
   void checkFollow() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.sendKeys(webDriver, common.getSearchBox(), topic);
+    Events.sendKeys(webDriver, common.searchBox(), topic);
     Events.click(webDriver, topicDetails.topicName());
-    String follow = webDriver.findElement(common.clickFollow()).getText();
+    String follow = webDriver.findElement(common.follow()).getText();
     if (follow.equals("Unfollow")) {
-      Events.click(webDriver, common.clickFollow());
-      Events.click(webDriver, common.clickFollow());
+      Events.click(webDriver, common.follow());
+      Events.click(webDriver, common.follow());
     } else {
-      Events.click(webDriver, common.clickFollow());
+      Events.click(webDriver, common.follow());
     }
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.click(webDriver, myDataPage.home());
     String tableName = webDriver.findElement(myDataPage.following()).getText();
     Assert.assertEquals(tableName, "Started following " + topic);
   }
@@ -129,7 +129,7 @@ public class TopicDetailsPageTest {
     }
     Events.click(webDriver, common.saveAssociatedTag());
     webDriver.navigate().refresh();
-    List<WebElement> TagDisplayed = webDriver.findElements(topicDetails.breadCrumbTag());
+    List<WebElement> TagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
     Thread.sleep(waitTime);
     for (int j = 0; j < TagDisplayed.size(); j++) {
       Assert.assertEquals(TagDisplayed.get(j).getText(), selectedTag[j]);
@@ -143,12 +143,12 @@ public class TopicDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
-    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTag());
+    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
     Events.click(webDriver, topicDetails.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
     webDriver.navigate().refresh();
-    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTag());
+    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTags());
     if (updatedTags.get(1).equals(tagDisplayed.get(1))) {
       Assert.fail("Selected Tag is not removed");
     } else {
@@ -187,7 +187,7 @@ public class TopicDetailsPageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
-    Events.click(webDriver, common.clickUsers());
+    Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
     Events.click(webDriver, common.saveManage());

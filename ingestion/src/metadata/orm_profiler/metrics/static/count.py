@@ -24,6 +24,10 @@ class Count(StaticMetric):
     Given a column, return the count. Ignores NULL values
     """
 
+    @classmethod
+    def name(cls):
+        return "valuesCount"
+
     def metric_type(self):
         return int
 

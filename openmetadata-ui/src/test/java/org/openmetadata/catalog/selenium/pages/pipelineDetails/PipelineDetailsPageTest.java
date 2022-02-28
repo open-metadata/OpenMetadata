@@ -80,7 +80,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     Thread.sleep(3000);
-    if (webDriver.findElement(common.getTableCount()).isDisplayed()) {
+    if (webDriver.findElement(common.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -92,7 +92,7 @@ public class PipelineDetailsPageTest {
   void editDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
@@ -114,13 +114,13 @@ public class PipelineDetailsPageTest {
   public void addTag() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.addTag());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
     Thread.sleep(waitTime);
     Events.click(webDriver, common.tagListItem());
-    String selectedTag = webDriver.findElement(pipelineDetails.getSelectedTag()).getText();
+    String selectedTag = webDriver.findElement(pipelineDetails.selectedTag()).getText();
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(1000);
     webDriver.navigate().refresh();
@@ -134,7 +134,7 @@ public class PipelineDetailsPageTest {
   void removeTag() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, common.selectTable());
     String tagDisplayed = webDriver.findElement(common.breadCrumbTag()).getText();
     Events.click(webDriver, common.addTag());
@@ -155,17 +155,17 @@ public class PipelineDetailsPageTest {
   void editTaskDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
-    actions.moveToElement(webDriver.findElement(pipelineDetails.getEditTaskDescription())).perform();
-    Events.click(webDriver, pipelineDetails.getEditTaskDescription());
+    actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
+    Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    actions.moveToElement(webDriver.findElement(pipelineDetails.getEditTaskDescription())).perform();
-    Events.click(webDriver, pipelineDetails.getEditTaskDescription());
+    actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
+    Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
     Events.click(webDriver, common.editDescriptionSaveButton());
@@ -182,7 +182,7 @@ public class PipelineDetailsPageTest {
   void checkLineage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, pipelineDetails.lineage());
     List<WebElement> nodes = pipelineDetails.lineageNodes();
@@ -190,7 +190,7 @@ public class PipelineDetailsPageTest {
     WebElement sideDrawer;
     for (WebElement e : nodes) {
       e.click();
-      sideDrawer = webDriver.findElement(pipelineDetails.sideDrawer());
+      sideDrawer = webDriver.findElement(pipelineDetails.sideDrawerLineage());
       Assert.assertEquals(e.getText(), IsEqualIgnoringCase.equalToIgnoringCase(sideDrawer.getText()));
       actions.dragAndDropBy(e, 100, 200).perform();
     }
@@ -201,12 +201,12 @@ public class PipelineDetailsPageTest {
   public void checkManage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
-    Events.click(webDriver, common.clickUsers());
+    Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
     Events.click(webDriver, common.saveManage());
@@ -217,7 +217,7 @@ public class PipelineDetailsPageTest {
   void checkBreadCrumb() throws Exception {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
@@ -240,7 +240,7 @@ public class PipelineDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;
-    Events.click(webDriver, pipelineDetails.getPipelines());
+    Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.version());
     List<WebElement> versionRadioButton = common.versionRadioButton();

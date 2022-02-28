@@ -36,8 +36,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final Fields GLOSSARY_UPDATE_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "owner,tags");
-  private static final Fields GLOSSARY_PATCH_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "owner,tags");
+  private static final Fields GLOSSARY_UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags");
+  private static final Fields GLOSSARY_PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags");
 
   public GlossaryRepository(CollectionDAO dao) {
     super(
