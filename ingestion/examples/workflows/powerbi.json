@@ -1,0 +1,27 @@
+{
+  "source": {
+    "type": "powerbi",
+    "config": {
+      "client_id": "client_id",
+      "client_secret": "client_secret",
+      "service_name": "local_powerbi",
+      "redirect_uri": "http://localhost:8585/callback",
+      "scope": [
+        "scope",
+        "https://analysis.windows.net/powerbi/api/App.Read.All"
+      ],
+      "credentials": "path"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
