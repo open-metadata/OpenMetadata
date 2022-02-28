@@ -17,7 +17,7 @@ const GlossaryPage = () => {
 
   const fetchData = (pagin = '') => {
     setIsLoading(true);
-    getGlossaries(pagin)
+    getGlossaries(pagin, ['owner', 'tags'])
       .then((res: AxiosResponse) => {
         if (res.data?.data) {
           setGlossariesList(res.data.data);

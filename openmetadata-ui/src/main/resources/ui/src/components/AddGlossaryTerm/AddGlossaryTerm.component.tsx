@@ -1,33 +1,36 @@
 import classNames from 'classnames';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef, FormatedUsersData } from 'Models';
 import React, { useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
-import { CreateGlossary } from '../../generated/api/data/createGlossary';
+import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import UserCard from '../../pages/teams/UserCard';
-import {
-  errorMsg,
-  getCurrentUserId,
-  requiredField,
-} from '../../utils/CommonUtils';
+import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
-import { AddGlossaryProps } from './AddGlossary.interface';
+import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
-const Field = ({ children }: { children: React.ReactNode }) => {
-  return <div className="tw-mt-4">{children}</div>;
+const Field = ({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  return <div className={classNames('tw-mt-4', className)}>{children}</div>;
 };
 
-const AddGlossary = ({
-  header,
-  allowAccess = true,
-  saveState = 'initial',
-  onCancel,
+const AddGlossaryTerm = ({
+  parentGlossaryData,
+  allowAccess,
+  glossaryData,
   onSave,
-}: AddGlossaryProps) => {
+  onCancel,
+  saveState = 'initial',
+}: AddGlossaryTermProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
@@ -47,6 +50,10 @@ const AddGlossary = ({
   const handleReviewerSave = (reviewer: Array<FormatedUsersData>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
+  };
+
+  const handleOptionRemove = (id: string) => {
+    setReviewer((pre) => pre.filter((option) => option.id !== id));
   };
 
   const handleValidation = (
@@ -77,10 +84,6 @@ const AddGlossary = ({
     });
   };
 
-  const handleOptionRemove = (id: string) => {
-    setReviewer((pre) => pre.filter((option) => option.id !== id));
-  };
-
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
@@ -92,14 +95,20 @@ const AddGlossary = ({
 
   const handleSave = () => {
     if (validateForm()) {
-      const data: CreateGlossary = {
+      const data: CreateGlossaryTerm = {
         name,
         displayName: isEmpty(displayName) ? name : displayName,
         description: markdownRef.current?.getEditorContent() || undefined,
-        reviewers: reviewer.map((d) => d.name),
-        owner: {
-          id: getCurrentUserId(),
-          type: 'user',
+        // reviewers: reviewer,
+        parent: !isUndefined(parentGlossaryData)
+          ? {
+              type: 'glossaryTerm',
+              id: parentGlossaryData.id,
+            }
+          : undefined,
+        glossary: {
+          id: glossaryData.id,
+          type: 'glossary',
         },
       };
 
@@ -176,7 +185,7 @@ const AddGlossary = ({
       classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-pt-4"
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base">{header}</h6>
+      <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
       <div className="tw-pb-3">
         <Field>
           <label className="tw-block tw-form-label" htmlFor="name">
@@ -194,7 +203,7 @@ const AddGlossary = ({
             onChange={handleValidation}
           />
 
-          {showErrorMsg.name && errorMsg('Glossary name is required.')}
+          {showErrorMsg.name && errorMsg('Glossary term name is required.')}
         </Field>
         <Field>
           <label className="tw-block tw-form-label" htmlFor="name">
@@ -226,8 +235,8 @@ const AddGlossary = ({
           />
         </Field>
 
-        <div>
-          <div className="tw-flex tw-items-center tw-mt-4">
+        <Field>
+          {/* <div className="tw-flex tw-items-center tw-mt-4">
             <p className="w-form-label tw-mr-3">Reviewers: </p>
             <Button
               className="tw-h-5 tw-px-2"
@@ -237,7 +246,7 @@ const AddGlossary = ({
               onClick={() => setShowRevieweModal(true)}>
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
-          </div>
+          </div> */}
           <div className="tw-my-4 tw-grid tw-grid-cols-2 tw-gap-4">
             {Boolean(reviewer.length) &&
               reviewer.map((d) => {
@@ -256,9 +265,9 @@ const AddGlossary = ({
                 );
               })}
           </div>
-        </div>
+        </Field>
 
-        <div className="tw-flex tw-justify-end">
+        <Field className="tw-flex tw-justify-end">
           <Button
             data-testid="cancel-glossary"
             size="regular"
@@ -268,9 +277,8 @@ const AddGlossary = ({
             Discard
           </Button>
           {getSaveButton()}
-        </div>
+        </Field>
       </div>
-
       {showRevieweModal && (
         <ReviewerModal
           header="Add Reviewer"
@@ -283,4 +291,4 @@ const AddGlossary = ({
   );
 };
 
-export default AddGlossary;
+export default AddGlossaryTerm;

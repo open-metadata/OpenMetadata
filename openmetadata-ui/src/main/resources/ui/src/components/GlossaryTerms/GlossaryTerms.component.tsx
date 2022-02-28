@@ -1,20 +1,22 @@
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
+import { EntityTags } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
+  getAddGlossaryTermsPath,
   getGlossaryTermsPath,
-  LIST_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { LabelType, State } from '../../generated/type/tagLabel';
+import { getNameFromFQN } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import PopOver from '../common/popover/PopOver';
 import SearchInput from '../common/SearchInput/SearchInput.component';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
@@ -23,6 +25,7 @@ import TreeView from '../common/TreeView/TreeView.component';
 import PageLayout from '../containers/PageLayout';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import Loader from '../Loader/Loader';
+import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import { GlossaryTermsProps } from './GlossaryTerms.interface';
 import AssetsTabs from './tabs/AssetsTabs.component';
@@ -45,6 +48,10 @@ const GlossaryTerms = ({
   handleExpand,
   activeTabHandler,
   handleActiveGlossaryTerm,
+  handleGlossaryTermUpdate,
+  tagList,
+  isTagLoading,
+  fetchTags,
 }: GlossaryTermsProps) => {
   const treeRef = useRef<RcTree<DataNode>>(null);
   const history = useHistory();
@@ -55,7 +62,11 @@ const GlossaryTerms = ({
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [activeFQN, setActiveFQN] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
+
+  const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
 
   const tabs = [
     {
@@ -82,6 +93,13 @@ const GlossaryTerms = ({
     },
   ];
 
+  const onDescriptionEdit = (): void => {
+    setIsDescriptionEditable(true);
+  };
+  const onCancel = () => {
+    setIsDescriptionEditable(false);
+  };
+
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
   };
@@ -90,13 +108,13 @@ const GlossaryTerms = ({
     return data.map((d) => {
       return d.children?.length
         ? {
-            key: d.name,
-            title: d.name,
-            children: generateTreeData(d.children as unknown as GlossaryTerm[]),
+            key: d?.fullyQualifiedName || d.name,
+            title: getNameFromFQN(d.name),
+            // children: generateTreeData(d.children as unknown as GlossaryTerm[]),
           }
         : {
-            key: d.name,
-            title: d.name,
+            key: d?.fullyQualifiedName || d.name,
+            title: getNameFromFQN(d.name),
           };
     });
   };
@@ -116,7 +134,7 @@ const GlossaryTerms = ({
     const key = node.key as string;
     const breadCrumbData = treeRef.current?.state.keyEntities[key].nodes || [];
     const selectedNodeFQN = formatedData
-      ? formatedData[key].fullyQualifiedName
+      ? formatedData[key]?.fullyQualifiedName || formatedData[key].name
       : '';
     const nodes = breadCrumbData.map((d) => ({
       name: d.title as string,
@@ -124,10 +142,9 @@ const GlossaryTerms = ({
       activeTitle: true,
     }));
     handleSelectedKey(key);
-
+    setActiveFQN(selectedNodeFQN);
     history.push({
       pathname: getGlossaryTermsPath(slashedTableName[0].name, selectedNodeFQN),
-      // search: `terms=${nodes.map((d) => d.name).join(',')}`,
     });
 
     setBreadcrumb([...slashedTableName, ...nodes]);
@@ -150,25 +167,26 @@ const GlossaryTerms = ({
       const glossaryFormatedData = glossaryTermsDetails.reduce((acc, curr) => {
         return {
           ...acc,
-          [curr.name as string]: curr,
+          [(curr.fullyQualifiedName || curr.name) as string]: curr,
         };
       }, {} as { [key: string]: GlossaryTerm });
       setFormatedData(glossaryFormatedData);
-      if (queryParams.length) {
-        const selectedKey = queryParams[queryParams.length - 1];
+      if (queryParams) {
+        const selectedKey = queryParams;
         handleActiveGlossaryTerm(
           glossaryFormatedData[selectedKey],
           selectedKey
         );
-        handleBreadcrum(queryParams ? queryParams : []);
-        if (queryParams.length > 1) {
-          const expandedKey = [...queryParams];
-          expandedKey.pop();
-          handleSelectedKey(selectedKey);
-          handleExpand(expandedKey);
-        } else {
-          handleSelectedKey(queryParams[0]);
-        }
+        handleBreadcrum(queryParams.split('.').splice(1));
+        // if (queryParams.length > 1) {
+        //   const expandedKey = [...queryParams];
+        //   expandedKey.pop();
+        //   handleSelectedKey(selectedKey);
+        //   handleExpand(expandedKey);
+        // } else {
+        //   handleSelectedKey(queryParams[0]);
+        // }
+        handleSelectedKey(queryParams);
       } else {
         handleBreadcrum(selectedKeys ? [selectedKeys] : []);
       }
@@ -178,6 +196,58 @@ const GlossaryTerms = ({
     }
     setIsLoading(false);
   }, [glossaryTermsDetails]);
+
+  const handleAddGlossaryTermClick = () => {
+    history.push(getAddGlossaryTermsPath(glossaryDetails.name, activeFQN));
+  };
+
+  const getSelectedTags = () => {
+    return (activeGlossaryTerm?.tags || []).map((tag) => ({
+      tagFQN: tag.tagFQN,
+      isRemovable: true,
+    }));
+  };
+
+  const onTagUpdate = (selectedTags?: Array<string>) => {
+    if (selectedTags) {
+      const prevTags =
+        activeGlossaryTerm?.tags?.filter((tag) =>
+          selectedTags.includes(tag?.tagFQN as string)
+        ) || [];
+      const newTags = selectedTags
+        .filter((tag) => {
+          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
+        })
+        .map((tag) => ({
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          tagFQN: tag,
+        }));
+      const updatedTags = [...prevTags, ...newTags];
+      const updatedGlossaryTerm = {
+        ...activeGlossaryTerm,
+        tags: updatedTags,
+      };
+      handleGlossaryTermUpdate(updatedGlossaryTerm as GlossaryTerm);
+    }
+  };
+  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
+    onTagUpdate?.(selectedTags?.map((tag) => tag.tagFQN));
+    setIsTagEditable(false);
+  };
+
+  const onDescriptionUpdate = (updatedHTML: string) => {
+    if (activeGlossaryTerm?.description !== updatedHTML) {
+      const updatedTableDetails = {
+        ...activeGlossaryTerm,
+        description: updatedHTML,
+      };
+      handleGlossaryTermUpdate(updatedTableDetails as GlossaryTerm);
+      setIsDescriptionEditable(false);
+    } else {
+      setIsDescriptionEditable(false);
+    }
+  };
 
   const fetchHeader = () => {
     return (
@@ -194,8 +264,7 @@ const GlossaryTerms = ({
             size="small"
             theme="primary"
             variant="contained"
-            // onClick={() => setIsAddingUsers(true)}
-          >
+            onClick={handleAddGlossaryTermClick}>
             Add term
           </Button>
         </NonAdminAction>
@@ -242,100 +311,86 @@ const GlossaryTerms = ({
       ) : activeGlossaryTerm ? (
         <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
           <div>
-            <div className="tw-flex tw-gap-5 tw-my-2">
+            <div className="tw-flex tw-gap-5">
               <div>
-                <p className="tw-font-medium">Glossary</p>
-                <p className="tw-font-medium">Status</p>
+                <p className="tw-font-medium tw-mb-2">Glossary</p>
+                <p className="tw-font-medium tw-mb-2">Status</p>
               </div>
               <div>
-                <p className="tw-text-grey-muted">
+                <p className="tw-text-grey-muted tw-mb-2">
                   {activeGlossaryTerm.glossary.name}
                 </p>
-                <p className="tw-text-grey-muted">
+                <p className="tw-text-grey-muted tw-mb-2">
                   {activeGlossaryTerm.status}
                 </p>
               </div>
             </div>
 
-            <div className="tw-flex tw-flex-wrap tw-pt-1 tw-group">
-              {activeGlossaryTerm.tags &&
-                activeGlossaryTerm.tags.length > 0 && (
-                  <SVGIcons
-                    alt="icon-tag"
-                    className="tw-mx-1"
-                    icon="icon-tag-grey"
-                    width="16"
-                  />
-                )}
-              {/* {tier?.tagFQN && (
-              <Tags
-                startWith="#"
-                tag={{ ...tier, tagFQN: tier.tagFQN.split('.')[1] }}
-                type="label"
-              />
-            )} */}
-              {activeGlossaryTerm.tags && activeGlossaryTerm.tags.length > 0 && (
-                <div>
-                  {activeGlossaryTerm.tags
-                    .slice(0, LIST_SIZE)
-                    .map((tag, index) => (
-                      <Tags
-                        className={
-                          classNames()
-                          // { 'diff-added tw-mx-1': tag?.added },
-                          // { 'diff-removed': tag?.removed }
-                        }
-                        key={index}
-                        startWith="#"
-                        tag={tag}
-                        type="label"
-                      />
-                    ))}
-
-                  {activeGlossaryTerm.tags.slice(LIST_SIZE).length > 0 && (
-                    <PopOver
-                      html={
-                        <>
-                          {activeGlossaryTerm.tags
-                            .slice(LIST_SIZE)
-                            .map((tag, index) => (
-                              <p className="tw-text-left" key={index}>
-                                <Tags
-                                  className={
-                                    classNames()
-                                    // { 'diff-added tw-mx-1': tag?.added },
-                                    // { 'diff-removed': tag?.removed }
-                                  }
-                                  startWith="#"
-                                  tag={tag}
-                                  type="label"
-                                />
-                              </p>
-                            ))}
-                        </>
-                      }
-                      position="right"
-                      theme="light"
-                      trigger="click">
-                      <span className="tw-cursor-pointer tw-text-xs link-text v-align-sub tw--ml-1">
-                        •••
+            <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}
+                trigger="click">
+                <div
+                  className="tw-inline-block"
+                  onClick={() => {
+                    fetchTags();
+                    setIsTagEditable(true);
+                  }}>
+                  <TagsContainer
+                    editable={isTagEditable}
+                    isLoading={isTagLoading}
+                    selectedTags={getSelectedTags()}
+                    showTags={!isTagEditable}
+                    size="small"
+                    tagList={tagList}
+                    onCancel={() => {
+                      handleTagSelection();
+                    }}
+                    onSelectionChange={(tags) => {
+                      handleTagSelection(tags);
+                    }}>
+                    {activeGlossaryTerm?.tags &&
+                    activeGlossaryTerm?.tags.length ? (
+                      <button className=" tw-ml-1 focus:tw-outline-none">
+                        <SVGIcons
+                          alt="edit"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12px"
+                        />
+                      </button>
+                    ) : (
+                      <span>
+                        <Tags
+                          className="tw-text-primary"
+                          startWith="+ "
+                          tag="Add tag"
+                          type="label"
+                        />
                       </span>
-                    </PopOver>
-                  )}
+                    )}
+                  </TagsContainer>
                 </div>
-              )}
+              </NonAdminAction>
             </div>
 
-            <div className="tw-my-2" data-testid="description-container">
+            <div className="" data-testid="description-container">
               <Description
                 blurWithBodyBG
-                isReadOnly
                 description={activeGlossaryTerm.description || ''}
+                entityName={
+                  activeGlossaryTerm?.displayName ?? activeGlossaryTerm?.name
+                }
+                isEdit={isDescriptionEditable}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
               />
             </div>
           </div>
 
-          <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+          <div className="tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={activeTab}
               className="tw-flex-initial"
@@ -343,7 +398,7 @@ const GlossaryTerms = ({
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+            <div className="tw-bg-white tw-flex-grow tw-py-4">
               {activeTab === 1 && <RelationshipTab />}
               {activeTab === 2 && <AssetsTabs />}
             </div>

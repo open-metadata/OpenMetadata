@@ -54,8 +54,7 @@ export const formatDataResponse = (hits) => {
   return formattedData;
 };
 
-export const formatUsersResponse = (res) => {
-  const { hits } = res.data.hits;
+export const formatUsersResponse = (hits) => {
   const users = hits.map((d) => {
     return {
       name: d._source.name,

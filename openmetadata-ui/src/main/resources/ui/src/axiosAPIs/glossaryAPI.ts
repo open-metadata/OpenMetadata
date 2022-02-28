@@ -1,6 +1,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
+import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -72,14 +73,33 @@ export const getGlossaryTermsById: Function = (
   return APIClient.get(url);
 };
 
-export const getGlossaryTermsByName: Function = (
-  glossaryTermName = '',
+export const getGlossaryTermsByFQN: Function = (
+  glossaryTermFQN = '',
   arrQueryFields = ''
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields(
-    `/glossaryTerms/name/${glossaryTermName}`,
+    `/glossaryTerms/name/${glossaryTermFQN}`,
     arrQueryFields
   );
 
   return APIClient.get(url);
+};
+
+export const addGlossaryTerm = (
+  data: CreateGlossaryTerm
+): Promise<AxiosResponse> => {
+  const url = '/glossaryTerms';
+
+  return APIClient.post(url, data);
+};
+
+export const patchGlossaryTerm = (
+  id: string,
+  patch: Operation[]
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  return APIClient.patch(`/glossaryTerms/${id}`, patch, configOptions);
 };

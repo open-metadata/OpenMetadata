@@ -13,11 +13,15 @@ export interface GlossaryTermsProps {
   showGlossaryDetails: boolean;
   selectedKeys: string;
   expandedKeys: string[];
-  queryParams: string[];
+  queryParams: string;
+  tagList: string[];
+  isTagLoading: boolean;
+  fetchTags: () => void;
   activeTabHandler: (value: number) => void;
   updateGlossaryDescription: (value: Glossary) => void;
   updateReviewer: (value: Glossary) => void;
   handleSelectedKey: (value: string) => void;
+  handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
   handleExpand: (
     expandedKeys: Key[],
     info?: {

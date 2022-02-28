@@ -8,6 +8,7 @@ import UserCard from '../../pages/teams/UserCard';
 import { getHtmlForNonAdminAction } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -26,9 +27,10 @@ const GlossaryDetails = ({
   updateReviewer,
 }: props) => {
   const [activeTab, setActiveTab] = useState(1);
-  //   const [tags, setTags] = useState(glossary.tags);
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
+  const [tagList, setTagList] = useState<Array<string>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const onTagUpdate = (selectedTags?: Array<string>) => {
     if (selectedTags) {
@@ -54,8 +56,6 @@ const GlossaryDetails = ({
     onTagUpdate?.(selectedTags?.map((tag) => tag.tagFQN));
     setIsTagEditable(false);
   };
-  const [tagList, setTagList] = useState<Array<string>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const onDescriptionEdit = (): void => {
     setIsDescriptionEditable(true);
@@ -126,27 +126,22 @@ const GlossaryDetails = ({
 
   return (
     <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
-      <div className="tw-mb-3">
+      <div className="tw-mb-3 tw-flex tw-items-center">
+        {(glossary.owner?.displayName || glossary.owner?.name) && (
+          <div className="tw-inline-block tw-mr-2">
+            <Avatar
+              name={glossary.owner?.displayName || glossary.owner?.name || ''}
+              textClass="tw-text-xs"
+              width="22"
+            />
+          </div>
+        )}
         <span className="tw-text-grey-muted">
-          {glossary.owner?.name || 'No owner'}
+          {glossary.owner?.displayName || 'No owner'}
         </span>
       </div>
 
-      <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
-        <Description
-          blurWithBodyBG
-          description={glossary?.description || ''}
-          entityName={glossary?.displayName ?? glossary?.name}
-          isEdit={isDescriptionEditable}
-          onCancel={onCancel}
-          onDescriptionEdit={onDescriptionEdit}
-          onDescriptionUpdate={onDescriptionUpdate}
-        />
-      </div>
-
-      <div
-        className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
-        data-testid="tags">
+      <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
         <NonAdminAction
           html={getHtmlForNonAdminAction(Boolean(glossary.owner))}
           isOwner={Boolean(glossary.owner)}
@@ -196,7 +191,19 @@ const GlossaryDetails = ({
         </NonAdminAction>
       </div>
 
-      <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+      <div className="tw--ml-5 tw--mt-3" data-testid="description-container">
+        <Description
+          blurWithBodyBG
+          description={glossary?.description || ''}
+          entityName={glossary?.displayName ?? glossary?.name}
+          isEdit={isDescriptionEditable}
+          onCancel={onCancel}
+          onDescriptionEdit={onDescriptionEdit}
+          onDescriptionUpdate={onDescriptionUpdate}
+        />
+      </div>
+
+      <div className="tw-flex tw-flex-col tw-flex-grow">
         <TabsPane
           activeTab={activeTab}
           className="tw-flex-initial"

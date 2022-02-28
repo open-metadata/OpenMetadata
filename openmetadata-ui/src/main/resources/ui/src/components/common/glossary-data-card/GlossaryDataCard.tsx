@@ -15,16 +15,19 @@ import React, { FunctionComponent } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getGlossaryTermsPath } from '../../../constants/constants';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import Avatar from '../avatar/Avatar';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
   name: string;
   description?: string;
+  owner?: string;
 };
 
 const GlossaryDataCard: FunctionComponent<Props> = ({
   name,
   description,
+  owner,
 }: Props) => {
   const history = useHistory();
 
@@ -36,19 +39,27 @@ const GlossaryDataCard: FunctionComponent<Props> = ({
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
       data-testid="webhook-data-card">
-      <div>
-        <div className="tw-flex tw-items-center">
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
-            <button
-              className="tw-text-grey-body tw-font-medium"
-              data-testid="card-link"
-              onClick={handleLinkClick}>
-              {stringToHTML(name)}
-            </button>
-          </h6>
-        </div>
+      <div className="tw-flex tw-items-center tw-mb-3">
+        <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
+          <button
+            className="tw-text-grey-body tw-font-medium"
+            data-testid="card-link"
+            onClick={handleLinkClick}>
+            {stringToHTML(name)}
+          </button>
+        </h6>
       </div>
-      <div className="tw-pt-3">
+
+      <div className="tw-mb-3 tw-flex tw-items-center">
+        {owner && (
+          <div className="tw-inline-block tw-mr-2">
+            <Avatar name={owner} textClass="tw-text-xs" width="22" />
+          </div>
+        )}
+        <span className="tw-text-grey-muted">{owner || 'No owner'}</span>
+      </div>
+
+      <div>
         <div data-testid="card-body">
           <div className="description-text" data-testid="description-text">
             {description?.trim() ? (

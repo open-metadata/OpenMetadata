@@ -15,6 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
+import AddGlossaryTermPage from '../components/AddGlossaryTermPage/AddGlossaryTermPage.component';
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
@@ -111,6 +112,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       {isAuthDisabled || isAdminUser ? (
         <>
           <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
+          <Route
+            exact
+            component={AddGlossaryTermPage}
+            path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
+          />
+          <Route
+            exact
+            component={AddGlossaryTermPage}
+            path={ROUTES.ADD_GLOSSARY_TERMS}
+          />
           <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
           <Route exact component={RolesPage} path={ROUTES.ROLES} />
           <Route exact component={UserListPage} path={ROUTES.USER_LIST} />

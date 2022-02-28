@@ -62,11 +62,12 @@ const Glossary: FunctionComponent<GlossaryProps> = ({
             </Button>
           </NonAdminAction>
         </div>
-        {data.map((webhook, index) => (
+        {data.map((glossary, index) => (
           <div className="tw-mb-3" key={index}>
             <GlossaryDataCard
-              description={webhook.description}
-              name={webhook.name}
+              description={glossary.description}
+              name={glossary.name}
+              owner={glossary.owner?.displayName || glossary.owner?.name}
             />
           </div>
         ))}

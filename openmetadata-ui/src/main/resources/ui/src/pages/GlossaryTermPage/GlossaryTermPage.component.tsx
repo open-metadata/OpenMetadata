@@ -7,8 +7,9 @@ import { useLocation, useParams } from 'react-router-dom';
 import {
   getGlossariesByName,
   getGlossaryTerms,
-  getGlossaryTermsByName,
+  getGlossaryTermsByFQN,
   patchGlossaries,
+  patchGlossaryTerm,
 } from '../../axiosAPIs/glossaryAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
@@ -18,6 +19,7 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const GlossaryTermPage: FunctionComponent = () => {
   const showToast = useToastContext();
@@ -34,10 +36,13 @@ const GlossaryTermPage: FunctionComponent = () => {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [selectedKeys, setSelectedKeys] = useState<string>('');
   const [expandedKeys, setExpandedKeys] = useState<Array<string>>([]);
-  const [queryParams, setQueryParams] = useState<Array<string>>([]);
+  const [queryParams, setQueryParams] = useState<string>(glossaryTermsFQN);
   const [showGlossaryDetails, setShowGlossaryDetails] = useState(
     !glossaryTermsFQN
   );
+
+  const [tagList, setTagList] = useState<Array<string>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const location = useLocation();
 
@@ -62,7 +67,7 @@ const GlossaryTermPage: FunctionComponent = () => {
   };
 
   const fetchGlossaryTermsByName = (name: string) => {
-    getGlossaryTermsByName(name, [
+    getGlossaryTermsByFQN(name, [
       'children',
       'relatedTerms',
       'reviewers',
@@ -122,6 +127,30 @@ const GlossaryTermPage: FunctionComponent = () => {
     setExpandedKeys(key as string[]);
   };
 
+  const saveUpdatedGlossaryTermData = (
+    updatedData: GlossaryTerm
+  ): Promise<AxiosResponse> => {
+    const jsonPatch = compare(activeGlossaryTerm as GlossaryTerm, updatedData);
+
+    return patchGlossaryTerm(
+      activeGlossaryTerm?.id as string,
+      jsonPatch
+    ) as unknown as Promise<AxiosResponse>;
+  };
+
+  const handleGlossaryTermUpdate = (updatedData: GlossaryTerm) => {
+    saveUpdatedGlossaryTermData(updatedData)
+      .then((res: AxiosResponse) => {
+        setActiveGlossaryTerm(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.message || 'Error while updating glossaryTerm!',
+        });
+      });
+  };
+
   const saveUpdatedGlossaryData = (
     updatedData: Glossary
   ): Promise<AxiosResponse> => {
@@ -159,15 +188,26 @@ const GlossaryTermPage: FunctionComponent = () => {
       });
   };
 
+  const fetchTags = () => {
+    setIsTagLoading(true);
+    getTagCategories()
+      .then((res) => {
+        setTagList(getTaglist(res.data));
+      })
+      .finally(() => {
+        setIsTagLoading(false);
+      });
+  };
+
   useEffect(() => {
     if (!isEmpty(glossaryTermsFQN)) {
       // let query: string | string[] = location.search
       //   ? location.search.split('=')[1]
       //   : '';
       // query = query.split(',');
-      const query = glossaryTermsFQN.split('.');
-      query.shift();
-      setQueryParams(query);
+      // const query = glossaryTermsFQN.split('.');
+      // query.shift();
+      setQueryParams(glossaryTermsFQN);
     }
 
     setShowGlossaryDetails(!glossaryTermsFQN);
@@ -188,15 +228,19 @@ const GlossaryTermPage: FunctionComponent = () => {
           activeTabHandler={activeTabHandler}
           allowAccess={isAdminUser || isAuthDisabled}
           expandedKeys={expandedKeys}
+          fetchTags={fetchTags}
           glossaryDetails={glossaryData as Glossary}
           glossaryTermsDetails={glossaryTerms}
           handleActiveGlossaryTerm={handleActiveGlossaryTerm}
           handleExpand={handleExpand}
+          handleGlossaryTermUpdate={handleGlossaryTermUpdate}
           handleSelectedKey={handleSelectedKey}
+          isTagLoading={isTagLoading}
           queryParams={queryParams}
           selectedKeys={selectedKeys}
           showGlossaryDetails={showGlossaryDetails}
           slashedTableName={slashedTableName}
+          tagList={tagList}
           updateGlossaryDescription={updateGlossaryDescription}
           updateReviewer={updateReviewer}
         />

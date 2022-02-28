@@ -463,3 +463,9 @@ export const getDocButton = (label: string, url: string, dataTestId = '') => {
     </Button>
   );
 };
+
+export const getNameFromFQN = (fqn: string): string => {
+  const arr = fqn.split('.');
+
+  return arr[arr.length - 1];
+};
