@@ -23,10 +23,7 @@ from typing import List, Optional
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import (
-    Table,
-    TableProfile,
-)
+from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.tests.basic import Status1, TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTest
 from metadata.generated.schema.tests.tableTest import TableTest
@@ -303,7 +300,9 @@ class OrmProfilerProcessor(Processor[Table]):
                 else [],
             )
             if config_tests
-            else TestDef(table=table.fullyQualifiedName, table_tests=[], column_tests=[])
+            else TestDef(
+                table=table.fullyQualifiedName, table_tests=[], column_tests=[]
+            )
         )
 
         # Fetch all table tests, if any
@@ -323,7 +322,9 @@ class OrmProfilerProcessor(Processor[Table]):
         col_tests = (
             col_test
             for col in table.columns
-            for col_test in (col.columnTests or [])  # columnTests is optional, so it might be a list or None
+            for col_test in (
+                col.columnTests or []
+            )  # columnTests is optional, so it might be a list or None
             if col.columnTests
         )
         for column_test in col_tests:
