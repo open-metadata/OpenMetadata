@@ -132,7 +132,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                     ) : (
                       <p
                         className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6"
-                        onClick={() => onThreadIdSelect(thread.id)}>
+                        onClick={() => onThreadSelect(thread.id)}>
                         Reply
                       </p>
                     )}
