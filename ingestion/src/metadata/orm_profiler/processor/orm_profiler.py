@@ -307,8 +307,8 @@ class OrmProfilerProcessor(Processor[Table]):
 
         # Fetch all table tests, if any
         table_tests = (
-            table_test for table_test in table.tableTests if table.tableTests
-        )
+            table_test for table_test in (table.tableTests or [])
+        )  # tableTests are optional, so it might be a list or None
         for table_test in table_tests:
             test_case_result = self.run_table_test(
                 table_test=table_test,
