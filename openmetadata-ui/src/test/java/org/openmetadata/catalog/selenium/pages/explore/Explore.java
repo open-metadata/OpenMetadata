@@ -18,6 +18,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @Slf4j
+@Order(9)
 class Explore {
   WebDriver webDriver;
   static String url = Property.getInstance().getURL();
