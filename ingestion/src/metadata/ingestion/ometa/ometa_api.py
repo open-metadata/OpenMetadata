@@ -57,6 +57,7 @@ from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
+    AzureAuthenticationProvider,
     GoogleAuthenticationProvider,
     MetadataServerConfig,
     NoOpAuthenticationProvider,
@@ -147,6 +148,10 @@ class OpenMetadata(
         elif self.config.auth_provider_type == "auth0":
             self._auth_provider: AuthenticationProvider = (
                 Auth0AuthenticationProvider.create(self.config)
+            )
+        elif self.config.auth_provider_type == "azure":
+            self._auth_provider: AuthenticationProvider = (
+                AzureAuthenticationProvider.create(self.config)
             )
         else:
             self._auth_provider: AuthenticationProvider = (
