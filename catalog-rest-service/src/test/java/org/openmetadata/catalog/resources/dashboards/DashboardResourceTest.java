@@ -183,29 +183,33 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   /** Validate returned fields GET .../dashboards/{id}?fields="..." or GET .../dashboards/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Dashboard dashboard, boolean byName) throws HttpResponseException {
-    // .../Dashboards?fields=owner
-    String fields = "owner";
+    String fields = "";
     dashboard =
         byName
             ? getEntityByName(dashboard.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboard.getId(), fields, ADMIN_AUTH_HEADERS);
     // We always return the service
-    assertListNotNull(dashboard.getOwner(), dashboard.getService(), dashboard.getServiceType());
-    assertListNull(dashboard.getCharts(), dashboard.getUsageSummary());
+    assertListNotNull(dashboard.getService(), dashboard.getServiceType());
+    assertListNull(
+        dashboard.getOwner(),
+        dashboard.getCharts(),
+        dashboard.getFollowers(),
+        dashboard.getTags(),
+        dashboard.getUsageSummary());
 
-    // .../Dashboards?fields=owner,service,tables
-    fields = "owner,charts,usageSummary";
+    fields = "owner,charts,followers,tags,usageSummary";
     dashboard =
         byName
             ? getEntityByName(dashboard.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboard.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(dashboard.getService(), dashboard.getServiceType());
     assertListNotNull(
         dashboard.getOwner(),
-        dashboard.getService(),
-        dashboard.getServiceType(),
         dashboard.getCharts(),
+        dashboard.getFollowers(),
+        dashboard.getTags(),
         dashboard.getUsageSummary());
-    TestUtils.validateEntityReference(dashboard.getCharts());
+    TestUtils.validateEntityReferences(dashboard.getCharts());
   }
 
   private static void validateDashboardCharts(Dashboard dashboard, List<EntityReference> expectedCharts) {
@@ -254,12 +258,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     assertService(createRequest.getService(), dashboard.getService());
     validateDashboardCharts(dashboard, createRequest.getCharts());
     TestUtils.validateTags(createRequest.getTags(), dashboard.getTags());
-  }
-
-  @Override
-  public void validateUpdatedEntity(Dashboard dashboard, CreateDashboard request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(dashboard, request, authHeaders);
   }
 
   @Override

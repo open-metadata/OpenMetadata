@@ -35,8 +35,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class ChartRepository extends EntityRepository<Chart> {
-  private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
-  private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,tags");
+  private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.ALLOWED_FIELDS, "owner");
+  private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.ALLOWED_FIELDS, "owner,tags");
 
   public ChartRepository(CollectionDAO dao) {
     super(

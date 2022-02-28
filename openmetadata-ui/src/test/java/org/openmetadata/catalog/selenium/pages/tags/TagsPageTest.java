@@ -16,7 +16,7 @@ package org.openmetadata.catalog.selenium.pages.tags;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -26,7 +26,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
-import org.openmetadata.catalog.selenium.pages.myData.MyDataPageTest;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
@@ -37,12 +36,10 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(3)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagsPageTest {
-
-  private static final Logger LOG = Logger.getLogger(MyDataPageTest.class.getName());
-
   static WebDriver webDriver;
   static Common common;
   static TagsPage tagsPage;

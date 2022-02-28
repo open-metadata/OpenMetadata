@@ -61,12 +61,7 @@ public class LineageRepository {
 
     // Finally, add lineage relationship
     dao.relationshipDAO()
-        .insert(
-            from.getId().toString(),
-            to.getId().toString(),
-            from.getType(),
-            to.getType(),
-            Relationship.UPSTREAM.ordinal());
+        .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal());
   }
 
   @Transaction

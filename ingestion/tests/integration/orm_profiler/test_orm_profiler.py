@@ -120,8 +120,7 @@ class ProfilerWorkflowTest(TestCase):
             "config": {
                 "profiler": {
                     "name": "my_profiler",
-                    "table_metrics": ["row_number"],
-                    "metrics": ["min", "COUNT", "null_count"],
+                    "metrics": ["row_count", "min", "COUNT", "null_count"],
                 },
                 "tests": {
                     "name": "my_tests",
@@ -129,7 +128,7 @@ class ProfilerWorkflowTest(TestCase):
                         {
                             "name": "check row number",
                             "table": "test_sqlite.main.users",
-                            "expression": "row_number == 2",
+                            "expression": "row_count == 2",
                         }
                     ],
                     "column_tests": [

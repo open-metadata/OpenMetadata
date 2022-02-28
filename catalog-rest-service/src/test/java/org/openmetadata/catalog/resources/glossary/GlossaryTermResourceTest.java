@@ -247,12 +247,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public void validateUpdatedEntity(GlossaryTerm updated, CreateGlossaryTerm request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(updated, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(GlossaryTerm expected, GlossaryTerm patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
@@ -279,8 +273,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(term.getChildren(), term.getRelatedTerms(), term.getReviewers(), term.getTags());
 
-    // .../teams?fields=profile,teams
-    fields = "relatedTerms,reviewers,tags";
+    fields = "children,relatedTerms,reviewers,tags";
     term =
         byName
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

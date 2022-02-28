@@ -22,5 +22,6 @@
       "$ref": "../../type/basic.json#/definitions/entityLink"
     }
   },
-  "required": ["message", "from", "about"]
+  "required": ["message", "from", "about"],
+  "additionalProperties": false
 }

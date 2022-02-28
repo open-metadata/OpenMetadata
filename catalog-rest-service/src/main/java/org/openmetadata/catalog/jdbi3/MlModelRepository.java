@@ -43,14 +43,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final Fields MODEL_UPDATE_FIELDS =
-      new Fields(
-          MlModelResource.FIELD_LIST,
-          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,target,tags");
-  private static final Fields MODEL_PATCH_FIELDS =
-      new Fields(
-          MlModelResource.FIELD_LIST,
-          "owner,algorithm,dashboard,mlHyperParameters,mlFeatures,mlStore,server,target,tags");
+  private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.ALLOWED_FIELDS, "owner,dashboard,tags");
+  private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.ALLOWED_FIELDS, "owner,dashboard,tags");
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -77,14 +71,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException, ParseException {
-    mlModel.setDisplayName(mlModel.getDisplayName());
     mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
-    mlModel.setMlFeatures(fields.contains("mlFeatures") ? mlModel.getMlFeatures() : null);
-    mlModel.setTarget(fields.contains("target") ? mlModel.getTarget() : null);
-    mlModel.setMlHyperParameters(fields.contains("mlHyperParameters") ? mlModel.getMlHyperParameters() : null);
-    mlModel.setMlStore(fields.contains("mlStore") ? mlModel.getMlStore() : null);
-    mlModel.setServer(fields.contains("server") ? mlModel.getServer() : null);
     mlModel.setFollowers(fields.contains("followers") ? getFollowers(mlModel) : null);
     mlModel.setTags(fields.contains("tags") ? getTags(mlModel.getFullyQualifiedName()) : null);
     mlModel.setUsageSummary(

@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -40,6 +39,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository;
@@ -71,7 +71,7 @@ public class ReportResource {
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Report.class);
 
   @GET
   @Operation(
@@ -92,7 +92,7 @@ public class ReportResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException, GeneralSecurityException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return dao.listAfter(uriInfo, fields, null, 10000, null, Include.NON_DELETED);
   }
 
@@ -118,7 +118,7 @@ public class ReportResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return dao.get(uriInfo, id, fields);
   }
 

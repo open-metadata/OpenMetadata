@@ -118,6 +118,7 @@ public class GlossaryTermResource {
   }
 
   static final String FIELDS = "children,relatedTerms,reviewers,tags";
+  static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
 
   @GET
@@ -176,7 +177,7 @@ public class GlossaryTermResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     // Filter by glossary
     String fqn = null;
@@ -237,7 +238,7 @@ public class GlossaryTermResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -270,7 +271,7 @@ public class GlossaryTermResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     GlossaryTerm term = dao.getByName(uriInfo, name, fields, include);
     return addHref(uriInfo, term);
   }
@@ -366,7 +367,7 @@ public class GlossaryTermResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     GlossaryTerm term = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(term).getEntityReference(), patch);

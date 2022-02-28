@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/column/columnValueLengthsToBeBetween.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "columnValueLengthsToBeBetween",
+  "description": "This schema defines the test ColumnValueLengthsToBeBetween. Test the value lengths in a column to be between minimum and maximum value. ",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.column.ColumnValueLengthsToBeBetween",
+  "properties": {
+    "minValue": {
+      "description": "The {minValue} for the column length. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",
+      "type": "integer"
+    },
+    "maxValue": {
+      "description": "The {maxValue} for the column length. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows",
+      "type": "integer"
+    }
+  },
+  "anyOf": [
+    {
+      "required": ["minValue"]
+    },
+    {
+      "required": ["maxValue"]
+    }
+  ],
+  "additionalProperties": false
+}

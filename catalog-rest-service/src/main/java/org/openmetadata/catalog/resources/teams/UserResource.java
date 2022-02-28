@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -107,8 +106,8 @@ public class UserResource {
     }
   }
 
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(User.class);
   static final String FIELDS = "profile,roles,teams,follows,owns";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
   @Valid
@@ -156,7 +155,7 @@ public class UserResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<User> users;
     if (before != null) { // Reverse paging
@@ -218,7 +217,7 @@ public class UserResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     User user = dao.get(uriInfo, id, fields, include);
     return addHref(uriInfo, user);
   }
@@ -253,7 +252,7 @@ public class UserResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     User user = dao.getByName(uriInfo, name, fields, include);
     return addHref(uriInfo, user);
   }
@@ -281,7 +280,7 @@ public class UserResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(uriInfo, currentUserName, fields);
     return addHref(uriInfo, user);
@@ -395,7 +394,7 @@ public class UserResource {
         }
       }
     }
-    User user = dao.get(uriInfo, id, new Fields(FIELD_LIST, null));
+    User user = dao.get(uriInfo, id, new Fields(ALLOWED_FIELDS, null));
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, new UserEntityInterface(user).getEntityReference());
     PatchResponse<User> response =

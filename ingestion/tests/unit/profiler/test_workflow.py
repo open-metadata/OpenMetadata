@@ -24,8 +24,8 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
+from metadata.orm_profiler.profiles.default import DefaultProfiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
-from metadata.orm_profiler.profiles.simple import SimpleProfiler, SimpleTableProfiler
 
 config = {
     "source": {"type": "sqlite", "config": {"service_name": "my_service"}},
@@ -140,16 +140,14 @@ def test_profile_def():
     profile_config = deepcopy(config)
     profile_config["processor"]["config"]["profiler"] = {
         "name": "my_profiler",
-        "table_metrics": ["row_number"],
-        "metrics": ["min", "COUNT", "null_count"],
+        "metrics": ["row_count", "min", "COUNT", "null_count"],
     }
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
 
     profile_definition = ProfilerDef(
         name="my_profiler",
-        table_metrics=["ROW_NUMBER"],
-        metrics=["MIN", "COUNT", "NULL_COUNT"],
+        metrics=["ROW_COUNT", "MIN", "COUNT", "NULL_COUNT"],
         time_metrics=None,
         custom_metrics=None,
     )
@@ -180,11 +178,8 @@ def test_default_profile_def():
         age = sqa.Column(sqa.Integer)
 
     assert isinstance(
-        profile_workflow.processor.build_table_profiler(User), SimpleTableProfiler
-    )
-    assert isinstance(
-        profile_workflow.processor.build_column_profiler(User, User.name).profiler,
-        SimpleProfiler,
+        profile_workflow.processor.build_profiler(User),
+        DefaultProfiler,
     )
 
 
@@ -199,13 +194,13 @@ def test_tests_def():
             {
                 "name": "first_test",
                 "table": "service.db.name",
-                "expression": "row_number > 100",
+                "expression": "row_count > 100",
                 "enabled": False,
             },
             {
                 "name": "another_test",
                 "table": "service.db.name",
-                "expression": "row_number > 1000 & row_number < 2000",
+                "expression": "row_count > 1000 & row_count < 2000",
             },
         ],
         "column_tests": [
@@ -247,12 +242,12 @@ def test_tests_def():
 
     assert tests.table_tests[0].name == "first_test"
     assert tests.table_tests[0].table == "service.db.name"
-    assert tests.table_tests[0].expression[0].metric == "ROWNUMBER"
+    assert tests.table_tests[0].expression[0].metric == "rowCount"
     assert not tests.table_tests[0].enabled
 
     assert tests.column_tests[0].columns[0].name == "first_col_test"
     assert tests.column_tests[0].columns[0].column == "column_name_1"
-    assert tests.column_tests[0].columns[0].expression[0].metric == "MIN"
+    assert tests.column_tests[0].columns[0].expression[0].metric == "min"
     assert tests.column_tests[0].columns[0].enabled
 
     # We cannot do a 1:1 general assertion because we are dynamically
