@@ -100,7 +100,7 @@ class MetadataServerConfig(ConfigModel):
     email: str = None
     audience: str = "https://www.googleapis.com/oauth2/v4/token"
     auth_header: str = "Authorization"
-    authority: str = None
+    authority: str = ""
     scopes: List = []
 
 
