@@ -98,6 +98,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
+    "powerbi": {"python-power-bi==0.1.2"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
