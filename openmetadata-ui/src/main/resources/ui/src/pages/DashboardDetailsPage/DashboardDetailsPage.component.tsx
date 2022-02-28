@@ -16,6 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -31,6 +32,11 @@ import {
   patchDashboardDetails,
   removeFollower,
 } from '../../axiosAPIs/dashboardAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -65,7 +71,7 @@ import {
   defaultFields,
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 type ChartType = {
@@ -109,6 +115,11 @@ const DashboardDetailsPage = () => {
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
+
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -300,6 +311,23 @@ const DashboardDetailsPage = () => {
 
         break;
       }
+      case TabSpecificField.ACTIVITY_FEED: {
+        setIsentityThreadLoading(true);
+        getAllFeeds(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN))
+          .then((res: AxiosResponse) => {
+            const { data } = res.data;
+            setEntityThread(data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: 'Error while fetching entity feeds',
+            });
+          })
+          .finally(() => setIsentityThreadLoading(false));
+
+        break;
+      }
 
       default:
         break;
@@ -476,6 +504,48 @@ const DashboardDetailsPage = () => {
     });
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      }
+    );
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
   useEffect(() => {
     fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -509,13 +579,17 @@ const DashboardDetailsPage = () => {
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}
+          entityThread={entityThread}
+          feedCount={feedCount}
           followDashboardHandler={followDashboard}
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}
+          postFeedHandler={postFeedHandler}
           removeLineageHandler={removeLineageHandler}
           serviceType={serviceType}
           setActiveTabHandler={activeTabHandler}

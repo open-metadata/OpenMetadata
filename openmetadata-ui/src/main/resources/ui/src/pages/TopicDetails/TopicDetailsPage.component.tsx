@@ -14,10 +14,15 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { EntityTags, TableDetail } from 'Models';
+import { EntityTags, EntityThread, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -33,7 +38,7 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
@@ -44,6 +49,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import {
@@ -81,6 +87,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [currentVersion, setCurrentVersion] = useState<string>();
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -95,9 +105,28 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const fetchActivityFeed = () => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN))
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setEntityThread(data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feeds',
+        });
+      })
+      .finally(() => setIsentityThreadLoading(false));
+  };
+
   useEffect(() => {
     if (topicDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentTopicTab(tab));
+    }
+    if (TabSpecificField.ACTIVITY_FEED === tab) {
+      fetchActivityFeed();
     }
   }, [tab]);
 
@@ -290,6 +319,48 @@ const TopicDetailsPage: FunctionComponent = () => {
     );
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      }
+    );
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
   useEffect(() => {
     fetchTopicDetail(topicFQN);
   }, [topicFQN]);
@@ -310,11 +381,15 @@ const TopicDetailsPage: FunctionComponent = () => {
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityName={name}
+          entityThread={entityThread}
+          feedCount={feedCount}
           followTopicHandler={followTopic}
           followers={followers}
+          isentityThreadLoading={isentityThreadLoading}
           maximumMessageSize={maximumMessageSize}
           owner={owner}
           partitions={partitions}
+          postFeedHandler={postFeedHandler}
           replicationFactor={replicationFactor}
           retentionSize={retentionSize}
           schemaText={schemaText}

@@ -44,6 +44,7 @@
     "postcss": "^8.3.2",
     "process": "^0.11.10",
     "prop-types": "^15.7.2",
+    "quill-markdown-shortcuts": "^0.0.10",
     "react": "^16.14.0",
     "react-codemirror2": "^7.2.1",
     "react-copy-to-clipboard": "^5.0.4",
@@ -53,6 +54,7 @@
     "react-js-pagination": "^3.0.3",
     "react-markdown": "^6.0.3",
     "react-oidc": "^1.0.3",
+    "react-quill": "^1.3.5",
     "react-router-dom": "^5.2.0",
     "react-select": "^3.1.1",
     "react-slick": "^0.28.1",
@@ -68,7 +70,8 @@
     "stream-http": "^3.2.0",
     "styled-components": "^5.2.3",
     "tailwindcss": "^2.1.4",
-    "to-arraybuffer": "^1.0.1"
+    "to-arraybuffer": "^1.0.1",
+    "turndown": "^7.1.1"
   },
   "scripts": {
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",

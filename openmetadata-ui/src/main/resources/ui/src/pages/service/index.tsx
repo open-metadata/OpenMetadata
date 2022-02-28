@@ -15,9 +15,10 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
-import { ExtraInfo, Paging, ServicesData } from 'Models';
+import { EntityThread, ExtraInfo, Paging, ServicesData } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import {
   addAirflowPipeline,
   deleteAirflowPipelineById,
@@ -27,9 +28,15 @@ import {
 } from '../../axiosAPIs/airflowPipelineAPI';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
+import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import IngestionError from '../../components/common/error/IngestionError';
@@ -49,6 +56,7 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -72,7 +80,7 @@ import {
   hasEditAccess,
   isEven,
 } from '../../utils/CommonUtils';
-import { getInfoElements } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import {
   getCurrentServiceTab,
   getIsIngestionEnable,
@@ -118,6 +126,10 @@ const ServicePage: FunctionComponent = () => {
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const showToast = useToastContext();
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -147,6 +159,17 @@ const ServicePage: FunctionComponent = () => {
       count: instanceCount,
     },
     {
+      name: `Activity Feed (${feedCount})`,
+      icon: {
+        alt: 'activity_feed',
+        name: 'activity_feed',
+        title: 'Activity Feed',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Ingestions',
       icon: {
         alt: 'sample_data',
@@ -156,7 +179,7 @@ const ServicePage: FunctionComponent = () => {
       },
       isHidden: !isIngestionEnable,
       isProtected: false,
-      position: 2,
+      position: 3,
       count: ingestions.length,
     },
     {
@@ -169,7 +192,7 @@ const ServicePage: FunctionComponent = () => {
       },
 
       isProtected: !isAdminUser && !isAuthDisabled,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Manage',
@@ -180,7 +203,7 @@ const ServicePage: FunctionComponent = () => {
         selectedName: 'icon-managecolor',
       },
       isProtected: false,
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -796,6 +819,74 @@ const ServicePage: FunctionComponent = () => {
 
     getAllIngestionWorkflows(pagingString);
   };
+  const fetchActivityFeed = () => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN))
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setEntityThread(data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feeds',
+        });
+      })
+      .finally(() => setIsentityThreadLoading(false));
+  };
+
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN))
+      .then((res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching feed count',
+        });
+      });
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
+  useEffect(() => {
+    if (TabSpecificField.ACTIVITY_FEED === tab) {
+      fetchActivityFeed();
+    }
+  }, [tab]);
 
   return (
     <>
@@ -917,8 +1008,24 @@ const ServicePage: FunctionComponent = () => {
                     )}
                   </Fragment>
                 )}
-
                 {activeTab === 2 && (
+                  <div
+                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw-h-screen"
+                    id="activityfeed">
+                    <div />
+                    <ActivityFeedList
+                      isEntityFeed
+                      withSidePanel
+                      className=""
+                      feedList={entityThread}
+                      isLoading={isentityThreadLoading}
+                      postFeedHandler={postFeedHandler}
+                    />
+                    <div />
+                  </div>
+                )}
+
+                {activeTab === 3 && (
                   <div
                     className="tw-mt-4 tw-px-1"
                     data-testid="ingestion-container">
@@ -945,7 +1052,7 @@ const ServicePage: FunctionComponent = () => {
                   </div>
                 )}
 
-                {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
+                {activeTab === 4 && (isAdminUser || isAuthDisabled) && (
                   <ServiceConfig
                     data={serviceDetails as ServicesData}
                     handleUpdate={handleConfigUpdate}
@@ -953,7 +1060,7 @@ const ServicePage: FunctionComponent = () => {
                   />
                 )}
 
-                {activeTab === 4 && (
+                {activeTab === 5 && (
                   <div className="tw-bg-white tw-h-full tw-pt-4 tw-pb-6">
                     <ManageTabComponent
                       hideTier
