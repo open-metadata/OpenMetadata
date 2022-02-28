@@ -113,10 +113,34 @@ database:
 migrationConfiguration:
   path: "./bootstrap/sql/mysql"
 
+# Authorizer Configuration
+authorizerConfiguration:
+  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
+  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
+  adminPrincipals:
+    - ${AUTHORIZER_ADMIN_PRINCIPALS:-admin}
+  botPrincipals:
+    - ${AUTHORIZER_INGESTION_PRINCIPAL:-ingestion-bot]}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
+
+authenticationConfiguration:
+  provider: ${AUTHENTICATION_PROVIDER:-no-auth}
+  publicKey: ${AUTHENTICATION_PUBLIC_KEY:-https://www.googleapis.com/oauth2/v3/certs}
+  authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
+  clientId: ${AUTHENTICATION_CLIENT_ID:-""}
+  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+
 elasticsearch:
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
+  username: ${ELASTICSEARCH_USER:-""}
+  password: ${ELASTICSEARCH_PASSWORD:-""}
+  truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
+  truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
+  connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
+  socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
