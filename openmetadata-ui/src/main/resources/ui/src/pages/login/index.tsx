@@ -58,6 +58,17 @@ const SigninPage = () => {
 
         break;
       }
+      case AuthTypes.AZURE: {
+        btnComponent = (
+          <LoginButton
+            ssoBrandLogo={Icons.GOOGLE_ICON}
+            ssoBrandName="Azure"
+            onClick={handleSignIn}
+          />
+        );
+
+        break;
+      }
       case AuthTypes.AUTH0: {
         btnComponent = (
           <LoginButton

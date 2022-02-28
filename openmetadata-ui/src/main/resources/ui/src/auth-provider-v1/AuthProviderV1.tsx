@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+// MSAL imports
+import { Configuration } from '@azure/msal-browser';
+import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosResponse } from 'axios';
 import { isEmpty, isNil } from 'lodash';
@@ -47,11 +50,14 @@ import {
   getNameFromEmail,
   isProtectedRoute,
   isTourRoute,
+  msalInstance,
+  setMsalInstance,
 } from '../utils/AuthProvider.util';
 import { getImages } from '../utils/CommonUtils';
 import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthenticatorRef, OidcUser } from './AuthProviderV1.interface';
 import GoogleAuthenticator from './GoogleAuthenticator';
+import MsalAuthenticator from './MsalAuthenticator';
 import OktaAuthProvider from './okta-auth-provider';
 import OktaAuthenticator from './OktaAuthenticator';
 
@@ -77,6 +83,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
+  // const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
+  // const [authStorage, setAuthStorage] =
+  //   useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const onLoginHandler = () => {
@@ -191,9 +200,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     resetUserDetails();
   };
 
-  const getAuthenticatedUser = () => {
-    switch (authConfig?.provider) {
-      case AuthTypes.OKTA: {
+  const getAuthenticatedUser = (config: Record<string, string | boolean>) => {
+    switch (config?.provider) {
+      case AuthTypes.OKTA:
+      case AuthTypes.AZURE: {
         getLoggedInUserDetails();
 
         break;
@@ -201,25 +211,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const updateAuthInstance = (configJson: Record<string, string | boolean>) => {
+    const { provider, ...otherConfigs } = configJson;
+    switch (provider) {
+      case AuthTypes.AZURE:
+        {
+          setMsalInstance(otherConfigs as unknown as Configuration);
+        }
+
+        break;
+    }
+  };
+
   const fetchAuthConfig = (): void => {
     fetchAuthorizerConfig().then((res: AxiosResponse) => {
+      // const isSecureMode = true;
+      // setLoading(false);
       const isSecureMode =
         !isNil(res.data) &&
         Object.values(res.data).filter((item) => isNil(item)).length === 0;
       if (isSecureMode) {
         const { provider, authority, clientId, callbackUrl } = res.data;
-        setAuthConfig(
-          getAuthConfig({
-            authority,
-            clientId,
-            callbackUrl,
-            provider,
-          })
-        );
+        const configJson = getAuthConfig({
+          authority,
+          clientId,
+          callbackUrl,
+          provider,
+        });
+        setAuthConfig(configJson);
+        updateAuthInstance(configJson);
         if (!oidcUserToken) {
           setLoading(false);
         } else {
-          getAuthenticatedUser();
+          getAuthenticatedUser(configJson);
         }
       } else {
         setLoading(false);
@@ -260,6 +284,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             onLogoutSuccess={handleSuccessfulLogout}>
             {children}
           </GoogleAuthenticator>
+        );
+      }
+      case AuthTypes.AZURE: {
+        return msalInstance ? (
+          <MsalProvider instance={msalInstance}>
+            <MsalAuthenticator
+              ref={authenticatorRef}
+              onLoginSuccess={handleSuccessfulLogin}
+              onLogoutSuccess={handleSuccessfulLogout}>
+              {children}
+            </MsalAuthenticator>
+          </MsalProvider>
+        ) : (
+          <Loader />
         );
       }
       default: {
@@ -308,7 +346,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   }, [history]);
 
-  const isLoading = !isAuthDisabled && !authConfig;
+  const isLoading =
+    !isAuthDisabled &&
+    (!authConfig || (authConfig.provider === AuthTypes.AZURE && !msalInstance));
 
   const authContext = {
     isAuthenticated,

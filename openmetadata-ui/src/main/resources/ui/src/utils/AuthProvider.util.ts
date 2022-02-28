@@ -11,6 +11,13 @@
  *  limitations under the License.
  */
 
+import {
+  BrowserCacheLocation,
+  Configuration,
+  IPublicClientApplication,
+  PopupRequest,
+  PublicClientApplication,
+} from '@azure/msal-browser';
 import { CookieStorage } from 'cookie-storage';
 import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
@@ -19,6 +26,8 @@ import { AuthTypes } from '../enums/signin.enum';
 import { isDev } from '../utils/EnvironmentUtils';
 
 const cookieStorage = new CookieStorage();
+
+export let msalInstance: IPublicClientApplication;
 
 export const getOidcExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 24 * 1000);
@@ -80,9 +89,39 @@ export const getAuthConfig = (
       }
 
       break;
+    case AuthTypes.AZURE:
+      {
+        config = {
+          auth: {
+            authority,
+            clientId,
+            redirectUri: 'http://localhost:3000/callback',
+            postLogoutRedirectUri: '/',
+          },
+          cache: {
+            cacheLocation: BrowserCacheLocation.LocalStorage,
+          },
+          provider,
+        } as Configuration;
+      }
+
+      break;
   }
 
   return config;
+};
+
+export const setMsalInstance = (configs: Configuration) => {
+  msalInstance = new PublicClientApplication(configs);
+};
+
+// Add here scopes for id token to be used at MS Identity Platform endpoints.
+export const msalLoginRequest: PopupRequest = {
+  scopes: ['User.Read', 'openid', 'profile', 'offline_access'],
+};
+// Add here the endpoints for MS Graph API services you would like to use.
+export const msalGraphConfig = {
+  graphMeEndpoint: 'https://graph.microsoft.com',
 };
 
 export const getNameFromEmail = (email: string) => {

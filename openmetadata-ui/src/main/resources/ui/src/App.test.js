@@ -15,12 +15,20 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import App from './App';
 
-jest.mock('./router/AppRouter', () => {
-  return jest.fn().mockReturnValue(<p>AppRouter</p>);
+// jest.mock('./router/AppRouter', () => {
+//   return jest.fn().mockReturnValue(<p>AppRouter</p>);
+// });
+
+// jest.mock('./components/app-bar/Appbar', () => {
+//   return jest.fn().mockReturnValue(<p>Appbar</p>);
+// });
+
+jest.mock('./auth-provider-v1/ProtectedApp', () => {
+  return jest.fn().mockReturnValue(<p>ProtectedApp</p>);
 });
 
-jest.mock('./components/app-bar/Appbar', () => {
-  return jest.fn().mockReturnValue(<p>Appbar</p>);
+jest.mock('./auth-provider-v1/AuthProviderV1', () => {
+  return jest.fn().mockReturnValue(({ children }) => <>{children}</>);
 });
 
 it('renders learn react link', () => {
