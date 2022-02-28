@@ -101,7 +101,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, common.descriptionLinkButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, dashboardServicePage.dashboardServiceUrl(), "localhost:8080");
+    Events.sendKeys(webDriver, dashboardServicePage.addDashboardServiceUrl(), "localhost:8080");
     Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
     Events.click(webDriver, common.nextButton());
@@ -127,7 +127,7 @@ public class DashboardServiceTestPage {
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
-    Events.sendKeys(webDriver, dashboardServicePage.dashboardServiceUrl(), "1");
+    Events.sendKeys(webDriver, dashboardServicePage.editDashboardServiceUrl(), "1");
     Events.sendKeys(webDriver, common.serviceUsername(), "1");
     Events.sendKeys(webDriver, common.servicePassword(), "1");
     Events.click(webDriver, common.saveConnectionConfig());

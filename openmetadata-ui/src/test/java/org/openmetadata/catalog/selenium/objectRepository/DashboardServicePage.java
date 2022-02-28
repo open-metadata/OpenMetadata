@@ -11,5 +11,6 @@ import org.openqa.selenium.WebDriver;
 public class DashboardServicePage {
   @Nonnull WebDriver webDriver;
 
-  By dashboardServiceUrl = By.cssSelector("[data-testid='dashboardUrl']");
+  By addDashboardServiceUrl = By.cssSelector("[data-testid='dashboardUrl']");
+  By editDashboardServiceUrl = By.cssSelector("[data-testid='dashboard-url']");
 }

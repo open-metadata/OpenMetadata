@@ -147,7 +147,7 @@ public class DatabaseServicePageTest {
   public void checkConnectionConfigTab() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, common.containsText("Karrie"));
+    Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
     Events.sendKeys(webDriver, common.serviceUsername(), "1");
     Events.sendKeys(webDriver, common.servicePassword(), "1");

@@ -105,7 +105,7 @@ public class CommonTests {
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
     Events.click(webDriver, common.addTagCategory());
-    wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(common.displayName())));
+    Thread.sleep(2000);
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
@@ -417,7 +417,7 @@ public class CommonTests {
         LOG.info("Success");
       }
     } catch (TimeoutException exception) {
-      throw new TimeoutException("No search results found");
+      Assert.fail("No search results found");
     }
   }
 
