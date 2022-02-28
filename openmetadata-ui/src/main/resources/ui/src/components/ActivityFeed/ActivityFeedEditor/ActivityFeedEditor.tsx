@@ -39,7 +39,6 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   const onChangeHandler = (value: string) => {
     setEditorValue(HTMLToMarkdown.turndown(value));
   };
-
   const onSaveHandler = () => {
     if (editorRef.current) {
       if (editorRef.current?.getEditorValue()) {
