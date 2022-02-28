@@ -110,7 +110,7 @@ const GlossaryTerms = ({
         ? {
             key: d?.fullyQualifiedName || d.name,
             title: getNameFromFQN(d.name),
-            // children: generateTreeData(d.children as unknown as GlossaryTerm[]),
+            children: generateTreeData(d.children as unknown as GlossaryTerm[]),
           }
         : {
             key: d?.fullyQualifiedName || d.name,
@@ -133,18 +133,18 @@ const GlossaryTerms = ({
   ) => {
     const key = node.key as string;
     const breadCrumbData = treeRef.current?.state.keyEntities[key].nodes || [];
-    const selectedNodeFQN = formatedData
-      ? formatedData[key]?.fullyQualifiedName || formatedData[key].name
-      : '';
+    // const selectedNodeFQN = formatedData
+    //   ? formatedData[key]?.fullyQualifiedName || formatedData[key]?.name
+    //   : '';
     const nodes = breadCrumbData.map((d) => ({
       name: d.title as string,
       url: '',
       activeTitle: true,
     }));
     handleSelectedKey(key);
-    setActiveFQN(selectedNodeFQN);
+    setActiveFQN(key);
     history.push({
-      pathname: getGlossaryTermsPath(slashedTableName[0].name, selectedNodeFQN),
+      pathname: getGlossaryTermsPath(slashedTableName[0].name, key),
     });
 
     setBreadcrumb([...slashedTableName, ...nodes]);
@@ -163,8 +163,9 @@ const GlossaryTerms = ({
   useEffect(() => {
     if (glossaryTermsDetails.length) {
       setIsLoading(true);
-      const treeData = generateTreeData(glossaryTermsDetails);
-      const glossaryFormatedData = glossaryTermsDetails.reduce((acc, curr) => {
+      const filterData = glossaryTermsDetails.filter((d) => !d.parent);
+      const treeData = generateTreeData(filterData);
+      const glossaryFormatedData = filterData.reduce((acc, curr) => {
         return {
           ...acc,
           [(curr.fullyQualifiedName || curr.name) as string]: curr,

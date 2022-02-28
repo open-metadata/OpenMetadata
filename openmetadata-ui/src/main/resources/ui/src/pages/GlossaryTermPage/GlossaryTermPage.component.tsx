@@ -201,12 +201,6 @@ const GlossaryTermPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (!isEmpty(glossaryTermsFQN)) {
-      // let query: string | string[] = location.search
-      //   ? location.search.split('=')[1]
-      //   : '';
-      // query = query.split(',');
-      // const query = glossaryTermsFQN.split('.');
-      // query.shift();
       setQueryParams(glossaryTermsFQN);
     }
 
