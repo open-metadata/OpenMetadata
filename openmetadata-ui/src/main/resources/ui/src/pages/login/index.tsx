@@ -29,7 +29,6 @@ const SigninPage = () => {
   const { isAuthDisabled, authConfig, onLoginHandler } = useAuthContext();
 
   const handleSignIn = () => {
-    // appState.authProvider.signingIn = true;
     onLoginHandler && onLoginHandler();
   };
 
@@ -69,18 +68,7 @@ const SigninPage = () => {
 
         break;
       }
-      case AuthTypes.AUTH0: {
-        btnComponent = (
-          <LoginButton
-            ssoBrandLogo={Icons.AUTH0_ICON}
-            ssoBrandName="Auth0"
-            onClick={handleSignIn}
-          />
-        );
-
-        break;
-      }
-      // TODO: Add "case AuthTypes.GITHUB" after adding support for Github SSO
+      // TODO: Add "case AuthTypes.GITHUB, AuthTypes.AUTH0" after adding support for these SSO
       default: {
         btnComponent = <></>;
 
