@@ -98,6 +98,7 @@ class MetadataServerConfig(ConfigModel):
     email: str = None
     audience: str = "https://www.googleapis.com/oauth2/v4/token"
     auth_header: str = "Authorization"
+    authority: str = None
     scopes: List = []
 
 
@@ -282,3 +283,35 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
     def get_access_token(self):
         self.auth_token()
         return (self.generated_auth_token, self.expiry)
+
+
+class AzureAuthenticationProvider(AuthenticationProvider):
+    """
+    Prepare the Json Web Token for Azure auth
+    """
+
+    def __init__(self, config: MetadataServerConfig):
+        self.config = config
+
+    @classmethod
+    def create(cls, config: MetadataServerConfig):
+        return cls(config)
+
+    def auth_token(self) -> str:
+        from msal import (
+            ConfidentialClientApplication,  # pylint: disable=import-outside-toplevel
+        )
+
+        app = ConfidentialClientApplication(
+            client_id=self.config.client_id,
+            client_credential=self.config.secret_key,
+            authority=self.config.authority,
+        )
+        result = app.acquire_token_for_client(scopes=self.config.scopes)
+        try:
+            return result["access_token"]
+        except KeyError as err:
+            logger.error(f"Invalid Credentials - {err}")
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            sys.exit(1)
