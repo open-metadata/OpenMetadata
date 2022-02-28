@@ -16,13 +16,9 @@ import http.client
 import json
 import logging
 import sys
-<<<<<<< HEAD
-import traceback
-=======
 import time
 import traceback
 import uuid
->>>>>>> 579b66aa (role error fix)
 from typing import List
 
 from pydantic import BaseModel
@@ -323,6 +319,7 @@ class AzureAuthenticationProvider(AuthenticationProvider):
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             sys.exit(1)
+
     def get_access_token(self):
         self.auth_token()
         return (self.generated_auth_token, self.expiry)
