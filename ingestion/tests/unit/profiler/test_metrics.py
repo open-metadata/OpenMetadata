@@ -331,13 +331,14 @@ class MetricsTest(TestCase):
 
         assert res.get(User.age.name)[Metrics.MAX.name] == 31
 
-        res = (
-            Profiler(_max, session=self.session, table=User, use_cols=[User.name])
-            .execute()
-            ._column_results
-        )
+        # TMP disable min/max on strings
+        # res = (
+        #     Profiler(_max, session=self.session, table=User, use_cols=[User.name])
+        #     .execute()
+        #     ._column_results
+        # )
 
-        assert res.get(User.name.name)[Metrics.MAX.name] == "John"
+        # assert res.get(User.name.name)[Metrics.MAX.name] == "John"
 
     def test_min_length(self):
         """
