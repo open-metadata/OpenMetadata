@@ -2,18 +2,20 @@ package org.openmetadata.catalog.selenium.objectRepository;
 
 import java.util.List;
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@Getter
 @RequiredArgsConstructor
 public class ExplorePage {
   @Nonnull WebDriver webDriver;
 
   By explore = By.cssSelector("[data-testid='appbar-item'][id='explore']");
   By tableCount = By.xpath("(//span[@data-testid='filter-count'])[1]");
-  By topicsCount = By.xpath("(//span[@data-testid='filter-count'])[2]");
+  By topicCount = By.xpath("(//span[@data-testid='filter-count'])[2]");
   By dashboardCount = By.xpath("(//span[@data-testid='filter-count'])[3]");
   By pipelineCount = By.xpath("(//span[@data-testid='filter-count'])[4]");
   By tables = By.xpath("(//button[@data-testid='tab'])[1]");
@@ -42,57 +44,9 @@ public class ExplorePage {
   By selectedCheckbox =
       By.xpath(
           "//span[@class=\"tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center tw-bg-primary tw-text-white tw-border-none tw-py-0 tw-px-0\"]");
-  By Kafka = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Kafka\"]");
+  By kafka = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Kafka\"]");
   By superset = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Superset\"]");
   By airflow = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Airflow\"]");
-
-  public By explore() {
-    return explore;
-  }
-
-  public By getTableCount() {
-    return tableCount;
-  }
-
-  public By getTopicCount() {
-    return topicsCount;
-  }
-
-  public By getDashboardCount() {
-    return dashboardCount;
-  }
-
-  public By getPipelineCount() {
-    return pipelineCount;
-  }
-
-  public By dashboard() {
-    return dashboard;
-  }
-
-  public By pipeline() {
-    return pipeline;
-  }
-
-  public By tables() {
-    return tables;
-  }
-
-  public By topics() {
-    return topics;
-  }
-
-  public By pagination() {
-    return pagination;
-  }
-
-  public By next() {
-    return next;
-  }
-
-  public By bigQueryCheckbox() {
-    return bigQueryCheckbox;
-  }
 
   public List<WebElement> serviceName() {
     return webDriver.findElements(serviceName);
@@ -102,75 +56,7 @@ public class ExplorePage {
     return webDriver.findElements(countService);
   }
 
-  public By errorMessage() {
-    return errorMessage;
-  }
-
-  public By glueCheckbox() {
-    return glueCheckbox;
-  }
-
-  public By selectTable() {
-    return selectTable;
-  }
-
-  public By addTag() {
-    return addTag;
-  }
-
-  public By serviceText() {
-    return serviceText;
-  }
-
-  public By tierText() {
-    return tierText;
-  }
-
-  public By databaseText() {
-    return databaseText;
-  }
-
-  public By tagText() {
-    return tagText;
-  }
-
-  public By lastWeekSortDesc() {
-    return lastWeekSortDesc;
-  }
-
-  public By lastWeekSortAesc() {
-    return lastWeekSortAesc;
-  }
-
-  public By descriptionCheck() {
-    return updatedDescription;
-  }
-
-  public By shopifyCheckbox() {
-    return shopifyCheckbox;
-  }
-
-  public By tagSpecialCategoryCheckbox() {
-    return tagSpecialCategoryCheckbox;
-  }
-
-  public By tierTier3Checkbox() {
-    return tierTier3Checkbox;
-  }
-
   public List<WebElement> selectedCheckbox() {
     return webDriver.findElements(selectedCheckbox);
-  }
-
-  public By kafka() {
-    return Kafka;
-  }
-
-  public By superset() {
-    return superset;
-  }
-
-  public By airflow() {
-    return airflow;
   }
 }

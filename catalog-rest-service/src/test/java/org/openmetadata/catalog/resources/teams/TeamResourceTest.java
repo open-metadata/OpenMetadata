@@ -23,7 +23,7 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
+import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -234,39 +234,30 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(expectedProfile, team.getProfile());
     TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
     TestUtils.assertEntityReferenceList(expectedDefaultRoles, team.getDefaultRoles());
-    TestUtils.validateEntityReference(team.getOwns());
+    validateEntityReferences(team.getOwns());
   }
 
   /** Validate returned fields GET .../teams/{id}?fields="..." or GET .../teams/name/{name}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
-    // .../teams?fields=profile
-    String fields = "profile";
+    String fields = "";
     Team getTeam =
         byName
             ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(expectedTeam.getId(), null, fields, ADMIN_AUTH_HEADERS);
-    validateTeam(
-        getTeam,
-        expectedTeam.getDescription(),
-        expectedTeam.getDisplayName(),
-        expectedTeam.getProfile(),
-        null,
-        null,
-        updatedBy);
+    validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), null, null, null, updatedBy);
     assertNull(getTeam.getOwns());
 
-    // .../teams?fields=users,owns,profile,defaultRoles
     fields = "users,owns,profile,defaultRoles";
     getTeam =
         byName
             ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(expectedTeam.getId(), fields, ADMIN_AUTH_HEADERS);
     assertNotNull(getTeam.getProfile());
-    validateEntityReference(getTeam.getOwns());
-    validateEntityReference(getTeam.getUsers());
-    validateEntityReference(getTeam.getDefaultRoles());
+    validateEntityReferences(getTeam.getOwns());
+    validateEntityReferences(getTeam.getUsers());
+    validateEntityReferences(getTeam.getDefaultRoles());
   }
 
   @Override
@@ -293,7 +284,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     assertEquals(createRequest.getProfile(), team.getProfile());
-    TestUtils.validateEntityReference(team.getOwns());
+    TestUtils.validateEntityReferences(team.getOwns());
 
     List<EntityReference> expectedUsers = new ArrayList<>();
     for (UUID userId : Optional.ofNullable(createRequest.getUsers()).orElse(Collections.emptyList())) {
@@ -335,7 +326,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());
-    TestUtils.validateEntityReference(updated.getOwns());
+    TestUtils.validateEntityReferences(updated.getOwns());
 
     List<EntityReference> expectedUsers = Optional.ofNullable(expected.getUsers()).orElse(Collections.emptyList());
     List<EntityReference> actualUsers = Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList());

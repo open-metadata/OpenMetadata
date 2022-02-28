@@ -42,7 +42,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
-  private static final Fields UPDATE_FIELDS = new Fields(DatabaseServiceResource.FIELD_LIST, "owner");
+  private static final Fields UPDATE_FIELDS = new Fields(DatabaseServiceResource.ALLOWED_FIELDS, "owner");
   private final Fernet fernet;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
@@ -79,7 +79,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
   @Override
   public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
-    entity.setAirflowPipelines(fields.contains("airflowPipeline") ? getAirflowPipelines(entity) : null);
+    entity.setAirflowPipelines(fields.contains("airflowPipelines") ? getAirflowPipelines(entity) : null);
     entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
     return entity;
   }

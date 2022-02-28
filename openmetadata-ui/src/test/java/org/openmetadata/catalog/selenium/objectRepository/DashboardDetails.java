@@ -1,11 +1,13 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
 import javax.annotation.Nonnull;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@Getter
 @RequiredArgsConstructor
 public class DashboardDetails {
   @Nonnull WebDriver webDriver;
@@ -17,27 +19,7 @@ public class DashboardDetails {
   By selectedTag = By.xpath("//span[@class='tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1']");
   By chartTags = By.xpath("(//div[@data-testid='tag-conatiner'])[2]");
 
-  public By dashboard() {
-    return dashboard;
-  }
-
-  public By editChartDescription() {
-    return editChartDescription;
-  }
-
   public WebElement getDescriptionBox() {
     return webDriver.findElement(descriptionBox);
-  }
-
-  public By getSelectedTag() {
-    return selectedTag;
-  }
-
-  public By addChartTag() {
-    return addChartTag;
-  }
-
-  public By getChartTags() {
-    return chartTags;
   }
 }

@@ -82,7 +82,7 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.page2());
     Events.click(webDriver, myDataPage.changeLog());
     try {
-      WebElement version = webDriver.findElement(myDataPage.getVersion());
+      WebElement version = webDriver.findElement(myDataPage.version());
       Assert.assertTrue(version.isDisplayed());
     } catch (Exception e) {
       Assert.fail();
@@ -96,31 +96,31 @@ public class MyDataPageTest {
     String url;
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.click(webDriver, myDataPage.getTables());
+    Events.click(webDriver, myDataPage.tables());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/tables/");
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.getTopics());
+    Events.click(webDriver, myDataPage.topics());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/topics/");
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.getDashboard());
+    Events.click(webDriver, myDataPage.dashboard());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/dashboards/");
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.getPipelines());
+    Events.click(webDriver, myDataPage.pipelines());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/pipelines/");
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.getServices());
+    Events.click(webDriver, myDataPage.services());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/services");
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.getUsers());
+    Events.click(webDriver, myDataPage.users());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/user-list");
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.getTeams());
+    Events.click(webDriver, myDataPage.teams());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/teams");
   }
@@ -130,9 +130,9 @@ public class MyDataPageTest {
   public void checkSearchBar() throws InterruptedException {
     String sendkeys = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    wait.until(ExpectedConditions.elementToBeClickable(myDataPage.getSearchBox())); // Search bar/dim
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), sendkeys); // Search bar/dim
-    Events.click(webDriver, myDataPage.selectTable());
+    wait.until(ExpectedConditions.elementToBeClickable(myDataPage.searchBox())); // Search bar/dim
+    Events.sendKeys(webDriver, myDataPage.searchBox(), sendkeys); // Search bar/dim
+    Events.click(webDriver, myDataPage.tableName());
     Thread.sleep(1000);
     WebElement tableName =
         tableDetails
@@ -146,7 +146,7 @@ public class MyDataPageTest {
   void checkExplore() {
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.click(webDriver, myDataPage.clickExplore());
+    Events.click(webDriver, myDataPage.explore());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/tables");
     try {
@@ -163,8 +163,8 @@ public class MyDataPageTest {
   void checkHeaders() {
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.click(webDriver, myDataPage.openSettings());
-    Events.click(webDriver, myDataPage.getTeams());
+    Events.click(webDriver, myDataPage.settings());
+    Events.click(webDriver, myDataPage.teams());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/teams");
     try {
@@ -175,8 +175,8 @@ public class MyDataPageTest {
       Assert.fail();
     }
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.openSettings());
-    Events.click(webDriver, myDataPage.getUsers());
+    Events.click(webDriver, myDataPage.settings());
+    Events.click(webDriver, myDataPage.users());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/user-list");
     try {
@@ -187,8 +187,8 @@ public class MyDataPageTest {
       Assert.fail();
     }
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.openSettings());
-    Events.click(webDriver, myDataPage.getTags());
+    Events.click(webDriver, myDataPage.settings());
+    Events.click(webDriver, myDataPage.tags());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/tags");
     try {
@@ -199,8 +199,8 @@ public class MyDataPageTest {
       Assert.fail();
     }
     webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.openSettings());
-    Events.click(webDriver, myDataPage.getServices());
+    Events.click(webDriver, myDataPage.settings());
+    Events.click(webDriver, myDataPage.services());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/services");
     try {
@@ -217,15 +217,15 @@ public class MyDataPageTest {
   @Order(6)
   public void checkMyDataTab() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.click(webDriver, myDataPage.getTables());
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
-    Events.click(webDriver, myDataPage.selectTable());
+    Events.click(webDriver, myDataPage.tables());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), table);
+    Events.click(webDriver, myDataPage.tableName());
     Events.click(webDriver, tableDetails.manage());
-    Events.click(webDriver, tableDetails.clickOwnerDropdown()); // Owner
-    Events.click(webDriver, tableDetails.clickUsers());
+    Events.click(webDriver, tableDetails.owner()); // Owner
+    Events.click(webDriver, tableDetails.users());
     Events.click(webDriver, tableDetails.selectUser());
     Events.click(webDriver, tableDetails.saveManage());
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.click(webDriver, myDataPage.home());
     webDriver.navigate().refresh();
     try {
       WebElement tableName = wait.until(ExpectedConditions.presenceOfElementLocated(By.linkText(table)));
@@ -242,17 +242,17 @@ public class MyDataPageTest {
   @Order(7)
   void checkFollowingTab() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.click(webDriver, myDataPage.getTables());
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
-    Events.click(webDriver, myDataPage.selectTable());
-    String follow = webDriver.findElement(tableDetails.clickFollow()).getText();
+    Events.click(webDriver, myDataPage.tables());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), table);
+    Events.click(webDriver, myDataPage.tableName());
+    String follow = webDriver.findElement(tableDetails.follow()).getText();
     if (follow.equals("Unfollow")) {
-      Events.click(webDriver, tableDetails.clickFollow());
-      Events.click(webDriver, tableDetails.clickFollow());
+      Events.click(webDriver, tableDetails.follow());
+      Events.click(webDriver, tableDetails.follow());
     } else {
-      Events.click(webDriver, tableDetails.clickFollow());
+      Events.click(webDriver, tableDetails.follow());
     }
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.click(webDriver, myDataPage.home());
     String tableName = myDataPage.following().toString();
     Assert.assertEquals(tableName, "Started Following " + table);
   }
@@ -261,9 +261,9 @@ public class MyDataPageTest {
   @Order(8)
   void checkRecentlyViewed() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), table);
-    Events.click(webDriver, myDataPage.selectTable());
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), table);
+    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, myDataPage.home());
     webDriver.navigate().refresh();
     String table = webDriver.findElement(myDataPage.recentlyViewed()).getText();
     Assert.assertEquals(table, "dim_address");
@@ -274,9 +274,9 @@ public class MyDataPageTest {
   public void checkRecentlySearched() {
     String searchCriteria = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), searchCriteria);
-    Events.sendEnter(webDriver, myDataPage.getSearchBox());
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), searchCriteria);
+    Events.sendEnter(webDriver, myDataPage.searchBox());
+    Events.click(webDriver, myDataPage.home());
     try {
       WebElement recentSearch = webDriver.findElement(myDataPage.recentSearch());
       if (recentSearch.isDisplayed()) {
@@ -291,9 +291,9 @@ public class MyDataPageTest {
   @Order(9)
   public void checkRecentSearchWithSpaces() throws Exception {
     Events.click(webDriver, myDataPage.closeWhatsNew());
-    Events.sendKeys(webDriver, myDataPage.getSearchBox(), " ");
-    Events.sendEnter(webDriver, myDataPage.getSearchBox());
-    Events.click(webDriver, myDataPage.clickHome());
+    Events.sendKeys(webDriver, myDataPage.searchBox(), " ");
+    Events.sendEnter(webDriver, myDataPage.searchBox());
+    Events.click(webDriver, myDataPage.home());
     try {
       WebElement spaceSearch = webDriver.findElement(myDataPage.recentSearchWithSpace());
       if (spaceSearch.isDisplayed()) {

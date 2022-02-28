@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -82,7 +81,7 @@ public class DatabaseServiceResource {
   private final Authorizer authorizer;
 
   static final String FIELDS = "airflowPipeline,owner";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(DatabaseService.class);
   private final Fernet fernet;
 
   public static ResultList<DatabaseService> addHref(UriInfo uriInfo, ResultList<DatabaseService> dbServices) {
@@ -150,7 +149,7 @@ public class DatabaseServiceResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     ResultList<DatabaseService> dbServices;
     if (before != null) {
       dbServices = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
@@ -190,7 +189,7 @@ public class DatabaseServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, decryptOrNullify(securityContext, dao.get(uriInfo, id, fields, include)));
   }
 
@@ -224,7 +223,7 @@ public class DatabaseServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, decryptOrNullify(securityContext, dao.getByName(uriInfo, name, fields, include)));
   }
 

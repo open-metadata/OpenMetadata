@@ -17,11 +17,11 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -141,12 +141,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
               || expectedTask.getName().equals(actualTask.getDisplayName()));
       i++;
     }
-  }
-
-  @Override
-  public void validateUpdatedEntity(Pipeline pipeline, CreatePipeline request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(pipeline, request, authHeaders);
   }
 
   @Override
@@ -522,22 +516,34 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   /** Validate returned fields GET .../pipelines/{id}?fields="..." or GET .../pipelines/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Pipeline pipeline, boolean byName) throws HttpResponseException {
-    // .../Pipelines?fields=owner
-    String fields = "owner";
+    String fields = "";
     pipeline =
         byName
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(pipeline.getOwner(), pipeline.getService(), pipeline.getServiceType());
-    assertNull(pipeline.getTasks());
+    assertListNotNull(pipeline.getService(), pipeline.getServiceType());
+    assertListNull(
+        pipeline.getOwner(),
+        pipeline.getTasks(),
+        pipeline.getPipelineStatus(),
+        pipeline.getTags(),
+        pipeline.getFollowers(),
+        pipeline.getTags());
 
-    // .../Pipelines?fields=owner,service,tables
-    fields = "owner,tasks";
+    fields = "owner,tasks,pipelineStatus,followers,tags";
     pipeline =
         byName
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(pipeline.getOwner(), pipeline.getService(), pipeline.getServiceType(), pipeline.getTasks());
+    assertListNotNull(pipeline.getService(), pipeline.getServiceType());
+    // Some fields are not set and hence are null - tested elsewhere
+    assertListNotNull(
+        pipeline.getOwner(),
+        /*pipeline.getTasks(),
+        pipeline.getPipelineStatus(),*/
+        pipeline.getTags(),
+        pipeline.getFollowers(),
+        pipeline.getTags());
   }
 
   public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)
