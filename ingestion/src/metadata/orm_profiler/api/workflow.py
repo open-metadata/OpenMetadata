@@ -191,7 +191,8 @@ class ProfilerWorkflow:
             self.metadata.list_entities(
                 entity=Table,
                 fields=[
-                    "tableProfile"
+                    "tableProfile",
+                    "tests",
                 ],  # We will need it for window metrics to check past data
                 params={
                     "database": f"{self.source_config.service_name}.{database.name.__root__}"
