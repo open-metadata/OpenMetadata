@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
@@ -41,7 +42,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.ALLOWED_FIELDS, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.ALLOWED_FIELDS, "owner");
+  private static final Fields DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
 
   public DatabaseRepository(CollectionDAO dao) {
     super(
@@ -117,7 +118,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database setFields(Database database, Fields fields) throws IOException, ParseException {
     database.setService(getService(database));
-    database.setOwner(fields.contains("owner") ? getOwner(database) : null);
+    database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);

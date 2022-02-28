@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -118,8 +117,7 @@ public class GlossaryTermResource {
   }
 
   static final String FIELDS = "children,relatedTerms,reviewers,tags";
-  static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "").split(","));
+  protected static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
 
   @GET
   @Valid

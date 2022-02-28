@@ -13,11 +13,12 @@
 
 package org.openmetadata.catalog.exception;
 
+import java.security.Principal;
 import java.util.UUID;
 
 public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
-  public static final String ENTITY_NAME_EMPTY = "Entity name can't be empty";
+  public static final String FERNET_KEY_NULL = "Fernet key is null";
 
   private CatalogExceptionMessage() {}
 
@@ -65,10 +66,6 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid service type `%s` for %s. Expected %s.", serviceType, entityType, expected);
   }
 
-  public static String fernetKeyNotDefined() {
-    return "The Fernet Key is null";
-  }
-
   public static String invalidEntityLink() {
     return "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
   }
@@ -84,5 +81,29 @@ public final class CatalogExceptionMessage {
   public static String glossaryTermMismatch(String parentId, String glossaryId) {
     return String.format(
         "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s", parentId, glossaryId);
+  }
+
+  public static String notAdmin(Principal principal) {
+    return notAdmin(principal.getName());
+  }
+
+  public static String notAdmin(String name) {
+    return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
+  }
+
+  public static String noPermission(Principal principal) {
+    return noPermission(principal.getName());
+  }
+
+  public static String noPermission(String name) {
+    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions", name);
+  }
+
+  public static String noPermission(Principal principal, String operation) {
+    return noPermission(principal.getName(), operation);
+  }
+
+  public static String noPermission(String name, String operation) {
+    return String.format("Principal: CatalogPrincipal{name='%s'} does not have permissions to %s", name, operation);
   }
 }

@@ -25,7 +25,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
 
 @Slf4j
-public class RestUtilTest {
+class RestUtilTest {
   @Test
   void testFields() {
     // Anonymous class with JsonProperties to extract

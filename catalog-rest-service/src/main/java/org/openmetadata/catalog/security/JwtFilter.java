@@ -26,8 +26,8 @@ import java.util.Calendar;
 import java.util.TimeZone;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.SneakyThrows;
@@ -37,8 +37,6 @@ import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 @Slf4j
 @Provider
 public class JwtFilter implements ContainerRequestFilter {
-  @Context private UriInfo uriInfo;
-
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   private String publicKeyUri;
@@ -98,7 +96,7 @@ public class JwtFilter implements ContainerRequestFilter {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.DIGEST_AUTH);
+        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
   }

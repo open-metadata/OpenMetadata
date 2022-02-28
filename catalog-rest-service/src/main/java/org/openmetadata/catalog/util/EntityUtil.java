@@ -220,8 +220,7 @@ public final class EntityUtil {
       EntityReference newOwner,
       UUID ownedEntityId,
       String ownedEntityType) {
-    // TODO inefficient use replace instead of delete and add?
-    // TODO check for orig and new owners being the same
+    // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
     unassignOwner(dao, originalOwner, ownedEntityId.toString(), ownedEntityType);
     setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
   }
@@ -493,7 +492,7 @@ public final class EntityUtil {
   public static void escapeReservedChars(EntityInterface<?> entityInterface) {
     entityInterface.setDisplayName(
         entityInterface.getDisplayName() != null ? entityInterface.getDisplayName() : entityInterface.getName());
-    entityInterface.setName(entityInterface.getName().replace(".", "_DOT_"));
+    entityInterface.setName(replaceDot(entityInterface.getName()));
   }
 
   public static void escapeReservedChars(List<?> collection) {
@@ -504,17 +503,20 @@ public final class EntityUtil {
       if (object instanceof Column) {
         Column column = (Column) object;
         column.setDisplayName(column.getDisplayName() != null ? column.getDisplayName() : column.getName());
-        column.setName(column.getName().replace(".", "_DOT_"));
+        column.setName(replaceDot(column.getName()));
         escapeReservedChars(column.getChildren());
       } else if (object instanceof TableConstraint) {
         TableConstraint constraint = (TableConstraint) object;
-        constraint.setColumns(
-            constraint.getColumns().stream().map(s -> s.replace(".", "_DOT_")).collect(Collectors.toList()));
+        constraint.setColumns(constraint.getColumns().stream().map(s -> replaceDot(s)).collect(Collectors.toList()));
       } else if (object instanceof Task) {
         Task task = (Task) object;
         task.setDisplayName(task.getDisplayName() != null ? task.getDisplayName() : task.getName());
-        task.setName(task.getName().replace(".", "_DOT_"));
+        task.setName(replaceDot(task.getName()));
       }
     }
+  }
+
+  public static String replaceDot(String string) {
+    return string.replace(".", "_DOT_");
   }
 }

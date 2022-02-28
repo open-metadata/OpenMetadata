@@ -106,8 +106,8 @@ public class UserResource {
     }
   }
 
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(User.class);
   static final String FIELDS = "profile,roles,teams,follows,owns";
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(User.class);
 
   @GET
   @Valid

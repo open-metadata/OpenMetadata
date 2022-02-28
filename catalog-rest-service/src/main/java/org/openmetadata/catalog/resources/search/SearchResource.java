@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.search;
 
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,7 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -57,7 +59,7 @@ import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 @Produces(MediaType.APPLICATION_JSON)
 public class SearchResource {
   private final RestHighLevelClient client;
-  private final Integer MAX_AGGREGATE_SIZE = 50;
+  private static final Integer MAX_AGGREGATE_SIZE = 50;
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
@@ -212,25 +214,22 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder
-        .query(QueryBuilders.queryStringQuery(query).lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-        .from(from)
-        .size(size);
-
-    return searchSourceBuilder;
+    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
+    return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field("name", 5.0f)
+            .field(FIELD_DESCRIPTION)
+            .field("column_names")
+            .field("column_descriptions")
+            .lenient(true);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field("name");
     highlightTableName.highlighterType("unified");
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType("unified");
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("column_names");
     highlightColumns.highlighterType("unified");
@@ -241,59 +240,37 @@ public class SearchResource {
     hb.field(highlightTableName);
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
-    hb.preTags("<span class=\"text-highlighter\">");
-    hb.postTags("</span>");
-    searchSourceBuilder
-        .query(
-            QueryBuilders.queryStringQuery(query)
-                .field("name", 5.0f)
-                .field("description")
-                .field("column_names")
-                .field("column_descriptions")
-                .lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("Database").field("database"))
-        .highlighter(hb)
-        .from(from)
-        .size(size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database")).highlighter(hb);
 
-    return searchSourceBuilder;
+    return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true);
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field("name");
     highlightTopicName.highlighterType("unified");
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType("unified");
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTopicName);
-    hb.preTags("<span class=\"text-highlighter\">");
-    hb.postTags("</span>");
-    searchSourceBuilder
-        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
-        .highlighter(hb)
-        .from(from)
-        .size(size);
-
-    return searchSourceBuilder;
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field("name", 5.0f)
+            .field(FIELD_DESCRIPTION)
+            .field("chart_names")
+            .field("chart_descriptions")
+            .lenient(true);
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field("name");
     highlightDashboardName.highlighterType("unified");
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType("unified");
     HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("chart_names");
     highlightCharts.highlighterType("unified");
@@ -305,33 +282,22 @@ public class SearchResource {
     hb.field(highlightDashboardName);
     hb.field(highlightCharts);
     hb.field(highlightChartDescriptions);
-    hb.preTags("<span class=\"text-highlighter\">");
-    hb.postTags("</span>");
-    searchSourceBuilder
-        .query(
-            QueryBuilders.queryStringQuery(query)
-                .field("name", 5.0f)
-                .field("description")
-                .field("chart_names")
-                .field("chart_descriptions")
-                .lenient(true))
-        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
-        .highlighter(hb)
-        .from(from)
-        .size(size);
 
-    return searchSourceBuilder;
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field("name", 5.0f)
+            .field(FIELD_DESCRIPTION)
+            .field("task_names")
+            .field("task_descriptions")
+            .lenient(true);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field("name");
     highlightPipelineName.highlighterType("unified");
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType("unified");
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("task_names");
     highlightTasks.highlighterType("unified");
@@ -342,66 +308,61 @@ public class SearchResource {
     hb.field(highlightPipelineName);
     hb.field(highlightTasks);
     hb.field(highlightTaskDescriptions);
-    hb.preTags("<span class=\"text-highlighter\">");
-    hb.postTags("</span>");
-    searchSourceBuilder
-        .query(
-            QueryBuilders.queryStringQuery(query)
-                .field("name", 5.0f)
-                .field("description")
-                .field("task_names")
-                .field("task_descriptions")
-                .lenient(true))
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private SearchSourceBuilder searchBuilder(
+      QueryStringQueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
+    SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
+    if (hb != null) {
+      hb.preTags("<span class=\"text-highlighter\">");
+      hb.postTags("</span>");
+      builder.highlighter(hb);
+    }
+    return builder;
+  }
+
+  private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
+    builder
         .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE))
-        .highlighter(hb)
-        .from(from)
-        .size(size);
-
-    return searchSourceBuilder;
+        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE));
+    return builder;
   }
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder
-        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("display_name", 1.0f).lenient(true))
-        .from(from)
-        .size(size);
-
-    return searchSourceBuilder;
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("display_name", 1.0f).lenient(true);
+    return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder
-        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("display_name", 3.0f).lenient(true))
-        .from(from)
-        .size(size);
-
-    return searchSourceBuilder;
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("display_name", 3.0f).lenient(true);
+    return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true);
+
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field("name");
     highlightGlossaryName.highlighterType("unified");
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType("unified");
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
-        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-        .highlighter(hb)
-        .from(from)
-        .size(size);
+        .highlighter(hb);
 
     return searchSourceBuilder;
   }

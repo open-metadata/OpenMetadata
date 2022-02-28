@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -119,8 +118,7 @@ public class TagResource {
   }
 
   static final String FIELDS = "usageCount";
-  static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Tag.class);
-  protected static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  protected static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Tag.class);
 
   @GET
   @Operation(

@@ -55,7 +55,6 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository.AirflowPipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.FieldRelationshipDAO.FromFieldMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
@@ -1252,6 +1251,7 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
 
+    @Override
     default int listCount(String team, Include include) {
       return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal(), toBoolean(include));
     }
@@ -1335,7 +1335,7 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
-      if (entityTypes == null) {
+      if (entityTypes == null || entityTypes.isEmpty()) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {
