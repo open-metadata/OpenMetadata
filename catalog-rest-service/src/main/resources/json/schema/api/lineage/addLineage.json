@@ -14,5 +14,6 @@
       "$ref": "../../type/entityLineage.json#/definitions/entitiesEdge"
     }
   },
-  "required": ["edge"]
+  "required": ["edge"],
+  "additionalProperties": false
 }

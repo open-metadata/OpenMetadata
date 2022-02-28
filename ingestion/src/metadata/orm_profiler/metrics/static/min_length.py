@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-AVG Metric definition
+MIN_LENGTH Metric definition
 """
 from sqlalchemy import func
 from sqlalchemy.ext.compiler import compiles
@@ -26,43 +26,44 @@ from metadata.orm_profiler.utils import logger
 logger = logger()
 
 
-class ConcatAvgFn(FunctionElement):
+class MinLengthFn(FunctionElement):
     name = __qualname__
     inherit_cache = CACHE
 
 
-@compiles(ConcatAvgFn)
+@compiles(MinLengthFn)
 def _(element, compiler, **kw):
-    return "AVG(LEN(%s))" % compiler.process(element.clauses, **kw)
+    return "MIN(LEN(%s))" % compiler.process(element.clauses, **kw)
 
 
-@compiles(ConcatAvgFn, DatabaseServiceType.SQLite.value.lower())
+@compiles(MinLengthFn, DatabaseServiceType.SQLite.value.lower())
 def _(element, compiler, **kw):
-    return "AVG(LENGTH(%s))" % compiler.process(element.clauses, **kw)
+    return "MIN(LENGTH(%s))" % compiler.process(element.clauses, **kw)
 
 
-class Avg(StaticMetric):
+class MinLength(StaticMetric):
     """
-    AVG Metric
+    MIN_LENGTH Metric
 
-    Given a column, return the AVG value.
+    Given a column, return the MIN LENGTH value.
 
-    - For a quantifiable value, return the usual AVG
-    - For a concatenable (str, text...) return the AVG length
+    Only works for concatenable types
     """
+
+    @classmethod
+    def name(cls):
+        return "minLength"
 
     def metric_type(self):
-        return float
+        return int
 
     @_label
     def fn(self):
-        if is_quantifiable(self.col.type):
-            return func.avg(self.col)
 
         if is_concatenable(self.col.type):
-            return ConcatAvgFn(self.col)
+            return MinLengthFn(self.col)
 
         logger.warning(
-            f"Don't know how to process type {self.col.type} when computing AVG"
+            f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
         )
         return None

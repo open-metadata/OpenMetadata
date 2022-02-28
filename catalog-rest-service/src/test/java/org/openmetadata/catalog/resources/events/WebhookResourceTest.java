@@ -66,6 +66,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   public WebhookResourceTest() {
     super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false, false, false);
     supportsPatch = false;
+    supportsFieldsQueryParam = false;
   }
 
   @Test
@@ -241,12 +242,6 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   @Override
-  public void validateUpdatedEntity(Webhook webhook, CreateWebhook request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(webhook, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(Webhook expected, Webhook updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Patch not supported
@@ -258,7 +253,9 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   @Override
-  public void validateGetWithDifferentFields(Webhook entity, boolean byName) throws HttpResponseException {}
+  public void validateGetWithDifferentFields(Webhook entity, boolean byName) throws HttpResponseException {
+    // Field query param is not supported in GET operations
+  }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {

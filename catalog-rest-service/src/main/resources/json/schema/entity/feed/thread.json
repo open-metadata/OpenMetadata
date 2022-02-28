@@ -24,7 +24,8 @@
           "type": "string"
         }
       },
-      "required": ["message", "from"]
+      "required": ["message", "from"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -64,6 +65,15 @@
       "description": "When `true` indicates the thread has been resolved",
       "type": "boolean",
       "default": false
+    },
+    "message": {
+      "description": "The main message of the thread in markdown format",
+      "type": "string"
+    },
+    "postsCount": {
+      "description": "The total count of posts in the thread",
+      "type": "integer",
+      "default": 0
     },
     "posts": {
       "type": "array",

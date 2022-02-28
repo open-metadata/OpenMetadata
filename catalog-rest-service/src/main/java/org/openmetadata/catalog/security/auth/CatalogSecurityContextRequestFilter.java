@@ -21,6 +21,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthenticationException;
 
 @Slf4j
@@ -28,6 +29,11 @@ import org.openmetadata.catalog.security.AuthenticationException;
 public class CatalogSecurityContextRequestFilter implements ContainerRequestFilter {
 
   @Context private HttpServletRequest httpRequest;
+
+  @SuppressWarnings("unused")
+  private CatalogSecurityContextRequestFilter() {}
+
+  public CatalogSecurityContextRequestFilter(AuthenticationConfiguration authenticationConfiguration) {}
 
   @Override
   public void filter(ContainerRequestContext requestContext) {

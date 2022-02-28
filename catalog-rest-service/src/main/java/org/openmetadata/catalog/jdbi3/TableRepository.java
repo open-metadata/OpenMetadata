@@ -49,6 +49,9 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.tests.ColumnTest;
+import org.openmetadata.catalog.tests.TableTest;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
@@ -74,10 +77,10 @@ import org.openmetadata.common.utils.CommonUtil;
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
   // Table fields that can be patched in a PATCH request
-  static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST, "owner,columns,tags,tableConstraints");
+  static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints");
   // Table fields that can be updated in a PUT request
   static final Fields TABLE_UPDATE_FIELDS =
-      new Fields(TableResource.FIELD_LIST, "owner,columns,tags,tableConstraints,dataModel");
+      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,dataModel");
 
   public TableRepository(CollectionDAO dao) {
     super(
@@ -110,6 +113,8 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
+    table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
+    getColumnTests(fields.contains("tests"), table);
     return table;
   }
 
@@ -246,6 +251,90 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
+  public Table addTableTest(UUID tableId, TableTest tableTest) throws IOException, ParseException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    // if ID is not passed we treat it as a new test case being added
+    List<TableTest> storedTableTests = getTableTests(table);
+    // we will override any test case name passed by user/client with tableName + testType
+    // our assumption is there is only one instance of a test type as of now.
+    tableTest.setName(table.getName() + "." + tableTest.getTableTestCase().getTestType().toString());
+    Map<String, TableTest> storedMapTableTests = new HashMap<>();
+    if (storedTableTests != null) {
+      for (TableTest t : storedTableTests) {
+        storedMapTableTests.put(t.getName(), t);
+      }
+    }
+    // new test add UUID
+    if (!storedMapTableTests.containsKey(tableTest.getName())) {
+      tableTest.setId(UUID.randomUUID());
+    }
+
+    // process test result
+    if (storedMapTableTests.containsKey(tableTest.getName())
+        && tableTest.getResults() != null
+        && !tableTest.getResults().isEmpty()) {
+      TableTest prevTableTest = storedMapTableTests.get(tableTest.getName());
+      List<TestCaseResult> prevTestCaseResults = prevTableTest.getResults();
+      List<TestCaseResult> newTestCaseResults = tableTest.getResults();
+      newTestCaseResults.addAll(prevTestCaseResults);
+      tableTest.setResults(newTestCaseResults);
+    }
+
+    storedMapTableTests.put(tableTest.getName(), tableTest);
+    List<TableTest> updatedTests = new ArrayList<>(storedMapTableTests.values());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(tableId.toString(), "table.tableTests", "tableTest", JsonUtils.pojoToJson(updatedTests));
+    setFields(table, Fields.EMPTY_FIELDS);
+    return table.withTableTests(getTableTests(table));
+  }
+
+  @Transaction
+  public Table addColumnTest(UUID tableId, ColumnTest columnTest) throws IOException, ParseException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    String columnName = columnTest.getColumnName();
+    validateColumn(table, columnName);
+    // we will override any test case name passed by user/client with columnName + testType
+    // our assumption is there is only one instance of a test type as of now.
+    columnTest.setName(columnName + "." + columnTest.getTestCase().getTestType().toString());
+    List<ColumnTest> storedColumnTests = getColumnTests(table, columnName);
+    Map<String, ColumnTest> storedMapColumnTests = new HashMap<>();
+    if (storedColumnTests != null) {
+      for (ColumnTest ct : storedColumnTests) {
+        storedMapColumnTests.put(ct.getName(), ct);
+      }
+    }
+
+    // new test, generate UUID
+    if (!storedMapColumnTests.containsKey(columnTest.getName())) {
+      columnTest.setId(UUID.randomUUID());
+    }
+
+    // process test result
+    if (storedMapColumnTests.containsKey(columnTest.getName())
+        && columnTest.getResults() != null
+        && !columnTest.getResults().isEmpty()) {
+      ColumnTest prevColumnTest = storedMapColumnTests.get(columnTest.getName());
+      List<TestCaseResult> prevTestCaseResults = prevColumnTest.getResults();
+      List<TestCaseResult> newTestCaseResults = columnTest.getResults();
+      newTestCaseResults.addAll(prevTestCaseResults);
+      columnTest.setResults(newTestCaseResults);
+    }
+
+    storedMapColumnTests.put(columnTest.getName(), columnTest);
+    List<ColumnTest> updatedTests = new ArrayList<>(storedMapColumnTests.values());
+    String extension = "table.column." + columnName + ".tests";
+    daoCollection
+        .entityExtensionDAO()
+        .insert(table.getId().toString(), extension, "columnTest", JsonUtils.pojoToJson(updatedTests));
+    setFields(table, Fields.EMPTY_FIELDS);
+    getColumnTests(true, table);
+    return table;
+  }
+
+  @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException, ParseException {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     table.withDataModel(dataModel);
@@ -367,7 +456,6 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void storeRelationships(Table table) {
     // Add relationship from database to table
-    String databaseId = table.getDatabase().getId().toString();
     addRelationship(table.getDatabase().getId(), table.getId(), DATABASE, TABLE, Relationship.CONTAINS);
 
     // Add table owner relationship
@@ -643,6 +731,24 @@ public class TableRepository extends EntityRepository<Table> {
     return tableQueries;
   }
 
+  private List<TableTest> getTableTests(Table table) throws IOException {
+    return JsonUtils.readObjects(
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableTests"), TableTest.class);
+  }
+
+  private List<ColumnTest> getColumnTests(Table table, String columnName) throws IOException {
+    String extension = "table.column." + columnName + ".tests";
+    return JsonUtils.readObjects(
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), ColumnTest.class);
+  }
+
+  private void getColumnTests(boolean setTests, Table table) throws IOException {
+    List<Column> columns = table.getColumns();
+    for (Column c : Optional.ofNullable(columns).orElse(Collections.emptyList())) {
+      c.setColumnTests(setTests ? getColumnTests(table, c.getName()) : null);
+    }
+  }
+
   public static class TableEntityInterface implements EntityInterface<Table> {
     private final Table entity;
 
@@ -902,12 +1008,12 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (recordChange(
-          getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength())) {
-        if (updatedColumn.getDataLength() < origColumn.getDataLength()) {
-          // The data length of a column changed. Treat it as backward-incompatible change
-          majorVersionChange = true;
-        }
+      boolean updated =
+          recordChange(
+              getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength());
+      if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
+        // The data length of a column changed. Treat it as backward-incompatible change
+        majorVersionChange = true;
       }
     }
   }

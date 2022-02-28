@@ -269,3 +269,39 @@ VERTICA_VIEW_DEFINITION = """
       WHERE table_name='{view_name}'
       AND {schema_condition}
 """
+
+MSSQL_SQL_USAGE_STATEMENT = """
+      SELECT
+        db.NAME database_name,
+        t.text query_text,
+        s.last_execution_time start_time,
+        DATEADD(ms, s.total_elapsed_time, s.last_execution_time) end_time,
+        NULL schema_name,
+        NULL query_type,
+        NULL user_name,
+        NULL aborted
+      FROM sys.dm_exec_cached_plans AS p
+      INNER JOIN sys.dm_exec_query_stats AS s
+        ON p.plan_handle = s.plan_handle
+      CROSS APPLY sys.Dm_exec_sql_text(p.plan_handle) AS t
+      INNER JOIN sys.databases db
+        ON db.database_id = t.dbid
+      ORDER BY s.last_execution_time DESC;
+"""
+
+CLICKHOUSE_SQL_USAGE_STATEMENT = """
+        Select
+          query_start_time start_time,
+          DATEADD(query_duration_ms, query_start_time) end_time,
+          databases database_name,
+          user user_name,
+          FALSE aborted,
+          query_id query_id,
+          query query_text,
+          NULL schema_name,
+          tables tables
+        From system.query_log
+        Where start_time between '{start_time}' and '{end_time}'
+        and CAST(type,'Int8') <> 3
+        and CAST(type,'Int8') <> 4
+"""

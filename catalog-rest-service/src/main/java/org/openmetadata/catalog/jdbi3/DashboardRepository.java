@@ -41,8 +41,10 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final Fields DASHBOARD_UPDATE_FIELDS = new Fields(DashboardResource.FIELD_LIST, "owner,tags,charts");
-  private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST, "owner,tags,charts");
+  private static final Fields DASHBOARD_UPDATE_FIELDS =
+      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
+  private static final Fields DASHBOARD_PATCH_FIELDS =
+      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -180,11 +182,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
     List<String> chartIds =
         findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART, toBoolean(toInclude(dashboard)));
-    List<EntityReference> charts = new ArrayList<>();
-    for (String chartId : chartIds) {
-      charts.add(daoCollection.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
-    }
-    return charts.isEmpty() ? null : charts;
+    return EntityUtil.populateEntityReferences(chartIds, Entity.CHART);
   }
 
   /**

@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,14 +43,15 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
-  static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
-  static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.FIELD_LIST, null);
+  static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.ALLOWED_FIELDS, null);
+  static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.ALLOWED_FIELDS, null);
 
   public RoleRepository(CollectionDAO dao) {
     super(
@@ -70,6 +70,7 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   public Role setFields(Role role, Fields fields) throws IOException {
     role.setPolicy(fields.contains("policy") ? getPolicyForRole(role) : null);
+    role.setTeams(fields.contains("teams") ? getTeamsForRole(role) : null);
     role.setUsers(fields.contains("users") ? getUsersForRole(role) : null);
     return role;
   }
@@ -84,30 +85,17 @@ public class RoleRepository extends EntityRepository<Role> {
           role.getName());
       return null;
     }
-    return Entity.getEntityReference(Entity.POLICY, UUID.fromString(result.get(0)));
+    return Entity.getEntityReferenceById(Entity.POLICY, UUID.fromString(result.get(0)));
   }
 
-  private List<EntityReference> getUsersForRole(@NonNull Role role) {
-    List<EntityReference> entityReferences =
-        daoCollection
-            .relationshipDAO()
-            .findFromEntity(
-                role.getId().toString(),
-                Entity.ROLE,
-                Relationship.HAS.ordinal(),
-                Entity.USER,
-                toBoolean(toInclude(role)));
-    return Optional.ofNullable(entityReferences).orElse(Collections.emptyList()).stream()
-        .map(
-            ref -> {
-              try {
-                return Entity.getEntityReference(Entity.USER, ref.getId());
-              } catch (IOException e) {
-                LOG.warn("Could not get entity reference for user {}", ref.getId());
-              }
-              return ref;
-            })
-        .collect(Collectors.toList());
+  private List<EntityReference> getUsersForRole(@NonNull Role role) throws IOException {
+    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER, toBoolean(toInclude(role)));
+    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+  }
+
+  private List<EntityReference> getTeamsForRole(@NonNull Role role) throws IOException {
+    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM, toBoolean(Include.ALL));
+    return EntityUtil.populateEntityReferences(ids, Entity.TEAM);
   }
 
   @Override
@@ -385,8 +373,11 @@ public class RoleRepository extends EntityRepository<Role> {
     private List<User> getAllUsers() {
       EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
       try {
+        // Assumptions:
+        // - we will not have more than Integer.MAX_VALUE users in the system.
+        // - we do not need to update deleted user's roles.
         return userRepository
-            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, null, Integer.MAX_VALUE - 1, null, Include.ALL)
+            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, null, Integer.MAX_VALUE - 1, null, Include.NON_DELETED)
             .getData();
       } catch (GeneralSecurityException | IOException | ParseException e) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));

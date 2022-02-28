@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -74,7 +73,7 @@ public class StorageServiceResource {
   private final Authorizer authorizer;
 
   static final String FIELDS = "owner";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(StorageService.class);
 
   public static ResultList<StorageService> addHref(UriInfo uriInfo, ResultList<StorageService> services) {
     Optional.ofNullable(services.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -145,7 +144,7 @@ public class StorageServiceResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     ResultList<StorageService> services;
     if (before != null) { // Reverse paging
       services = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
@@ -186,7 +185,7 @@ public class StorageServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -220,7 +219,7 @@ public class StorageServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 

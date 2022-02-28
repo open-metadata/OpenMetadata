@@ -41,7 +41,8 @@
           "description": "End time in unixTimeMillis.",
           "type": "integer"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "duration": {
       "description": "Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.",

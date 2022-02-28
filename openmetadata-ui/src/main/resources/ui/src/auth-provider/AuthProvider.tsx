@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
@@ -34,6 +34,7 @@ import {
 import appState from '../AppState';
 import axiosClient from '../axiosAPIs';
 import {
+  fetchAuthenticationConfig,
   fetchAuthorizerConfig,
   getLoggedInUserPermissions,
 } from '../axiosAPIs/miscAPI';
@@ -44,6 +45,7 @@ import {
 } from '../axiosAPIs/userAPI';
 import Loader from '../components/Loader/Loader';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { NOOP_FILTER, NO_AUTH } from '../constants/auth.constants';
 import { isAdminUpdated, oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { User } from '../generated/entity/teams/user';
@@ -204,37 +206,70 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
   };
 
   const fetchAuthConfig = (): void => {
-    fetchAuthorizerConfig()
-      .then((res: AxiosResponse) => {
-        const isSecureMode =
-          !isNil(res.data) &&
-          Object.values(res.data).filter((item) => isNil(item)).length === 0;
-        if (isSecureMode) {
-          const { provider, authority, clientId, callbackUrl } = res.data;
-          const userConfig = getUserManagerConfig({
-            authority,
-            clientId,
-            callbackUrl,
-          });
-          setUserManagerConfig(userConfig);
-          setUserManager(makeUserManager(userConfig));
-          if (!oidcUserToken) {
-            clearOidcUserData(userConfig);
-            setLoading(false);
+    const promises = [fetchAuthenticationConfig(), fetchAuthorizerConfig()];
+    Promise.allSettled(promises)
+      .then(
+        ([
+          authenticationConfig,
+          authorizerConfig,
+        ]: PromiseSettledResult<AxiosResponse>[]) => {
+          let authRes = {} as AxiosResponse;
+          if (authenticationConfig.status === 'fulfilled') {
+            authRes = authenticationConfig.value;
+            const authorizerRes =
+              authorizerConfig.status === 'fulfilled'
+                ? authorizerConfig.value
+                : ({} as AxiosResponse);
+            const isSecureMode =
+              !isNil(authRes.data) &&
+              authorizerRes?.data?.containerRequestFilter &&
+              authRes.data.provider !== NO_AUTH &&
+              authorizerRes.data.containerRequestFilter !== NOOP_FILTER &&
+              Object.values(authRes.data).filter((item) => isNil(item))
+                .length === 0;
+            if (isSecureMode) {
+              const { provider, authority, clientId, callbackUrl } =
+                authRes.data;
+              const userConfig = getUserManagerConfig({
+                authority,
+                clientId,
+                callbackUrl,
+              });
+              setUserManagerConfig(userConfig);
+              setUserManager(makeUserManager(userConfig));
+              if (!oidcUserToken) {
+                clearOidcUserData(userConfig);
+                setLoading(false);
+              } else {
+                getLoggedInUserDetails();
+              }
+              appState.updateAuthProvide({
+                authority,
+                provider,
+                // eslint-disable-next-line @typescript-eslint/camelcase
+                client_id: clientId,
+              });
+              appState.updateAuthState(false);
+            } else {
+              appState.updateAuthState(true);
+              setLoading(false);
+            }
           } else {
-            getLoggedInUserDetails();
+            authenticationConfig.reason as AxiosError;
+            showToast({
+              variant: 'error',
+              body:
+                (authenticationConfig.reason as AxiosError).response?.data
+                  .message || 'Error occured while fetching auth config',
+            });
           }
-          appState.updateAuthProvide({
-            authority,
-            provider,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            client_id: clientId,
-          });
-          appState.updateAuthState(false);
-        } else {
-          appState.updateAuthState(true);
-          setLoading(false);
         }
+      )
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error occured while fetching auth config',
+        });
       })
       .finally(() => {
         if (oidcUserToken || appState.authDisabled) {

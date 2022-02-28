@@ -24,6 +24,7 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -39,6 +40,7 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     ChangeDescription,
     DashboardESDocument,
+    GlossaryTermESDocument,
     PipelineESDocument,
     TableESDocument,
     TeamESDocument,
@@ -49,6 +51,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
+    GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
     TEAM_ELASTICSEARCH_INDEX_MAPPING,
@@ -74,12 +77,14 @@ class ElasticSearchConfig(ConfigModel):
     index_pipelines: Optional[bool] = True
     index_users: Optional[bool] = True
     index_teams: Optional[bool] = True
+    index_glossary_terms: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
     user_index_name: str = "user_search_index"
     team_index_name: str = "team_search_index"
+    glossary_term_index_name: str = "glossary_term_search_index"
     scheme: str = "http"
     use_ssl: bool = False
     verify_certs: bool = False
@@ -163,6 +168,12 @@ class ElasticsearchSink(Sink[Entity]):
                 self.config.team_index_name, TEAM_ELASTICSEARCH_INDEX_MAPPING
             )
 
+        if self.config.index_glossary_terms:
+            self._check_or_create_index(
+                self.config.glossary_term_index_name,
+                GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
     def _check_or_create_index(self, index_name: str, es_mapping: str):
         """
         Retrieve all indices that currently have {elasticsearch_alias} alias
@@ -229,6 +240,7 @@ class ElasticsearchSink(Sink[Entity]):
 
         if isinstance(record, User):
             user_doc = self._create_user_es_doc(record)
+            print(user_doc.json())
             self.elasticsearch_client.index(
                 index=self.config.user_index_name,
                 id=str(user_doc.user_id),
@@ -242,6 +254,15 @@ class ElasticsearchSink(Sink[Entity]):
                 index=self.config.team_index_name,
                 id=str(team_doc.team_id),
                 body=team_doc.json(),
+                request_timeout=self.config.timeout,
+            )
+
+        if isinstance(record, GlossaryTerm):
+            glossary_term_doc = self._create_glossary_term_es_doc(record)
+            self.elasticsearch_client.index(
+                index=self.config.glossary_term_index_name,
+                id=str(glossary_term_doc.glossary_term_id),
+                body=glossary_term_doc.json(),
                 request_timeout=self.config.timeout,
             )
 
@@ -481,8 +502,9 @@ class ElasticsearchSink(Sink[Entity]):
         return pipeline_doc
 
     def _create_user_es_doc(self, user: User):
+        display_name = user.displayName if user.displayName else user.name.__root__
         suggest = [
-            {"input": [user.displayName], "weight": 5},
+            {"input": [display_name], "weight": 5},
             {"input": [user.name], "weight": 10},
         ]
         timestamp = user.updatedAt.__root__
@@ -500,7 +522,7 @@ class ElasticsearchSink(Sink[Entity]):
             user_id=str(user.id.__root__),
             deleted=user.deleted,
             name=user.name.__root__,
-            display_name=user.displayName,
+            display_name=display_name,
             email=user.email.__root__,
             suggest=suggest,
             last_updated_timestamp=timestamp,
@@ -538,6 +560,28 @@ class ElasticsearchSink(Sink[Entity]):
         )
 
         return team_doc
+
+    def _create_glossary_term_es_doc(self, glossary_term: GlossaryTerm):
+        suggest = [
+            {"input": [glossary_term.displayName], "weight": 5},
+            {"input": [glossary_term.name], "weight": 10},
+        ]
+        timestamp = glossary_term.updatedAt.__root__
+
+        glossary_term_doc = GlossaryTermESDocument(
+            glossary_term_id=str(glossary_term.id.__root__),
+            deleted=glossary_term.deleted,
+            name=glossary_term.name.__root__,
+            display_name=glossary_term.displayName,
+            description=glossary_term.description,
+            glossary_id=str(glossary_term.glossary.id.__root__),
+            glossary_name=glossary_term.glossary.name,
+            status=glossary_term.status.name,
+            suggest=suggest,
+            last_updated_timestamp=timestamp,
+        )
+
+        return glossary_term_doc
 
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []

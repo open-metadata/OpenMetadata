@@ -68,5 +68,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "algorithm"]
+  "required": ["name", "algorithm"],
+  "additionalProperties": false
 }

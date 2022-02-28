@@ -153,8 +153,8 @@ public class SearchResource {
       case "team_search_index":
         searchSourceBuilder = buildTeamSearchBuilder(query, from, size);
         break;
-      case "glossary_search_index":
-        searchSourceBuilder = buildGlossarySearchBuilder(query, from, size);
+      case "glossary_term_search_index":
+        searchSourceBuilder = buildGlossaryTermSearchBuilder(query, from, size);
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
@@ -384,9 +384,9 @@ public class SearchResource {
     return searchSourceBuilder;
   }
 
-  private SearchSourceBuilder buildGlossarySearchBuilder(String query, int from, int size) {
+  private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field("glossary_name");
+    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field("name");
     highlightGlossaryName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field("description");
     highlightDescription.highlighterType("unified");
@@ -396,9 +396,8 @@ public class SearchResource {
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder
-        .query(QueryBuilders.queryStringQuery(query).field("glossary_name", 5.0f).field("description").lenient(true))
+        .query(QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
         .aggregation(AggregationBuilders.terms("Tags").field("tags"))
         .highlighter(hb)
         .from(from)

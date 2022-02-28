@@ -26,5 +26,6 @@ export interface NavBarProps {
   handleSearchBoxOpen: (value: boolean) => void;
   handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;
+  handleOnClick: () => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }

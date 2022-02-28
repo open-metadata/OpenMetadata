@@ -17,13 +17,12 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DashboardDetails;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
-import org.openmetadata.catalog.selenium.objectRepository.TopicDetails;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -32,6 +31,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(5)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardDetailsPageTest {
@@ -48,7 +48,6 @@ public class DashboardDetailsPageTest {
   static WebDriverWait wait;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  private static final Logger LOG = Logger.getLogger(TopicDetails.class.getName());
   String description = "Test@1234";
   String updatedDescription = "Updated Description";
   String xpath = "//div[@data-testid='description']/div/span";
@@ -76,7 +75,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     Thread.sleep(3000);
-    if (webDriver.findElement(common.getTableCount()).isDisplayed()) {
+    if (webDriver.findElement(common.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -116,7 +115,7 @@ public class DashboardDetailsPageTest {
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
     Thread.sleep(waitTime);
     Events.click(webDriver, common.tagListItem());
-    String selectedTag = webDriver.findElement(dashboardDetails.getSelectedTag()).getText();
+    String selectedTag = webDriver.findElement(dashboardDetails.selectedTag()).getText();
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(1000);
     webDriver.navigate().refresh();
@@ -185,12 +184,12 @@ public class DashboardDetailsPageTest {
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
     Thread.sleep(waitTime);
     Events.click(webDriver, common.tagListItem());
-    String selectedTag = webDriver.findElement(dashboardDetails.getSelectedTag()).getText();
+    String selectedTag = webDriver.findElement(dashboardDetails.selectedTag()).getText();
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    String chartTags = webDriver.findElement(dashboardDetails.getChartTags()).getText();
+    String chartTags = webDriver.findElement(dashboardDetails.chartTags()).getText();
     if (!chartTags.contains(selectedTag)) {
       Assert.fail("Tags not added");
     }
@@ -203,7 +202,7 @@ public class DashboardDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
-    String tagDisplayed = webDriver.findElement(dashboardDetails.getChartTags()).getText();
+    String tagDisplayed = webDriver.findElement(dashboardDetails.chartTags()).getText();
     Events.click(webDriver, dashboardDetails.addChartTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Thread.sleep(waitTime);
@@ -211,7 +210,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    WebElement updatedTags = webDriver.findElement(dashboardDetails.getChartTags());
+    WebElement updatedTags = webDriver.findElement(dashboardDetails.chartTags());
     if (updatedTags.getText().contains(tagDisplayed)) {
       Assert.fail("SelectedTag is not removed");
     }
@@ -227,7 +226,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
-    Events.click(webDriver, common.clickUsers());
+    Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
     Events.click(webDriver, common.saveManage());

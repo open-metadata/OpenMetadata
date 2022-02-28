@@ -32,7 +32,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class ReportRepository extends EntityRepository<Report> {
-  private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner");
+  private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.ALLOWED_FIELDS, "owner");
 
   public ReportRepository(CollectionDAO dao) {
     super(

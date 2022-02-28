@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -101,7 +100,7 @@ public class LocationResource {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Location.class);
 
   @GET
   @Operation(
@@ -150,7 +149,7 @@ public class LocationResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
@@ -211,7 +210,7 @@ public class LocationResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -257,7 +256,7 @@ public class LocationResource {
           String after)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
@@ -302,7 +301,7 @@ public class LocationResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
   }
 
@@ -399,7 +398,7 @@ public class LocationResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Location location = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(location).getEntityReference(), patch);

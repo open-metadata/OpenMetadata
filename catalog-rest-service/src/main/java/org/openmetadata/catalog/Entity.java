@@ -13,9 +13,11 @@
 
 package org.openmetadata.catalog;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -76,9 +78,11 @@ public final class Entity {
   // Not deleted to ensure the ordinal value of the entities after this remains the same
   public static final String UNUSED = "unused";
   public static final String BOTS = "bots";
+  public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
+  public static final String TAG = "tag";
 
   //
   // Policies
@@ -115,10 +119,10 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReference(EntityReference ref) throws IOException {
-    return getEntityReference(ref.getType(), ref.getId());
+    return getEntityReferenceById(ref.getType(), ref.getId());
   }
 
-  public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
+  public static EntityReference getEntityReferenceById(@NonNull String entity, @NonNull UUID id) throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
@@ -126,7 +130,8 @@ public final class Entity {
     return dao.findEntityReferenceById(id);
   }
 
-  public static EntityReference getEntityReferenceByName(String entity, String fqn) throws IOException {
+  public static EntityReference getEntityReferenceByName(@NonNull String entity, @NonNull String fqn)
+      throws IOException {
     EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
@@ -266,8 +271,18 @@ public final class Entity {
     return CANONICAL_ENTITY_NAME_MAP.get(object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
+  /**
+   * Get list of all the entity field names from JsonPropertyOrder annotation from generated java class from entity.json
+   */
+  public static <T> List<String> getEntityFields(Class<T> clz) {
+    JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
+    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
+  }
+
   /** Class for getting validated entity list from a queryParam with list of entities. */
   public static class EntityList {
+    private EntityList() {}
+
     public static List<String> getEntityList(String name, String entitiesParam) {
       if (entitiesParam == null) {
         return null;

@@ -21,7 +21,6 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
@@ -41,8 +40,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner,usageSummary");
+  private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.ALLOWED_FIELDS, "owner");
+  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.ALLOWED_FIELDS, "owner");
 
   public DatabaseRepository(CollectionDAO dao) {
     super(
@@ -113,11 +112,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
     List<String> tableIds =
         findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.TABLE, toBoolean(toInclude(database)));
-    List<EntityReference> tables = new ArrayList<>();
-    for (String tableId : tableIds) {
-      tables.add(daoCollection.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
-    }
-    return tables;
+    return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 
   public Database setFields(Database database, Fields fields) throws IOException, ParseException {

@@ -23,10 +23,11 @@
           "type": "string",
           "format": "uri"
         }
-      }
+      },
+      "additionalProperties": false
     },
-    "status" : {
-      "type" : "string",
+    "status": {
+      "type": "string",
       "enum": ["Draft", "Approved", "Deprecated"],
       "default": "Draft"
     }
@@ -62,12 +63,12 @@
       }
     },
     "glossary": {
-      "description": "Glosary that this term belongs to.",
-      "$ref" : "../../type/entityReference.json"
+      "description": "Glossary that this term belongs to.",
+      "$ref": "../../type/entityReference.json"
     },
     "parent": {
       "description": "Parent glossary term that this term is child of. When `null` this term is the root term of the glossary.",
-      "$ref" : "../../type/entityReference.json"
+      "$ref": "../../type/entityReference.json"
     },
     "children": {
       "description": "Other glossary terms that are children of this glossary term.",
@@ -117,9 +118,9 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "status" : {
-      "description" : "Status of the glossary term.",
-      "$ref" : "#/definitions/status"
+    "status": {
+      "description": "Status of the glossary term.",
+      "$ref": "#/definitions/status"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -127,9 +128,6 @@
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "glossary"
-  ]
+  "required": ["id", "name", "glossary"],
+  "additionalProperties": false
 }

@@ -14,6 +14,7 @@ import collections
 # This import verifies that the dependencies are available.
 import logging as log
 import os
+import traceback
 from datetime import datetime
 from typing import Iterable
 
@@ -24,10 +25,11 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import get_start_and_end, ingest_lineage
 
 logger = log.getLogger(__name__)
 
@@ -39,7 +41,7 @@ class BigqueryUsageSource(Source[TableQuery]):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         self.temp_credentials = None
-
+        self.metadata_config = metadata_config
         self.config = config
         self.project_id = self.config.project_id
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
@@ -64,7 +66,6 @@ class BigqueryUsageSource(Source[TableQuery]):
 
     def get_connection_url(self):
         if self.project_id:
-            print(f"{self.scheme}://{self.project_id}")
             return f"{self.scheme}://{self.project_id}"
         return f"{self.scheme}://"
 
@@ -130,11 +131,18 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 service_name=self.config.service_name,
                             )
                             yield tq
+
+                            query_info = {
+                                "sql": tq.sql,
+                                "from_type": "table",
+                                "to_type": "table",
+                                "service_name": self.config.service_name,
+                            }
+
+                            ingest_lineage(query_info, self.metadata_config)
+
         except Exception as err:
             logger.error(repr(err))
-
-    def close(self):
-        pass
 
     def get_status(self) -> SourceStatus:
         return self.status

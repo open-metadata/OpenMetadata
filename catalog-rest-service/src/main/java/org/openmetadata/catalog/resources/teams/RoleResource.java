@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -61,7 +60,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -79,6 +78,7 @@ public class RoleResource {
 
   public static Role addHref(UriInfo uriInfo, Role role) {
     Entity.withHref(uriInfo, role.getPolicy());
+    Entity.withHref(uriInfo, role.getTeams());
     Entity.withHref(uriInfo, role.getUsers());
     return role;
   }
@@ -104,8 +104,8 @@ public class RoleResource {
     }
   }
 
-  public static final String FIELDS = "policy,users";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final String FIELDS = "policy,teams,users";
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Role.class);
 
   @GET
   @Valid
@@ -152,7 +152,7 @@ public class RoleResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Role> roles;
     if (defaultParam) {
@@ -217,7 +217,7 @@ public class RoleResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -251,7 +251,7 @@ public class RoleResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 

@@ -14,5 +14,6 @@
       "description": "Entity type of the owner typically either 'user' or 'team'",
       "type": "string"
     }
-  }
+  },
+  "additionalProperties": false
 }

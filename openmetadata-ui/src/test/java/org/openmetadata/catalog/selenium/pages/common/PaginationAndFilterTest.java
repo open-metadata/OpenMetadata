@@ -15,7 +15,7 @@ package org.openmetadata.catalog.selenium.pages.common;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -36,12 +36,10 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(14)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PaginationAndFilterTest {
-
-  private static final Logger LOG = Logger.getLogger(PaginationAndFilterTest.class.getName());
-
   static WebDriver webDriver;
   static Common common;
   static String url = Property.getInstance().getURL();

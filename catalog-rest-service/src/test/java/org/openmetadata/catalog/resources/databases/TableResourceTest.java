@@ -42,10 +42,9 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
-import static org.openmetadata.catalog.util.TestUtils.put;
-import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 import java.io.IOException;
@@ -85,6 +84,21 @@ import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.tests.ColumnTest;
+import org.openmetadata.catalog.tests.ColumnTestCase;
+import org.openmetadata.catalog.tests.TableTest;
+import org.openmetadata.catalog.tests.TableTestCase;
+import org.openmetadata.catalog.tests.column.ColumnValueLengthsToBeBetween;
+import org.openmetadata.catalog.tests.column.ColumnValuesMissingCountToBeEqual;
+import org.openmetadata.catalog.tests.column.ColumnValuesToBeNotNull;
+import org.openmetadata.catalog.tests.column.ColumnValuesToBeUnique;
+import org.openmetadata.catalog.tests.column.ColumnValuesToMatchRegex;
+import org.openmetadata.catalog.tests.table.TableColumnCountToEqual;
+import org.openmetadata.catalog.tests.table.TableRowCountToBeBetween;
+import org.openmetadata.catalog.tests.table.TableRowCountToEqual;
+import org.openmetadata.catalog.tests.type.TestCaseExecutionFrequency;
+import org.openmetadata.catalog.tests.type.TestCaseResult;
+import org.openmetadata.catalog.tests.type.TestCaseStatus;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -499,9 +513,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void put_updateColumns_200(TestInfo test) throws IOException {
-    int tagCategoryUsageCount = getTagCategoryUsageCount("user", userAuthHeaders());
-    int addressTagUsageCount = getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), userAuthHeaders());
-    int bankTagUsageCount = getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders());
+    int tagCategoryUsageCount = getTagCategoryUsageCount("user", TEST_AUTH_HEADERS);
+    int addressTagUsageCount = getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS);
+    int bankTagUsageCount = getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS);
 
     //
     // Create a table with column c1, type BIGINT, description c1 and tag USER_ADDRESS_TAB_LABEL
@@ -516,9 +530,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.get(0).setFullyQualifiedName(table.getFullyQualifiedName() + ".c1");
 
     // Ensure tag category and tag usage counts are updated
-    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", userAuthHeaders()));
+    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEquals(bankTagUsageCount, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
+    assertEquals(bankTagUsageCount, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
     //
     // Update the c1 tags to  USER_ADDRESS_TAB_LABEL, USER_BANK_ACCOUNT_TAG_LABEL (newly added)
@@ -534,9 +548,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated
-    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", userAuthHeaders()));
-    assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), userAuthHeaders()));
-    assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
+    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
+    assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
     //
     // Add a new column c2 using PUT
@@ -548,9 +562,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated - column c2 added both address and bank tags
-    assertEquals(tagCategoryUsageCount + 4, getTagCategoryUsageCount("user", userAuthHeaders()));
-    assertEquals(addressTagUsageCount + 2, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), userAuthHeaders()));
-    assertEquals(bankTagUsageCount + 2, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
+    assertEquals(tagCategoryUsageCount + 4, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(addressTagUsageCount + 2, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
+    assertEquals(bankTagUsageCount + 2, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
     //
     // Change the column c2 data length from 10 to 20. Increasing the data length is considered backward compatible
@@ -581,9 +595,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, table.getColumns().size());
 
     // Ensure tag usage counts are updated to reflect removal of column c2
-    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", userAuthHeaders()));
-    assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), userAuthHeaders()));
-    assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
+    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
+    assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
   }
 
   @Test
@@ -995,7 +1009,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("updatedTableDescription", putResponse.getDescription()); // Table description updated
 
     // Get the table and validate the data model
-    Table getResponse = getEntity(table.getId(), "dataModel,columns,tags", ADMIN_AUTH_HEADERS);
+    Table getResponse = getEntity(table.getId(), "dataModel,tags", ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, getResponse.getDataModel());
     assertEquals("updatedTableDescription", getResponse.getDescription()); // Table description updated
     assertColumns(columns, getResponse.getColumns()); // Column description updated
@@ -1017,6 +1031,119 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(expected.getSql(), actual.getSql());
     assertEquals(expected.getModelType(), actual.getModelType());
     assertEquals(expected.getGeneratedAt(), actual.getGeneratedAt());
+  }
+
+  @Test
+  void put_tableColumnTests_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    TableRowCountToEqual tableRowCountToEqual = new TableRowCountToEqual().withValue(100);
+    TableTestCase tableTestCase =
+        new TableTestCase()
+            .withTestType(TableTestCase.TestType.TABLE_ROW_COUNT_TO_EQUAL)
+            .withConfig(tableRowCountToEqual);
+    TableTest tableTest =
+        new TableTest()
+            .withName("test1")
+            .withTableTestCase(tableTestCase)
+            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+    Table putResponse = putTableTest(table.getId(), tableTest, ADMIN_AUTH_HEADERS);
+    verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(tableTest));
+
+    table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
+    verifyTableTest(table.getName(), table.getTableTests(), List.of(tableTest));
+
+    // Add result to tableTest
+    TestCaseResult testCaseResult1 =
+        new TestCaseResult()
+            .withResult("Rows equal to 100")
+            .withStatus(TestCaseStatus.Success)
+            .withSampleData("Rows == 100")
+            .withExecutionTime(100L);
+    tableTest.setResults(List.of(testCaseResult1));
+    tableTest.setId(table.getTableTests().get(0).getId());
+    putResponse = putTableTest(table.getId(), tableTest, ADMIN_AUTH_HEADERS);
+    verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(tableTest));
+
+    TestCaseResult testCaseResult2 =
+        new TestCaseResult()
+            .withResult("Rows equal to 100")
+            .withStatus(TestCaseStatus.Success)
+            .withSampleData("Rows == 100")
+            .withExecutionTime(100L);
+    tableTest.setResults(List.of(testCaseResult2));
+    tableTest.setId(table.getTableTests().get(0).getId());
+
+    table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
+    verifyTableTest(table.getName(), table.getTableTests(), List.of(tableTest));
+    TableRowCountToBeBetween tableRowCountToBeBetween =
+        new TableRowCountToBeBetween().withMinValue(100).withMaxValue(1000);
+    TableTestCase tableTestCase1 =
+        new TableTestCase()
+            .withTestType(TableTestCase.TestType.TABLE_ROW_COUNT_TO_BE_BETWEEN)
+            .withConfig(tableRowCountToBeBetween);
+    TableTest tableTest1 = new TableTest().withName("column_value_to_be_unique").withTableTestCase(tableTestCase1);
+    putResponse = putTableTest(table.getId(), tableTest1, ADMIN_AUTH_HEADERS);
+    verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(tableTest, tableTest1));
+    table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
+    verifyTableTest(table.getName(), table.getTableTests(), List.of(tableTest, tableTest1));
+
+    Column c1 = table.getColumns().get(0);
+    ColumnValueLengthsToBeBetween columnValueLengthsToBeBetween =
+        new ColumnValueLengthsToBeBetween().withMaxValue(100).withMinValue(10);
+    ColumnTestCase columnTestCase =
+        new ColumnTestCase()
+            .withTestType(ColumnTestCase.TestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN)
+            .withConfig(columnValueLengthsToBeBetween);
+    ColumnTest columnTest =
+        new ColumnTest()
+            .withColumnName(c1.getName())
+            .withName("test")
+            .withTestCase(columnTestCase)
+            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+    putResponse = putColumnTest(table.getId(), columnTest, ADMIN_AUTH_HEADERS);
+    verifyColumnTest(putResponse, c1, List.of(columnTest));
+
+    table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
+    verifyTableTest(table.getName(), table.getTableTests(), List.of(tableTest, tableTest1));
+    verifyColumnTest(table, c1, List.of(columnTest));
+
+    // Add result to columnTest
+    TestCaseResult colTestCaseResult =
+        new TestCaseResult()
+            .withResult("min is > 100 and max < 1000")
+            .withStatus(TestCaseStatus.Success)
+            .withSampleData("minValue is 100 and maxValue is 1000")
+            .withExecutionTime(100L);
+    columnTest.setResults(List.of(colTestCaseResult));
+    putResponse = putColumnTest(table.getId(), columnTest, ADMIN_AUTH_HEADERS);
+    verifyColumnTest(putResponse, c1, List.of(columnTest));
+
+    ColumnValuesMissingCountToBeEqual columnValuesMissingCountToBeEqual =
+        new ColumnValuesMissingCountToBeEqual().withMissingCountValue(10);
+    ColumnTestCase columnTestCase1 =
+        new ColumnTestCase()
+            .withTestType(ColumnTestCase.TestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL)
+            .withConfig(columnValuesMissingCountToBeEqual);
+    ColumnTest columnTest1 =
+        new ColumnTest()
+            .withColumnName(c1.getName())
+            .withName("test")
+            .withTestCase(columnTestCase1)
+            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+    putResponse = putColumnTest(table.getId(), columnTest1, ADMIN_AUTH_HEADERS);
+    verifyColumnTest(putResponse, c1, List.of(columnTest, columnTest1));
+
+    // Add result to columnTest
+    TestCaseResult colTestCaseResult1 =
+        new TestCaseResult()
+            .withResult("min is > 100 and max < 1000")
+            .withStatus(TestCaseStatus.Success)
+            .withSampleData("minValue is 100 and maxValue is 1000")
+            .withExecutionTime(100L);
+    columnTest.setResults(List.of(colTestCaseResult1));
+    putResponse = putColumnTest(table.getId(), columnTest, ADMIN_AUTH_HEADERS);
+    columnTest.setResults(List.of(colTestCaseResult, colTestCaseResult1));
+    verifyColumnTest(putResponse, c1, List.of(columnTest, columnTest1));
   }
 
   @Test
@@ -1097,7 +1224,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertFields(tableList1.getData(), null);
 
     // GET .../tables?fields=columns,tableConstraints
-    final String fields = "columns,tableConstraints";
+    final String fields = "tableConstraints";
     queryParams =
         new HashMap<>() {
           {
@@ -1301,9 +1428,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
     CreateLocation create = locationResourceTest.createRequest(test);
     Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
     // Delete location and make sure it is deleted
-    deleteAndCheckLocation(table, userAuthHeaders());
+    deleteAndCheckLocation(table, TEST_AUTH_HEADERS);
   }
 
   @Test
@@ -1314,7 +1441,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
     CreateLocation create = locationResourceTest.createRequest(test);
     Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
     deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
     Map<String, String> queryParams =
         new HashMap<>() {
@@ -1355,7 +1482,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void assertFields(Table table, String fieldsParam) {
-    Fields fields = new Fields(TableResource.FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(TableResource.ALLOWED_FIELDS, fieldsParam);
 
     if (fields.contains("usageSummary")) {
       assertNotNull(table.getUsageSummary());
@@ -1394,31 +1521,43 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   /** Validate returned fields GET .../tables/{id}?fields="..." or GET .../tables/name/{fqn}?fields="..." */
   @Override
   public void validateGetWithDifferentFields(Table table, boolean byName) throws HttpResponseException {
-    // GET .../tables/{id}
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(table.getId(), null, ADMIN_AUTH_HEADERS);
-    assertFields(table, null);
+    assertListNotNull(table.getService(), table.getServiceType(), table.getColumns());
+    assertListNull(
+        table.getTableConstraints(),
+        table.getUsageSummary(),
+        table.getOwner(),
+        table.getTags(),
+        table.getFollowers(),
+        table.getJoins(),
+        table.getSampleData(),
+        table.getViewDefinition(),
+        table.getTableProfile(),
+        table.getLocation(),
+        table.getTableQueries(),
+        table.getDataModel());
 
-    // GET .../tables/{id}?fields=columns,tableConstraints
-    String fields = "columns,tableConstraints";
+    String fields =
+        "tableConstraints,usageSummary,owner,"
+            + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel";
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(table.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertFields(table, fields);
-
-    // GET .../tables/{id}?fields=columns,usageSummary,owner,database,tags
-    fields = "columns,usageSummary,owner,tags";
-    table =
-        byName
-            ? getEntityByName(table.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(table.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
-    assertEquals(table.getOwner().getType(), USER_OWNER1.getType());
-    assertEquals(table.getDatabase().getId(), DATABASE.getId());
-    assertEquals(table.getDatabase().getName(), DATABASE.getFullyQualifiedName());
+    assertListNotNull(table.getService(), table.getServiceType(), table.getColumns());
+    // Fields sampleData, viewDefinition, tableProfile, location, tableQueries,
+    // and dataModel are not set during creation - tested elsewhere
+    assertListNotNull(
+        table.getTableConstraints(),
+        table.getUsageSummary(),
+        table.getOwner(),
+        table.getTags(),
+        table.getFollowers(),
+        table.getJoins() /*, table.getSampleData(), table.getViewDefinition(), table
+            .getTableProfile(),  table.getLocation(), table.getTableQueries(), table.getDataModel()*/);
   }
 
   private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
@@ -1500,6 +1639,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, dataModel, Table.class, OK, authHeaders);
   }
 
+  public static Table putTableTest(UUID tableId, TableTest data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableTest");
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public static Table putColumnTest(UUID tableId, ColumnTest data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/columnTest");
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
     return TagResourceTest.getTag(tagFQN, "usageCount", authHeaders).getUsageCount();
   }
@@ -1522,6 +1673,118 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
+  private void verifyTableTest(String tableName, List<TableTest> actualTests, List<TableTest> expectedTests)
+      throws IOException {
+    assertEquals(actualTests.size(), expectedTests.size());
+    Map<String, TableTest> tableTestMap = new HashMap<>();
+    for (TableTest test : actualTests) {
+      tableTestMap.put(test.getName(), test);
+    }
+    for (TableTest test : expectedTests) {
+      // passed in test name will be overridden in backend
+      String expectedTestName = tableName + "." + test.getTableTestCase().getTestType().toString();
+      TableTest storedTest = tableTestMap.get(expectedTestName);
+      assertNotNull(storedTest);
+      assertEquals(expectedTestName, storedTest.getName());
+      assertEquals(test.getDescription(), storedTest.getDescription());
+      assertEquals(test.getExecutionFrequency(), storedTest.getExecutionFrequency());
+      assertEquals(test.getOwner(), storedTest.getOwner());
+      verifyTableTestCase(test.getTableTestCase(), storedTest.getTableTestCase());
+      verifyTestCaseResults(test.getResults(), storedTest.getResults());
+    }
+  }
+
+  private void verifyTableTestCase(TableTestCase expected, TableTestCase actual) {
+    assertEquals(expected.getTestType(), actual.getTestType());
+    if (expected.getTestType() == TableTestCase.TestType.TABLE_COLUMN_COUNT_TO_EQUAL) {
+      TableColumnCountToEqual expectedTest = (TableColumnCountToEqual) expected.getConfig();
+      TableColumnCountToEqual actualTest = JsonUtils.convertValue(actual.getConfig(), TableColumnCountToEqual.class);
+      assertEquals(expectedTest.getValue(), actualTest.getValue());
+    } else if (expected.getTestType() == TableTestCase.TestType.TABLE_ROW_COUNT_TO_BE_BETWEEN) {
+      TableRowCountToBeBetween expectedTest = (TableRowCountToBeBetween) expected.getConfig();
+      TableRowCountToBeBetween actualTest = JsonUtils.convertValue(actual.getConfig(), TableRowCountToBeBetween.class);
+      assertEquals(expectedTest.getMaxValue(), actualTest.getMaxValue());
+      assertEquals(expectedTest.getMinValue(), actualTest.getMinValue());
+    } else if (expected.getTestType() == TableTestCase.TestType.TABLE_ROW_COUNT_TO_EQUAL) {
+      TableRowCountToEqual expectedTest = (TableRowCountToEqual) expected.getConfig();
+      TableRowCountToEqual actualTest = JsonUtils.convertValue(actual.getConfig(), TableRowCountToEqual.class);
+      assertEquals(expectedTest.getValue(), actualTest.getValue());
+    }
+  }
+
+  private void verifyColumnTest(Table table, Column column, List<ColumnTest> expectedTests) throws IOException {
+    List<ColumnTest> actualTests = new ArrayList<>();
+    for (Column c : table.getColumns()) {
+      if (c.getName().equals(column.getName())) {
+        actualTests = c.getColumnTests();
+      }
+    }
+    assertEquals(actualTests.size(), expectedTests.size());
+
+    Map<String, ColumnTest> columnTestMap = new HashMap<>();
+    for (ColumnTest test : actualTests) {
+      columnTestMap.put(test.getName(), test);
+    }
+
+    for (ColumnTest test : expectedTests) {
+      // passed in test name will be overridden in backend
+      String expectedTestName = column.getName() + "." + test.getTestCase().getTestType().toString();
+      ColumnTest storedTest = columnTestMap.get(expectedTestName);
+      assertNotNull(storedTest);
+      assertEquals(expectedTestName, storedTest.getName());
+      assertEquals(test.getDescription(), storedTest.getDescription());
+      assertEquals(test.getExecutionFrequency(), storedTest.getExecutionFrequency());
+      assertEquals(test.getOwner(), storedTest.getOwner());
+      verifyColumnTestCase(test.getTestCase(), storedTest.getTestCase());
+      verifyTestCaseResults(test.getResults(), storedTest.getResults());
+    }
+  }
+
+  private void verifyColumnTestCase(ColumnTestCase expected, ColumnTestCase actual) {
+    assertEquals(expected.getTestType(), actual.getTestType());
+    if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_TO_BE_UNIQUE) {
+      ColumnValuesToBeUnique expectedTest = (ColumnValuesToBeUnique) expected.getConfig();
+      ColumnValuesToBeUnique actualTest = JsonUtils.convertValue(actual.getConfig(), ColumnValuesToBeUnique.class);
+      assertEquals(expectedTest, actualTest);
+    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_TO_BE_NOT_NULL) {
+      ColumnValuesToBeNotNull expectedTest = (ColumnValuesToBeNotNull) expected.getConfig();
+      ColumnValuesToBeNotNull actualTest = JsonUtils.convertValue(actual.getConfig(), ColumnValuesToBeNotNull.class);
+      assertEquals(expectedTest, actualTest);
+    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_TO_MATCH_REGEX) {
+      ColumnValuesToMatchRegex expectedTest = (ColumnValuesToMatchRegex) expected.getConfig();
+      ColumnValuesToMatchRegex actualTest = JsonUtils.convertValue(actual.getConfig(), ColumnValuesToMatchRegex.class);
+      assertEquals(expectedTest.getRegex(), actualTest.getRegex());
+    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN) {
+      ColumnValueLengthsToBeBetween expectedTest = (ColumnValueLengthsToBeBetween) expected.getConfig();
+      ColumnValueLengthsToBeBetween actualTest =
+          JsonUtils.convertValue(actual.getConfig(), ColumnValueLengthsToBeBetween.class);
+      assertEquals(expectedTest.getMaxValue(), actualTest.getMaxValue());
+      assertEquals(expectedTest.getMinValue(), actualTest.getMinValue());
+    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL) {
+      ColumnValuesMissingCountToBeEqual expectedTest = (ColumnValuesMissingCountToBeEqual) expected.getConfig();
+      ColumnValuesMissingCountToBeEqual actualTest =
+          JsonUtils.convertValue(actual.getConfig(), ColumnValuesMissingCountToBeEqual.class);
+      assertEquals(expectedTest.getMissingCountValue(), actualTest.getMissingCountValue());
+      assertEquals(expectedTest.getMissingValueMatch(), actualTest.getMissingValueMatch());
+    }
+  }
+
+  private void verifyTestCaseResults(List<TestCaseResult> expected, List<TestCaseResult> actual) throws IOException {
+    assertEquals(expected.size(), actual.size());
+    Map<Long, TestCaseResult> actualResultMap = new HashMap<>();
+    for (Object a : actual) {
+      TestCaseResult result = JsonUtils.convertValue(a, TestCaseResult.class);
+      actualResultMap.put(result.getExecutionTime(), result);
+    }
+    for (Object e : expected) {
+      TestCaseResult result = JsonUtils.convertValue(e, TestCaseResult.class);
+      TestCaseResult actualResult = actualResultMap.get(result.getExecutionTime());
+      assertNotNull(actualResult);
+      assertEquals(result.getResult(), actualResult.getResult());
+      assertEquals(result.getSampleData(), actualResult.getSampleData());
+    }
+  }
+
   @Override
   public CreateTable createRequest(String name, String description, String displayName, EntityReference owner) {
     TableConstraint constraint =
@@ -1541,7 +1804,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
     CreateLocation create = locationResourceTest.createRequest(test);
     Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, userAuthHeaders());
+    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
     return table;
   }
 
@@ -1565,7 +1828,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     validateDatabase(createRequest.getDatabase(), createdEntity.getDatabase());
     validateTableConstraints(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
-    TestUtils.validateEntityReference(createdEntity.getFollowers());
+    TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
   }
 
@@ -1583,12 +1846,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return new TableConstraint()
         .withConstraintType(constraint.getConstraintType())
         .withColumns(constraint.getColumns().stream().map(e -> e.replace("_DOT_", ".")).collect(Collectors.toList()));
-  }
-
-  @Override
-  public void validateUpdatedEntity(Table updated, CreateTable request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(updated, request, authHeaders);
   }
 
   @Override
@@ -1615,7 +1872,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     validateDatabase(expected.getDatabase(), patched.getDatabase());
     assertEquals(expected.getTableConstraints(), patched.getTableConstraints());
     TestUtils.validateTags(expected.getTags(), patched.getTags());
-    TestUtils.validateEntityReference(expected.getFollowers());
+    TestUtils.validateEntityReferences(expected.getFollowers());
   }
 
   private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {

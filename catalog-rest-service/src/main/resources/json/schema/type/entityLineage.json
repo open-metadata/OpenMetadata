@@ -22,7 +22,8 @@
         "description": {
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "entitiesEdge": {
       "description": "Edge in the lineage graph from one entity to another using entity references.",
@@ -40,7 +41,8 @@
         "description": {
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {

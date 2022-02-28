@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
 import { Handle, HandleProps, Position } from 'react-flow-renderer';
+import { getConstraintIcon } from '../../utils/TableUtils';
 
 const handleStyles = { borderRadius: '50%', position: 'absolute', top: 10 };
 const getHandle = (
@@ -91,13 +92,18 @@ const CustomNode = (props: any) => {
         })}
         id="table-columns">
         <div className="tw-flex tw-flex-col tw-gap-y-1">
-          {columns?.map((c: { name: string }) => (
-            <p
-              className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
-              key={c.name}>
-              {c.name}
-            </p>
-          ))}
+          {columns?.map(
+            (c: { name: string; constraint: string }, i: number) => (
+              <Fragment key={i}>
+                <div
+                  className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
+                  key={c.name}>
+                  {getConstraintIcon(c.constraint, 'tw-')}
+                  {c.name}
+                </div>
+              </Fragment>
+            )
+          )}
         </div>
       </section>
     </div>

@@ -17,5 +17,6 @@
       "$ref": "../../entity/tags/tagCategory.json#/definitions/tagCategoryType"
     }
   },
-  "required": ["name", "description", "categoryType"]
+  "required": ["name", "description", "categoryType"],
+  "additionalProperties": false
 }

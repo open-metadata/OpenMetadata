@@ -32,7 +32,8 @@
           "description": "The location where to move this entity to.",
           "$ref": "../../data/location.json"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

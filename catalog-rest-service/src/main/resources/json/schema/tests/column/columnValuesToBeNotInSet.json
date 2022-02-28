@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/column/columnValuesToBeNotInSet.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "columnValuesToBeNotInSet",
+  "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeNotInSet",
+  "properties": {
+    "values": {
+      "description": "An Array of values.",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "required": ["values"],
+  "additionalProperties": false
+}

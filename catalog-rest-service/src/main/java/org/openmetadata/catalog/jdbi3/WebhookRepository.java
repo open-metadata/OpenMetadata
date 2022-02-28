@@ -534,13 +534,5 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       List<EventFilter> deleted = new ArrayList<>();
       recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);
     }
-
-    private void sort(List<EventFilter> eventFilters) {
-      for (EventFilter filter : eventFilters) {
-        if (filter != null && filter.getEntities() != null) {
-          filter.getEntities().sort(String.CASE_INSENSITIVE_ORDER);
-        }
-      }
-    }
   }
 }
