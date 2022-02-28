@@ -38,14 +38,13 @@ base_requirements = {
     "email-validator>=1.0.3",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
-    "sqlalchemy>=1.3.24",
+    "sqlalchemy>=1.4.0",
     "sql-metadata~=2.0.0",
     "requests~=2.26",
     "cryptography",
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "parsimonious==0.8.1",
     "sqllineage==1.3.3",
 }
 
@@ -63,6 +62,11 @@ base_plugins = {
     "sql-metadata~=2.0.0",
 }
 plugins: Dict[str, Set[str]] = {
+    "airflow-container": {
+        "marshmallow-sqlalchemy>=0.26.0",
+        "SQLAlchemy-Utils>=0.38.0",
+        "pymysql>=1.0.2",
+    },
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
     "azuresql": {"pyodbc"},

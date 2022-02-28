@@ -15,7 +15,7 @@ RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CON
 COPY ingestion /ingestion
 
 # TODO: deprecate install all in favor of the minimum airflow requirements
-RUN pip install ".[all]" openmetadata-airflow-managed-apis
+RUN pip install ".[airflow-container]" openmetadata-airflow-managed-apis
 RUN airflow db init
 RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
 RUN cp -r /om-airflow/plugins /airflow/plugins
