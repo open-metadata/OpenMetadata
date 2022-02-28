@@ -20,7 +20,7 @@ const Avatar = ({
   width = '36',
   textClass = '',
   className = '',
-  type = 'circle',
+  type = 'square',
 }: {
   name: string;
   width?: string;
