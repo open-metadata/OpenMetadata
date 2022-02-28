@@ -19,7 +19,6 @@ package org.openmetadata.catalog.jdbi3;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -40,8 +39,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "tags");
-  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.FIELD_LIST, "tags");
+  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags");
+  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags");
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -110,18 +109,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     // Validate related terms
-    List<EntityReference> validatedRelatedTerms = new ArrayList<>();
-    for (EntityReference related : Optional.ofNullable(entity.getRelatedTerms()).orElse(Collections.emptyList())) {
-      validatedRelatedTerms.add(daoCollection.glossaryTermDAO().findEntityReferenceById(related.getId()));
-    }
-    entity.setRelatedTerms(validatedRelatedTerms);
+    EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
     // Validate reviewers
-    List<EntityReference> reviewers = new ArrayList<>();
-    for (EntityReference reviewer : Optional.ofNullable(entity.getReviewers()).orElse(Collections.emptyList())) {
-      reviewers.add(daoCollection.userDAO().findEntityReferenceById(reviewer.getId()));
-    }
-    entity.setReviewers(reviewers);
+    EntityUtil.populateEntityReferences(entity.getReviewers());
 
     // Set tags
     entity.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), entity.getTags()));

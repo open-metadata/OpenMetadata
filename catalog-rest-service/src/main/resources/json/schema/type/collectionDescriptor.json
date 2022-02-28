@@ -28,12 +28,14 @@
         "images": {
           "$ref": "profile.json#/definitions/imageList"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
     "collection": {
       "$ref": "#/definitions/collectionInfo"
     }
-  }
+  },
+  "additionalProperties": false
 }

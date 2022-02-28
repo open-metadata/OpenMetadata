@@ -40,8 +40,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner,usageSummary");
+  private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.ALLOWED_FIELDS, "owner");
+  private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.ALLOWED_FIELDS, "owner");
 
   public DatabaseRepository(CollectionDAO dao) {
     super(

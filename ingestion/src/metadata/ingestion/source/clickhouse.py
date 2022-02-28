@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import enum
+from typing import Optional
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
@@ -139,6 +140,7 @@ class ClickhouseConfig(SQLConnectionConfig):
     host_port = "localhost:8123"
     scheme = "clickhouse+http"
     service_type = DatabaseServiceType.ClickHouse.value
+    duration: Optional[int]
 
     def get_connection_url(self):
         return super().get_connection_url()

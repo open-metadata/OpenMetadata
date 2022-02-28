@@ -33,5 +33,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "pipelineUrl"]
+  "required": ["name", "serviceType", "pipelineUrl"],
+  "additionalProperties": false
 }

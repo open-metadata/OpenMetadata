@@ -32,6 +32,10 @@ class NullCount(StaticMetric):
     ```
     """
 
+    @classmethod
+    def name(cls):
+        return "nullCount"
+
     def metric_type(self):
         return int
 

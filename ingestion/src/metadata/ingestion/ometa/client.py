@@ -13,7 +13,7 @@ Python API REST wrapper and helpers
 """
 import logging
 import time
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import requests
 from requests.exceptions import HTTPError
@@ -95,7 +95,9 @@ class ClientConfig(ConfigModel):
     retry: Optional[int] = 3
     retry_wait: Optional[int] = 30
     retry_codes: List[int] = [429, 504]
-    auth_token: Optional[str] = None
+    auth_token: Optional[Callable] = None
+    access_token: Optional[str] = None
+    expires_in: Optional[int] = None
     auth_header: Optional[str] = None
     raw_data: Optional[bool] = False
     allow_redirects: Optional[bool] = False
@@ -127,8 +129,15 @@ class REST:
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + "/" + version + path)
         headers = {"Content-type": "application/json"}
-        if self._auth_token is not None and self._auth_token != "no_token":
-            headers[self.config.auth_header] = f"Bearer {self._auth_token}"
+        if (
+            self.config.expires_in
+            and time.time() >= self.config.expires_in
+            or not self.config.access_token
+        ):
+            self.config.access_token, expiry = self._auth_token()
+            if not self.config.access_token == "no_token":
+                self.config.expires_in = time.time() + expiry - 120
+        headers[self.config.auth_header] = f"Bearer {self.config.access_token}"
         opts = {
             "headers": headers,
             # Since we allow users to set endpoint URL via env var,
@@ -181,6 +190,8 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
+        except Exception as err:
+            print(err)
         if resp.text != "":
             return resp.json()
         return None

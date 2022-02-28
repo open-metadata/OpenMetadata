@@ -88,12 +88,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public void validateUpdatedEntity(
-      StorageService service, CreateStorageService request, Map<String, String> authHeaders) {
-    validateCreatedEntity(service, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(StorageService expected, StorageService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
   }
@@ -105,18 +99,19 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
 
   @Override
   public void validateGetWithDifferentFields(StorageService service, boolean byName) throws HttpResponseException {
-    String fields = "owner";
+    String fields = "";
     service =
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(
-        service.getHref(),
-        service.getOwner(),
-        service.getVersion(),
-        service.getUpdatedBy(),
-        service.getServiceType(),
-        service.getUpdatedAt());
+    TestUtils.assertListNull(service.getOwner());
+
+    fields = "owner";
+    service =
+        byName
+            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+    TestUtils.assertListNotNull(service.getOwner());
   }
 
   @Override

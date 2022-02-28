@@ -189,6 +189,24 @@ class TeamESDocument(BaseModel):
     doc_as_upsert: bool = True
 
 
+class GlossaryTermESDocument(BaseModel):
+    """Elastic Search Mapping doc for Glossary Term"""
+
+    glossary_term_id: str
+    deleted: bool
+    entity_type: str = "glossaryTerm"
+    name: str
+    display_name: str
+    description: str
+    glossary_name: str
+    glossary_id: str
+    status: str
+    suggest: List[dict]
+    last_updated_timestamp: Optional[int]
+
+    doc_as_upsert: bool = True
+
+
 class DashboardOwner(BaseModel):
     """Dashboard owner"""
 

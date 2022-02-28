@@ -44,3 +44,12 @@ class AuthenticationProvider(metaclass=ABCMeta):
         Returns:
             str
         """
+
+    @abstractmethod
+    def get_access_token(self):
+        """
+        Authentication token
+
+        Returns:
+            str
+        """

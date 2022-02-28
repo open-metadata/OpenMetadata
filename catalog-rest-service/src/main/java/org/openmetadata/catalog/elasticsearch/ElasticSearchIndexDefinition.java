@@ -31,6 +31,7 @@ import org.elasticsearch.client.indices.PutMappingRequest;
 import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -67,7 +68,8 @@ public class ElasticSearchIndexDefinition {
     DASHBOARD_SEARCH_INDEX("dashboard_search_index", "/elasticsearch/dashboard_index_mapping.json"),
     PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
     USER_SEARCH_INDEX("user_search_index", "/elasticsearch/user_index_mapping.json"),
-    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json");
+    TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
+    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -197,6 +199,8 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.USER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TEAM)) {
       return ElasticSearchIndexType.TEAM_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
+      return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }
@@ -848,5 +852,61 @@ class TeamESIndex {
             .users(users);
 
     return teamESIndexBuilder;
+  }
+}
+
+@EqualsAndHashCode(callSuper = true)
+@Getter
+@SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
+class GlossaryTermESIndex extends ElasticSearchIndex {
+  @JsonProperty("glossary_term_id")
+  String glossaryTermId;
+
+  @JsonProperty("glossary_id")
+  String glossaryId;
+
+  @JsonProperty("display_name")
+  String displayName;
+
+  @JsonProperty("entity_type")
+  String entityType;
+
+  @JsonProperty("status")
+  String status;
+
+  @JsonProperty("glossary_name")
+  String glossaryName;
+
+  public static GlossaryTermESIndexBuilder builder(GlossaryTerm glossaryTerm, EventType eventType) {
+    List<String> tags = new ArrayList<>();
+    List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    suggest.add(ElasticSearchSuggest.builder().input(glossaryTerm.getName()).weight(5).build());
+    suggest.add(ElasticSearchSuggest.builder().input(glossaryTerm.getDisplayName()).weight(10).build());
+
+    if (glossaryTerm.getTags() != null) {
+      glossaryTerm.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+    }
+
+    Long updatedTimestamp = glossaryTerm.getUpdatedAt();
+    ParseTags parseTags = new ParseTags(tags);
+    String description = glossaryTerm.getDescription() != null ? glossaryTerm.getDescription() : "";
+    String displayName = glossaryTerm.getDisplayName() != null ? glossaryTerm.getDisplayName() : "";
+    GlossaryTermESIndexBuilder builder =
+        internalBuilder()
+            .glossaryId(glossaryTerm.getGlossary().getId().toString())
+            .name(glossaryTerm.getName())
+            .displayName(displayName)
+            .description(description)
+            .fqdn(glossaryTerm.getName())
+            .glossaryId(glossaryTerm.getGlossary().getId().toString())
+            .glossaryName(glossaryTerm.getGlossary().getName())
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .entityType("glossaryTerm")
+            .suggest(suggest)
+            .tags(parseTags.tags);
+
+    return builder;
   }
 }

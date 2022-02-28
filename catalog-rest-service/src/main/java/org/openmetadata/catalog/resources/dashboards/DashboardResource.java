@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -111,7 +110,7 @@ public class DashboardResource {
   }
 
   static final String FIELDS = "owner,charts,followers,tags,usageSummary";
-  public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Dashboard.class);
 
   @GET
   @Valid
@@ -161,7 +160,7 @@ public class DashboardResource {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 
     ResultList<Dashboard> dashboards;
     if (before != null) { // Reverse paging
@@ -222,7 +221,7 @@ public class DashboardResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
@@ -255,7 +254,7 @@ public class DashboardResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Dashboard dashboard = dao.getByName(uriInfo, fqn, fields, include);
     return addHref(uriInfo, dashboard);
   }
@@ -332,7 +331,7 @@ public class DashboardResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Dashboard dashboard = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(dashboard).getEntityReference(), patch);

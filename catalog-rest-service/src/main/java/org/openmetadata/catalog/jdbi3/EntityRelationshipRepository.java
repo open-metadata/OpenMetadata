@@ -97,9 +97,7 @@ public class EntityRelationshipRepository {
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
-    daoCollection
-        .relationshipDAO()
-        .insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relationship.ordinal());
+    daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
   }
 
   public void addRelationship(
@@ -108,6 +106,6 @@ public class EntityRelationshipRepository {
     EntityReference toRef = Entity.getEntityReferenceByName(toEntity, toFQN);
     daoCollection
         .relationshipDAO()
-        .insert(fromRef.getId().toString(), toRef.getId().toString(), fromEntity, toEntity, relationship.ordinal());
+        .insert(fromRef.getId(), toRef.getId(), fromEntity, toEntity, relationship.ordinal());
   }
 }

@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 @Slf4j
 public final class MessageParser {
@@ -30,6 +31,8 @@ public final class MessageParser {
   // Pattern to match the following markdown entity links:
   // <#E/{entityType}/{entityFQN}>  -- <#E/table/bigquery_gcp.shopify.raw_product_catalog>
   // <#E/{entityType}/{entityFQN}/{fieldName}> -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/description>
+  // <#E/{entityType}/{entityFQN}/{fieldName}/{arrayFieldName}>
+  // -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/columns/comment>
   // <#E/{entityType}/{entityFQN}/{fieldName}/{arrayFieldName}/{arrayFieldValue}>
   // -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/columns/comment/description>
   private static final Pattern ENTITY_LINK_PATTERN =
@@ -82,11 +85,11 @@ public final class MessageParser {
         this.linkType = LinkType.ENTITY_ARRAY_FIELD;
         this.fullyQualifiedFieldType = String.format("%s.%s.member", entityType, fieldName);
         this.fullyQualifiedFieldValue = String.format("%s.%s.%s", entityFqn, arrayFieldName, arrayFieldValue);
+      } else if (arrayFieldName != null) {
+        this.linkType = LinkType.ENTITY_ARRAY_FIELD;
+        this.fullyQualifiedFieldType = String.format("%s.%s.member", entityType, fieldName);
+        this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, arrayFieldName);
       } else if (fieldName != null) {
-        if (arrayFieldName != null) {
-          // Only array field name is not supported
-          throw new IllegalArgumentException(invalidEntityLink());
-        }
         this.fullyQualifiedFieldType = String.format("%s.%s", entityType, fieldName);
         this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, fieldName);
 
@@ -105,7 +108,10 @@ public final class MessageParser {
         builder.append("/").append(fieldName);
       }
       if (linkType == LinkType.ENTITY_ARRAY_FIELD) {
-        builder.append("/").append(arrayFieldName).append("/").append(arrayFieldValue);
+        builder.append("/").append(arrayFieldName);
+        if (StringUtils.isNotEmpty(arrayFieldValue)) {
+          builder.append("/").append(arrayFieldValue);
+        }
       }
       builder.append(">");
       return builder.toString();

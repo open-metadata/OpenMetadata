@@ -16,6 +16,10 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
@@ -82,12 +86,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public void validateUpdatedEntity(Glossary updated, CreateGlossary request, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    validateCreatedEntity(updated, request, authHeaders);
-  }
-
-  @Override
   public void compareEntities(Glossary expected, Glossary patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
@@ -106,7 +104,21 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public void validateGetWithDifferentFields(Glossary entity, boolean byName) throws HttpResponseException {}
+  public void validateGetWithDifferentFields(Glossary entity, boolean byName) throws HttpResponseException {
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner(), entity.getTags());
+
+    fields = "owner,tags";
+    entity =
+        byName
+            ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner(), entity.getTags());
+  }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {

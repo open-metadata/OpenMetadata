@@ -1,6 +1,5 @@
 {
 	"name": "sample_s3",
 	"serviceType": "S3",
-	"description": "S3 Object storage",
-	"href": "null"
+	"description": "S3 Object storage"
 }
