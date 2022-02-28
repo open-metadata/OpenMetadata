@@ -49,7 +49,7 @@ from metadata.ingestion.source.sql_source_common import (
     SQLSourceStatus,
 )
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.helpers import get_database_service_or_create
+from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -309,6 +309,16 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     columns=self._get_columns(schema, view_name, inspector),
                     viewDefinition=view_definition,
                 )
+                if table.viewDefinition:
+                    query_info = {
+                        "sql": table.viewDefinition.__root__,
+                        "from_type": "table",
+                        "to_type": "table",
+                        "service_name": self.config.service_name,
+                    }
+                    ingest_lineage(
+                        query_info=query_info, metadata_config=self.metadata_config
+                    )
                 if self.sql_config.generate_sample_data:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data

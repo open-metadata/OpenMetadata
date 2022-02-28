@@ -46,6 +46,7 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "parsimonious==0.8.1",
+    "sqllineage==1.3.3",
 }
 
 report_requirements = {
@@ -71,7 +72,6 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud-datacatalog==3.6.2",
     },
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
-    # "docker": {"docker==5.0.3"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
     "dbt": {},
@@ -116,7 +116,7 @@ plugins: Dict[str, Set[str]] = {
     "mlflow": {"mlflow-skinny~=1.22.0"},
     "sklearn": {"scikit-learn==1.0.2"},
     "db2": {"ibm-db-sa==0.3.7"},
-    "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.1.8"},
+    "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.2.0"},
     "databricks": {"sqlalchemy-databricks==0.1.0"},
     "singlestore": {"pymysql>=1.0.2"},
 }

@@ -55,5 +55,6 @@
       "default": null
     }
   },
-  "required": ["name", "columns", "database"]
+  "required": ["name", "columns", "database"],
+  "additionalProperties": false
 }

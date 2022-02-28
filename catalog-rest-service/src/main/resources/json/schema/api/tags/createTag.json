@@ -21,5 +21,6 @@
       }
     }
   },
-  "required": ["name", "description"]
+  "required": ["name", "description"],
+  "additionalProperties": false
 }

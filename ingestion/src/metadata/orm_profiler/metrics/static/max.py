@@ -10,23 +10,24 @@
 #  limitations under the License.
 
 """
-Distinct Count Metric definition
+Max Metric definition
 """
-from sqlalchemy import distinct, func
+from sqlalchemy import func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
-class Distinct(StaticMetric):
+class Max(StaticMetric):
     """
-    Distinct COUNT Metric
+    MIN Metric
 
-    Given a column, return the Distinct count. Ignores NULL values
+    Given a column, return the max value.
     """
 
-    def metric_type(self):
-        return int
+    @classmethod
+    def name(cls):
+        return "max"
 
     @_label
     def fn(self):
-        return func.count(distinct(self.col))
+        return func.max(self.col)

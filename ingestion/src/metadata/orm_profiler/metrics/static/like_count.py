@@ -10,23 +10,32 @@
 #  limitations under the License.
 
 """
-Table Count Metric definition
+Like Count Metric definition
 """
 from sqlalchemy import func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
-class RowNumber(StaticMetric):
+class LikeCount(StaticMetric):
     """
-    ROW_NUMBER Metric
+    LIKE_COUNT Metric
 
-    Count all rows on a table
+    Given a column, and an expression, return the number of
+    rows that match it
     """
+
+    @classmethod
+    def name(cls):
+        return "likeCount"
 
     def metric_type(self):
         return int
 
     @_label
     def fn(self):
-        return func.count()
+        if not hasattr(self, "expression"):
+            raise AttributeError(
+                "Like Count requires an expression to be set: Metrics.LIKE_COUNT(col, expression=...)"
+            )
+        return func.count(self.col.like(self.expression))

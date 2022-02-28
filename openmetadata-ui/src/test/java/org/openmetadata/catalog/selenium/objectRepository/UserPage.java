@@ -1,15 +1,16 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import javax.annotation.Nonnull;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+@Getter
+@RequiredArgsConstructor
 public class UserPage {
-  WebDriver webDriver;
-
-  public UserPage(WebDriver webDriver) {
-    this.webDriver = webDriver;
-  }
+  @Nonnull WebDriver webDriver;
 
   By rolesList = By.cssSelector("[data-testid='menu-button'][id='menu-button-User']");
   By selectUser = By.xpath("//div[@data-testid='data-container']//p");
@@ -20,40 +21,12 @@ public class UserPage {
       By.xpath("//div[@data-testid='user-card-container']/div[@data-testid='user-card-container']");
   By closeCheckBoxDropDown = By.cssSelector("[data-testid='close-dropdown']");
 
-  public By headerSettingsMenu(String menuItem) {
-    return By.cssSelector("[data-testid='menu-item-" + menuItem + "']");
-  }
-
-  public By rolesList() {
-    return rolesList;
-  }
-
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");
   }
 
-  public By selectUser() {
-    return selectUser;
-  }
-
-  public By userFilterCount() {
-    return userFilterCount;
-  }
-
-  public By adminFilterCount() {
-    return adminFilterCount;
-  }
-
   public By userPageTab(int index) {
     return By.xpath("//button[@data-testid='assets'][" + index + "]");
-  }
-
-  public By userListSearchBar() {
-    return userListSearchBar;
-  }
-
-  public By userListSearchResult() {
-    return userListSearchResult;
   }
 
   public WebElement closeCheckBoxDropDown() {

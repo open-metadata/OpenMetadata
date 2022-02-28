@@ -12,11 +12,11 @@
 """
 Count Duplicates Composed Metric definition
 """
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.distinct import Distinct
+from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
 
 
 class DuplicateCount(ComposedMetric):
@@ -24,6 +24,14 @@ class DuplicateCount(ComposedMetric):
     Given the total count and the distinct count,
     compute the number of rows that are duplicates
     """
+
+    @classmethod
+    def name(cls):
+        return "duplicateCount"
+
+    @classmethod
+    def required_metrics(cls) -> Tuple[str, ...]:
+        return Count.name(), DistinctCount.name()
 
     @property
     def metric_type(self):
@@ -35,7 +43,7 @@ class DuplicateCount(ComposedMetric):
         results of other Metrics
         """
         count = res.get(Count.name())
-        distinct_count = res.get(Distinct.name())
+        distinct_count = res.get(DistinctCount.name())
 
         if count is not None and distinct_count is not None:
             return count - distinct_count

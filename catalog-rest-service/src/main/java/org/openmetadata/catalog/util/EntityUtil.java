@@ -200,12 +200,7 @@ public final class EntityUtil {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
       LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
-      dao.insert(
-          owner.getId().toString(),
-          ownedEntityId.toString(),
-          owner.getType(),
-          ownedEntityType,
-          Relationship.OWNS.ordinal());
+      dao.insert(owner.getId(), ownedEntityId, owner.getType(), ownedEntityType, Relationship.OWNS.ordinal());
     }
   }
 
@@ -232,8 +227,10 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
-    for (EntityReference ref : list) {
-      populateEntityReference(ref);
+    if (list != null) {
+      for (EntityReference ref : list) {
+        populateEntityReference(ref);
+      }
     }
     return list;
   }
@@ -370,12 +367,7 @@ public final class EntityUtil {
     if (Optional.ofNullable(user.getDeleted()).orElse(false)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
     }
-    return dao.insert(
-            followerId.toString(),
-            followedEntityId.toString(),
-            followerEntity,
-            followedEntityType,
-            Relationship.FOLLOWS.ordinal())
+    return dao.insert(followerId, followedEntityId, followerEntity, followedEntityType, Relationship.FOLLOWS.ordinal())
         > 0;
   }
 
@@ -407,14 +399,15 @@ public final class EntityUtil {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
     private final List<String> fieldList;
 
-    public Fields(List<String> validFields, String fieldsParam) {
+    public Fields(List<String> allowedFields, String fieldsParam) {
       if (fieldsParam == null || fieldsParam.isEmpty()) {
         fieldList = Collections.emptyList();
         return;
       }
       fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
       for (String field : fieldList) {
-        if (!validFields.contains(field)) {
+        if (!allowedFields.contains(field)) {
+
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
         }
       }
@@ -437,7 +430,7 @@ public final class EntityUtil {
     return String.format("%s.%s", getVersionExtensionPrefix(entityType), version.toString());
   }
 
-  /** Entity version extension name prefix formed by entityType.version Example - `table.version` */
+  /** Entity version extension name prefix formed by `entityType.version`. Example - `table.version` */
   public static String getVersionExtensionPrefix(String entityType) {
     return String.format("%s.%s", entityType, "version");
   }
@@ -497,7 +490,7 @@ public final class EntityUtil {
                     .withEntities(eventFilter.getEntities())));
   }
 
-  public static void escapeReservedChars(EntityInterface entityInterface) {
+  public static void escapeReservedChars(EntityInterface<?> entityInterface) {
     entityInterface.setDisplayName(
         entityInterface.getDisplayName() != null ? entityInterface.getDisplayName() : entityInterface.getName());
     entityInterface.setName(entityInterface.getName().replace(".", "_DOT_"));

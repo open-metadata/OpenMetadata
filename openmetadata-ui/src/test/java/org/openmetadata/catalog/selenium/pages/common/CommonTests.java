@@ -20,7 +20,7 @@ import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -41,12 +41,10 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(17)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class CommonTests {
-
-  private static final Logger LOG = Logger.getLogger(CommonTests.class.getName());
-
   static WebDriver webDriver;
   static Common common;
   static Actions actions;

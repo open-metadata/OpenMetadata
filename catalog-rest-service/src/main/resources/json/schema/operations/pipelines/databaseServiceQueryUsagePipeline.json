@@ -14,5 +14,6 @@
       "type": "string",
       "default": "/tmp/query_log"
     }
-  }
+  },
+  "additionalProperties": false
 }

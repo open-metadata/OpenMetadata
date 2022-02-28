@@ -45,7 +45,6 @@ import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
-import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -151,6 +150,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   protected boolean supportsPatch = true;
   protected boolean supportsSoftDelete = true;
   private final boolean supportsAuthorizedMetadataOperations;
+  protected boolean supportsFieldsQueryParam = true;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -433,8 +433,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       throws HttpResponseException;
 
   // Entity specific validate for entity create using PUT
-  public abstract void validateUpdatedEntity(T updatedEntity, K request, Map<String, String> authHeaders)
-      throws HttpResponseException;
+  public void validateUpdatedEntity(T updatedEntity, K request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    validateCreatedEntity(updatedEntity, request, authHeaders);
+  }
 
   protected void validateDeletedEntity(
       K create, T entityBeforeDeletion, T entityAfterDeletion, Map<String, String> authHeaders)
@@ -461,6 +463,43 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for GET operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  void get_entityWithDifferentFieldsQueryParam(TestInfo test) throws HttpResponseException {
+    if (!supportsFieldsQueryParam) {
+      return;
+    }
+
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    String allFields = String.join(",", Entity.getEntityFields(entityClass));
+
+    // GET an entity by ID with all the field names of an entity should be successful
+    getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+    // GET an entity by name with all the field names of an entity should be successful
+    getEntityByName(entityInterface.getFullyQualifiedName(), allFields, ADMIN_AUTH_HEADERS);
+
+    // GET list of entities with all the field names of an entity should be successful
+    Map<String, String> params = new HashMap<>();
+    params.put("fields", allFields);
+    listEntities(params, ADMIN_AUTH_HEADERS);
+
+    // Adding any parameter that is allowed should result in an error
+    String invalidField = "invalidField";
+    assertResponse(
+        () -> getEntity(entityInterface.getId(), invalidField, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid field name invalidField");
+    assertResponse(
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), invalidField, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid field name invalidField");
+
+    params.put("fields", invalidField);
+    assertResponse(() -> listEntities(params, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid field name invalidField");
+  }
+
   @Test
   void get_entityListWithPagination_200(TestInfo test) throws IOException {
     // Create a number of entities between 5 and 20 inclusive
@@ -940,20 +979,20 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), userAuthHeaders());
-    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
+    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
+    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, TEST_AUTH_HEADERS);
 
     // Add the same user as follower and make sure no errors are thrown and return response is OK
     // (and not CREATED)
-    addAndCheckFollower(entityId, user1.getId(), OK, 1, userAuthHeaders());
+    addAndCheckFollower(entityId, user1.getId(), OK, 1, TEST_AUTH_HEADERS);
 
     // Add a new follower to the entity
-    User user2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), userAuthHeaders());
-    addAndCheckFollower(entityId, user2.getId(), CREATED, 2, userAuthHeaders());
+    User user2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
+    addAndCheckFollower(entityId, user2.getId(), CREATED, 2, TEST_AUTH_HEADERS);
 
     // Delete followers and make sure they are deleted
-    deleteAndCheckFollower(entityId, user1.getId(), 1, userAuthHeaders());
-    deleteAndCheckFollower(entityId, user2.getId(), 0, userAuthHeaders());
+    deleteAndCheckFollower(entityId, user1.getId(), 1, TEST_AUTH_HEADERS);
+    deleteAndCheckFollower(entityId, user2.getId(), 0, TEST_AUTH_HEADERS);
   }
 
   @Test
@@ -967,8 +1006,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
-    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), userAuthHeaders());
-    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
+    User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
+    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, TEST_AUTH_HEADERS);
 
     deleteEntity(entityId, ADMIN_AUTH_HEADERS);
 
@@ -1819,7 +1858,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<EntityReference> followers = entityInterface.getFollowers();
 
     assertEquals(totalFollowerCount, followers.size());
-    TestUtils.validateEntityReference(followers);
+    TestUtils.validateEntityReferences(followers);
     TestUtils.existsInEntityReferenceList(followers, userId, true);
 
     // GET .../users/{userId} shows user as following the entity
@@ -1851,7 +1890,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Get the entity and ensure the deleted follower is not in the followers list
     T getEntity = getEntity(entityId, authHeaders);
     List<EntityReference> followers = getEntityInterface(getEntity).getFollowers();
-    TestUtils.validateEntityReference(followers);
+    TestUtils.validateEntityReferences(followers);
     TestUtils.existsInEntityReferenceList(followers, userId, false);
     return getEntity;
   }

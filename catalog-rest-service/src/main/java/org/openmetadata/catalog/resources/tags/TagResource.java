@@ -44,6 +44,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TagRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -118,6 +119,7 @@ public class TagResource {
   }
 
   static final String FIELDS = "usageCount";
+  static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Tag.class);
   protected static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replace(" ", "").split(","));
 
   @GET
@@ -140,7 +142,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     List<TagCategory> list = dao.listCategories(fields);
     list.forEach(category -> addHref(uriInfo, category));
     return new CategoryList(list);
@@ -172,7 +174,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     return addHref(uriInfo, dao.getCategory(category, fields));
   }
 
@@ -211,7 +213,7 @@ public class TagResource {
           String fieldsParam)
       throws IOException {
     String fqn = category + "." + primaryTag;
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     return addHref(categoryHref, tag);
@@ -258,7 +260,7 @@ public class TagResource {
           String fieldsParam)
       throws IOException {
     String fqn = category + "." + primaryTag + "." + secondaryTag;
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category + "/" + primaryTag);
     return addHref(categoryHref, tag);

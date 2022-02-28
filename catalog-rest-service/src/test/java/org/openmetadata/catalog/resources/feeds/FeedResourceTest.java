@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidEntityLink;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -152,16 +151,6 @@ public class FeedResourceTest extends CatalogApplicationTest {
     CreateThread create = create().withAbout("<#E/table/invalidTableName>");
     assertResponse(
         () -> createThread(create, AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TABLE, "invalidTableName"));
-  }
-
-  @Test
-  void post_feedWithInvalidAbout_400() {
-    // post with invalid entity link pattern
-    // if entity link refers to an array member, then it should have both
-    // field name and value
-    CreateThread create =
-        create().withAbout(String.format("<#E/table/%s/columns/description>", TABLE.getFullyQualifiedName()));
-    assertResponse(() -> createThread(create, AUTH_HEADERS), BAD_REQUEST, invalidEntityLink());
   }
 
   @Test
