@@ -28,7 +28,7 @@ import {
   AuthenticatorRef,
   OidcUser,
 } from '../auth-provider/AuthProvider.interface';
-import { oidcTokenKey, ROUTES } from '../constants/constants';
+import { oidcTokenKey } from '../constants/constants';
 import { msalLoginRequest } from '../utils/AuthProvider.util';
 
 interface Props {
@@ -41,7 +41,7 @@ export type Ref = ReactNode | HTMLElement | string;
 
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLoginSuccess, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated } = useAuthContext();
+    const { setIsAuthenticated, setLoadingIndicator } = useAuthContext();
     const { instance, accounts, inProgress } = useMsal();
     const isMsalAuthenticated = useIsAuthenticated();
     const account = useAccount(accounts[0] || {});
@@ -56,26 +56,34 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const login = (loginType = 'popup') => {
+      setLoadingIndicator(true);
       if (loginType === 'popup') {
-        instance.loginPopup(msalLoginRequest);
+        instance
+          .loginPopup(msalLoginRequest)
+          .finally(() => setLoadingIndicator(false));
       } else if (loginType === 'redirect') {
-        instance.loginRedirect(msalLoginRequest);
+        instance
+          .loginRedirect(msalLoginRequest)
+          .finally(() => setLoadingIndicator(false));
       }
     };
-    const logout = (logoutType = 'popup') => {
-      if (logoutType === 'popup') {
-        instance
-          .logoutPopup({
-            mainWindowRedirectUri: ROUTES.HOME,
-          })
-          .then(() => {
-            handleOnLogoutSucess();
-          });
-      } else if (logoutType === 'redirect') {
-        instance.logoutRedirect().then(() => {
-          handleOnLogoutSucess();
-        });
-      }
+    const logout = () => {
+      // TODO: Uncomment if need to logout from browser
+      // if (logoutType === 'popup') {
+      //   instance
+      //     .logoutPopup({
+      //       mainWindowRedirectUri: ROUTES.HOME,
+      //     })
+      //     .then(() => {
+      //       handleOnLogoutSucess();
+      //     });
+      // } else if (logoutType === 'redirect') {
+      //   instance.logoutRedirect().then(() => {
+      //     handleOnLogoutSucess();
+      //   });
+      // }
+      setLoadingIndicator(false);
+      handleOnLogoutSucess();
     };
 
     useEffect(() => {

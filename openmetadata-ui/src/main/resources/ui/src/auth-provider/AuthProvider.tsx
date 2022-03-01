@@ -110,6 +110,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     window.location.href = ROUTES.SIGNIN;
   };
 
+  const setLoadingIndicator = (value: boolean) => {
+    setLoading(value);
+  };
+
   const getUserPermissions = () => {
     setLoading(true);
     getLoggedInUserPermissions()
@@ -395,6 +399,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isProtectedRoute,
     isTourRoute,
     loading,
+    setLoadingIndicator,
   };
 
   return (
