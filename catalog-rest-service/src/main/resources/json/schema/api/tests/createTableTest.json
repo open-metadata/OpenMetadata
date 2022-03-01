@@ -9,10 +9,6 @@
       "description": "Description of the testcase.",
       "type": "string"
     },
-    "tableName": {
-      "description": "Table Name for which this test applies.",
-      "type": "string"
-    },
     "testCase": {
       "$ref": "../../tests/tableTest.json#/definitions/tableTestCase"
     },
@@ -36,6 +32,6 @@
       "type": "string"
     }
   },
-  "required": ["testCase", "tableName"],
+  "required": ["testCase"],
   "additionalProperties": false
 }
