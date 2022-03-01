@@ -33,6 +33,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 @Order(8)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -55,6 +56,7 @@ public class DatabaseServicePageTest {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
+    options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
     databaseServicePage = new DatabaseServicePage(webDriver);
@@ -125,7 +127,7 @@ public class DatabaseServicePageTest {
   public void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, common.containsText("Demo1"));
+    Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.serviceDetailsTabs("ingestions"));
     Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
 
@@ -151,6 +153,11 @@ public class DatabaseServicePageTest {
     Events.sendKeys(webDriver, common.servicePassword(), "1");
     Events.sendKeys(webDriver, common.databaseName(), "1");
     Events.click(webDriver, common.saveConnectionConfig());
+    Thread.sleep(2000);
+    WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
+    if (errorText.isDisplayed()) {
+      Assert.fail("Error while updating service");
+    }
   }
 
   @Test

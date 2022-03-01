@@ -61,6 +61,7 @@ public class TeamsPageTest {
     options.addArguments("--no-sandbox");
     options.addArguments("--disable-dev-shm-usage");
     options.addArguments("--headless");
+    options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     common = new Common(webDriver);
@@ -209,7 +210,6 @@ public class TeamsPageTest {
   @Test
   @Order(7)
   public void checkTeamsFilterCount() throws InterruptedException {
-    openTeamsPage();
     for (int i = 0; i < 5; i++) {
       createTeam();
       webDriver.navigate().back();
