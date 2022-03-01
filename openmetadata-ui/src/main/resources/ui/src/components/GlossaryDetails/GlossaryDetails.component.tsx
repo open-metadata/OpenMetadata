@@ -17,15 +17,10 @@ import Tags from '../tags/tags';
 
 type props = {
   glossary: Glossary;
-  updateGlossaryDescription: (value: Glossary) => void;
-  updateReviewer: (value: Glossary) => void;
+  updateGlossary: (value: Glossary) => void;
 };
 
-const GlossaryDetails = ({
-  glossary,
-  updateGlossaryDescription,
-  updateReviewer,
-}: props) => {
+const GlossaryDetails = ({ glossary, updateGlossary }: props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -49,7 +44,7 @@ const GlossaryDetails = ({
         }));
       const updatedTags = [...prevTags, ...newTags];
       const updatedGlossary = { ...glossary, tags: updatedTags };
-      updateReviewer(updatedGlossary);
+      updateGlossary(updatedGlossary);
     }
   };
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
@@ -88,7 +83,7 @@ const GlossaryDetails = ({
         ...glossary,
         description: updatedHTML,
       };
-      updateGlossaryDescription(updatedTableDetails);
+      updateGlossary(updatedTableDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -103,7 +98,7 @@ const GlossaryDetails = ({
       reviewers: reviewer,
     };
 
-    updateReviewer(updatedGlossary);
+    updateGlossary(updatedGlossary);
   };
 
   const tabs = [
@@ -191,7 +186,7 @@ const GlossaryDetails = ({
         </NonAdminAction>
       </div>
 
-      <div className="tw--ml-5 tw--mt-3" data-testid="description-container">
+      <div className="tw--ml-5" data-testid="description-container">
         <Description
           blurWithBodyBG
           description={glossary?.description || ''}

@@ -26,8 +26,7 @@ import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.c
 import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
-import GlossaryPage from '../pages/GlossaryPage/GlossaryPage.component';
-import GlossaryTermPage from '../pages/GlossaryTermPage/GlossaryTermPage.component';
+import GlossaryPageV1 from '../pages/GlossaryPage/GlossaryPageV1.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import RolesPage from '../pages/RolesPage/RolesPage.component';
@@ -102,13 +101,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
       <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
-      <Route exact component={GlossaryPage} path={ROUTES.GLOSSARY} />
-      <Route
+      {/* <Route exact component={GlossaryPage} path={ROUTES.GLOSSARY} /> */}
+      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY} />
+      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
+      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_TERMS} />
+      {/* <Route
         exact
         component={GlossaryTermPage}
         path={ROUTES.GLOSSARY_DETAILS}
-      />
-      <Route exact component={GlossaryTermPage} path={ROUTES.GLOSSARY_TERMS} />
+      /> */}
+      {/* <Route exact component={GlossaryTermPage} path={ROUTES.GLOSSARY_TERMS} /> */}
       {isAuthDisabled || isAdminUser ? (
         <>
           <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />

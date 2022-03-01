@@ -306,8 +306,7 @@ const GlossaryTerms = ({
       ) : showGlossaryDetails ? (
         <GlossaryDetails
           glossary={glossaryDetails}
-          updateGlossaryDescription={updateGlossaryDescription}
-          updateReviewer={updateReviewer}
+          updateGlossary={updateReviewer}
         />
       ) : activeGlossaryTerm ? (
         <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
