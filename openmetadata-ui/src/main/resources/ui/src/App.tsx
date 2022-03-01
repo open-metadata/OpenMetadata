@@ -20,15 +20,15 @@ import AppRouter from './router/AppRouter';
 const App: FunctionComponent = () => {
   return (
     <div className="main-container">
-      <ToastContextProvider>
-        <Router>
-          <div className="content-wrapper" data-testid="content-wrapper">
+      <div className="content-wrapper" data-testid="content-wrapper">
+        <ToastContextProvider>
+          <Router>
             <AuthProvider>
               <AppRouter />
             </AuthProvider>
-          </div>
-        </Router>
-      </ToastContextProvider>
+          </Router>
+        </ToastContextProvider>
+      </div>
     </div>
   );
 };
