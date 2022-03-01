@@ -15,7 +15,6 @@
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <testng.version>7.5</testng.version>
     <selenium.version>4.1.1</selenium.version>
-    <skipTests>true</skipTests>
   </properties>
 
   <dependencies>
@@ -130,7 +129,7 @@
               <goal>yarn</goal>
             </goals>
             <!-- optional: the default phase is "generate-resources" -->
-            <phase>test</phase>
+            <phase>prepare-package</phase>
             <configuration>
               <!-- optional: if not specified, it will run gulp's default task
                   (and you can remove this whole <configuration> section.) -->
