@@ -1791,7 +1791,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
         .withName(name)
-        .withDatabase(DATABASE_REFERENCE)
+        .withDatabase(getContainer())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint))
         .withDescription(description)
@@ -1809,8 +1809,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
-  public EntityReference getContainer(CreateTable createRequest) {
-    return Entity.getEntityReference(DATABASE); // TODO clean this up
+  public EntityReference getContainer() {
+    return DATABASE_REFERENCE;
   }
 
   @Override
