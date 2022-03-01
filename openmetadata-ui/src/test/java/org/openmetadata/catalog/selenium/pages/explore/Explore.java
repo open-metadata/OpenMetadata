@@ -20,7 +20,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(9)
 class Explore {
-  WebDriver webDriver;
+  static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
@@ -58,18 +58,20 @@ class Explore {
   @Test
   @Order(1)
   void openExplorePage() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     if (webDriver.findElement(explorePage.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
-      Assert.fail();
+      Assert.fail("Table count not displayed");
     }
   }
 
   @Test
   @Order(2)
   void checkTableCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     WebElement tabCount = webDriver.findElement(explorePage.tableCount());
     int tableCount = Integer.parseInt(tabCount.getText());
@@ -95,6 +97,7 @@ class Explore {
   @Test
   @Order(3)
   void checkTopicCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
@@ -121,6 +124,7 @@ class Explore {
   @Test
   @Order(4)
   void checkDashboardCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
@@ -147,6 +151,7 @@ class Explore {
   @Test
   @Order(5)
   void checkPipelineCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
@@ -173,6 +178,7 @@ class Explore {
   @Test
   @Order(6)
   void checkBasics() throws Exception {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     // Doing add tags first to get Tags checkbox in the left panel
     Events.click(webDriver, explorePage.selectTable());
@@ -213,6 +219,7 @@ class Explore {
   @Test
   @Order(7)
   void checkLastUpdatedSort() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String sendKeys = "Description Added";
     openExplorePage();
     // Adding description to check last updated sort
@@ -231,6 +238,7 @@ class Explore {
   @Test
   @Order(8)
   void checkRandomTableCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.bigQueryCheckbox());
     Events.click(webDriver, explorePage.shopifyCheckbox());
@@ -252,6 +260,7 @@ class Explore {
   @Test
   @Order(9)
   public void checkRandomTopicCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -272,6 +281,7 @@ class Explore {
   @Test
   @Order(10)
   void checkRandomDashboardCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -292,6 +302,7 @@ class Explore {
   @Test
   @Order(11)
   void checkRandomPipelineCount() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -312,6 +323,7 @@ class Explore {
   @Test
   @Order(12)
   void checkSearchBarInvalidValue() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), searchCriteria);
