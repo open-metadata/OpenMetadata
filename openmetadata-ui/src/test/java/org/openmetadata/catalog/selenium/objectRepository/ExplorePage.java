@@ -29,7 +29,7 @@ public class ExplorePage {
   By countService = By.xpath("//div[@data-testid='filter-containers-0']/div/span");
   By errorMessage = By.xpath("//p[@data-testid=\"no-search-results\"]");
   By glueCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Glue\"]");
-  By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
+  By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[1]");
   By addTag = By.xpath("//div[@data-testid='tag-conatiner']/div/span/span");
   By serviceText = By.xpath("//h6[contains(text(),'Service')]");
   By tierText = By.xpath("//h6[contains(text(),'Tier')]");

@@ -243,7 +243,6 @@ class Explore {
     openExplorePage();
     Events.click(webDriver, explorePage.bigQueryCheckbox());
     Events.click(webDriver, explorePage.shopifyCheckbox());
-    Events.click(webDriver, explorePage.tagSpecialCategoryCheckbox());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
     List<WebElement> selectedCheckbox = explorePage.selectedCheckbox();
     List<Integer> count = new ArrayList<>();

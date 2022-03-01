@@ -33,7 +33,7 @@ import org.testng.Assert;
 @Order(4)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TableDetailsPageTest {
-  WebDriver webDriver;
+  static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
@@ -152,7 +152,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(5)
-  public void addTagsToColumn() {
+  public void addTagsToColumn() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
@@ -163,7 +163,9 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, tableDetails.addTagTextBox(), "P");
     Events.click(webDriver, tableDetails.selectTag());
     String selectedTag = webDriver.findElement(tableDetails.selectedTag()).getText();
+    Thread.sleep(2000);
     Events.click(webDriver, tableDetails.saveTag());
+    Thread.sleep(2000);
     ((JavascriptExecutor) webDriver)
         .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.explore()));
     String TagDisplayed = webDriver.findElement(tableDetails.breadCrumbTags()).getText();
@@ -172,12 +174,13 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(6)
-  void removeTags() {
+  void removeTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.tagName());
+    Thread.sleep(1000);
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
     webDriver.navigate().refresh();
