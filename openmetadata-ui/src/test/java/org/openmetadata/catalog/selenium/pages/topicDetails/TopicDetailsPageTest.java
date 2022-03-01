@@ -125,15 +125,14 @@ public class TopicDetailsPageTest {
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      selectedTag[i] = common.tagListItem().toString();
+      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    List<WebElement> TagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
     Thread.sleep(waitTime);
-    for (int j = 0; j < TagDisplayed.size(); j++) {
-      Assert.assertEquals(TagDisplayed.get(j).getText(), selectedTag[j]);
-    }
+    Object tagCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
+    Assert.assertEquals(tagCount, 3);
   }
 
   @Test
@@ -166,13 +165,16 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
     Assert.assertEquals(checkDescription, updatedDescription);

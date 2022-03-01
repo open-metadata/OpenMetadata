@@ -17,6 +17,8 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.mysql.cj.log.Log;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
@@ -92,13 +94,16 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
     Assert.assertEquals(checkDescription, updatedDescription);
@@ -114,14 +119,12 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.addTag());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
     Thread.sleep(waitTime);
+    String selectedTag = webDriver.findElement(common.tagListItem()).getText();
     Events.click(webDriver, common.tagListItem());
-    String selectedTag = webDriver.findElement(dashboardDetails.selectedTag()).getText();
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(1000);
-    webDriver.navigate().refresh();
-    Thread.sleep(1000);
-    String breadcrumbTag = webDriver.findElement(common.breadCrumbTag()).getText();
-    Assert.assertEquals(selectedTag, breadcrumbTag);
+    Thread.sleep(2000);
+    String breadcrumbTag = webDriver.findElement(common.breadCrumbTags()).getText();
+    Assert.assertEquals(breadcrumbTag,selectedTag);
   }
 
   @Test
@@ -131,7 +134,7 @@ public class DashboardDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
-    String tagDisplayed = webDriver.findElement(common.breadCrumbTag()).getText();
+    String tagDisplayed = webDriver.findElement(common.breadCrumbTags()).getText();
     Events.click(webDriver, common.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Thread.sleep(waitTime);
@@ -139,8 +142,8 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    WebElement updatedTags = webDriver.findElement(common.breadCrumbTag());
-    if (updatedTags.getText().contains(tagDisplayed)) {
+    String updatedTags = webDriver.findElement(common.breadCrumbTags()).getText();
+    if (updatedTags.contains(tagDisplayed)) {
       Assert.fail("SelectedTag is not removed");
     }
   }
@@ -156,20 +159,21 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription())).perform();
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    WebElement checkDescription = dashboardDetails.getDescriptionBox();
-    String chck = checkDescription.getText();
-    Assert.assertEquals(chck, updatedDescription);
+    String checkDescription = dashboardDetails.getDescriptionBox().getText();
+    Assert.assertEquals(checkDescription, updatedDescription);
   }
 
   @Test
@@ -185,6 +189,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, common.tagListItem());
     String selectedTag = webDriver.findElement(dashboardDetails.selectedTag()).getText();
+    Thread.sleep(2000);
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
@@ -271,7 +276,6 @@ public class DashboardDetailsPageTest {
       }
       e.click();
       Thread.sleep(waitTime);
-      Assert.assertTrue(webDriver.findElement(common.difference()).isDisplayed());
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, common.version());

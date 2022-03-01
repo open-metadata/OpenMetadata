@@ -63,6 +63,7 @@ public class PipelineDetailsPageTest {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
+    options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     common = new Common(webDriver);
@@ -79,7 +80,7 @@ public class PipelineDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    Thread.sleep(3000);
+    Thread.sleep(2000);
     if (webDriver.findElement(common.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
@@ -97,13 +98,16 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
     Assert.assertEquals(checkDescription, updatedDescription);
@@ -125,7 +129,7 @@ public class PipelineDetailsPageTest {
     Thread.sleep(1000);
     webDriver.navigate().refresh();
     Thread.sleep(1000);
-    String breadcrumbTag = webDriver.findElement(common.breadCrumbTag()).getText();
+    String breadcrumbTag = webDriver.findElement(common.breadCrumbTags()).getText();
     Assert.assertEquals(selectedTag, breadcrumbTag);
   }
 
@@ -136,7 +140,7 @@ public class PipelineDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, common.selectTable());
-    String tagDisplayed = webDriver.findElement(common.breadCrumbTag()).getText();
+    String tagDisplayed = webDriver.findElement(common.breadCrumbTags()).getText();
     Events.click(webDriver, common.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Thread.sleep(waitTime);
@@ -144,7 +148,7 @@ public class PipelineDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    WebElement updatedTags = webDriver.findElement(common.breadCrumbTag());
+    WebElement updatedTags = webDriver.findElement(common.breadCrumbTags());
     if (updatedTags.getText().contains(tagDisplayed)) {
       Assert.fail("SelectedTag is not removed");
     }
@@ -161,13 +165,16 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
+    Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
@@ -251,7 +258,6 @@ public class PipelineDetailsPageTest {
       }
       e.click();
       Thread.sleep(waitTime);
-      Assert.assertTrue(webDriver.findElement(common.difference()).isDisplayed());
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, common.version());

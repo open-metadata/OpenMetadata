@@ -13,21 +13,21 @@ import org.openqa.selenium.WebElement;
 public class TableDetails {
   @Nonnull WebDriver webDriver;
 
-  By manage = By.xpath("//button[@data-testid=\"tab\"][id=\"manage\"]");
+  By manage = By.xpath("//button[@data-testid=\"tab\"][@id=\"manage\"]");
   By owner = By.cssSelector("button[data-testid=\"owner-dropdown\"]");
   By users = By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]");
   By selectUser = By.xpath("//div[@data-testid=\"list-item\"]");
   By saveManage = By.cssSelector("[data-testid='saveManageTab']");
   By follow = By.cssSelector("button[data-testid='follow-button']");
-  By schema = By.xpath("//button[@data-testid=\"tab\"][[id=\"schema\"]]");;
-  By lineage = By.xpath("//button[@data-testid=\"tab\"][id=\"lineage\"]");;
+  By schema = By.xpath("//button[@data-testid=\"tab\"][[@id=\"schema\"]]");;
+  By lineage = By.xpath("//button[@data-testid=\"tab\"][@id=\"lineage\"]");;
   By lineageComponents = By.xpath("//div[@class=\"tw-relative nowheel \"]");
-  By profiler = By.xpath("//button[@data-testid=\"tab\"][id=\"profiler\"]");;
-  By sampleData = By.xpath("//button[@data-testid=\"tab\"][id=\"sampleData\"]");;
-  By selectTier1 = By.xpath("(//div[@data-testid=\"icon\"])[1]");
+  By profiler = By.xpath("//button[@data-testid=\"tab\"][@id=\"profiler\"]");;
+  By sampleData = By.xpath("//button[@data-testid=\"tab\"][@id=\"sampleData\"]");;
+  By selectTier1 = By.xpath("(//div[@data-testid='card-list'])[1]");
   By tier1 = By.xpath("(/h4[@class='tw-text-base tw-mb-0']");
-  By addTagTextBox = By.xpath("//input[@data-testid=\"associatedTagName\"]");
-  By selectTag = By.xpath("//span[@data-testid=\"list-item\"][2]");
+  By addTagTextBox = By.xpath("//input[@data-testid='associatedTagName']");
+  By selectTag = By.xpath("//div[@data-testid=\"list-item\"][2]");
   By saveTag = By.xpath("//button[@data-testid=\"saveAssociatedTag\"]");
   By tagName = By.xpath("(//div[@data-testid=\"tag-conatiner\"])[1]");
   By removeTag = By.xpath("//span[@data-testid=\"remove\"]");
@@ -48,8 +48,9 @@ public class TableDetails {
   By chart = By.xpath("//div[@class=\"recharts-wrapper\"]");
   By toolTip =
       By.xpath("//div[@class=\"recharts-tooltip-wrapper recharts-tooltip-wrapper-left recharts-tooltip-wrapper-top\"]");
-  By columnDescription = By.xpath("(//td[@class=\"tableBody-cell tw-group tw-relative\"]/div/span/span/div/div)[1]");
+  By columnDescriptionButton = By.xpath("(//img[@data-testid='image'][parent::button])[3]");
   By columnDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
+  By columnDescription = By.cssSelector("div[data-testid='description'][id='column-description-2']");
   By joinedTables = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By joinedColumns = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By sampleDataTable = By.xpath("//table[@data-testid=\"sample-data-table\"]");

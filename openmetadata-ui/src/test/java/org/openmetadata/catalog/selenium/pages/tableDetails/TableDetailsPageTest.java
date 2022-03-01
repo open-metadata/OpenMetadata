@@ -50,6 +50,7 @@ public class TableDetailsPageTest {
   TableDetails tableDetails;
   ExplorePage explorePage;
   TopicDetails topicDetails;
+  Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
@@ -67,6 +68,7 @@ public class TableDetailsPageTest {
     tableDetails = new TableDetails(webDriver);
     explorePage = new ExplorePage(webDriver);
     topicDetails = new TopicDetails(webDriver);
+    common = new Common(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -76,6 +78,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(1)
   void openExplorePage() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     if (webDriver.findElement(explorePage.tableCount()).isDisplayed()) {
@@ -88,6 +91,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(2)
   void checkTabs() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), tableName);
     Events.click(webDriver, myDataPage.tableName());
@@ -107,13 +111,15 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(3)
-  void editDescription() {
+  void editDescription() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     String sendKeys = "Description Added";
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.editDescriptionButton());
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
+    Thread.sleep(2000);
     Events.click(webDriver, tableDetails.saveTableDescription());
     String description = webDriver.findElement(tableDetails.descriptionBox()).getText();
     Assert.assertTrue(description.equalsIgnoreCase(sendKeys));
@@ -121,18 +127,22 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(4)
-  public void searchColumnAndEditDescription() {
+  public void searchColumnAndEditDescription() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     WebElement columnDescripitonBox;
     String sendKeys = "Description Added";
     Events.click(webDriver, explorePage.selectTable());
     for (int i = 0; i < 1; i++) {
-      Events.click(webDriver, tableDetails.columnDescription());
+      actions.moveToElement(webDriver.findElement(tableDetails.columnDescriptionButton())).perform();
+      Events.click(webDriver, tableDetails.columnDescriptionButton());
       columnDescripitonBox = webDriver.findElement(tableDetails.columnDescriptionBox());
       Events.click(webDriver, tableDetails.columnDescriptionBox());
       Events.sendKeys(webDriver, tableDetails.columnDescriptionBox(), Keys.CONTROL + "A");
       actions.moveToElement(columnDescripitonBox).sendKeys(sendKeys).perform();
+      Thread.sleep(2000);
       Events.click(webDriver, tableDetails.saveTableDescription());
+      Thread.sleep(2000);
       webDriver.navigate().refresh();
     }
     String verifyDescription = webDriver.findElement(tableDetails.columnDescription()).getText();
@@ -142,16 +152,17 @@ public class TableDetailsPageTest {
   @Test
   @Order(5)
   public void addTagsToColumn() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
-    ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", explorePage.addTag());
+    ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.addTag()));
     Events.click(webDriver, explorePage.addTag());
     Events.click(webDriver, tableDetails.addTagTextBox());
     Events.sendKeys(webDriver, tableDetails.addTagTextBox(), "P");
     Events.click(webDriver, tableDetails.selectTag());
-    Events.click(webDriver, tableDetails.saveTag());
-    ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", explorePage.explore());
     String selectedTag = webDriver.findElement(tableDetails.selectedTag()).getText();
+    Events.click(webDriver, tableDetails.saveTag());
+    ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.explore()));
     String TagDisplayed = webDriver.findElement(tableDetails.breadCrumbTags()).getText();
     Assert.assertEquals(selectedTag, TagDisplayed);
   }
@@ -159,6 +170,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(6)
   void removeTags() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
     Events.click(webDriver, explorePage.selectTable());
@@ -177,6 +189,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(7)
   void checkProfiler() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     ExplorePage explorePage = new ExplorePage(webDriver);
     TableDetails tableDetails = new TableDetails(webDriver);
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(2));
@@ -197,6 +210,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(8)
   public void checkManage() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Thread.sleep(waitTime);
@@ -210,6 +224,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(9)
   void checkLineage() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.lineage());
@@ -218,7 +233,12 @@ public class TableDetailsPageTest {
     WebElement sideDrawer = webDriver.findElement(tableDetails.sideDrawerLineage());
     for (WebElement e : nodes) {
       e.click();
-      Assert.assertEquals(e.getText(), sideDrawer.getText());
+      if(e.getText().contains(sideDrawer.getText())){
+        LOG.info("Passed");
+      }
+      else{
+        Assert.fail(e.getText()+sideDrawer.getText());
+      }
       actions.dragAndDropBy(e, 100, 200).perform();
     }
   }
@@ -226,6 +246,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(10)
   void checkBreadCrumb() throws Exception {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Thread.sleep(1000);
@@ -252,6 +273,7 @@ public class TableDetailsPageTest {
   @Test
   @Order(11)
   public void checkVersion() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.version());
@@ -270,9 +292,10 @@ public class TableDetailsPageTest {
   @Test
   @Order(12)
   public void checkFrequentlyJoinedTables() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
-    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.joinedTables());
   }
@@ -280,16 +303,16 @@ public class TableDetailsPageTest {
   @Test
   @Order(13)
   public void checkFrequentlyJoinedColumns() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
-    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.joinedColumns());
   }
 
   @AfterEach
   public void closeTabs() {
-
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {
