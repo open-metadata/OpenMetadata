@@ -100,7 +100,9 @@ public class EventPubSub {
     LOG.info("Processor removed for {}", processor);
   }
 
-  public void close() {}
+  public void close() {
+    /* Nothing to clean up */
+  }
 
   public static class DefaultExceptionHandler implements ExceptionHandler<ChangeEventHolder> {
     @Override

@@ -37,6 +37,7 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -67,7 +68,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         MessagingService.class,
         MessagingServiceList.class,
         "services/messagingServices",
-        "owner",
+        MessagingServiceResource.FIELDS,
         false,
         true,
         false,

@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
@@ -51,14 +52,11 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public Report setFields(Report report, Fields fields) throws IOException, ParseException {
     report.setService(getService(report)); // service is a default field
-    report.setOwner(fields.contains("owner") ? getOwner(report) : null);
+    report.setOwner(fields.contains(FIELD_OWNER) ? getOwner(report) : null);
     report.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId()) : null);
     return report;
   }
-
-  @Override
-  public void restorePatchAttributes(Report original, Report updated) {}
 
   @Override
   public EntityInterface<Report> getEntityInterface(Report entity) {

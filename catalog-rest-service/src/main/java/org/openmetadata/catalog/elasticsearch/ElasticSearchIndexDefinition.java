@@ -6,9 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -46,7 +45,8 @@ import org.openmetadata.catalog.type.Task;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
-  final Map<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes = new HashMap<>();
+  final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
+      new EnumMap<>(ElasticSearchIndexType.class);
   private final RestHighLevelClient client;
 
   public ElasticSearchIndexDefinition(RestHighLevelClient client) {
@@ -81,32 +81,20 @@ public class ElasticSearchIndexDefinition {
   }
 
   public void createIndexes() {
-    try {
-      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        createIndex(elasticSearchIndexType);
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to created Elastic Search indexes due to", e);
+    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+      createIndex(elasticSearchIndexType);
     }
   }
 
   public void updateIndexes() {
-    try {
-      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        updateIndex(elasticSearchIndexType);
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to created Elastic Search indexes due to", e);
+    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+      updateIndex(elasticSearchIndexType);
     }
   }
 
   public void dropIndexes() {
-    try {
-      for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        deleteIndex(elasticSearchIndexType);
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to delete Elastic Search indexes due to", e);
+    for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
+      deleteIndex(elasticSearchIndexType);
     }
   }
 
@@ -133,13 +121,13 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
-      LOG.error("Failed to created Elastic Search indexes due to", e);
+      LOG.error("Failed to create Elastic Search indexes due to", e);
       return false;
     }
     return true;
   }
 
-  private boolean updateIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  private void updateIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
       gRequest.local(false);
@@ -159,22 +147,18 @@ public class ElasticSearchIndexDefinition {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
       setIndexStatus(elasticSearchIndexType, ElasticSearchIndexStatus.FAILED);
-      LOG.error("Failed to created Elastic Search indexes due to", e);
-      return false;
+      LOG.error("Failed to update Elastic Search indexes due to", e);
     }
-    return true;
   }
 
-  private boolean deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
+  private void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
       DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
       AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
       LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
-      return false;
     }
-    return true;
   }
 
   private void setIndexStatus(ElasticSearchIndexType indexType, ElasticSearchIndexStatus elasticSearchIndexStatus) {
@@ -771,20 +755,17 @@ class UserESIndex {
       roles.add(role.getId().toString());
     }
 
-    UserESIndexBuilder userESIndexBuilder =
-        internalBuilder()
-            .userId(user.getId().toString())
-            .deleted(user.getDeleted())
-            .name(user.getName())
-            .email(user.getEmail())
-            .displayName(displayName)
-            .lastUpdatedTimestamp(updatedTimestamp)
-            .entityType("user")
-            .suggest(suggest)
-            .teams(teams)
-            .roles(roles);
-
-    return userESIndexBuilder;
+    return internalBuilder()
+        .userId(user.getId().toString())
+        .deleted(user.getDeleted())
+        .name(user.getName())
+        .email(user.getEmail())
+        .displayName(displayName)
+        .lastUpdatedTimestamp(updatedTimestamp)
+        .entityType("user")
+        .suggest(suggest)
+        .teams(teams)
+        .roles(roles);
   }
 }
 
@@ -838,20 +819,17 @@ class TeamESIndex {
       }
     }
 
-    TeamESIndexBuilder teamESIndexBuilder =
-        internalBuilder()
-            .teamId(team.getId().toString())
-            .deleted(team.getDeleted())
-            .name(team.getName()) // pipeline names can be unique ids from source, hence use displayName for search
-            // indexing
-            .displayName(displayName)
-            .lastUpdatedTimestamp(updatedTimestamp)
-            .entityType("team")
-            .suggest(suggest)
-            .owns(owns)
-            .users(users);
-
-    return teamESIndexBuilder;
+    return internalBuilder()
+        .teamId(team.getId().toString())
+        .deleted(team.getDeleted())
+        .name(team.getName()) // pipeline names can be unique ids from source, hence use displayName for search
+        // indexing
+        .displayName(displayName)
+        .lastUpdatedTimestamp(updatedTimestamp)
+        .entityType("team")
+        .suggest(suggest)
+        .owns(owns)
+        .users(users);
   }
 }
 
@@ -893,20 +871,17 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
     ParseTags parseTags = new ParseTags(tags);
     String description = glossaryTerm.getDescription() != null ? glossaryTerm.getDescription() : "";
     String displayName = glossaryTerm.getDisplayName() != null ? glossaryTerm.getDisplayName() : "";
-    GlossaryTermESIndexBuilder builder =
-        internalBuilder()
-            .glossaryId(glossaryTerm.getGlossary().getId().toString())
-            .name(glossaryTerm.getName())
-            .displayName(displayName)
-            .description(description)
-            .fqdn(glossaryTerm.getName())
-            .glossaryId(glossaryTerm.getGlossary().getId().toString())
-            .glossaryName(glossaryTerm.getGlossary().getName())
-            .lastUpdatedTimestamp(updatedTimestamp)
-            .entityType("glossaryTerm")
-            .suggest(suggest)
-            .tags(parseTags.tags);
-
-    return builder;
+    return internalBuilder()
+        .glossaryId(glossaryTerm.getGlossary().getId().toString())
+        .name(glossaryTerm.getName())
+        .displayName(displayName)
+        .description(description)
+        .fqdn(glossaryTerm.getName())
+        .glossaryId(glossaryTerm.getGlossary().getId().toString())
+        .glossaryName(glossaryTerm.getGlossary().getName())
+        .lastUpdatedTimestamp(updatedTimestamp)
+        .entityType("glossaryTerm")
+        .suggest(suggest)
+        .tags(parseTags.tags);
   }
 }

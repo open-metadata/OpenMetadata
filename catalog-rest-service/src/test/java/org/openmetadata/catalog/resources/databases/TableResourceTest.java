@@ -764,7 +764,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) throws ParseException {
     // Table reports last 30 days of aggregated join count
     assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
-    assertEquals(actual.getDayCount(), 30);
+    assertEquals(30, actual.getDayCount());
 
     // Sort the columnJoins and the joinedWith to account for different ordering
     expected.sort(Comparator.comparing(ColumnJoin::getColumnName));
@@ -953,12 +953,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // try updating the same query again
     //
     putResponse = putTableQueriesData(table.getId(), query1, ADMIN_AUTH_HEADERS);
-    assertEquals(putResponse.getTableQueries().size(), 1);
+    assertEquals(1, putResponse.getTableQueries().size());
     assertEquals(query1.getQuery(), putResponse.getTableQueries().get(0).getQuery());
     assertEquals(query1.getVote(), putResponse.getTableQueries().get(0).getVote());
 
     table = getEntity(table.getId(), "tableQueries", ADMIN_AUTH_HEADERS);
-    assertEquals(table.getTableQueries().size(), 1);
+    assertEquals(1, table.getTableQueries().size());
     assertEquals(query1.getQuery(), table.getTableQueries().get(0).getQuery());
     assertEquals(query1.getVote(), table.getTableQueries().get(0).getVote());
 
@@ -968,13 +968,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     SQLQuery query2 =
         new SQLQuery().withQuery("select * from users;").withQueryDate("2021-09-09").withDuration(200.0).withVote(5.0);
     putResponse = putTableQueriesData(table.getId(), query2, ADMIN_AUTH_HEADERS);
-    assertEquals(putResponse.getTableQueries().size(), 2);
+    assertEquals(2, putResponse.getTableQueries().size());
     // query2 with the highest vote should be the first result.
     assertEquals(query2.getQuery(), putResponse.getTableQueries().get(0).getQuery());
     assertEquals(query2.getVote(), putResponse.getTableQueries().get(0).getVote());
 
     table = getEntity(table.getId(), "tableQueries", ADMIN_AUTH_HEADERS);
-    assertEquals(table.getTableQueries().size(), 2);
+    assertEquals(2, table.getTableQueries().size());
     // query2 with the highest vote should be the first result.
     assertEquals(query2.getQuery(), table.getTableQueries().get(0).getQuery());
     assertEquals(query2.getVote(), table.getTableQueries().get(0).getVote());
@@ -1673,8 +1673,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
-  private void verifyTableTest(String tableName, List<TableTest> actualTests, List<TableTest> expectedTests)
-      throws IOException {
+  private void verifyTableTest(String tableName, List<TableTest> actualTests, List<TableTest> expectedTests) {
     assertEquals(actualTests.size(), expectedTests.size());
     Map<String, TableTest> tableTestMap = new HashMap<>();
     for (TableTest test : actualTests) {
@@ -1712,7 +1711,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
-  private void verifyColumnTest(Table table, Column column, List<ColumnTest> expectedTests) throws IOException {
+  private void verifyColumnTest(Table table, Column column, List<ColumnTest> expectedTests) {
     List<ColumnTest> actualTests = new ArrayList<>();
     for (Column c : table.getColumns()) {
       if (c.getName().equals(column.getName())) {
@@ -1769,7 +1768,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
-  private void verifyTestCaseResults(List<TestCaseResult> expected, List<TestCaseResult> actual) throws IOException {
+  private void verifyTestCaseResults(List<TestCaseResult> expected, List<TestCaseResult> actual) {
     assertEquals(expected.size(), actual.size());
     Map<Long, TestCaseResult> actualResultMap = new HashMap<>();
     for (Object a : actual) {

@@ -98,7 +98,7 @@ public class TeamResource {
     }
   }
 
-  protected static final String FIELDS = "profile,users,owns,defaultRoles";
+  static final String FIELDS = "profile,users,owns,defaultRoles";
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Team.class);
 
   @GET

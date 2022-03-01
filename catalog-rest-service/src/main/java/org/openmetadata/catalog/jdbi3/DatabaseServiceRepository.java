@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
@@ -21,7 +22,6 @@ import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,9 +60,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     fernet = Fernet.getInstance();
   }
 
-  public void rotate() throws GeneralSecurityException, IOException, ParseException {
+  public void rotate() throws IOException {
     if (!fernet.isKeyDefined()) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.fernetKeyNotDefined());
+      throw new IllegalArgumentException(CatalogExceptionMessage.FERNET_KEY_NULL);
     }
     List<String> jsons = dao.listAfter(null, Integer.MAX_VALUE, "", Include.ALL);
     for (String json : jsons) {
@@ -80,7 +80,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   @Override
   public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
     entity.setAirflowPipelines(fields.contains("airflowPipelines") ? getAirflowPipelines(entity) : null);
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
+    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 
@@ -101,11 +101,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
           daoCollection.airflowPipelineDAO().findEntityReferenceById(UUID.fromString(airflowPipelineId)));
     }
     return airflowPipelines;
-  }
-
-  @Override
-  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) {
-    /* Nothing to do */
   }
 
   @Override

@@ -17,7 +17,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,6 +52,10 @@ public final class Entity {
 
   // Entity class to entity repository map
   private static final Map<Class<?>, EntityRepository<?>> CLASS_ENTITY_REPOSITORY_MAP = new HashMap<>();
+
+  // Common field names
+  public static final String FIELD_OWNER = "owner";
+  public static final String FIELD_DESCRIPTION = "description";
 
   //
   // Services
@@ -294,7 +297,7 @@ public final class Entity {
    */
   public static <T> List<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
-    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
+    return List.of(propertyOrder.value());
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */
@@ -303,7 +306,7 @@ public final class Entity {
 
     public static List<String> getEntityList(String name, String entitiesParam) {
       if (entitiesParam == null) {
-        return null;
+        return Collections.emptyList();
       }
       entitiesParam = entitiesParam.replace(" ", "");
       if (entitiesParam.equals("*")) {

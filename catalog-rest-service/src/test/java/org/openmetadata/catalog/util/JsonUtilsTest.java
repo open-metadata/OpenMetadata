@@ -31,7 +31,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 
 @Slf4j
 /** This test provides examples of how to use applyPatch */
-public class JsonUtilsTest {
+class JsonUtilsTest {
   /** Test apply patch method with different operations. */
   @Test
   void applyPatch() throws IOException {

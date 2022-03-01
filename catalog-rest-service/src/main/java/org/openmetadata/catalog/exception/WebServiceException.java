@@ -17,7 +17,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 public abstract class WebServiceException extends RuntimeException {
-  private final Response response;
+  private final transient Response response;
 
   protected WebServiceException(Response.Status status, String msg) {
     super(msg);
