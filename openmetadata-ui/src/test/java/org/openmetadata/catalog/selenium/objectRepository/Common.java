@@ -90,7 +90,7 @@ public class Common {
   }
 
   public By containsText(String matchingText) {
-    return By.xpath("//*[text()[contains('" + matchingText + "')]] ");
+    return By.xpath("//*[text()[contains(.,'" + matchingText + "')]] ");
   }
 
   public By serviceType(String serviceType) {

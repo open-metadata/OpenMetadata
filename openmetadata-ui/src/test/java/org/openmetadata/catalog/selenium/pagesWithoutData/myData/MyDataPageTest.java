@@ -84,7 +84,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement recentViews = webDriver.findElement(common.containsText("No recently viewed data."));
     if (!recentViews.isDisplayed()) {
-      throw new Exception("There shouldn't be any viewed data");
+      Assert.fail("There shouldn't be any viewed data");
     }
   }
 
@@ -94,7 +94,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement recentSearch = webDriver.findElement(common.containsText("No searched terms."));
     if (!recentSearch.isDisplayed()) {
-      throw new Exception("There shouldn't be any searched terms");
+      Assert.fail("There shouldn't be any searched terms");
     }
   }
 
@@ -104,7 +104,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement myDataResults = webDriver.findElement(common.containsText("You have not owned anything yet."));
     if (!myDataResults.isDisplayed()) {
-      throw new Exception("There shouldn't be any owned data");
+      Assert.fail("There shouldn't be any owned data");
     }
   }
 
@@ -114,7 +114,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement followResults = webDriver.findElement(common.containsText("You have not followed anything yet."));
     if (!followResults.isDisplayed()) {
-      throw new Exception("There shouldn't be any followed data");
+      Assert.fail("There shouldn't be any followed data");
     }
   }
 
@@ -124,7 +124,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     Events.sendEnter(webDriver, common.searchBar());
     Thread.sleep(2000);
-    String searchedEntity = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+    String searchedEntity = webDriver.findElement(common.noSearchResult()).getText();
     Assert.assertEquals(searchedEntity, "No matching data assets found");
   }
 
