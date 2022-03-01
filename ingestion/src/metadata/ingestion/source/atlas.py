@@ -98,8 +98,8 @@ class AtlasSource(Source):
 
     def next_record(self):
         if self.tables:
-            for _, entity in enumerate(self.tables):
-                yield from self._parse_table_entity(entity, self.tables[entity])
+            for key in self.tables:
+                yield from self._parse_table_entity(key, self.tables[key])
         if self.topics:
             yield from self._parse_topic_entity()
 
@@ -142,8 +142,9 @@ class AtlasSource(Source):
                         table_entity, tbl_entity, name
                     )
                     tbl_attrs = tbl_entity["attributes"]
-                    db_entity = tbl_entity["relationshipAttributes"]["db"]
-
+                    db_entity = tbl_entity["relationshipAttributes"][
+                        self.config.entity_types["Table"][name]["db"]
+                    ]
                     db = self._get_database(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
                     fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
