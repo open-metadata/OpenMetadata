@@ -155,14 +155,16 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
-    ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.addTag()));
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.addTag()));
     Events.click(webDriver, explorePage.addTag());
     Events.click(webDriver, tableDetails.addTagTextBox());
     Events.sendKeys(webDriver, tableDetails.addTagTextBox(), "P");
     Events.click(webDriver, tableDetails.selectTag());
     String selectedTag = webDriver.findElement(tableDetails.selectedTag()).getText();
     Events.click(webDriver, tableDetails.saveTag());
-    ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.explore()));
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.explore()));
     String TagDisplayed = webDriver.findElement(tableDetails.breadCrumbTags()).getText();
     Assert.assertEquals(selectedTag, TagDisplayed);
   }
@@ -233,11 +235,10 @@ public class TableDetailsPageTest {
     WebElement sideDrawer = webDriver.findElement(tableDetails.sideDrawerLineage());
     for (WebElement e : nodes) {
       e.click();
-      if(e.getText().contains(sideDrawer.getText())){
+      if (e.getText().contains(sideDrawer.getText())) {
         LOG.info("Passed");
-      }
-      else{
-        Assert.fail(e.getText()+sideDrawer.getText());
+      } else {
+        Assert.fail(e.getText() + sideDrawer.getText());
       }
       actions.dragAndDropBy(e, 100, 200).perform();
     }

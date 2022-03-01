@@ -17,8 +17,6 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.mysql.cj.log.Log;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
@@ -124,7 +122,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(2000);
     String breadcrumbTag = webDriver.findElement(common.breadCrumbTags()).getText();
-    Assert.assertEquals(breadcrumbTag,selectedTag);
+    Assert.assertEquals(breadcrumbTag, selectedTag);
   }
 
   @Test
