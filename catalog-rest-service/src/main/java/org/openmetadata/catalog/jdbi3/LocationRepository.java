@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 
@@ -63,7 +64,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public Location setFields(Location location, Fields fields) throws IOException, ParseException {
     location.setService(getService(location));
-    location.setOwner(fields.contains("owner") ? getOwner(location) : null);
+    location.setOwner(fields.contains(FIELD_OWNER) ? getOwner(location) : null);
     location.setFollowers(fields.contains("followers") ? getFollowers(location) : null);
     location.setTags(fields.contains("tags") ? getTags(location.getFullyQualifiedName()) : null);
     return location;

@@ -13,8 +13,8 @@
 
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags, ExtraInfo, TableDetail } from 'Models';
-import React, { useEffect, useState } from 'react';
+import { EntityFieldThreads, EntityTags, ExtraInfo, TableDetail } from 'Models';
+import React, { Fragment, useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { User } from '../../../generated/entity/teams/user';
@@ -48,6 +48,8 @@ type Props = {
   entityName: string;
   version?: string;
   isVersionSelected?: boolean;
+  entityFieldThreads?: EntityFieldThreads[];
+  onThreadLinkSelect?: (value: string) => void;
   followHandler?: () => void;
   tagsHandler?: (selectedTags?: Array<string>) => void;
   versionHandler?: () => void;
@@ -71,7 +73,10 @@ const EntityPageInfo = ({
   version,
   isVersionSelected,
   versionHandler,
+  entityFieldThreads,
+  onThreadLinkSelect,
 }: Props) => {
+  const tagThread = entityFieldThreads?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [entityFollowers, setEntityFollowers] =
     useState<Array<User>>(followersList);
@@ -352,53 +357,62 @@ const EntityPageInfo = ({
           </>
         )}
         {isTagEditable && !deleted && (
-          <NonAdminAction
-            html={getHtmlForNonAdminAction(Boolean(owner))}
-            isOwner={hasEditAccess}
-            permission={Operation.UpdateTags}
-            position="bottom"
-            trigger="click">
-            <div
-              className="tw-inline-block"
-              onClick={() => {
-                fetchTags();
-                setIsEditable(true);
-              }}>
-              <TagsContainer
-                editable={isEditable}
-                isLoading={isTagLoading}
-                selectedTags={getSelectedTags()}
-                showTags={!isTagEditable}
-                size="small"
-                tagList={tagList}
-                onCancel={() => {
-                  handleTagSelection();
-                }}
-                onSelectionChange={(tags) => {
-                  handleTagSelection(tags);
+          <Fragment>
+            <NonAdminAction
+              html={getHtmlForNonAdminAction(Boolean(owner))}
+              isOwner={hasEditAccess}
+              permission={Operation.UpdateTags}
+              position="bottom"
+              trigger="click">
+              <div
+                className="tw-inline-block"
+                onClick={() => {
+                  fetchTags();
+                  setIsEditable(true);
                 }}>
-                {tags.length || tier ? (
-                  <button className=" tw-ml-1 focus:tw-outline-none">
-                    <SVGIcons
-                      alt="edit"
-                      icon="icon-edit"
-                      title="Edit"
-                      width="12px"
-                    />
-                  </button>
-                ) : (
-                  <span>
-                    <Tags
-                      className="tw-text-primary"
-                      startWith="+ "
-                      tag="Add tag"
-                      type="label"
-                    />
-                  </span>
-                )}
-              </TagsContainer>
-            </div>
-          </NonAdminAction>
+                <TagsContainer
+                  editable={isEditable}
+                  isLoading={isTagLoading}
+                  selectedTags={getSelectedTags()}
+                  showTags={!isTagEditable}
+                  size="small"
+                  tagList={tagList}
+                  onCancel={() => {
+                    handleTagSelection();
+                  }}
+                  onSelectionChange={(tags) => {
+                    handleTagSelection(tags);
+                  }}>
+                  {tags.length || tier ? (
+                    <button className=" tw-ml-1 focus:tw-outline-none">
+                      <SVGIcons
+                        alt="edit"
+                        icon="icon-edit"
+                        title="Edit"
+                        width="12px"
+                      />
+                    </button>
+                  ) : (
+                    <span>
+                      <Tags
+                        className="tw-text-primary"
+                        startWith="+ "
+                        tag="Add tag"
+                        type="label"
+                      />
+                    </span>
+                  )}
+                </TagsContainer>
+              </div>
+            </NonAdminAction>
+            {!isUndefined(tagThread) ? (
+              <p
+                className="tw-text-right link-text tw-ml-1"
+                onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
+                <i className="far fa-comment" /> {tagThread.count} threads
+              </p>
+            ) : null}
+          </Fragment>
         )}
       </div>
       {isViewMore && (

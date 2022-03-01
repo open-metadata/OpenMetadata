@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { EntityTags, TableDetail } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityTags,
+  EntityThread,
+  TableDetail,
+} from 'Models';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -37,6 +43,11 @@ export interface TopicDetailsProps {
   topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   deleted?: boolean;
+  entityThread: EntityThread[];
+  isentityThreadLoading: boolean;
+  feedCount: number;
+  entityFieldThreadCount: EntityFieldThreadCount[];
+  createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;
   unfollowTopicHandler: () => void;
@@ -44,4 +55,5 @@ export interface TopicDetailsProps {
   descriptionUpdateHandler: (updatedTopic: Topic) => void;
   tagUpdateHandler: (updatedTopic: Topic) => void;
   versionHandler: () => void;
+  postFeedHandler: (value: string, id: string) => void;
 }

@@ -12,14 +12,33 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Feed, FeedById } from 'Models';
+import { Post } from 'Models';
+import { CreateThread } from '../generated/api/feed/createThread';
 import APIClient from './index';
 
-export const getAllFeeds: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get('/feed');
+export const getAllFeeds: Function = (
+  entityLink?: string
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/feed`, {
+    params: {
+      entityLink: entityLink,
+    },
+  });
 };
 
-export const postFeed: Function = (data: Feed): Promise<AxiosResponse> => {
+export const getFeedCount: Function = (
+  entityLink?: string
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/feed/count`, {
+    params: {
+      entityLink: entityLink,
+    },
+  });
+};
+
+export const postThread: Function = (
+  data: CreateThread
+): Promise<AxiosResponse> => {
   return APIClient.post('/feed', data);
 };
 
@@ -29,7 +48,7 @@ export const getFeedById: Function = (id: string): Promise<AxiosResponse> => {
 
 export const postFeedById: Function = (
   id: string,
-  data: FeedById
+  data: Post
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/feed/${id}/posts`, data);
 };

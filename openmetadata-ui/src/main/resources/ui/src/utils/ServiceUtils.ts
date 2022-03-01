@@ -54,6 +54,7 @@ import {
   TRINO,
   VERTICA,
 } from '../constants/services.const';
+import { TabSpecificField } from '../enums/entity.enum';
 import { IngestionType, ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -461,6 +462,11 @@ export const servicePageTabs = (entity: string) => [
     path: entity.toLowerCase(),
   },
   {
+    name: 'Activity Feed',
+    path: 'activity_feed',
+    field: TabSpecificField.ACTIVITY_FEED,
+  },
+  {
     name: 'Ingestions',
     path: 'ingestions',
   },
@@ -477,18 +483,22 @@ export const servicePageTabs = (entity: string) => [
 export const getCurrentServiceTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'ingestions':
+    case 'activity_feed':
       currentTab = 2;
 
       break;
-
-    case 'connection_config':
+    case 'ingestions':
       currentTab = 3;
 
       break;
 
-    case 'manage':
+    case 'connection_config':
       currentTab = 4;
+
+      break;
+
+    case 'manage':
+      currentTab = 5;
 
       break;
 

@@ -156,7 +156,7 @@ public class WebhookResource {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException, ParseException {
     return dao.get(uriInfo, id, Fields.EMPTY_FIELDS, include);
   }
 
@@ -301,7 +301,7 @@ public class WebhookResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, GeneralSecurityException, ParseException, InterruptedException {
+      throws IOException, ParseException, InterruptedException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DeleteResponse<Webhook> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     dao.deleteWebhookPublisher(UUID.fromString(id));

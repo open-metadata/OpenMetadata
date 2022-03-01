@@ -13,12 +13,15 @@
 
 import { Operation } from 'fast-json-patch';
 import {
+  EntityFieldThreadCount,
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
   TableDetail,
 } from 'Models';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import {
@@ -49,6 +52,11 @@ export interface PipeLineDetailsProp {
   tasks: Task[];
   deleted?: boolean;
   isLineageLoading?: boolean;
+  entityThread: EntityThread[];
+  isentityThreadLoading: boolean;
+  feedCount: number;
+  entityFieldThreadCount: EntityFieldThreadCount[];
+  createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
@@ -61,4 +69,5 @@ export interface PipeLineDetailsProp {
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
+  postFeedHandler: (value: string, id: string) => void;
 }

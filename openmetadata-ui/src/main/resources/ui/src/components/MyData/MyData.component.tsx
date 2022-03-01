@@ -25,12 +25,10 @@ import { getExplorePathWithSearch } from '../../constants/constants';
 import { filterList } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { getOwnerIds } from '../../utils/CommonUtils';
-import { getFeedSummary } from '../../utils/EntityVersionUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
-import { getRelativeDateByTimeStamp } from '../../utils/TimeUtils';
+import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import FeedCards from '../common/FeedCard/FeedCards.component';
 import PageLayout from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import EntityList from '../EntityList/EntityList';
@@ -50,6 +48,8 @@ const MyData: React.FC<MyDataProps> = ({
   feedData,
   feedFilter,
   feedFilterHandler,
+  isFeedLoading,
+  postFeedHandler,
 }: MyDataProps): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
@@ -161,43 +161,6 @@ const MyData: React.FC<MyDataProps> = ({
     );
   }, [ownedData, followedData]);
 
-  const getFeedsData = useCallback(() => {
-    const feeds = feedData
-      .map((f) => ({
-        name: f.name,
-        fqn: f.fullyQualifiedName,
-        entityType: f.entityType,
-        changeDescriptions: f.changeDescriptions,
-      }))
-      .map((d) => {
-        return (
-          d.changeDescriptions
-            ?.filter(
-              (c) =>
-                c.fieldsAdded?.length ||
-                c.fieldsDeleted?.length ||
-                c.fieldsUpdated?.length
-            )
-            .map((change) => ({
-              updatedAt: change.updatedAt,
-              updatedBy: change.updatedBy,
-              entityName: d.name,
-              description: (
-                <div>{getFeedSummary(change, d.name, d.entityType, d.fqn)}</div>
-              ),
-              entityType: d.entityType,
-              fqn: d.fqn,
-              relativeDay: getRelativeDateByTimeStamp(change.updatedAt),
-            })) || []
-        );
-      })
-      .flat(1)
-      .sort((a, b) => b.updatedAt - a.updatedAt);
-    const relativeDays = [...new Set(feeds.map((f) => f.relativeDay))];
-
-    return { feeds, relativeDays };
-  }, [feedData]);
-
   useEffect(() => {
     isMounted.current = true;
   }, []);
@@ -208,11 +171,17 @@ const MyData: React.FC<MyDataProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {feedFilter === 'all' && !getFeedsData().feeds.length
-            ? null
-            : getFilterDropDown()}
-          {getFeedsData().feeds.length > 0 ? (
-            <FeedCards {...getFeedsData()} />
+          {feedData?.length > 0 ? (
+            <Fragment>
+              {getFilterDropDown()}
+              <ActivityFeedList
+                withSidePanel
+                className=""
+                feedList={feedData}
+                isLoading={isFeedLoading}
+                postFeedHandler={postFeedHandler}
+              />
+            </Fragment>
           ) : (
             <Onboarding />
           )}

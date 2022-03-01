@@ -13,12 +13,13 @@
 
 import {
   EntityCounts,
+  EntityThread,
   FormatedTableData,
   SearchDataFunctionType,
   SearchResponse,
 } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { ChangeDescription, User } from '../../generated/entity/teams/user';
+import { User } from '../../generated/entity/teams/user';
 
 export interface MyDataProps {
   error: string;
@@ -28,16 +29,11 @@ export interface MyDataProps {
   searchResult: SearchResponse | undefined;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
-  feedData: Array<
-    FormatedTableData & {
-      entityType: string;
-      changeDescriptions: Array<
-        ChangeDescription & { updatedAt: number; updatedBy: string }
-      >;
-    }
-  >;
+  feedData: EntityThread[];
   feedFilter: string;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;
+  isFeedLoading?: boolean;
+  postFeedHandler: (value: string, id: string) => void;
 }

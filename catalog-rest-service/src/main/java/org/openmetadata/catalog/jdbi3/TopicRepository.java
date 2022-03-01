@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 
@@ -103,15 +104,10 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException, ParseException {
     topic.setService(getService(topic));
-    topic.setOwner(fields.contains("owner") ? getOwner(topic) : null);
+    topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
     topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
     topic.setTags(fields.contains("tags") ? getTags(topic.getFullyQualifiedName()) : null);
     return topic;
-  }
-
-  @Override
-  public void restorePatchAttributes(Topic original, Topic updated) {
-    /* Nothing to do */
   }
 
   @Override
