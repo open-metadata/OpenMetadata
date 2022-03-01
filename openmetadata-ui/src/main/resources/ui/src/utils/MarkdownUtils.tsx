@@ -11,20 +11,14 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-/// <reference types="react-scripts" />
-declare module 'classnames';
-declare module 'react-js-pagination';
-declare module 'draft-js';
-declare module 'react-draft-wysiwyg';
-declare module 'markdown-draft-js';
-declare module 'react-codemirror2';
-declare module 'react-slick';
-declare module 'slick-carousel';
-declare module 'react-table';
-declare module 'recharts';
-declare module 'diff';
-declare module '@deuex-solutions/react-tour';
-declare module 'dagre';
-declare module 'turndown';
-declare module 'quilljs-markdown';
+import React, { FC, HTMLAttributes } from 'react';
+
+export const Paragraph: FC<
+  HTMLAttributes<HTMLParagraphElement> & { isNewLine: boolean }
+> = ({ children, isNewLine = true, ...props }) =>
+  isNewLine ? <p {...props}>{children}</p> : <span {...props}>{children}</span>;
+
+export const UnOrderedList: FC<HTMLAttributes<HTMLUListElement>> = ({
+  children,
+  ...props
+}) => <ul {...props}>{children}</ul>;

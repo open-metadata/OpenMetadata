@@ -12,17 +12,13 @@
  */
 
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
-import React, { Fragment, useEffect, useState } from 'react';
-import ReactMarkdown, { PluggableList } from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import gfm from 'remark-gfm';
-import { isValidUrl } from '../../../utils/CommonUtils';
+import Markdown from 'markdown-to-jsx';
+import React, { useEffect, useState } from 'react';
+import { Paragraph, UnOrderedList } from '../../../utils/MarkdownUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 const MAX_LENGTH = 300;
 
-/*eslint-disable  */
 const RichTextEditorPreviewer = ({
   markdown,
   className = '',
@@ -43,6 +39,7 @@ const RichTextEditorPreviewer = ({
   useEffect(() => {
     setContent(markdown);
   }, [markdown]);
+
   return (
     <div
       className={classNames(
@@ -55,71 +52,37 @@ const RichTextEditorPreviewer = ({
           'tw-mb-5': displayMoreText,
         }
       )}>
-      <ReactMarkdown
-        children={content
-          .replaceAll(/&lt;/g, '<')
-          .replaceAll(/&gt;/g, '>')
-          .replaceAll('\\', '')}
-        components={{
-          h1: 'p',
-          h2: 'p',
-          h3: 'p',
-          h4: 'p',
-          h5: 'p',
-          h6: 'p',
-          ul: ({ node, children, ...props }) => {
-            const { ordered: _ordered, ...rest } = props;
-            return (
-              <ul style={{ marginLeft: '16px' }} {...rest}>
-                {children}
-              </ul>
-            );
+      <Markdown
+        options={{
+          overrides: {
+            h1: {
+              component: Paragraph,
+            },
+            h2: {
+              component: Paragraph,
+            },
+            h3: {
+              component: Paragraph,
+            },
+            h4: {
+              component: Paragraph,
+            },
+            h5: {
+              component: Paragraph,
+            },
+            h6: {
+              component: Paragraph,
+            },
+            ul: {
+              component: UnOrderedList,
+              props: {
+                className: 'tw-ml-3',
+              },
+            },
           },
-          a: ({ node, children, ...props }) => {
-            if (!isValidUrl(props.href as string)) {
-              return <span>{children}</span>;
-            } else {
-              let link = '';
-              const href = props.href;
-              if (
-                href?.indexOf('http://') == 0 ||
-                href?.indexOf('https://') == 0
-              ) {
-                link = href;
-              } else {
-                link = `https://${href}`;
-              }
-              return (
-                <a href={link} target="_blank" {...props}>
-                  {children}
-                </a>
-              );
-            }
-          },
-          p: ({ node, children, ...props }) => {
-            const newChildren = children?.map((child) => {
-              const childValue = (child?.valueOf() as unknown as { props: any })
-                .props;
-              if (childValue?.href) {
-                return (
-                  <a key={uniqueId()} href={childValue?.href} target="_blank">
-                    {childValue?.children}
-                  </a>
-                );
-              } else {
-                return <Fragment key={uniqueId()}>{child}</Fragment>;
-              }
-            });
-            return (
-              <p {...props} key={uniqueId()}>
-                {newChildren}
-              </p>
-            );
-          },
-        }}
-        remarkPlugins={[gfm] as unknown as PluggableList | undefined}
-        rehypePlugins={[[rehypeRaw, { allowDangerousHtml: false }]]}
-      />
+        }}>
+        {content}
+      </Markdown>
       {enableSeeMoreVariant && markdown.length > MAX_LENGTH && (
         <div
           className={classNames(
@@ -137,8 +100,8 @@ const RichTextEditorPreviewer = ({
               <SVGIcons
                 alt="expand-collapse"
                 className={classNames({ 'rotate-inverse': displayMoreText })}
-                width="32"
                 icon={Icons.CHEVRON_DOWN}
+                width="32"
               />
             </span>
           </p>
