@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-export enum AuthTypes {
-  GOOGLE = 'google',
-  GITHUB = 'github',
-  OKTA = 'okta',
-  AUTH0 = 'auth0',
-  AZURE = 'azure',
-}
+import React, { FunctionComponent } from 'react';
+import AuthProvider from '../auth-provider-old/AuthProvider';
+import AuthenticatedAppRouter from './AuthenticatedAppRouter';
+
+const AppRouter: FunctionComponent = () => {
+  return (
+    <AuthProvider childComponentType={AuthenticatedAppRouter}>
+      <AuthenticatedAppRouter />
+    </AuthProvider>
+  );
+};
+
+export default AppRouter;
