@@ -45,6 +45,7 @@ class PowerbiSourceConfig(ConfigModel):
     scope: List[str] = []
     redirect_uri: str
     credentials: str
+    dashboard_url: str = "https://analysis.windows.net/powerbi"
     dashboard_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     chart_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
@@ -83,15 +84,15 @@ class PowerbiSource(Source[Entity]):
             DashboardServiceType.PowerBI.name,
             config.client_id,
             config.client_secret.get_secret_value(),
-            "https://analysis.windows.net/powerbi",
+            config.dashboard_url,
             metadata_config,
         )
         self.client = PowerBiClient(
             client_id=self.config.client_id,
             client_secret=self.config.client_secret.get_secret_value(),
-            scope=["https://analysis.windows.net/powerbi/api/App.Read.All"],
+            scope=self.config.scope,
             redirect_uri=self.config.redirect_uri,
-            credentials="powerbi_config.json",
+            credentials=self.config.credentials,
         )
 
     @classmethod
@@ -122,7 +123,9 @@ class PowerbiSource(Source[Entity]):
         for chart in charts:
             try:
                 if not self.config.chart_filter_pattern.included(chart["title"]):
-                    self.status.filter(chart["title"], None)
+                    self.status.failures(
+                        chart["title"], "Filtered out using Chart filter pattern"
+                    )
                     continue
                 yield Chart(
                     id=uuid.uuid4(),
@@ -140,6 +143,7 @@ class PowerbiSource(Source[Entity]):
             except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.print_exc())
                 logger.error(repr(err))
+                self.status.failures(chart["title"], err)
 
     def get_dashboards(self):
         """Get dashboard method"""
@@ -152,7 +156,10 @@ class PowerbiSource(Source[Entity]):
                 if not self.config.dashboard_filter_pattern.included(
                     dashboard_details["displayName"]
                 ):
-                    self.status.filter(dashboard_details["displayName"], None)
+                    self.status.failures(
+                        dashboard_details["displayName"],
+                        "Filtered out using Chart filter pattern",
+                    )
                     continue
                 yield from self.get_charts(
                     dashboard_service.get_tiles(
@@ -172,6 +179,7 @@ class PowerbiSource(Source[Entity]):
             except Exception as err:
                 logger.debug(traceback.print_exc())
                 logger.error(err)
+                self.status.failures(dashboard_details["displayName"], err)
 
     def get_status(self) -> SourceStatus:
         return self.status
