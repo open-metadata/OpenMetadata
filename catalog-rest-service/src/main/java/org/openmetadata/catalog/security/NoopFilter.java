@@ -16,6 +16,7 @@ package org.openmetadata.catalog.security;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
@@ -24,11 +25,13 @@ import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 public class NoopFilter implements ContainerRequestFilter {
   @Context private UriInfo uriInfo;
 
+  public NoopFilter(AuthenticationConfiguration authenticationConfiguration) {}
+
   public void filter(ContainerRequestContext containerRequestContext) {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.BASIC_AUTH);
+        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.BASIC_AUTH);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }

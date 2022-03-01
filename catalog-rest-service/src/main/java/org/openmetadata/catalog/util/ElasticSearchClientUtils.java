@@ -64,7 +64,8 @@ public final class ElasticSearchClientUtils {
       throws KeyStoreException {
 
     if (elasticSearchConfiguration.getScheme().equals("https")) {
-      if (elasticSearchConfiguration.getTruststorePath() != null) {
+      if (elasticSearchConfiguration.getTruststorePath() != null
+          && !elasticSearchConfiguration.getTruststorePath().isEmpty()) {
         Path trustStorePath = Paths.get(elasticSearchConfiguration.getTruststorePath());
         KeyStore truststore = KeyStore.getInstance("jks");
         try (InputStream is = Files.newInputStream(trustStorePath)) {

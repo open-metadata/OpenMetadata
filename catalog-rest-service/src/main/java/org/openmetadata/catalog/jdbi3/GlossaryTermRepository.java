@@ -177,9 +177,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     applyTags(entity);
   }
 
-  @Override
-  public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {}
-
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
     // TODO check deleted
     List<String> refs = findFrom(term.getId(), Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY, null);

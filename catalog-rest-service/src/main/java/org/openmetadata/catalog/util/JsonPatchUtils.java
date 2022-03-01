@@ -1,5 +1,8 @@
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,13 +27,13 @@ public class JsonPatchUtils {
     // To get operation, use the following:
     // JsonPatch.Operation op =  JsonPatch.Operation.fromOperationName(jsonPatchMap.get("op").toString());
 
-    if (path.contains("description")) {
+    if (path.contains(FIELD_DESCRIPTION)) {
       return MetadataOperation.UpdateDescription;
     }
     if (path.contains("tags")) {
       return MetadataOperation.UpdateTags;
     }
-    if (path.contains("owner")) {
+    if (path.contains(FIELD_OWNER)) {
       return MetadataOperation.UpdateOwner;
     }
     return null;

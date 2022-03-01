@@ -19,7 +19,6 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -36,7 +35,7 @@ public class ChangeEventRepository {
   @Transaction
   public List<ChangeEvent> list(
       long timestamp, List<String> entityCreatedList, List<String> entityUpdatedList, List<String> entityDeletedList)
-      throws IOException, GeneralSecurityException {
+      throws IOException {
     List<String> jsons = new ArrayList<>();
     jsons.addAll(dao.changeEventDAO().list(ENTITY_CREATED.value(), entityCreatedList, timestamp));
     jsons.addAll(dao.changeEventDAO().list(ENTITY_UPDATED.value(), entityUpdatedList, timestamp));

@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.services.messaging;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -72,7 +74,7 @@ public class MessagingServiceResource {
   private final MessagingServiceRepository dao;
   private final Authorizer authorizer;
 
-  static final String FIELDS = "owner";
+  public static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(MessagingService.class);
 
   public static ResultList<MessagingService> addHref(UriInfo uriInfo, ResultList<MessagingService> services) {

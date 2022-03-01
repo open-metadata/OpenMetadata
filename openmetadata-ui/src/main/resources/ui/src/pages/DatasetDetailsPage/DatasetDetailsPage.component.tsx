@@ -15,10 +15,23 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityTags,
+  EntityThread,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+  postThread,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -43,6 +56,7 @@ import {
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   EntityReference,
   Table,
@@ -66,7 +80,7 @@ import {
   defaultFields,
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -79,6 +93,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
   const [isTableQueriesLoading, setIsTableQueriesLoading] =
+    useState<boolean>(false);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
@@ -126,6 +142,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
   const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -157,6 +179,22 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .finally(() => {
         setIsLineageLoading(false);
       });
+  };
+
+  const getFeedData = () => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN))
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setEntityThread(data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feeds',
+        });
+      })
+      .finally(() => setIsentityThreadLoading(false));
   };
 
   const fetchTableDetail = () => {
@@ -198,7 +236,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
             url: service.name
               ? getServiceDetailsPath(
                   service.name,
-                  serviceType,
                   ServiceCategory.DATABASE_SERVICES
                 )
               : '',
@@ -304,6 +341,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
           break;
         }
       }
+      case TabSpecificField.ACTIVITY_FEED: {
+        getFeedData();
+
+        break;
+      }
 
       default:
         break;
@@ -319,6 +361,20 @@ const DatasetDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
   }, [activeTab]);
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN))
+      .then((res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feed count',
+        });
+      });
+  };
 
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
     const jsonPatch = compare(tableDetails, updatedData);
@@ -336,6 +392,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setCurrentVersion(version);
         setTableDetails(res.data);
         setDescription(description);
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
@@ -356,6 +413,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableDetails(res.data);
         setColumns(columns);
         setTableTags(getTableTags(columns || []));
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
@@ -376,6 +434,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setTableDetails(res.data);
           setOwner(owner);
           setTier(getTierTags(tags));
+          getEntityFeedCount();
           resolve();
         })
         .catch((err: AxiosError) => {
@@ -480,6 +539,54 @@ const DatasetDetailsPage: FunctionComponent = () => {
     });
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+          getEntityFeedCount();
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res: AxiosResponse) => {
+        setEntityThread((pre) => [...pre, res.data]);
+        showToast({
+          variant: 'success',
+          body: 'Thread is created successfully',
+        });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while creating thread',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -491,6 +598,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
     setEntityLineage({} as EntityLineage);
   }, [datasetFQN]);
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
 
   return (
     <>
@@ -506,24 +617,30 @@ const DatasetDetailsPage: FunctionComponent = () => {
           addLineageHandler={addLineageHandler}
           columns={columns}
           columnsUpdateHandler={columnsUpdateHandler}
+          createThread={createThread}
           dataModel={tableDetails.dataModel}
           datasetFQN={tableFQN}
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={name}
+          entityThread={entityThread}
+          feedCount={feedCount}
           followTableHandler={followTable}
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           isQueriesLoading={isTableQueriesLoading}
           isSampleDataLoading={isSampleDataLoading}
+          isentityThreadLoading={isentityThreadLoading}
           joins={joins}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
+          postFeedHandler={postFeedHandler}
           removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}

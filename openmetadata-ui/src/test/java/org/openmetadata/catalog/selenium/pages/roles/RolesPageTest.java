@@ -45,7 +45,7 @@ public class RolesPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
     rolesPage = new RolesPage(webDriver);
     actions = new Actions(webDriver);

@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -46,13 +47,8 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
   @Override
   public StorageService setFields(StorageService entity, Fields fields) throws IOException, ParseException {
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
+    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
-  }
-
-  @Override
-  public void restorePatchAttributes(StorageService original, StorageService updated) {
-    /* Nothing to do */
   }
 
   @Override

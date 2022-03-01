@@ -195,6 +195,14 @@ public interface EntityDAO<T> {
     return getEntityReference(findEntityByName(fqn));
   }
 
+  default EntityReference findEntityReferenceById(UUID id, Include include) throws IOException {
+    return getEntityReference(findEntityById(id, include));
+  }
+
+  default EntityReference findEntityReferenceByName(String fqn, Include include) throws IOException {
+    return getEntityReference(findEntityByName(fqn, include));
+  }
+
   default String findJsonById(String id, Include include) {
     return findById(getTableName(), id, toBoolean(include));
   }

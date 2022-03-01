@@ -25,9 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -263,10 +266,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withEmail("test@email.com")
             .withIsAdmin(true);
 
-    assertResponse(
-        () -> createAndCheckEntity(create, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> createAndCheckEntity(create, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
   }
 
   @Test
@@ -405,9 +405,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String userJson = JsonUtils.pojoToJson(user);
     user.setDisplayName("newName");
     assertResponse(
-        () -> patchUser(userJson, user, authHeaders("test100@email.com")),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test100'} does not have permissions");
+        () -> patchUser(userJson, user, authHeaders("test100@email.com")), FORBIDDEN, noPermission("test100"));
   }
 
   @Test
@@ -419,10 +417,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             authHeaders("test2@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
-    assertResponse(
-        () -> patchUser(userJson, user, authHeaders("test100@email.com")),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test100'} is not admin");
+    Map<String, String> authHeaders = authHeaders("test100@email.com");
+    assertResponse(() -> patchUser(userJson, user, authHeaders), FORBIDDEN, notAdmin("test100"));
   }
 
   @Test

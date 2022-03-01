@@ -404,7 +404,10 @@ export const getFields = (defaultFields: string, tabSpecificField: string) => {
   if (!defaultFields) {
     return tabSpecificField;
   }
-  if (tabSpecificField === TabSpecificField.LINEAGE) {
+  if (
+    tabSpecificField === TabSpecificField.LINEAGE ||
+    tabSpecificField === TabSpecificField.ACTIVITY_FEED
+  ) {
     return defaultFields;
   }
 
@@ -468,4 +471,21 @@ export const getNameFromFQN = (fqn: string): string => {
   const arr = fqn.split('.');
 
   return arr[arr.length - 1];
+};
+
+export const getRandomColor = (name: string) => {
+  const firstAlphabet = name.charAt(0).toLowerCase();
+  const asciiCode = firstAlphabet.charCodeAt(0);
+  const colorNum =
+    asciiCode.toString() + asciiCode.toString() + asciiCode.toString();
+
+  const num = Math.round(0xffffff * parseInt(colorNum));
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+
+  return {
+    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.3)',
+    character: firstAlphabet.toUpperCase(),
+  };
 };

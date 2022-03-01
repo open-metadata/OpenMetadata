@@ -238,7 +238,7 @@ jest.mock('../dropdown/DropDownList', () => {
   return jest.fn().mockReturnValue(<p>DropDownList</p>);
 });
 
-jest.mock('../common/FeedCard/FeedCards.component', () => {
+jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 
@@ -292,6 +292,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
 const feedFilterHandler = jest.fn();
 
 const fetchData = jest.fn();
+const postFeed = jest.fn();
 
 describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
@@ -312,6 +313,7 @@ describe('Test MyData page', () => {
         followedData={formatDataResponse(mockData.data.hits.hits)}
         ingestionCount={0}
         ownedData={formatDataResponse(mockData.data.hits.hits)}
+        postFeedHandler={postFeed}
         searchResult={mockData as unknown as SearchResponse}
         userDetails={mockUserDetails as unknown as User}
       />,
