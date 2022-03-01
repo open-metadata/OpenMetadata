@@ -216,6 +216,8 @@ class MetabaseSource(Source[Entity]):
         for chart in chart_list:
             try:
                 chart_details = chart["card"]
+                if not chart_details.get("table_id"):
+                    continue
                 resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
@@ -229,17 +231,18 @@ class MetabaseSource(Source[Entity]):
                         entity=Model_Dashboard, fqdn=dashboard_fqdn
                     )
                     logger.debug("from entity %s", table_entity)
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=table_entity.id.__root__, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=chart_entity.id.__root__, type="dashboard"
-                            ),
+                    if table_entity and chart_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=table_entity.id.__root__, type="table"
+                                ),
+                                toEntity=EntityReference(
+                                    id=chart_entity.id.__root__, type="dashboard"
+                                ),
+                            )
                         )
-                    )
-                    yield lineage
+                        yield lineage
             except Exception as err:  # pylint: disable=broad-except,unused-variable
                 logger.error(traceback.print_exc())
 
@@ -264,6 +267,8 @@ class MetabaseSource(Source[Entity]):
         for card in card_list:
             try:
                 card_details = card["card"]
+                if not card_details.get("id"):
+                    continue
                 card_detail_resp = self.req_get(f"/api/card/{card_details['id']}")
                 if card_detail_resp.status_code == 200:
                     card = card_detail_resp.json()
