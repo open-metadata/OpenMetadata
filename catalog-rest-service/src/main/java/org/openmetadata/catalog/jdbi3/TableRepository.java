@@ -15,6 +15,8 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DATABASE;
 import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.helper;
@@ -101,7 +103,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setDatabase(getDatabase(table));
     table.setService(getService(table));
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setOwner(fields.contains("owner") ? getOwner(table) : null);
+    table.setOwner(fields.contains(FIELD_OWNER) ? getOwner(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
     table.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
@@ -1000,7 +1002,7 @@ public class TableRepository extends EntityRepository<Table> {
         return;
       }
       recordChange(
-          getColumnField(origColumn, "description"), origColumn.getDescription(), updatedColumn.getDescription());
+          getColumnField(origColumn, FIELD_DESCRIPTION), origColumn.getDescription(), updatedColumn.getDescription());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {

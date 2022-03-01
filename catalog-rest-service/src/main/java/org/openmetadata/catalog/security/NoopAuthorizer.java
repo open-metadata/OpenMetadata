@@ -34,8 +34,7 @@ import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
-
-  private static final String fieldsParam = "roles,teams";
+  private static final String FIELDS_PARAM = "roles,teams";
   private UserRepository userRepository;
 
   @Override
@@ -73,7 +72,7 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   private void addAnonymousUser() {
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     String username = "anonymous";
     try {
       userRepository.getByName(null, username, fields);

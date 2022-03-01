@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
@@ -35,9 +36,9 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
   private static final Fields AIRFLOW_PIPELINE_UPDATE_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, "owner");
+      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
   private static final Fields AIRFLOW_PIPELINE_PATCH_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, "owner");
+      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
 
   public AirflowPipelineRepository(CollectionDAO dao) {
     super(
@@ -67,12 +68,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   @Override
   public AirflowPipeline setFields(AirflowPipeline airflowPipeline, Fields fields) throws IOException, ParseException {
     airflowPipeline.setService(getService(airflowPipeline));
-    airflowPipeline.setOwner(fields.contains("owner") ? getOwner(airflowPipeline) : null);
+    airflowPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(airflowPipeline) : null);
     return airflowPipeline;
   }
-
-  @Override
-  public void restorePatchAttributes(AirflowPipeline original, AirflowPipeline updated) {}
 
   @Override
   public EntityInterface<AirflowPipeline> getEntityInterface(AirflowPipeline entity) {

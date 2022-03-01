@@ -258,15 +258,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   public CreateTopic createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreateTopic()
         .withName(name)
-        .withService(KAFKA_REFERENCE)
+        .withService(getContainer())
         .withPartitions(1)
         .withDescription(description)
         .withOwner(owner);
   }
 
   @Override
-  public EntityReference getContainer(CreateTopic createRequest) {
-    return createRequest.getService();
+  public EntityReference getContainer() {
+    return KAFKA_REFERENCE;
   }
 
   @Override

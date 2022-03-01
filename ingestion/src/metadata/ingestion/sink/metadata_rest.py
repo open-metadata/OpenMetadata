@@ -419,7 +419,8 @@ class MetadataRestSink(Sink[Entity]):
                     )
                 except APIError:
                     role_entity = self._create_role(role)
-                role_ids.append(role_entity.id)
+                if role_entity:
+                    role_ids.append(role_entity.id)
         else:
             role_ids = None
 

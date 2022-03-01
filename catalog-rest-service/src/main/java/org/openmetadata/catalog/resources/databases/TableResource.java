@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -96,8 +98,10 @@ public class TableResource {
   }
 
   public static class TableList extends ResultList<Table> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public TableList() {}
+    @SuppressWarnings("unused")
+    public TableList() {
+      /* Required for serde */
+    }
 
     public TableList(List<Table> data, String beforeCursor, String afterCursor, int total)
         throws GeneralSecurityException, UnsupportedEncodingException {
@@ -108,11 +112,13 @@ public class TableResource {
   static final String FIELDS =
       "tableConstraints,usageSummary,owner,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Table.class);
+  public static final List<String> ALLOWED_FIELDS;
 
   static {
-    // Add a field parameter called tests that represents fields - tableTests and columnTests
-    ALLOWED_FIELDS.add("tests");
+    List<String> list = new ArrayList<>();
+    list.addAll(Entity.getEntityFields(Table.class));
+    list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
+    ALLOWED_FIELDS = Collections.unmodifiableList(list);
   }
 
   @GET

@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.security;
 
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import java.security.Principal;
@@ -33,7 +36,7 @@ public final class SecurityUtil {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx)) {
-      throw new AuthorizationException("Principal: " + principal + " is not admin");
+      throw new AuthorizationException(notAdmin(principal));
     }
   }
 
@@ -50,7 +53,7 @@ public final class SecurityUtil {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx) && !authorizer.isBot(authenticationCtx)) {
-      throw new AuthorizationException("Principal: " + principal + " is not admin");
+      throw new AuthorizationException(notAdmin(principal));
     }
   }
 
@@ -61,7 +64,7 @@ public final class SecurityUtil {
     if (!authorizer.isAdmin(authenticationCtx)
         && !authorizer.isBot(authenticationCtx)
         && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
-      throw new AuthorizationException("Principal: " + principal + " does not have permissions");
+      throw new AuthorizationException(noPermission(principal));
     }
   }
 
@@ -79,7 +82,7 @@ public final class SecurityUtil {
     }
 
     if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-      throw new AuthorizationException("Principal: " + principal + " does not have permission to " + metadataOperation);
+      throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
     }
   }
 
@@ -100,8 +103,7 @@ public final class SecurityUtil {
     List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
     for (MetadataOperation metadataOperation : metadataOperations) {
       if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-        throw new AuthorizationException(
-            "Principal: " + principal + " does not have permission to " + metadataOperation);
+        throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
       }
     }
   }
@@ -127,6 +129,15 @@ public final class SecurityUtil {
       builder.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
     }
     return builder.build();
+  }
+
+  public static String getPrincipalName(Map<String, String> authHeaders) {
+    // Get username from the email address
+    if (authHeaders == null) {
+      return null;
+    }
+    String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
+    return principal == null ? null : principal.split("@")[0];
   }
 
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {
