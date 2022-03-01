@@ -24,6 +24,7 @@ from metadata.cli.backup import run_backup
 from metadata.cli.docker import run_docker
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.profiler.profiler_runner import ProfilerRunner
 
 logger = logging.getLogger(__name__)
@@ -100,7 +101,6 @@ def ingest(config: str) -> None:
     required=True,
 )
 def profile(config: str) -> None:
-    from metadata.orm_profiler.api.workflow import ProfilerWorkflow
     """Main command for profiling and testing Table sources into Metadata"""
     config_file = pathlib.Path(config)
     workflow_config = load_config_file(config_file)
