@@ -60,7 +60,7 @@ const SigninPage = () => {
       case AuthTypes.AZURE: {
         btnComponent = (
           <LoginButton
-            ssoBrandLogo={Icons.GOOGLE_ICON}
+            ssoBrandLogo={Icons.AZURE_ICON}
             ssoBrandName="Azure"
             onClick={handleSignIn}
           />
