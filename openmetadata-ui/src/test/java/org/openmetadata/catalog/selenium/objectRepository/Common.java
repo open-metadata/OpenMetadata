@@ -83,13 +83,14 @@ public class Common {
   By addTag = By.xpath("(//div[@data-testid='tag-conatiner'])[1]");
   By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])");
   By tagsAdded = By.cssSelector("span[class='tw-no-underline hover:tw-no-underline tw-px-1']");
+  By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
   }
 
   public By containsText(String matchingText) {
-    return By.xpath("//*[text()[contains(.,'" + matchingText + "')]] ");
+    return By.xpath("//*[text()[contains('" + matchingText + "')]] ");
   }
 
   public By serviceType(String serviceType) {

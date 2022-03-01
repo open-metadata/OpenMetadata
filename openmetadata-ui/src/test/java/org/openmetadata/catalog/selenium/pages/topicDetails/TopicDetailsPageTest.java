@@ -117,7 +117,6 @@ public class TopicDetailsPageTest {
   public void addTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    String[] selectedTag = new String[3];
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, topicDetails.addTag());

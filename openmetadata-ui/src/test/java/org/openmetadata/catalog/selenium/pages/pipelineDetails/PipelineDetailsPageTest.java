@@ -84,7 +84,7 @@ public class PipelineDetailsPageTest {
     if (webDriver.findElement(common.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
-      Assert.fail();
+      Assert.fail("No such element found");
     }
   }
 
