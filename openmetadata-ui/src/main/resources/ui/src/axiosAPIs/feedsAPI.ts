@@ -12,7 +12,8 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Feed, Post } from 'Models';
+import { Post } from 'Models';
+import { CreateThread } from '../generated/api/feed/createThread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
@@ -35,7 +36,9 @@ export const getFeedCount: Function = (
   });
 };
 
-export const postFeed: Function = (data: Feed): Promise<AxiosResponse> => {
+export const postThread: Function = (
+  data: CreateThread
+): Promise<AxiosResponse> => {
   return APIClient.post('/feed', data);
 };
 

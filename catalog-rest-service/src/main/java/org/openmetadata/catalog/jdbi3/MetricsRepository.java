@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
@@ -57,15 +58,10 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException, ParseException {
     metrics.setService(getService(metrics)); // service is a default field
-    metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
+    metrics.setOwner(fields.contains(FIELD_OWNER) ? getOwner(metrics) : null);
     metrics.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
     return metrics;
-  }
-
-  @Override
-  public void restorePatchAttributes(Metrics original, Metrics updated) {
-    /* Nothing to do */
   }
 
   @Override

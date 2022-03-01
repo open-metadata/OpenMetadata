@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -36,6 +38,7 @@ import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
@@ -793,10 +796,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   protected void post_entity_as_non_admin_401(TestInfo test) {
-    assertResponse(
-        () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> createEntity(createRequest(test), TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
   }
 
   @Test
@@ -921,10 +921,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
     K updateRequest = createRequest(getEntityName(test), "newDescription", "displayName", null);
-    assertResponse(
-        () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
+    assertResponse(() -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS), FORBIDDEN, noPermission(TEST_USER_NAME));
   }
 
   @Test
@@ -1255,10 +1252,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertResponse(
-        () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */
@@ -1602,8 +1596,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           () ->
               patchEntity(entityInterface.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
-          String.format(
-              "Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateDescription", userName));
+          noPermission(userName, "UpdateDescription"));
       // Revert to original.
       entityInterface.setDescription(originalDescription);
       return entityInterface.getEntity();
@@ -1718,8 +1711,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // previous, entity, changeDescription
     //
     if (expectedEventType == EventType.ENTITY_CREATED) {
-      assertEquals(changeEvent.getEventType(), EventType.ENTITY_CREATED);
-      assertEquals(changeEvent.getPreviousVersion(), 0.1);
+      assertEquals(EventType.ENTITY_CREATED, changeEvent.getEventType());
+      assertEquals(0.1, changeEvent.getPreviousVersion());
       assertNull(changeEvent.getChangeDescription());
       compareEntities(
           entityInterface.getEntity(), JsonUtils.readValue((String) changeEvent.getEntity(), entityClass), authHeaders);

@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -50,13 +51,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
   @Override
   public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
-    entity.setOwner(fields.contains("owner") ? getOwner(entity) : null);
+    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
-  }
-
-  @Override
-  public void restorePatchAttributes(MessagingService original, MessagingService updated) {
-    /* Nothing to do */
   }
 
   @Override

@@ -99,7 +99,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
-          placeholder={placeHolder ?? 'Post a reply'}
+          placeholder={placeHolder ?? 'Enter a reply'}
           theme="snow"
           value={value}
           onChange={handleOnChange}

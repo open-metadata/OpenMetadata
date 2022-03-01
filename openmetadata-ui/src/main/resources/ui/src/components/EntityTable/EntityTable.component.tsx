@@ -12,8 +12,8 @@
  */
 
 import classNames from 'classnames';
-import { cloneDeep, isUndefined, lowerCase, upperCase } from 'lodash';
-import { EntityTags } from 'Models';
+import { cloneDeep, isUndefined, lowerCase } from 'lodash';
+import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
@@ -21,7 +21,6 @@ import { getTableDetailsPath } from '../../constants/constants';
 import {
   Column,
   ColumnJoins,
-  DataType,
   JoinedWith,
   Table,
 } from '../../generated/entity/data/table';
@@ -32,8 +31,13 @@ import {
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
+import { getFieldThreadElement } from '../../utils/FeedElementUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getConstraintIcon, makeData } from '../../utils/TableUtils';
+import {
+  getConstraintIcon,
+  getDataTypeString,
+  makeData,
+} from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
@@ -50,7 +54,9 @@ type Props = {
   columnName: string;
   hasEditAccess: boolean;
   isReadOnly?: boolean;
+  entityFieldThreads?: EntityFieldThreads[];
   onUpdate?: (columns: Table['columns']) => void;
+  onThreadLinkSelect?: (value: string) => void;
 };
 
 const EntityTable = ({
@@ -60,7 +66,9 @@ const EntityTable = ({
   owner,
   hasEditAccess,
   joins,
+  entityFieldThreads,
   isReadOnly = false,
+  onThreadLinkSelect,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -118,34 +126,6 @@ const EntityTable = ({
 
   const [allTags, setAllTags] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-
-  const getDataTypeString = (dataType: string): string => {
-    switch (upperCase(dataType)) {
-      case DataType.String:
-      case DataType.Char:
-      case DataType.Text:
-      case DataType.Varchar:
-      case DataType.Mediumtext:
-      case DataType.Mediumblob:
-      case DataType.Blob:
-        return 'varchar';
-      case DataType.Timestamp:
-      case DataType.Time:
-        return 'timestamp';
-      case DataType.Int:
-      case DataType.Float:
-      case DataType.Smallint:
-      case DataType.Bigint:
-      case DataType.Numeric:
-      case DataType.Tinyint:
-        return 'numeric';
-      case DataType.Boolean:
-      case DataType.Enum:
-        return 'boolean';
-      default:
-        return dataType;
-    }
-  };
 
   const fetchTags = () => {
     setIsTagLoading(true);
@@ -481,6 +461,12 @@ const EntityTable = ({
                                   )}
                                 </TagsContainer>
                               </NonAdminAction>
+                              {getFieldThreadElement(
+                                cell.row.cells[0].value,
+                                'tags',
+                                entityFieldThreads as EntityFieldThreads[],
+                                onThreadLinkSelect
+                              )}
                             </div>
                           )}
                         </>
@@ -501,6 +487,12 @@ const EntityTable = ({
                                   <span className="tw-no-description">
                                     No description added
                                   </span>
+                                )}
+                                {getFieldThreadElement(
+                                  cell.row.cells[0].value,
+                                  'description',
+                                  entityFieldThreads as EntityFieldThreads[],
+                                  onThreadLinkSelect
                                 )}
                               </div>
                               {!isReadOnly ? (

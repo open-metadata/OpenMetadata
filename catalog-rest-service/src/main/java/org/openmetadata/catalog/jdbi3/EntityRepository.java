@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
@@ -207,7 +209,9 @@ public abstract class EntityRepository<T> {
    * error, we take lenient approach of ignoring the user error and restore those attributes based on what is already
    * stored in the original entity.
    */
-  public abstract void restorePatchAttributes(T original, T updated);
+  public void restorePatchAttributes(T original, T updated) {
+    /* Nothing to restore during PATCH */
+  }
 
   /**
    * Initialize data from json files if seed data does not exist in corresponding tables. Seed data is stored under
@@ -562,7 +566,7 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public static final Fields FIELDS_OWNER = new Fields(List.of("owner"), "owner");
+  public static final Fields FIELDS_OWNER = new Fields(List.of(FIELD_OWNER), FIELD_OWNER);
 
   public final EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
     // Try to find the owner if entity exists
@@ -687,7 +691,7 @@ public abstract class EntityRepository<T> {
      * either User or Team.
      */
     public EntityReference validateOwnerOrNull() throws IOException, ParseException {
-      EntityReference entityReference = validateFieldOrNull("owner");
+      EntityReference entityReference = validateFieldOrNull(FIELD_OWNER);
       if (entityReference == null) {
         return null;
       } else if (!List.of(Entity.USER, Entity.TEAM).contains(entityReference.getType())) {
@@ -964,7 +968,7 @@ public abstract class EntityRepository<T> {
         updated.setDescription(original.getDescription());
         return;
       }
-      recordChange("description", original.getDescription(), updated.getDescription());
+      recordChange(FIELD_DESCRIPTION, original.getDescription(), updated.getDescription());
     }
 
     private void updateDeleted() throws JsonProcessingException {
@@ -1001,7 +1005,7 @@ public abstract class EntityRepository<T> {
       EntityReference updatedOwner = updated.getOwner();
       if (operation.isPatch() || updatedOwner != null) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
-        if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
+        if (recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
           EntityUtil.updateOwner(
               daoCollection.relationshipDAO(), origOwner, updatedOwner, original.getId(), entityType);
         }

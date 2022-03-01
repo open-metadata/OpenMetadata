@@ -70,12 +70,14 @@ plugins: Dict[str, Set[str]] = {
     },
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
+    "atlas": {},
     "azuresql": {"pyodbc"},
     "bigquery": {
         "sqlalchemy-bigquery==1.2.2",
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",
     },
+    
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
@@ -98,6 +100,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
+    "powerbi": {"python-power-bi==0.1.2"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},

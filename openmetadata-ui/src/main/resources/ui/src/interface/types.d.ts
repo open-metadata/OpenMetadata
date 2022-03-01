@@ -497,6 +497,8 @@ declare module 'Models' {
   export interface EditorContentRef {
     getEditorContent: () => string;
   }
+
+  // Feed interfaces and types
   export interface EntityThread {
     id: string;
     href: string;
@@ -515,5 +517,17 @@ declare module 'Models' {
     message: string;
     postTs: number;
     from: string;
+  }
+
+  export interface EntityFieldThreadCount {
+    count: number;
+    entityLink: string;
+  }
+
+  export type EntityThreadField = 'description' | 'columns' | 'tags' | 'tasks';
+  export interface EntityFieldThreads {
+    entityLink: string;
+    count: number;
+    entityField: string;
   }
 }

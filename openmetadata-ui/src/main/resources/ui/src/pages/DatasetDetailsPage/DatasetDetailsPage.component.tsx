@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import {
+  EntityFieldThreadCount,
   EntityTags,
   EntityThread,
   LeafNodes,
@@ -29,6 +30,7 @@ import {
   getAllFeeds,
   getFeedCount,
   postFeedById,
+  postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
@@ -54,6 +56,7 @@ import {
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   EntityReference,
   Table,
@@ -142,6 +145,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
 
   const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -356,6 +362,20 @@ const DatasetDetailsPage: FunctionComponent = () => {
     fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
   }, [activeTab]);
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN))
+      .then((res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching entity feed count',
+        });
+      });
+  };
+
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
     const jsonPatch = compare(tableDetails, updatedData);
 
@@ -372,6 +392,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setCurrentVersion(version);
         setTableDetails(res.data);
         setDescription(description);
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
@@ -392,6 +413,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableDetails(res.data);
         setColumns(columns);
         setTableTags(getTableTags(columns || []));
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
@@ -412,6 +434,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setTableDetails(res.data);
           setOwner(owner);
           setTier(getTierTags(tags));
+          getEntityFeedCount();
           resolve();
         })
         .catch((err: AxiosError) => {
@@ -536,6 +559,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               }
             });
           });
+          getEntityFeedCount();
         }
       })
       .catch(() => {
@@ -546,12 +570,21 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN)).then(
-      (res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-      }
-    );
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res: AxiosResponse) => {
+        setEntityThread((pre) => [...pre, res.data]);
+        showToast({
+          variant: 'success',
+          body: 'Thread is created successfully',
+        });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while creating thread',
+        });
+      });
   };
 
   useEffect(() => {
@@ -584,11 +617,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
           addLineageHandler={addLineageHandler}
           columns={columns}
           columnsUpdateHandler={columnsUpdateHandler}
+          createThread={createThread}
           dataModel={tableDetails.dataModel}
           datasetFQN={tableFQN}
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={name}
