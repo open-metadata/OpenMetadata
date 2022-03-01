@@ -101,7 +101,8 @@ class AtlasSource(Source):
             for key in self.tables:
                 yield from self._parse_table_entity(key, self.tables[key])
         if self.topics:
-            yield from self._parse_topic_entity()
+            for topic in self.topics:
+                yield from self._parse_topic_entity(topic)
 
     def close(self):
         return super().close()
@@ -109,7 +110,7 @@ class AtlasSource(Source):
     def get_status(self) -> SourceStatus:
         return self.status
 
-    def _parse_topic_entity(self):
+    def _parse_topic_entity(self, topic):
         for key in self.topics.keys():
             topic_entity = self.atlas_client.get_entity(self.topics[key])
             tpc_entities = topic_entity["entities"]
@@ -126,7 +127,7 @@ class AtlasSource(Source):
                     )
 
                     yield topic
-                    yield from self.ingest_lineage(tpc_entity["guid"])
+                    yield from self.ingest_lineage(tpc_entity["guid"], topic)
 
                 except Exception as e:
                     logger.error("error occured", e)
