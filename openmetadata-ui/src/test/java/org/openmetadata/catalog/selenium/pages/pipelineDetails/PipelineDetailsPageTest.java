@@ -179,9 +179,8 @@ public class PipelineDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    WebElement checkDescription = pipelineDetails.getDescriptionBox();
-    String chck = checkDescription.getText();
-    Assert.assertEquals(chck, updatedDescription);
+    String checkDescription = pipelineDetails.getDescriptionBox().getText();
+    Assert.assertEquals(checkDescription, updatedDescription);
   }
 
   @Test
@@ -193,12 +192,8 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, pipelineDetails.lineage());
     List<WebElement> nodes = pipelineDetails.lineageNodes();
-    // Clicking and checking all the nodes text matches to side drawer text
-    WebElement sideDrawer;
     for (WebElement e : nodes) {
       e.click();
-      sideDrawer = webDriver.findElement(pipelineDetails.sideDrawerLineage());
-      Assert.assertEquals(e.getText(), IsEqualIgnoringCase.equalToIgnoringCase(sideDrawer.getText()));
       actions.dragAndDropBy(e, 100, 200).perform();
     }
   }

@@ -121,6 +121,7 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.saveTableDescription());
+    Thread.sleep(waitTime);
     String description = webDriver.findElement(tableDetails.descriptionBox()).getText();
     Assert.assertTrue(description.equalsIgnoreCase(sendKeys));
   }

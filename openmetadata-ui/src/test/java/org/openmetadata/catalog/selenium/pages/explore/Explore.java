@@ -9,6 +9,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -331,8 +332,8 @@ class Explore {
     try {
       WebElement errorMessage = webDriver.findElement(explorePage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "No matching data assets found for " + searchCriteria);
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Element not found");
     }
   }
 

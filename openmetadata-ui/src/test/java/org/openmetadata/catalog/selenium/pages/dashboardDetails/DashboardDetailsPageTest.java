@@ -111,17 +111,18 @@ public class DashboardDetailsPageTest {
   @Order(4)
   public void addTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    String breadcrumbTag;
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.addTag());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
-    Thread.sleep(waitTime);
     String selectedTag = webDriver.findElement(common.tagListItem()).getText();
     Events.click(webDriver, common.tagListItem());
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(2000);
-    String breadcrumbTag = webDriver.findElement(common.breadCrumbTags()).getText();
+    breadcrumbTag = webDriver.findElement(common.breadCrumbTags()).getText();
     Assert.assertEquals(breadcrumbTag, selectedTag);
   }
 
