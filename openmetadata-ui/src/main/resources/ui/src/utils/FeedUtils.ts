@@ -180,7 +180,7 @@ const getMentionList = (message: string) => {
   return message.match(mentionRegEx);
 };
 
-const getHahsTagList = (message: string) => {
+const getHashTagList = (message: string) => {
   return message.match(hashtagRegEx);
 };
 
@@ -199,7 +199,7 @@ const getEntityLinkDetail = (item: string) => {
 export const getBackendFormat = (message: string) => {
   let updatedMessage = message;
   const mentionList = [...new Set(getMentionList(message) ?? [])];
-  const hashtagList = [...new Set(getHahsTagList(message) ?? [])];
+  const hashtagList = [...new Set(getHashTagList(message) ?? [])];
   const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
   const hashtagDetails = hashtagList.map((h) => getEntityDetail(h) ?? []);
 
