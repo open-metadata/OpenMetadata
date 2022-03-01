@@ -13,15 +13,21 @@
 OpenMetadata high-level API Pipeline test
 """
 import uuid
-from unittest import TestCase
 from datetime import datetime
+from unittest import TestCase
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus, StatusType, Task, TaskStatus
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    StatusType,
+    Task,
+    TaskStatus,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
@@ -209,7 +215,7 @@ class OMetaPipelineTest(TestCase):
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
-            ]
+            ],
         )
 
         pipeline = self.metadata.create_or_update(data=create_pipeline)
@@ -222,8 +228,8 @@ class OMetaPipelineTest(TestCase):
                 executionStatus=StatusType.Successful,
                 taskStatus=[
                     TaskStatus(name="task1", executionStatus=StatusType.Successful),
-                ]
-            )
+                ],
+            ),
         )
 
         # We get a list of status
@@ -239,8 +245,8 @@ class OMetaPipelineTest(TestCase):
                 taskStatus=[
                     TaskStatus(name="task1", executionStatus=StatusType.Successful),
                     TaskStatus(name="task2", executionStatus=StatusType.Successful),
-                ]
-            )
+                ],
+            ),
         )
 
         assert updated.pipelineStatus[0].executionDate.__root__ == execution_ts
@@ -260,27 +266,30 @@ class OMetaPipelineTest(TestCase):
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
-            ]
+            ],
         )
 
         pipeline = self.metadata.create_or_update(data=create_pipeline)
 
         # Add new tasks
         updated_pipeline = self.metadata.add_task_to_pipeline(
-            pipeline, Task(name="task3"),
+            pipeline,
+            Task(name="task3"),
         )
 
         assert len(updated_pipeline.tasks) == 3
 
         # Update a task already added
         updated_pipeline = self.metadata.add_task_to_pipeline(
-            pipeline, Task(name="task3", displayName="TaskDisplay"),
+            pipeline,
+            Task(name="task3", displayName="TaskDisplay"),
         )
 
         assert len(updated_pipeline.tasks) == 3
         assert next(
             iter(
-                task for task in updated_pipeline.tasks
+                task
+                for task in updated_pipeline.tasks
                 if task.displayName == "TaskDisplay"
             )
         )
@@ -290,9 +299,7 @@ class OMetaPipelineTest(TestCase):
             Task(name="task3"),
             Task(name="task4"),
         ]
-        updated_pipeline = self.metadata.add_task_to_pipeline(
-            pipeline, *new_tasks
-        )
+        updated_pipeline = self.metadata.add_task_to_pipeline(pipeline, *new_tasks)
 
         assert len(updated_pipeline.tasks) == 4
 
@@ -307,7 +314,8 @@ class OMetaPipelineTest(TestCase):
         pipeline = self.metadata.create_or_update(data=self.create)
 
         updated_pipeline = self.metadata.add_task_to_pipeline(
-            pipeline, Task(name="task", displayName="TaskDisplay"),
+            pipeline,
+            Task(name="task", displayName="TaskDisplay"),
         )
 
         assert len(updated_pipeline.tasks) == 1
@@ -326,17 +334,13 @@ class OMetaPipelineTest(TestCase):
                 Task(name="task2"),
                 Task(name="task3"),
                 Task(name="task4"),
-            ]
+            ],
         )
 
         pipeline = self.metadata.create_or_update(data=create_pipeline)
 
         updated_pipeline = self.metadata.clean_pipeline_tasks(
-            pipeline=pipeline,
-            tasks=[
-                Task(name="task3"),
-                Task(name="task4")
-            ]
+            pipeline=pipeline, tasks=[Task(name="task3"), Task(name="task4")]
         )
 
         assert len(updated_pipeline.tasks) == 2

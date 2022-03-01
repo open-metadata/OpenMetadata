@@ -179,6 +179,11 @@ public final class Entity {
     return ref.withHref(href);
   }
 
+  public static boolean shouldHaveOwner(@NonNull String entityType) {
+    // Team does not have an owner. (yet?)
+    return !entityType.equals(TEAM);
+  }
+
   public static <T> EntityInterface<T> getEntityInterface(T entity) {
     if (entity == null) {
       return null;

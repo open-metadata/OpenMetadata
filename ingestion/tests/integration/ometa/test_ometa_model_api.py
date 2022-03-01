@@ -203,7 +203,9 @@ class OMetaModelTest(TestCase):
         )
         create_db_entity = self.metadata.create_or_update(data=create_db)
 
-        db_reference = EntityReference(id=create_db_entity.id, name="test-db-ml", type="database")
+        db_reference = EntityReference(
+            id=create_db_entity.id, name="test-db-ml", type="database"
+        )
 
         create_table1 = CreateTableRequest(
             name="test-ml",

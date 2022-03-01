@@ -7,7 +7,9 @@ import unittest
 from unittest import TestCase
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import CreateTagCategoryRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -130,7 +132,9 @@ class OMetaTagMixinPut(TestCase):
         """Test put tag category"""
 
         rand_name = random.getrandbits(64)
-        updated_primary_tag = CreateTagRequest(description="test tag", name=f"{rand_name}")
+        updated_primary_tag = CreateTagRequest(
+            description="test tag", name=f"{rand_name}"
+        )
 
         self.metadata.update_primary_tag(
             CATEGORY_NAME, PRIMARY_TAG_NAME, updated_primary_tag
@@ -142,7 +146,9 @@ class OMetaTagMixinPut(TestCase):
         """Test put tag category"""
 
         rand_name = random.getrandbits(64)
-        updated_secondary_tag = CreateTagRequest(description="test tag", name=f"{rand_name}")
+        updated_secondary_tag = CreateTagRequest(
+            description="test tag", name=f"{rand_name}"
+        )
 
         self.metadata.update_secondary_tag(
             CATEGORY_NAME, PRIMARY_TAG_NAME, SECONDARY_TAG_NAME, updated_secondary_tag

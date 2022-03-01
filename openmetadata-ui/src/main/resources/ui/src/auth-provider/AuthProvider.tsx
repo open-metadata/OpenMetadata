@@ -11,27 +11,26 @@
  *  limitations under the License.
  */
 
+import { Configuration } from '@azure/msal-browser';
+import { MsalProvider } from '@azure/msal-react';
+import { LoginCallback } from '@okta/okta-react';
 import { AxiosError, AxiosResponse } from 'axios';
-import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { UserPermissions } from 'Models';
-import { UserManager, WebStorageStateStore } from 'oidc-client';
 import React, {
-  ComponentType,
-  FunctionComponent,
+  createContext,
+  ReactNode,
+  useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
-import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
-import {
-  Redirect,
-  Route,
-  Switch,
-  useHistory,
-  useLocation,
-} from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import appState from '../AppState';
+import GoogleAuthenticator from '../authenticators/GoogleAuthenticator';
+import MsalAuthenticator from '../authenticators/MsalAuthenticator';
+import OktaAuthenticator from '../authenticators/OktaAuthenticator';
 import axiosClient from '../axiosAPIs';
 import {
   fetchAuthenticationConfig,
@@ -44,96 +43,75 @@ import {
   updateUser,
 } from '../axiosAPIs/userAPI';
 import Loader from '../components/Loader/Loader';
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { NOOP_FILTER, NO_AUTH } from '../constants/auth.constants';
 import { isAdminUpdated, oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
+import { AuthTypes } from '../enums/signin.enum';
 import { User } from '../generated/entity/teams/user';
-import { useAuth } from '../hooks/authHooks';
 import useToastContext from '../hooks/useToastContext';
-import SigninPage from '../pages/login';
-import PageNotFound from '../pages/page-not-found';
 import {
+  getAuthConfig,
   getNameFromEmail,
-  getOidcExpiry,
-  getUserManagerConfig,
+  isProtectedRoute,
+  isTourRoute,
+  msalInstance,
+  setMsalInstance,
 } from '../utils/AuthProvider.util';
 import { getImages } from '../utils/CommonUtils';
 import { fetchAllUsers } from '../utils/UsedDataUtils';
-import { AuthProviderProps, OidcUser } from './AuthProvider.interface';
+import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
+import OktaAuthProvider from './okta-auth-provider';
 
-const cookieStorage = new CookieStorage();
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
 const userAPIQueryFields = 'profile,teams,roles';
 
-const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
-  return makeAuthenticator({
-    userManager: userManager,
-    signinArgs: {
-      app: 'openmetadata',
-    },
-  })(type);
-};
-
-const AuthProvider: FunctionComponent<AuthProviderProps> = ({
-  childComponentType,
-  children,
-}: AuthProviderProps) => {
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const location = useLocation();
   const history = useHistory();
   const showToast = useToastContext();
-  const { isFirstTimeUser, isSignedIn, isSigningIn, isSignedOut } = useAuth(
-    location.pathname
-  );
 
-  const oidcUserToken = cookieStorage.getItem(oidcTokenKey);
+  const authenticatorRef = useRef<AuthenticatorRef>(null);
+
+  const oidcUserToken = localStorage.getItem(oidcTokenKey);
+
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    Boolean(oidcUserToken || localStorage.getItem('okta-token-storage'))
+  );
+  const [isAuthDisabled, setIsAuthDisabled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [userManager, setUserManager] = useState<UserManager>(
-    {} as UserManager
-  );
-  const [userManagerConfig, setUserManagerConfig] = useState<
-    Record<string, string | boolean | WebStorageStateStore>
-  >({});
+  const [authConfig, setAuthConfig] =
+    useState<Record<string, string | boolean>>();
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
-  if (isFirstTimeUser) {
-    cookieStorage.removeItem(COOKIE_VERSION);
-  }
+  const onLoginHandler = () => {
+    authenticatorRef.current?.invokeLogin();
+  };
 
-  const clearOidcUserData = (
-    userConfig: Record<string, string | boolean | WebStorageStateStore>
-  ): void => {
-    cookieStorage.removeItem(
-      `oidc.user:${userConfig.authority}:${userConfig.client_id}`
-    );
+  const onLogoutHandler = () => {
+    authenticatorRef.current?.invokeLogout();
   };
 
   const handledVerifiedUser = () => {
-    history.push(ROUTES.HOME);
+    if (!isProtectedRoute(location.pathname)) {
+      history.push(ROUTES.HOME);
+    }
   };
 
-  const getUpdatedUser = (data: User, user: OidcUser) => {
-    const getAdminCookie = cookieStorage.getItem(isAdminUpdated);
-    if (getAdminCookie) {
-      appState.updateUserDetails(data);
-    } else {
-      const updatedData = {
-        isAdmin: data.isAdmin,
-        email: data.email,
-        name: data.name,
-        displayName: user.profile.name,
-        profile: { images: getImages(user.profile.picture ?? '') },
-      };
-      updateUser(updatedData)
-        .then((res: AxiosResponse) => {
-          appState.updateUserDetails(res.data);
-          cookieStorage.setItem(isAdminUpdated, 'true');
-        })
-        .catch(() => {
-          showToast({
-            variant: 'error',
-            body: 'Error while updating admin user profile',
-          });
-        });
+  const resetUserDetails = (forceLogout = false) => {
+    appState.updateUserDetails({} as User);
+    appState.updateUserPermissions({} as UserPermissions);
+    localStorage.removeItem(oidcTokenKey);
+    if (forceLogout) {
+      onLogoutHandler();
     }
+    window.location.href = ROUTES.SIGNIN;
+  };
+
+  const setLoadingIndicator = (value: boolean) => {
+    setLoading(value);
   };
 
   const getUserPermissions = () => {
@@ -149,41 +127,6 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
         })
       )
       .finally(() => setLoading(false));
-  };
-
-  const fetchUserByEmail = (user: OidcUser) => {
-    getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          if (res.data?.isAdmin) {
-            getUpdatedUser(res.data, user);
-          }
-          getUserPermissions();
-          appState.updateUserDetails(res.data);
-          fetchAllUsers();
-          handledVerifiedUser();
-        } else {
-          cookieStorage.removeItem(oidcTokenKey);
-        }
-      })
-      .catch((err) => {
-        if (err.response.data.code === 404) {
-          appState.updateNewUser(user.profile);
-          appState.updateUserDetails({} as User);
-          appState.updateUserPermissions({} as UserPermissions);
-          history.push(ROUTES.SIGNUP);
-        }
-      });
-  };
-
-  const resetUserDetails = () => {
-    appState.updateUserDetails({} as User);
-    appState.updateUserPermissions({} as UserPermissions);
-    cookieStorage.removeItem(oidcTokenKey);
-    cookieStorage.removeItem(
-      `oidc.user:${userManagerConfig?.authority}:${userManagerConfig?.client_id}`
-    );
-    window.location.href = ROUTES.SIGNIN;
   };
 
   const getLoggedInUserDetails = () => {
@@ -203,6 +146,83 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
           resetUserDetails();
         }
       });
+  };
+
+  const getUpdatedUser = (data: User, user: OidcUser) => {
+    const getAdminCookie = localStorage.getItem(isAdminUpdated);
+    if (getAdminCookie) {
+      appState.updateUserDetails(data);
+    } else {
+      const updatedData = {
+        isAdmin: data.isAdmin,
+        email: data.email,
+        name: data.name,
+        displayName: user.profile.name,
+        profile: { images: getImages(user.profile.picture ?? '') },
+      };
+      updateUser(updatedData)
+        .then((res: AxiosResponse) => {
+          appState.updateUserDetails(res.data);
+          localStorage.setItem(isAdminUpdated, 'true');
+        })
+        .catch(() => {
+          showToast({
+            variant: 'error',
+            body: 'Error while updating admin user profile',
+          });
+        });
+    }
+  };
+
+  const handleSuccessfulLogin = (user: OidcUser) => {
+    getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          if (res.data?.isAdmin) {
+            getUpdatedUser(res.data, user);
+          }
+          getUserPermissions();
+          appState.updateUserDetails(res.data);
+          fetchAllUsers();
+          handledVerifiedUser();
+        }
+      })
+      .catch((err) => {
+        if (err.response.data.code === 404) {
+          appState.updateNewUser(user.profile);
+          appState.updateUserDetails({} as User);
+          appState.updateUserPermissions({} as UserPermissions);
+          setIsSigningIn(true);
+          history.push(ROUTES.SIGNUP);
+        }
+      });
+  };
+
+  const handleSuccessfulLogout = () => {
+    resetUserDetails();
+  };
+
+  const getAuthenticatedUser = (config: Record<string, string | boolean>) => {
+    switch (config?.provider) {
+      case AuthTypes.OKTA:
+      case AuthTypes.AZURE: {
+        getLoggedInUserDetails();
+
+        break;
+      }
+    }
+  };
+
+  const updateAuthInstance = (configJson: Record<string, string | boolean>) => {
+    const { provider, ...otherConfigs } = configJson;
+    switch (provider) {
+      case AuthTypes.AZURE:
+        {
+          setMsalInstance(otherConfigs as unknown as Configuration);
+        }
+
+        break;
+    }
   };
 
   const fetchAuthConfig = (): void => {
@@ -230,29 +250,22 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
             if (isSecureMode) {
               const { provider, authority, clientId, callbackUrl } =
                 authRes.data;
-              const userConfig = getUserManagerConfig({
+              const configJson = getAuthConfig({
                 authority,
                 clientId,
                 callbackUrl,
+                provider,
               });
-              setUserManagerConfig(userConfig);
-              setUserManager(makeUserManager(userConfig));
+              setAuthConfig(configJson);
+              updateAuthInstance(configJson);
               if (!oidcUserToken) {
-                clearOidcUserData(userConfig);
                 setLoading(false);
               } else {
-                getLoggedInUserDetails();
+                getAuthenticatedUser(configJson);
               }
-              appState.updateAuthProvide({
-                authority,
-                provider,
-                // eslint-disable-next-line @typescript-eslint/camelcase
-                client_id: clientId,
-              });
-              appState.updateAuthState(false);
             } else {
-              appState.updateAuthState(true);
               setLoading(false);
+              setIsAuthDisabled(true);
             }
           } else {
             authenticationConfig.reason as AxiosError;
@@ -270,33 +283,75 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
           variant: 'error',
           body: 'Error occured while fetching auth config',
         });
-      })
-      .finally(() => {
-        if (oidcUserToken || appState.authDisabled) {
-          fetchAllUsers();
-        }
       });
   };
 
-  // const handleFirstTourModal = (skip: boolean) => {
-  //   appState.newUser = {} as NewUser;
-  //   if (skip) {
-  //     history.push(ROUTES.HOME);
-  //   } else {
-  //     // TODO: Route to tour page
-  //   }
-  // };
+  const getCallBackComponent = () => {
+    switch (authConfig?.provider) {
+      case AuthTypes.OKTA: {
+        return LoginCallback;
+      }
+      default: {
+        return null;
+      }
+    }
+  };
+
+  const getProtectedApp = () => {
+    switch (authConfig?.provider) {
+      case AuthTypes.OKTA: {
+        return (
+          <OktaAuthProvider onLoginSuccess={handleSuccessfulLogin}>
+            <OktaAuthenticator
+              ref={authenticatorRef}
+              onLogoutSuccess={handleSuccessfulLogout}>
+              {children}
+            </OktaAuthenticator>
+          </OktaAuthProvider>
+        );
+      }
+      case AuthTypes.GOOGLE: {
+        return (
+          <GoogleAuthenticator
+            ref={authenticatorRef}
+            onLoginSuccess={handleSuccessfulLogin}
+            onLogoutSuccess={handleSuccessfulLogout}>
+            {children}
+          </GoogleAuthenticator>
+        );
+      }
+      case AuthTypes.AZURE: {
+        return msalInstance ? (
+          <MsalProvider instance={msalInstance}>
+            <MsalAuthenticator
+              ref={authenticatorRef}
+              onLoginSuccess={handleSuccessfulLogin}
+              onLogoutSuccess={handleSuccessfulLogout}>
+              {children}
+            </MsalAuthenticator>
+          </MsalProvider>
+        ) : (
+          <Loader />
+        );
+      }
+      default: {
+        return isAuthDisabled ? children : null;
+      }
+    }
+  };
 
   useEffect(() => {
     fetchAuthConfig();
 
-    // Axios intercepter for statusCode 403
+    // Axios intercepter for statusCode 401,403
     axiosClient.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response) {
           const { status } = error.response;
-          if (status === ClientErrors.FORBIDDEN) {
+          if (status === ClientErrors.UNAUTHORIZED) {
+            resetUserDetails(true);
+          } else if (status === ClientErrors.FORBIDDEN) {
             showToast({
               variant: 'error',
               body: 'You do not have permission for this action!',
@@ -311,7 +366,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
 
   useEffect(() => {
     return history.listen((location) => {
-      if (!appState.authDisabled && !appState.userDetails) {
+      if (!isAuthDisabled && !appState.userDetails) {
         if (
           (location.pathname === ROUTES.SIGNUP && isEmpty(appState.newUser)) ||
           (!location.pathname.includes(ROUTES.CALLBACK) &&
@@ -325,59 +380,38 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     });
   }, [history]);
 
-  const AppWithAuth = getAuthenticator(childComponentType, userManager);
+  const isLoading =
+    !isAuthDisabled &&
+    (!authConfig || (authConfig.provider === AuthTypes.AZURE && !msalInstance));
+
+  const authContext = {
+    isAuthenticated,
+    setIsAuthenticated,
+    isAuthDisabled,
+    setIsAuthDisabled,
+    authConfig,
+    setAuthConfig,
+    isSigningIn,
+    setIsSigningIn,
+    onLoginHandler,
+    onLogoutHandler,
+    getCallBackComponent,
+    isProtectedRoute,
+    isTourRoute,
+    loading,
+    setLoadingIndicator,
+  };
 
   return (
-    <>
-      {!loading ? (
-        <>
-          <Switch>
-            <Route exact path={ROUTES.HOME}>
-              {!isSignedIn && !isSigningIn ? (
-                <Redirect to={ROUTES.SIGNIN} />
-              ) : (
-                <Redirect to={ROUTES.MY_DATA} />
-              )}
-            </Route>
-            <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-            {!isSigningIn ? (
-              <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-            ) : null}
-            <Route
-              path={ROUTES.CALLBACK}
-              render={() => (
-                <>
-                  <Callback
-                    userManager={userManager}
-                    onSuccess={(user) => {
-                      cookieStorage.setItem(oidcTokenKey, user.id_token, {
-                        expires: getOidcExpiry(),
-                      });
-                      fetchUserByEmail(user as OidcUser);
-                    }}
-                  />
-                  <Loader />
-                </>
-              )}
-            />
-            {isSignedOut ? <Redirect to={ROUTES.SIGNIN} /> : null}
-            {oidcUserToken || !userManagerConfig?.client_id ? (
-              children
-            ) : (
-              <AppWithAuth />
-            )}
-          </Switch>
-          {/* TODO: Uncomment below lines to show Welcome modal on Sign-up */}
-          {/* {isAuthenticatedRoute && isFirstTimeUser ? (
-            <FirstTimeUserModal
-              onCancel={() => handleFirstTourModal(true)}
-              onSave={() => handleFirstTourModal(false)}
-            />
-          ) : null} */}
-        </>
-      ) : null}
-    </>
+    <AuthContext.Provider value={authContext}>
+      {isLoading ? <Loader /> : getProtectedApp()}
+    </AuthContext.Provider>
   );
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const AuthContext = createContext({} as any);
+
+export const useAuthContext = () => useContext(AuthContext);
 
 export default observer(AuthProvider);

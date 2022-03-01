@@ -62,7 +62,7 @@ public class PostIngestionTests {
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.searchBar(), dashboard);
     Events.click(webDriver, common.selectSuggestionSearch("sample_superset34"));
-    Events.click(webDriver, common.entityTabIndex(3));
+    Events.click(webDriver, common.entityTabIndex(4));
     Events.click(webDriver, common.ownerDropdown());
     Events.sendKeys(webDriver, common.ownerSearchBox(), "Cloud");
     Events.click(webDriver, common.tagListItem());
@@ -78,7 +78,7 @@ public class PostIngestionTests {
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.searchBar(), dashboard);
     Events.click(webDriver, common.selectSuggestionSearch("sample_superset34"));
-    Events.click(webDriver, common.entityTabIndex(3));
+    Events.click(webDriver, common.entityTabIndex(4));
     Events.click(webDriver, common.containsText("Cloud_Infra"));
   }
 }

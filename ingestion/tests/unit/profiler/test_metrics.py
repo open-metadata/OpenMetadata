@@ -221,7 +221,8 @@ class MetricsTest(TestCase):
 
         assert res.get(User.age.name)[Metrics.HISTOGRAM.name]
         assert (
-            len(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 2  # Too little values
+            len(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"])
+            == 2  # Too little values
         )
 
     def test_like_count(self):

@@ -52,6 +52,8 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.tests.CreateColumnTest;
+import org.openmetadata.catalog.api.tests.CreateTableTest;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository;
@@ -521,10 +523,26 @@ public class TableResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      TableTest tableTest)
+      CreateTableTest createTableTest)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    TableTest tableTest = getTableTest(securityContext, createTableTest);
     Table table = dao.addTableTest(UUID.fromString(id), tableTest);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
+  @Path("/{id}/tableTest/{tableTestType}")
+  @Operation(summary = "delete table test case", tags = "tables", description = "Delete test case from the table.")
+  public Table deleteTableTest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Table Test Type", schema = @Schema(type = "string")) @PathParam("tableTestType")
+          String tableTestType)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Table table = dao.deleteTableTest(UUID.fromString(id), tableTestType);
     return addHref(uriInfo, table);
   }
 
@@ -535,10 +553,31 @@ public class TableResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      ColumnTest columnTest)
+      CreateColumnTest createColumnTest)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    ColumnTest columnTest = getColumnTest(securityContext, createColumnTest);
     Table table = dao.addColumnTest(UUID.fromString(id), columnTest);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
+  @Path("/{id}/columnTest/{columnName}/{columnTestType}")
+  @Operation(
+      summary = "delete column test case",
+      tags = "tables",
+      description = "Delete column test case from the table.")
+  public Table deleteColumnTest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "column of the table", schema = @Schema(type = "string")) @PathParam("columnName")
+          String columnName,
+      @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("columnTestType")
+          String columnTestType)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Table table = dao.deleteColumnTest(UUID.fromString(id), columnName, columnTestType);
     return addHref(uriInfo, table);
   }
 
@@ -597,5 +636,30 @@ public class TableResource {
         .withOwner(create.getOwner())
         .withUpdatedAt(System.currentTimeMillis())
         .withDatabase(create.getDatabase());
+  }
+
+  private TableTest getTableTest(SecurityContext securityContext, CreateTableTest create) {
+    return new TableTest()
+        .withId(UUID.randomUUID())
+        .withDescription(create.getDescription())
+        .withTestCase(create.getTestCase())
+        .withOwner(create.getOwner())
+        .withExecutionFrequency(create.getExecutionFrequency())
+        .withResults(create.getResult() != null ? List.of(create.getResult()) : new ArrayList<>())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  private ColumnTest getColumnTest(SecurityContext securityContext, CreateColumnTest create) {
+    return new ColumnTest()
+        .withId(UUID.randomUUID())
+        .withDescription(create.getDescription())
+        .withTestCase(create.getTestCase())
+        .withColumnName(create.getColumnName())
+        .withOwner(create.getOwner())
+        .withExecutionFrequency(create.getExecutionFrequency())
+        .withResults(create.getResult() != null ? List.of(create.getResult()) : new ArrayList<>())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

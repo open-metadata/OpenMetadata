@@ -19,10 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
@@ -45,18 +45,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
+import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -175,7 +182,76 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     String originalJson = JsonUtils.pojoToJson(team);
     team.setDisplayName("newDisplayName");
     assertResponse(
-        () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+        () -> patchEntity(team.getId(), originalJson, team, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        CatalogExceptionMessage.noPermission(TEST_USER_NAME));
+  }
+
+  @Test
+  void patch_teamUsers_as_user_with_UpdateTeam_permission(TestInfo test) throws IOException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    List<EntityReference> userRefs = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
+      userRefs.add(new UserRepository.UserEntityInterface(user).getEntityReference());
+    }
+
+    Team team = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(team);
+    team.setUsers(userRefs);
+
+    // Ensure user without UpdateTeam permission cannot add users to a team.
+    String randomUserName = userRefs.get(0).getName();
+    assertResponse(
+        () ->
+            patchEntity(
+                team.getId(), originalJson, team, SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
+        FORBIDDEN,
+        CatalogExceptionMessage.noPermission(randomUserName, "UpdateTeam"));
+
+    // Ensure user with UpdateTeam permission can add users to a team.
+    User teamManagerUser = createTeamManager(test);
+    FieldChange fieldChange = new FieldChange().withName("users").withNewValue(userRefs);
+    ChangeDescription change =
+        getChangeDescription(team.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+    patchEntityAndCheck(
+        team,
+        originalJson,
+        SecurityUtil.authHeaders(teamManagerUser.getName() + "@open-metadata.org"),
+        MINOR_UPDATE,
+        change);
+  }
+
+  private User createTeamManager(TestInfo testInfo) throws HttpResponseException, JsonProcessingException {
+    // Create TeamManager role.
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role teamManager =
+        roleResourceTest.createEntity(
+            roleResourceTest.createRequest(testInfo).withName("TeamManager"), ADMIN_AUTH_HEADERS);
+
+    // Ensure TeamManager has permission to UpdateTeam.
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    Policy policy =
+        policyResourceTest.getEntityByName(
+            "TeamManagerRoleAccessControlPolicy", PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(policy);
+    Rule rule =
+        new Rule()
+            .withName("TeamManagerRoleAccessControlPolicy-UpdateTeam")
+            .withAllow(true)
+            .withUserRoleAttr("TeamManager")
+            .withOperation(MetadataOperation.UpdateTeam);
+    policy.setRules(List.of(rule));
+    policyResourceTest.patchEntity(policy.getId(), originalJson, policy, ADMIN_AUTH_HEADERS);
+
+    // Create a user with TeamManager role.
+    UserResourceTest userResourceTest = new UserResourceTest();
+    return userResourceTest.createEntity(
+        userResourceTest
+            .createRequest(testInfo)
+            .withName(getEntityName(testInfo) + "manager")
+            .withRoles(List.of(teamManager.getId())),
+        ADMIN_AUTH_HEADERS);
   }
 
   @Test
