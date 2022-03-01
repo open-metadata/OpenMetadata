@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.services.storage;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -72,7 +74,7 @@ public class StorageServiceResource {
   private final StorageServiceRepository dao;
   private final Authorizer authorizer;
 
-  static final String FIELDS = "owner";
+  static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(StorageService.class);
 
   public static ResultList<StorageService> addHref(UriInfo uriInfo, ResultList<StorageService> services) {

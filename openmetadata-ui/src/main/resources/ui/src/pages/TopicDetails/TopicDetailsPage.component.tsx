@@ -196,7 +196,6 @@ const TopicDetailsPage: FunctionComponent = () => {
             url: service.name
               ? getServiceDetailsPath(
                   service.name,
-                  serviceType,
                   ServiceCategory.MESSAGING_SERVICES
                 )
               : '',

@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.security;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Collections;
@@ -47,7 +49,7 @@ public class DefaultAuthorizer implements Authorizer {
   private UserRepository userRepository;
 
   private PolicyEvaluator policyEvaluator;
-  private static final String fieldsParam = "roles,teams";
+  private static final String FIELDS_PARAM = "roles,teams";
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
@@ -65,7 +67,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddAdminUsers() {
     LOG.debug("Checking user entries for admin users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     for (String adminUser : adminUsers) {
       try {
         User user = userRepository.getByName(null, adminUser, fields);
@@ -91,7 +93,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     for (String botUser : botUsers) {
       try {
         User user = userRepository.getByName(null, botUser, fields);
@@ -141,7 +143,7 @@ public class DefaultAuthorizer implements Authorizer {
         return policyEvaluator.hasPermission(user, null, operation);
       }
 
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
       if (owner == null) {
         // Entity does not have an owner.
@@ -171,7 +173,7 @@ public class DefaultAuthorizer implements Authorizer {
       if (entityReference == null) {
         return policyEvaluator.getAllowedOperations(user, null);
       }
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
       if (owner == null || isOwnedByUser(user, owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
@@ -204,7 +206,7 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isAdmin(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     try {
       User user = userRepository.getByName(null, userName, fields);
       if (user.getIsAdmin() == null) {
@@ -220,7 +222,7 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isBot(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     try {
       User user = userRepository.getByName(null, userName, fields);
       if (user.getIsBot() == null) {
@@ -240,7 +242,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     return userRepository.getByName(null, userName, fields);
   }
 

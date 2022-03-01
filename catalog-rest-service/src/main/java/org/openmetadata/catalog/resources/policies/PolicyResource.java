@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.policies;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -333,7 +335,7 @@ public class PolicyResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, "owner");
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
     Policy policy = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
 

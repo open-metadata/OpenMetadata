@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.operations;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -118,7 +120,7 @@ public class AirflowPipelineResource {
     }
   }
 
-  static final String FIELDS = "owner";
+  static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(AirflowPipeline.class);
 
   @GET
@@ -409,7 +411,7 @@ public class AirflowPipelineResource {
   public AirflowPipeline triggerIngestion(
       @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, "owner");
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
     AirflowPipeline pipeline = dao.get(uriInfo, id, fields);
     airflowRESTClient.runPipeline(pipeline.getName());
     return addHref(uriInfo, dao.get(uriInfo, id, fields));

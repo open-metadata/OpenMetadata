@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
@@ -36,6 +38,7 @@ import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
@@ -424,7 +427,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   // Get container entity based on create request that has CONTAINS relationship to the entity created with this
   // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
   // details.
-  public EntityReference getContainer(K createRequest) {
+  public EntityReference getContainer() {
     return null;
   }
 
@@ -611,11 +614,16 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
     // Finally, delete the container that contains the entities created for this test
-    EntityReference container = getContainer(createRequest("deleteRecursive", "", "", null));
+    EntityReference container = getContainer();
     if (container != null) {
-      ResultList<T> listBeforeDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
+      // List both deleted and non deleted entities
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", "all");
+      ResultList<T> listBeforeDeletion = listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+
       // Delete non-empty container entity and ensure deletion is not allowed
-      EntityResourceTest<?, ?> containerTest = ENTITY_RESOURCE_TEST_MAP.get(container.getType());
+      EntityResourceTest<Object, Object> containerTest =
+          (EntityResourceTest<Object, Object>) ENTITY_RESOURCE_TEST_MAP.get(container.getType());
       assertResponse(
           () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
@@ -624,12 +632,26 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       // Now delete the container with recursive flag on
       containerTest.deleteEntity(container.getId(), true, ADMIN_AUTH_HEADERS);
 
-      // Make sure entities contained are deleted and the new list operation returns 0 entities
+      // Make sure entities that belonged to the container are deleted and the new list operation returns less entities
       ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       listAfterDeletion
           .getData()
           .forEach(e -> assertNotEquals(getEntityInterface(e).getContainer().getId(), container.getId()));
       assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
+
+      // Restore the soft-deleted container by PUT operation and make sure it is restored
+      String containerName = container.getName();
+      if (containerTest.getContainer() != null) {
+        // Find container name by removing parentContainer fqn from container fqn
+        // Example: remove "service" from "service.database" to get "database" container name for table
+        String parentOfContainer = containerTest.getContainer().getName();
+        containerName = container.getName().replace(parentOfContainer + ".", "");
+      }
+      Object request = containerTest.createRequest(containerName, "", "", null);
+      containerTest.updateEntity(request, Status.OK, ADMIN_AUTH_HEADERS);
+
+      ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
+      assertEquals(listBeforeDeletion.getData().size(), listAfterRestore.getData().size());
     }
   }
 
@@ -774,10 +796,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   protected void post_entity_as_non_admin_401(TestInfo test) {
-    assertResponse(
-        () -> createEntity(createRequest(test), TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> createEntity(createRequest(test), TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
   }
 
   @Test
@@ -902,10 +921,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
     K updateRequest = createRequest(getEntityName(test), "newDescription", "displayName", null);
-    assertResponse(
-        () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} " + "does not have permissions");
+    assertResponse(() -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS), FORBIDDEN, noPermission(TEST_USER_NAME));
   }
 
   @Test
@@ -1236,10 +1252,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void delete_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    assertResponse(
-        () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
   }
 
   /** Soft delete an entity and then use PUT request to restore it back */
@@ -1583,8 +1596,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           () ->
               patchEntity(entityInterface.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
-          String.format(
-              "Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateDescription", userName));
+          noPermission(userName, "UpdateDescription"));
       // Revert to original.
       entityInterface.setDescription(originalDescription);
       return entityInterface.getEntity();
@@ -1699,8 +1711,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // previous, entity, changeDescription
     //
     if (expectedEventType == EventType.ENTITY_CREATED) {
-      assertEquals(changeEvent.getEventType(), EventType.ENTITY_CREATED);
-      assertEquals(changeEvent.getPreviousVersion(), 0.1);
+      assertEquals(EventType.ENTITY_CREATED, changeEvent.getEventType());
+      assertEquals(0.1, changeEvent.getPreviousVersion());
       assertNull(changeEvent.getChangeDescription());
       compareEntities(
           entityInterface.getEntity(), JsonUtils.readValue((String) changeEvent.getEntity(), entityClass), authHeaders);

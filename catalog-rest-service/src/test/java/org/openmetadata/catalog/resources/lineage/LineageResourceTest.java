@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
@@ -107,13 +108,11 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
     if (shouldThrowException) {
       assertResponse(
-          () -> addEdge(TABLES.get(1), TABLES.get(2), authHeaders),
-          FORBIDDEN,
-          String.format("Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateLineage", userName));
+          () -> addEdge(TABLES.get(1), TABLES.get(2), authHeaders), FORBIDDEN, noPermission(userName, "UpdateLineage"));
       assertResponse(
           () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders),
           FORBIDDEN,
-          String.format("Principal: CatalogPrincipal{name='%s'} does not have permission to UpdateLineage", userName));
+          noPermission(userName, "UpdateLineage"));
       return;
     }
 

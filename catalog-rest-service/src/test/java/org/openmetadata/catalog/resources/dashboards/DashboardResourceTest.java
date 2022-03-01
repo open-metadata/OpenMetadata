@@ -234,7 +234,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   public CreateDashboard createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreateDashboard()
         .withName(name)
-        .withService(SUPERSET_REFERENCE)
+        .withService(getContainer())
         .withCharts(CHART_REFERENCES)
         .withDescription(description)
         .withDisplayName(displayName)
@@ -242,8 +242,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Override
-  public EntityReference getContainer(CreateDashboard createRequest) {
-    return createRequest.getService();
+  public EntityReference getContainer() {
+    return SUPERSET_REFERENCE;
   }
 
   @Override

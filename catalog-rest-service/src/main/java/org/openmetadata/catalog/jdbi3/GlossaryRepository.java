@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
@@ -60,7 +61,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public Glossary setFields(Glossary glossary, Fields fields) throws IOException, ParseException {
-    glossary.setOwner(fields.contains("owner") ? getOwner(glossary) : null);
+    glossary.setOwner(fields.contains(FIELD_OWNER) ? getOwner(glossary) : null);
     glossary.setTags(fields.contains("tags") ? getTags(glossary.getName()) : null);
     return glossary;
   }
@@ -98,9 +99,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     setOwner(glossary, glossary.getOwner());
     applyTags(glossary);
   }
-
-  @Override
-  public void restorePatchAttributes(Glossary original, Glossary updated) {}
 
   @Override
   public EntityInterface<Glossary> getEntityInterface(Glossary entity) {

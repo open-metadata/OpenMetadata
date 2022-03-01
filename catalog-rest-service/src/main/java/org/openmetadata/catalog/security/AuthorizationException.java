@@ -17,7 +17,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 public class AuthorizationException extends RuntimeException {
-  private final Response response;
+  private final transient Response response;
 
   public AuthorizationException(String msg) {
     super(msg);

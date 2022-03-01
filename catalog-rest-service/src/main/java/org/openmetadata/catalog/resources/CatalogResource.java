@@ -37,8 +37,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "root")
 public class CatalogResource {
   public static class CollectionList extends ResultList<CollectionDescriptor> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public CollectionList() {}
+    @SuppressWarnings("unused")
+    public CollectionList() {
+      /* Required for serde */
+    }
 
     public CollectionList(List<CollectionDescriptor> data) {
       super(data);
