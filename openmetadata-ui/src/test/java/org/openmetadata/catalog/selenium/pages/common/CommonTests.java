@@ -395,17 +395,6 @@ public class CommonTests {
 
   @Test
   @Order(18)
-  public void sameNodesLineage() throws InterruptedException {
-    openHomePage();
-    Events.sendKeys(webDriver, common.searchBar(), "dim_product_variant");
-    Events.click(webDriver, common.searchSuggestion());
-    Thread.sleep(waitTime);
-    Events.click(webDriver, common.entityTabIndex(5));
-    Events.click(webDriver, common.editLineageButton());
-  }
-
-  @Test
-  @Order(19)
   public void searchNotShowingResultsCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("pipelines"));
