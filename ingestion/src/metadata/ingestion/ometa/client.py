@@ -139,8 +139,10 @@ class REST:
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":
                 self.config.expires_in = time.time() + expiry - 120
-        headers[self.config.auth_header] = f"{self._auth_token_mode} {self.config.access_token}"
-        
+        headers[
+            self.config.auth_header
+        ] = f"{self._auth_token_mode} {self.config.access_token}"
+
         opts = {
             "headers": headers,
             # Since we allow users to set endpoint URL via env var,
