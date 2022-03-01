@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -72,7 +74,7 @@ public class PipelineServiceResource {
   private final PipelineServiceRepository dao;
   private final Authorizer authorizer;
 
-  static final String FIELDS = "owner";
+  static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(PipelineService.class);
 
   public static ResultList<PipelineService> addHref(UriInfo uriInfo, ResultList<PipelineService> services) {

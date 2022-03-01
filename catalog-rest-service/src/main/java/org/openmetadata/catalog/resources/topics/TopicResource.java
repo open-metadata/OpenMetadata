@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.topics;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -328,7 +330,7 @@ public class TopicResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, "owner");
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
     Topic topic = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, dao.getEntityInterface(topic).getEntityReference(), patch);

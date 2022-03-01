@@ -45,11 +45,6 @@ public class BotsRepository extends EntityRepository<Bots> {
   }
 
   @Override
-  public void restorePatchAttributes(Bots original, Bots update) {
-    /* Nothing to do */
-  }
-
-  @Override
   public EntityInterface<Bots> getEntityInterface(Bots entity) {
     return new BotsEntityInterface(entity);
   }

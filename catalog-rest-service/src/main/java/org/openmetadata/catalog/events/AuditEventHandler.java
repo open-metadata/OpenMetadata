@@ -54,5 +54,7 @@ public class AuditEventHandler implements EventHandler {
     return null;
   }
 
-  public void close() {}
+  public void close() {
+    /* Nothing to do */
+  }
 }

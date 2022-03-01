@@ -68,7 +68,10 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.22</lombok.version>
     <tomcat-jdbc.version>10.0.8</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.0</elasticsearch.version>
+    <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
+    This compatability broken in 7.14, so lets keep this version pinned to 7.13.2
+     -->
+    <elasticsearch.version>7.13.2</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.1.13</openapiswagger.version>
     <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>

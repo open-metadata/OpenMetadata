@@ -69,7 +69,10 @@ public final class AirflowUtils {
     Map<String, Object> dbConfig = new HashMap<>();
     dbConfig.put(INGESTION_HOST_PORT, databaseConnection.getHostPort());
     dbConfig.put(INGESTION_USERNAME, databaseConnection.getUsername());
-    String password = decrypt ? decryptIfTokenized(databaseConnection.getPassword()) : databaseConnection.getPassword();
+    String password =
+        Boolean.TRUE.equals(decrypt)
+            ? decryptIfTokenized(databaseConnection.getPassword())
+            : databaseConnection.getPassword();
     dbConfig.put(INGESTION_PASSWORD, password);
     dbConfig.put(INGESTION_DATABASE, databaseConnection.getDatabase());
     dbConfig.put(INGESTION_SERVICE_NAME, databaseService.getName());
@@ -112,7 +115,7 @@ public final class AirflowUtils {
     return OpenMetadataIngestionComponent.builder().type("elasticsearch").config(sinkConfig).build();
   }
 
-  public static OpenMetadataIngestionComponent makeOpenMetadataSinkComponent(AirflowPipeline airflowPipeline) {
+  public static OpenMetadataIngestionComponent makeOpenMetadataSinkComponent() {
     Map<String, Object> sinkConfig = new HashMap<>();
     return OpenMetadataIngestionComponent.builder().type("metadata-rest").config(sinkConfig).build();
   }
@@ -131,7 +134,7 @@ public final class AirflowUtils {
       throws IOException, ParseException {
     return OpenMetadataIngestionConfig.builder()
         .source(makeOpenMetadataDatasourceComponent(airflowPipeline, decrypt))
-        .sink(makeOpenMetadataSinkComponent(airflowPipeline))
+        .sink(makeOpenMetadataSinkComponent())
         .metadataServer(makeOpenMetadataConfigComponent(airflowConfiguration))
         .build();
   }

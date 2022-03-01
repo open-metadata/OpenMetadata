@@ -8,7 +8,14 @@
     "dashboardServiceType": {
       "description": "Type of Dashboard service - Superset, Looker, Redash or Tableau.",
       "type": "string",
-      "enum": ["Superset", "Looker", "Tableau", "Redash", "Metabase"],
+      "enum": [
+        "Superset",
+        "Looker",
+        "Tableau",
+        "Redash",
+        "Metabase",
+        "PowerBI"
+      ],
       "javaEnums": [
         {
           "name": "Superset"
@@ -24,6 +31,9 @@
         },
         {
           "name": "Metabase"
+        },
+        {
+          "name": "PowerBI"
         }
       ]
     }

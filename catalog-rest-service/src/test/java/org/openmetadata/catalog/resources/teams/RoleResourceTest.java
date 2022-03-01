@@ -17,8 +17,10 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -163,9 +165,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String originalJson = JsonUtils.pojoToJson(role);
     role.setDisplayName("newDisplayName");
     assertResponse(
-        () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        "Principal: CatalogPrincipal{name='test'} is not admin");
+        () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
   }
 
   private static void validateRole(
