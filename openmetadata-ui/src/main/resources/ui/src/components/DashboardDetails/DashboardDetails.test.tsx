@@ -110,7 +110,7 @@ jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
 
-jest.mock('../sFeedEditor/FeedEditor', () => {
+jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
