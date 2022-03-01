@@ -1044,10 +1044,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withTableTestType(TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_EQUAL)
             .withConfig(tableRowCountToEqual);
     CreateTableTest createTableTest =
-        new CreateTableTest()
-            .withTableName(table.getName())
-            .withTestCase(tableTestCase)
-            .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
+        new CreateTableTest().withTestCase(tableTestCase).withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
     Table putResponse = putTableTest(table.getId(), createTableTest, ADMIN_AUTH_HEADERS);
     verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(createTableTest));
 
@@ -1080,8 +1077,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableTestCase()
             .withTableTestType(TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_BE_BETWEEN)
             .withConfig(tableRowCountToBeBetween);
-    CreateTableTest createTableTest1 =
-        new CreateTableTest().withTestCase(tableTestCase1).withTableName(table.getName());
+    CreateTableTest createTableTest1 = new CreateTableTest().withTestCase(tableTestCase1);
     putResponse = putTableTest(table.getId(), createTableTest1, ADMIN_AUTH_HEADERS);
     // returns the current test thats updated or created
     verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(createTableTest1));
