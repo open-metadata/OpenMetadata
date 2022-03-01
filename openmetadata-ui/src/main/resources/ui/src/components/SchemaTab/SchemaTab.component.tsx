@@ -12,6 +12,7 @@
  */
 
 import { lowerCase } from 'lodash';
+import { EntityFieldThreads } from 'Models';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   ColumnJoins,
@@ -29,6 +30,8 @@ type Props = {
   columnName: string;
   hasEditAccess?: boolean;
   isReadOnly?: boolean;
+  entityFieldThreads?: EntityFieldThreads[];
+  onThreadLinkSelect?: (value: string) => void;
   onUpdate?: (columns: Table['columns']) => void;
 };
 
@@ -39,6 +42,8 @@ const SchemaTab: FunctionComponent<Props> = ({
   columnName,
   hasEditAccess,
   owner,
+  entityFieldThreads,
+  onThreadLinkSelect,
   isReadOnly = false,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
@@ -64,12 +69,14 @@ const SchemaTab: FunctionComponent<Props> = ({
           <div className="col-sm-12">
             <EntityTable
               columnName={columnName}
+              entityFieldThreads={entityFieldThreads}
               hasEditAccess={Boolean(hasEditAccess)}
               isReadOnly={isReadOnly}
               joins={joins}
               owner={owner}
               searchText={lowerCase(searchText)}
               tableColumns={columns}
+              onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onUpdate}
             />
           </div>

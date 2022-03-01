@@ -142,9 +142,6 @@ public class UserRepository extends EntityRepository<User> {
     return user;
   }
 
-  @Override
-  public void restorePatchAttributes(User original, User updated) {}
-
   private List<EntityReference> getOwns(User user) throws IOException, ParseException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =

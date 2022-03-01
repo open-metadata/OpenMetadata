@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
@@ -207,7 +209,9 @@ public abstract class EntityRepository<T> {
    * error, we take lenient approach of ignoring the user error and restore those attributes based on what is already
    * stored in the original entity.
    */
-  public abstract void restorePatchAttributes(T original, T updated);
+  public void restorePatchAttributes(T original, T updated) {
+    /* Nothing to restore during PATCH */
+  }
 
   /**
    * Initialize data from json files if seed data does not exist in corresponding tables. Seed data is stored under
@@ -374,16 +378,21 @@ public abstract class EntityRepository<T> {
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, boolean allowEdits)
       throws IOException, ParseException {
     prepare(updated);
+    EntityInterface<T> updatedInterface = getEntityInterface(updated);
+
     // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), Include.ALL), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
-
     // Get all the fields in the original entity that can be updated during PUT operation
     setFields(original, putFields);
-    // Recover relationships if original was deleted before setFields
-    recoverDeletedRelationships(original);
+
+    // If the entity state is soft-deleted, recursively undelete the entity and it's children
+    EntityInterface<T> origInterface = getEntityInterface(original);
+    if (origInterface.isDeleted()) {
+      restoreEntity(updatedInterface.getUpdatedBy(), entityType, origInterface.getId());
+    }
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
@@ -557,7 +566,7 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public static final Fields FIELDS_OWNER = new Fields(List.of("owner"), "owner");
+  public static final Fields FIELDS_OWNER = new Fields(List.of(FIELD_OWNER), FIELD_OWNER);
 
   public final EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
     // Try to find the owner if entity exists
@@ -622,13 +631,29 @@ public abstract class EntityRepository<T> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void recoverDeletedRelationships(T original) {
-    // If original is deleted, we need to recover the relationships before setting the fields
-    // or we won't find the related services
-    EntityInterface<T> originalRef = getEntityInterface(original);
-    if (Boolean.TRUE.equals(originalRef.isDeleted())) {
-      daoCollection.relationshipDAO().recoverSoftDeleteAll(originalRef.getId().toString());
+  public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException, ParseException {
+    // If an entity being restored contains other **deleted** children entities, restore them
+    List<EntityReference> contains =
+        daoCollection
+            .relationshipDAO()
+            .findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.DELETED));
+
+    if (!contains.isEmpty()) {
+      // Restore all the contained entities
+      for (EntityReference entityReference : contains) {
+        LOG.info("Recursively restoring {} {}", entityReference.getType(), entityReference.getId());
+        Entity.restoreEntity(updatedBy, entityReference.getType(), entityReference.getId());
+      }
     }
+
+    // Restore all the relationships from and to the entity as not deleted
+    daoCollection.relationshipDAO().recoverSoftDeleteAll(id.toString());
+
+    // Finally set entity deleted flag to false
+    T entity = dao.findEntityById(id, DELETED);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    entityInterface.setDeleted(false);
+    dao.update(entityInterface.getId(), JsonUtils.pojoToJson(entity));
   }
 
   /** Builder method for EntityHandler */
@@ -666,7 +691,7 @@ public abstract class EntityRepository<T> {
      * either User or Team.
      */
     public EntityReference validateOwnerOrNull() throws IOException, ParseException {
-      EntityReference entityReference = validateFieldOrNull("owner");
+      EntityReference entityReference = validateFieldOrNull(FIELD_OWNER);
       if (entityReference == null) {
         return null;
       } else if (!List.of(Entity.USER, Entity.TEAM).contains(entityReference.getType())) {
@@ -758,7 +783,7 @@ public abstract class EntityRepository<T> {
                   Relationship.CONTAINS.ordinal(),
                   // FIXME: containerEntityName should be a property of the entity decorated.
                   containerEntityType,
-                  toBoolean(isDeleted));
+                  null);
       if (refs.isEmpty()) {
         throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotFound(containerEntityType));
       } else if (refs.size() > 1) {
@@ -900,6 +925,7 @@ public abstract class EntityRepository<T> {
     protected final Operation operation;
     protected final ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
+    private boolean entityRestored = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
       this.original = getEntityInterface(original);
@@ -942,7 +968,7 @@ public abstract class EntityRepository<T> {
         updated.setDescription(original.getDescription());
         return;
       }
-      recordChange("description", original.getDescription(), updated.getDescription());
+      recordChange(FIELD_DESCRIPTION, original.getDescription(), updated.getDescription());
     }
 
     private void updateDeleted() throws JsonProcessingException {
@@ -955,6 +981,7 @@ public abstract class EntityRepository<T> {
         if (Boolean.TRUE.equals(original.isDeleted())) {
           updated.setDeleted(false);
           recordChange("deleted", true, false);
+          entityRestored = true;
         }
       } else {
         recordChange("deleted", original.isDeleted(), updated.isDeleted());
@@ -978,7 +1005,7 @@ public abstract class EntityRepository<T> {
       EntityReference updatedOwner = updated.getOwner();
       if (operation.isPatch() || updatedOwner != null) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
-        if (recordChange("owner", origOwner, updatedOwner, true, entityReferenceMatch)) {
+        if (recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
           EntityUtil.updateOwner(
               daoCollection.relationshipDAO(), origOwner, updatedOwner, original.getId(), entityType);
         }
@@ -1033,6 +1060,10 @@ public abstract class EntityRepository<T> {
       return !changeDescription.getFieldsAdded().isEmpty()
           || !changeDescription.getFieldsUpdated().isEmpty()
           || !changeDescription.getFieldsDeleted().isEmpty();
+    }
+
+    public boolean isEntityRestored() {
+      return entityRestored;
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) throws JsonProcessingException {

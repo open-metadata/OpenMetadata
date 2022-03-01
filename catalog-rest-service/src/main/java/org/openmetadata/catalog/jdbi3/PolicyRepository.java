@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
@@ -90,14 +91,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public Policy setFields(Policy policy, Fields fields) throws IOException, ParseException {
-    policy.setOwner(fields.contains("owner") ? getOwner(policy) : null);
+    policy.setOwner(fields.contains(FIELD_OWNER) ? getOwner(policy) : null);
     policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     return policy;
-  }
-
-  @Override
-  public void restorePatchAttributes(Policy original, Policy updated) {
-    /* Nothing to do */
   }
 
   @Override

@@ -130,13 +130,13 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
         .withDescription(description)
         .withDisplayName(displayName)
         .withOwner(owner)
-        .withService(SUPERSET_REFERENCE)
+        .withService(getContainer())
         .withChartType(ChartType.Area);
   }
 
   @Override
-  public EntityReference getContainer(CreateChart createRequest) {
-    return createRequest.getService();
+  public EntityReference getContainer() {
+    return SUPERSET_REFERENCE;
   }
 
   @Override

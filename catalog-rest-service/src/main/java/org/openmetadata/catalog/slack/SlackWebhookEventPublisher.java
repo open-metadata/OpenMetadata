@@ -1,5 +1,8 @@
 package org.openmetadata.catalog.slack;
 
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -120,14 +123,14 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         } else if (fieldChange.getName().equals("columns")) {
           title.append("Added new columns ");
           attachment.setText(parseColumns((String) fieldChange.getNewValue(), event));
-        } else if (fieldChange.getName().equals("owner")) {
+        } else if (fieldChange.getName().equals(FIELD_OWNER)) {
           title.append("Added ownership");
           attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
         } else if (fieldChange.getName().equals("followers")) {
           String followers = parseFollowers((List<EntityReference>) fieldChange.getNewValue());
           String entityUrl = getEntityUrl(event);
           attachment.setText(followers + " started following " + entityUrl);
-        } else if (fieldChange.getName().contains("description")) {
+        } else if (fieldChange.getName().contains(FIELD_DESCRIPTION)) {
           title.append("Added description to ");
           title.append(fieldChange.getName());
           attachment.setText((String) fieldChange.getNewValue());
@@ -150,7 +153,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         if (!fieldChange.getName().equals("deleted")) {
           SlackAttachment attachment = new SlackAttachment();
           attachment.setTitle("Updated " + fieldChange.getName());
-          if (fieldChange.getName().equals("owner")) {
+          if (fieldChange.getName().equals(FIELD_OWNER)) {
             attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
           } else {
             String updatedStr = fieldChange.getOldValue() + " to " + fieldChange.getNewValue();

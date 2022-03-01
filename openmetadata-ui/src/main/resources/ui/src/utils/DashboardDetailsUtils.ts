@@ -22,6 +22,11 @@ export const dashboardDetailsTabs = [
     path: 'details',
   },
   {
+    name: 'Activity Feed',
+    path: 'activity_feed',
+    field: TabSpecificField.ACTIVITY_FEED,
+  },
+  {
     name: 'Lineage',
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
@@ -35,13 +40,18 @@ export const dashboardDetailsTabs = [
 export const getCurrentDashboardTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'manage':
-      currentTab = 3;
+    case 'activity_feed':
+      currentTab = 2;
 
       break;
 
     case 'lineage':
-      currentTab = 2;
+      currentTab = 3;
+
+      break;
+
+    case 'manage':
+      currentTab = 4;
 
       break;
 

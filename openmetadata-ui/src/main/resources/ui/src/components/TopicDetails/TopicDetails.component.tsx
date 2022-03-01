@@ -19,8 +19,11 @@ import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
+import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -56,12 +59,18 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   version,
   versionHandler,
   deleted,
+  entityThread,
+  isentityThreadLoading,
+  postFeedHandler,
+  feedCount,
+  entityFieldThreadCount,
+  createThread,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
-
+  const [threadLink, setThreadLink] = useState<string>('');
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -120,6 +129,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
+      name: `Activity Feed (${feedCount})`,
+      icon: {
+        alt: 'activity_feed',
+        name: 'activity_feed',
+        title: 'Activity Feed',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Config',
       icon: {
         alt: 'config',
@@ -128,7 +148,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         selectedName: 'icon-configcolor',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
     {
       name: 'Manage',
@@ -141,7 +161,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 3,
+      position: 4,
     },
   ];
   const extraInfo = [
@@ -261,6 +281,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -277,6 +305,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <EntityPageInfo
           isTagEditable
           deleted={deleted}
+          entityFieldThreads={getEntityFieldThreadCounts(
+            'tags',
+            entityFieldThreadCount
+          )}
           entityName={entityName}
           extraInfo={extraInfo}
           followHandler={followTopic}
@@ -291,6 +323,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           titleLinks={slashedTopicName}
           version={version}
           versionHandler={versionHandler}
+          onThreadLinkSelect={onThreadLinkSelect}
         />
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
@@ -306,6 +339,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   <div className="tw-col-span-full">
                     <Description
                       description={description}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        'description',
+                        entityFieldThreadCount
+                      )}
                       entityName={entityName}
                       hasEditAccess={hasEditAccess()}
                       isEdit={isEdit}
@@ -314,6 +351,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       onCancel={onCancel}
                       onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
+                      onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
                 </div>
@@ -321,14 +359,39 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
                   <SchemaEditor value={schemaText} />
                 </div>
+                {threadLink ? (
+                  <ActivityThreadPanel
+                    createThread={createThread}
+                    open={Boolean(threadLink)}
+                    postFeedHandler={postFeedHandler}
+                    threadLink={threadLink}
+                    onCancel={onThreadPanelClose}
+                  />
+                ) : null}
               </>
             )}
             {activeTab === 2 && (
+              <div
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                id="activityfeed">
+                <div />
+                <ActivityFeedList
+                  isEntityFeed
+                  withSidePanel
+                  className=""
+                  feedList={entityThread}
+                  isLoading={isentityThreadLoading}
+                  postFeedHandler={postFeedHandler}
+                />
+                <div />
+              </div>
+            )}
+            {activeTab === 3 && (
               <div>
                 <SchemaEditor value={JSON.stringify(getConfigObject())} />
               </div>
             )}
-            {activeTab === 3 && !deleted && (
+            {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
                   currentTier={tier?.tagFQN}

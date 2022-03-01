@@ -129,7 +129,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     return new CreateAirflowPipeline()
         .withName(name)
         .withPipelineType(PipelineType.METADATA)
-        .withService(BIGQUERY_REFERENCE)
+        .withService(getContainer())
         .withPipelineConfig(INGESTION_CONFIG)
         .withStartDate("2021-11-21")
         .withDescription(description)
@@ -138,8 +138,8 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
   }
 
   @Override
-  public EntityReference getContainer(CreateAirflowPipeline createRequest) {
-    return createRequest.getService();
+  public EntityReference getContainer() {
+    return BIGQUERY_REFERENCE;
   }
 
   @Override

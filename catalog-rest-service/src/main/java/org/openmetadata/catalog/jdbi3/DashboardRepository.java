@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
@@ -80,7 +81,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException, ParseException {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setService(getService(dashboard));
-    dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
+    dashboard.setOwner(fields.contains(FIELD_OWNER) ? getOwner(dashboard) : null);
     dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
     dashboard.setTags(fields.contains("tags") ? getTags(dashboard.getFullyQualifiedName()) : null);

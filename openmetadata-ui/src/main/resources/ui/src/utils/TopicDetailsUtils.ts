@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 
+import { TabSpecificField } from '../enums/entity.enum';
+
 export const topicDetailsTabs = [
   {
     name: 'Schema',
     path: 'schema',
+  },
+  {
+    name: 'Activity Feed',
+    path: 'activity_feed',
+    field: TabSpecificField.ACTIVITY_FEED,
   },
   {
     name: 'Config',
@@ -29,12 +36,16 @@ export const topicDetailsTabs = [
 export const getCurrentTopicTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'config':
+    case 'activity_feed':
       currentTab = 2;
 
       break;
-    case 'manage':
+    case 'config':
       currentTab = 3;
+
+      break;
+    case 'manage':
+      currentTab = 4;
 
       break;
 
