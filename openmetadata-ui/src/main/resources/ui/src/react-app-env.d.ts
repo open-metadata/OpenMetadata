@@ -28,5 +28,5 @@ declare module 'recharts';
 declare module 'diff';
 declare module '@deuex-solutions/react-tour';
 declare module 'dagre';
-declare module 'quill-markdown-shortcuts';
 declare module 'turndown';
+declare module 'quilljs-markdown';

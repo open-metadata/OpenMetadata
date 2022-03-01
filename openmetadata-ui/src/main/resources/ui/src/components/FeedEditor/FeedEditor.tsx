@@ -12,13 +12,12 @@
  */
 
 import classNames from 'classnames';
-import MarkdownShortcuts from 'quill-markdown-shortcuts';
 import 'quill-mention';
+import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
   HTMLAttributes,
   useImperativeHandle,
-  useRef,
   useState,
 } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
@@ -27,7 +26,7 @@ import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import './FeedEditor.css';
 
-Quill.register('modules/markdownShortcuts', MarkdownShortcuts);
+Quill.register('modules/markdownOptions', QuillMarkdown);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
@@ -64,8 +63,7 @@ const modules = {
     showDenotationChar: false,
     renderLoading: () => 'Loading...',
   },
-
-  markdownShortcuts: {},
+  markdownOptions: {},
   clipboard: {
     matchers: [['del, strike', strikethrough]],
   },
@@ -73,17 +71,10 @@ const modules = {
 
 const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   (
-    {
-      className,
-      editorClass,
-      placeHolder,
-      onChangeHandler,
-      defaultValue = '',
-    }: FeedEditorProp,
+    { className, editorClass, placeHolder, onChangeHandler }: FeedEditorProp,
     ref
   ) => {
-    const [value, setValue] = useState<string>(defaultValue);
-    const editorRef = useRef<ReactQuill>(null);
+    const [value, setValue] = useState<string>('');
 
     const handleOnChange = (value: string) => {
       setValue(value);
@@ -107,7 +98,6 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           className={classNames('editor-container', editorClass)}
           modules={modules}
           placeholder={placeHolder ?? 'Enter a reply'}
-          ref={editorRef}
           theme="snow"
           value={value}
           onChange={handleOnChange}

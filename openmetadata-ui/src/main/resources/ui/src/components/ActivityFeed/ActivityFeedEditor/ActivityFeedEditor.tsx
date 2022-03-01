@@ -54,7 +54,6 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   return (
     <div className={classNames('tw-relative', className)}>
       <FeedEditor
-        defaultValue={editorValue}
         placeHolder={placeHolder}
         ref={editorRef}
         onChangeHandler={onChangeHandler}
