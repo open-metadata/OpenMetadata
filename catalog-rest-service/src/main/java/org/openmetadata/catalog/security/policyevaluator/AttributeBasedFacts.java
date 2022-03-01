@@ -49,6 +49,8 @@ class AttributeBasedFacts {
   public Facts getFacts() {
     // Facts to be taken into consideration by RuleCondition.
     facts.put(CommonFields.USER_ROLES, getUserRoles(user));
+    facts.put(CommonFields.USER_TEAMS, getUserTeams(user));
+    facts.put(CommonFields.ENTITY_FQN, getEntityFqn(entity));
     facts.put(CommonFields.ENTITY_TAGS, getEntityTags(entity));
     facts.put(CommonFields.ENTITY_TYPE, getEntityType(entity));
     if (checkOperation) {
@@ -73,6 +75,17 @@ class AttributeBasedFacts {
 
   private List<String> getUserRoles(User user) {
     return user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toList());
+  }
+
+  private List<String> getUserTeams(User user) {
+    return user.getTeams().stream().map(EntityReference::getName).collect(Collectors.toList());
+  }
+
+  private String getEntityFqn(Object entity) {
+    if (entity == null) {
+      return ""; // Fact cannot be null. getFacts will throw NPE if this is null.
+    }
+    return Entity.getEntityInterface(entity).getFullyQualifiedName();
   }
 
   private List<String> getEntityTags(Object entity) {

@@ -65,6 +65,7 @@ import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
@@ -212,7 +213,13 @@ public class TableResource {
           Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    Table table = dao.get(uriInfo, id, fields, include);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer,
+        securityContext,
+        new TableRepository.TableEntityInterface(table).getEntityReference(),
+        MetadataOperation.ViewMetadata);
+    return addHref(uriInfo, table);
   }
 
   @GET
@@ -246,7 +253,13 @@ public class TableResource {
           Include include)
       throws IOException, ParseException {
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
+    Table table = dao.getByName(uriInfo, fqn, fields, include);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer,
+        securityContext,
+        new TableRepository.TableEntityInterface(table).getEntityReference(),
+        MetadataOperation.ViewMetadata);
+    return addHref(uriInfo, table);
   }
 
   @GET

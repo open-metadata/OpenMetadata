@@ -163,6 +163,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
+  public static User TEST_USER;
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static User USER2;
@@ -248,6 +249,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
 
     UserResourceTest userResourceTest = new UserResourceTest();
+    TEST_USER =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(TEST_USER_NAME, TEST_USER_NAME, TEST_USER_NAME, null), ADMIN_AUTH_HEADERS);
     USER1 = userResourceTest.createEntity(userResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
 
@@ -470,6 +474,28 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for GET operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  @Test
+  void get_entityWithAuthorizedViewMetadataOperation(TestInfo test) throws HttpResponseException {
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+    // TODO: A good test to cover this use case.
+
+    // Disable DataConsumer ViewMetadata permission.
+
+    // Create a new user FinanceUser with team FinanceTeam.
+
+    // Provide FinanceTeam access to ViewMetadata permission
+
+    // Ensure FinanceUser can read metadata
+
+    // Ensure Test user that is not part of FinanceTeam cannot read metadata.
+
+    // Restore DataConsumer ViewMetadata permission.
+  }
+
   @Test
   void get_entityWithDifferentFieldsQueryParam(TestInfo test) throws HttpResponseException {
     if (!supportsFieldsQueryParam) {
