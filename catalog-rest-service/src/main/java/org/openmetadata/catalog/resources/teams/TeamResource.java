@@ -336,8 +336,10 @@ public class TeamResource {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
+    Team team = dao.get(uriInfo, id, fields);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer, securityContext, dao.getEntityInterface(team).getEntityReference(), patch);
     PatchResponse<Team> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
