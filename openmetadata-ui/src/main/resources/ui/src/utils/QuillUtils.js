@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-export const EntityRegExPattern = /<#E\/([^<>]+?)\/([^<>]+?)\/([^<>]+?)>/;
+// TODO: Later convert this method to support typescript.
+export function insertMention() {
+  const mention = this.quill.getModule('mention');
+  mention.openMenu('@');
+}
 
-export const EntityRegEx = new RegExp(EntityRegExPattern);
-
-export const mentionRegEx = /\[@(.+?)?\]\((.+?)?\)/g;
-export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
-export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
-export const entityLinkRegEx = /<#E\/([^<>]+?)\/([^<>]+?)>/g;
-export const entityRegex = /<#E\/([^<>]+?)\/([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
+export function insertRef() {
+  const ref = this.quill.getModule('mention');
+  ref.openMenu('#');
+}

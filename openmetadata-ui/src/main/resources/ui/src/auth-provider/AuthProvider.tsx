@@ -136,6 +136,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (res.data) {
           getUserPermissions();
           appState.updateUserDetails(res.data);
+          fetchAllUsers();
         } else {
           resetUserDetails();
           setLoading(false);
@@ -266,6 +267,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             } else {
               setLoading(false);
               setIsAuthDisabled(true);
+              fetchAllUsers();
             }
           } else {
             authenticationConfig.reason as AxiosError;

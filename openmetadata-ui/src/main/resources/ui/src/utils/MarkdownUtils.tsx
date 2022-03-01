@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-export const EntityRegExPattern = /<#E\/([^<>]+?)\/([^<>]+?)\/([^<>]+?)>/;
+import React, { FC, HTMLAttributes } from 'react';
 
-export const EntityRegEx = new RegExp(EntityRegExPattern);
+export const Paragraph: FC<
+  HTMLAttributes<HTMLParagraphElement> & { isNewLine: boolean }
+> = ({ children, isNewLine = true, ...props }) =>
+  isNewLine ? <p {...props}>{children}</p> : <span {...props}>{children}</span>;
 
-export const mentionRegEx = /\[@(.+?)?\]\((.+?)?\)/g;
-export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
-export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
-export const entityLinkRegEx = /<#E\/([^<>]+?)\/([^<>]+?)>/g;
-export const entityRegex = /<#E\/([^<>]+?)\/([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
+export const UnOrderedList: FC<HTMLAttributes<HTMLUListElement>> = ({
+  children,
+  ...props
+}) => <ul {...props}>{children}</ul>;
