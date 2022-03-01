@@ -228,7 +228,7 @@ public class TagsPageTest {
     Events.click(webDriver, common.containsText("PersonalData"));
     Thread.sleep(2000);
     String usageCount = webDriver.findElement(tagsPage.aTagUsageCountElementIndex(1)).getAttribute("innerHTML");
-    Assert.assertEquals(usageCount, "0");
+    Assert.assertEquals(usageCount, "Not Used");
   }
 
   @Test
@@ -275,7 +275,7 @@ public class TagsPageTest {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
       WebElement sameTag = webDriver.findElement(common.tagListItem());
       if (sameTag.isDisplayed()) {
-        Assert.fail();
+        Assert.fail("Same name tag displayed");
       }
     } catch (NoSuchElementException exception) {
       LOG.info("Success");

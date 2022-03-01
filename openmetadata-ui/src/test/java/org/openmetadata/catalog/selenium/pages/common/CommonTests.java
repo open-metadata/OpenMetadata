@@ -367,13 +367,13 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), "!");
     Events.sendEnter(webDriver, common.searchBar());
     Thread.sleep(2000);
-    String search1 = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+    String search1 = webDriver.findElement(common.noSearchResult()).getText();
     Assert.assertEquals(search1, "No matching data assets found for !");
     webDriver.navigate().back();
     Events.sendKeys(webDriver, common.searchBar(), "{");
     Events.sendEnter(webDriver, common.searchBar());
     try {
-      String search2 = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+      String search2 = webDriver.findElement(common.noSearchResult()).getText();
       Assert.assertEquals(search2, "No matching data assets found for {");
     } catch (NoSuchElementException exception) {
       LOG.info("Search results are not similar for no data found!");
