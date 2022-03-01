@@ -232,7 +232,6 @@ public class TopicDetailsPageTest {
       }
       e.click();
       Thread.sleep(waitTime);
-      Assert.assertTrue(webDriver.findElement(common.difference()).isDisplayed());
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, common.version());
