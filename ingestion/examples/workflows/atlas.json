@@ -2,7 +2,7 @@
   "source": {
     "type": "atlas",
     "config": {
-      "service_name": "local_hive",
+      "service_name": "local_atlas",
       "atlas_host": "http://192.168.1.8:21000",
       "user_name": "admin",
       "password": "admin",
