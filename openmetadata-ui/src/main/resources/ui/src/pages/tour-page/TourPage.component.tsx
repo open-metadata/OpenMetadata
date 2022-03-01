@@ -137,6 +137,7 @@ const TourPage = () => {
             followedData={[]}
             ingestionCount={0}
             ownedData={[]}
+            postFeedHandler={handleOnClick}
             searchResult={myDataSearchResult as unknown as SearchResponse}
             userDetails={AppState.userDetails}
           />
@@ -181,16 +182,20 @@ const TourPage = () => {
             entityLineage={mockDatasetData.entityLineage}
             entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}
+            entityThread={[]}
+            feedCount={0}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             isNodeLoading={{
               id: undefined,
               state: false,
             }}
+            isentityThreadLoading={false}
             joins={mockDatasetData.joins as unknown as TableJoins}
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
+            postFeedHandler={handleCountChange}
             removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}

@@ -424,7 +424,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   // Get container entity based on create request that has CONTAINS relationship to the entity created with this
   // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
   // details.
-  public EntityReference getContainer(K createRequest) {
+  public EntityReference getContainer() {
     return null;
   }
 
@@ -611,11 +611,16 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   /** At the end of test for an entity, delete the parent container to test recursive delete functionality */
   private void delete_recursiveTest() throws IOException {
     // Finally, delete the container that contains the entities created for this test
-    EntityReference container = getContainer(createRequest("deleteRecursive", "", "", null));
+    EntityReference container = getContainer();
     if (container != null) {
-      ResultList<T> listBeforeDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
+      // List both deleted and non deleted entities
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", "all");
+      ResultList<T> listBeforeDeletion = listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+
       // Delete non-empty container entity and ensure deletion is not allowed
-      EntityResourceTest<?, ?> containerTest = ENTITY_RESOURCE_TEST_MAP.get(container.getType());
+      EntityResourceTest<Object, Object> containerTest =
+          (EntityResourceTest<Object, Object>) ENTITY_RESOURCE_TEST_MAP.get(container.getType());
       assertResponse(
           () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
@@ -624,12 +629,26 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       // Now delete the container with recursive flag on
       containerTest.deleteEntity(container.getId(), true, ADMIN_AUTH_HEADERS);
 
-      // Make sure entities contained are deleted and the new list operation returns 0 entities
+      // Make sure entities that belonged to the container are deleted and the new list operation returns less entities
       ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       listAfterDeletion
           .getData()
           .forEach(e -> assertNotEquals(getEntityInterface(e).getContainer().getId(), container.getId()));
       assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
+
+      // Restore the soft-deleted container by PUT operation and make sure it is restored
+      String containerName = container.getName();
+      if (containerTest.getContainer() != null) {
+        // Find container name by removing parentContainer fqn from container fqn
+        // Example: remove "service" from "service.database" to get "database" container name for table
+        String parentOfContainer = containerTest.getContainer().getName();
+        containerName = container.getName().replace(parentOfContainer + ".", "");
+      }
+      Object request = containerTest.createRequest(containerName, "", "", null);
+      containerTest.updateEntity(request, Status.OK, ADMIN_AUTH_HEADERS);
+
+      ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
+      assertEquals(listBeforeDeletion.getData().size(), listAfterRestore.getData().size());
     }
   }
 

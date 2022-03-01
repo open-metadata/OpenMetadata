@@ -18,6 +18,7 @@ import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
+  getDatabaseDetailsPath,
   getPipelineDetailsPath,
   getTableDetailsPath,
   getTopicDetailsPath,
@@ -201,6 +202,9 @@ export const getEntityLink = (
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
       return getPipelineDetailsPath(fullyQualifiedName);
+
+    case EntityType.DATABASE:
+      return getDatabaseDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

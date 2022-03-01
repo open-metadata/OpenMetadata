@@ -40,7 +40,6 @@ const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
-const PLACEHOLDER_ROUTE_SERVICE_TYPE = ':serviceType';
 const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
@@ -132,8 +131,8 @@ export const ROUTES = {
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
-  SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_TYPE}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
-  SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_TYPE}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
+  SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   SERVICES: '/services',
   USERS: '/users',
   SCORECARD: '/scorecard',
@@ -195,14 +194,12 @@ export const getTableTabPath = (tableFQN: string, tab = 'schema') => {
 
 export const getServiceDetailsPath = (
   serviceFQN: string,
-  serviceType: string,
   serviceCat: string,
   tab?: string
 ) => {
   let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_TYPE, serviceType)
     .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN);
 
   if (tab) {

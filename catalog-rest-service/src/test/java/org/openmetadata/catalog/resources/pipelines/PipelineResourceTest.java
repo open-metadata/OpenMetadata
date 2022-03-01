@@ -101,7 +101,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   public CreatePipeline createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreatePipeline()
         .withName(name)
-        .withService(AIRFLOW_REFERENCE)
+        .withService(getContainer())
         .withDescription(description)
         .withDisplayName(displayName)
         .withOwner(owner)
@@ -109,8 +109,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Override
-  public EntityReference getContainer(CreatePipeline createRequest) {
-    return createRequest.getService();
+  public EntityReference getContainer() {
+    return AIRFLOW_REFERENCE;
   }
 
   @Override

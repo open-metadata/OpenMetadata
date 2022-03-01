@@ -22,6 +22,11 @@ export const pipelineDetailsTabs = [
     path: 'details',
   },
   {
+    name: 'Activity Feed',
+    path: 'activity_feed',
+    field: TabSpecificField.ACTIVITY_FEED,
+  },
+  {
     name: 'Lineage',
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
@@ -35,12 +40,18 @@ export const pipelineDetailsTabs = [
 export const getCurrentPipelineTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'lineage':
+    case 'activity_feed':
       currentTab = 2;
 
       break;
-    case 'manage':
+
+    case 'lineage':
       currentTab = 3;
+
+      break;
+
+    case 'manage':
+      currentTab = 4;
 
       break;
 

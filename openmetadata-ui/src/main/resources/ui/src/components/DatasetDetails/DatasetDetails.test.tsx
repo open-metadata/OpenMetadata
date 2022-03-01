@@ -78,6 +78,10 @@ const DatasetDetailsProps = {
   removeLineageHandler: jest.fn(),
   entityLineageHandler: jest.fn(),
   tableQueries: [],
+  entityThread: [],
+  isentityThreadLoading: false,
+  postFeedHandler: jest.fn(),
+  feedCount: 0,
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
@@ -105,6 +109,10 @@ jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
 
 jest.mock('../common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<p>TabsPane</p>);
+});
+
+jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
+  return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({

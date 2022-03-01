@@ -497,4 +497,23 @@ declare module 'Models' {
   export interface EditorContentRef {
     getEditorContent: () => string;
   }
+  export interface EntityThread {
+    id: string;
+    href: string;
+    threadTs: number;
+    about: string;
+    createdBy: string;
+    updatedAt: number;
+    updatedBy: string;
+    resolved: boolean;
+    message: string;
+    postsCount: number;
+    posts: Post[];
+  }
+
+  export interface Post {
+    message: string;
+    postTs: number;
+    from: string;
+  }
 }

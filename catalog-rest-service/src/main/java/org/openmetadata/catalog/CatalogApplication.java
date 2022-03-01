@@ -62,7 +62,6 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
-import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 
@@ -185,16 +184,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       authorizer.init(authorizerConf, jdbi);
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
-      if (StringUtils.isEmpty(filterClazzName)) {
-        filter = new CatalogSecurityContextRequestFilter(); // default
-      } else {
+      if (!StringUtils.isEmpty(filterClazzName)) {
         filter =
             ((Class<ContainerRequestFilter>) Class.forName(filterClazzName))
                 .getConstructor(AuthenticationConfiguration.class)
                 .newInstance(authenticationConfiguration);
+        LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
+        environment.jersey().register(filter);
       }
-      LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
-      environment.jersey().register(filter);
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
       authorizer = NoopAuthorizer.class.getConstructor().newInstance();

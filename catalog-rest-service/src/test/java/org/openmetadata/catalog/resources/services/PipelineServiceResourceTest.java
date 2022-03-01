@@ -48,8 +48,15 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService, CreatePipelineService> {
-
   public static URI PIPELINE_SERVICE_URL;
+
+  static {
+    try {
+      PIPELINE_SERVICE_URL = new URI("http://localhost:8080");
+    } catch (URISyntaxException e) {
+      e.printStackTrace();
+    }
+  }
 
   public PipelineServiceResourceTest() {
     super(
@@ -70,7 +77,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Override
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     super.setup(test);
-    PIPELINE_SERVICE_URL = new URI("http://localhost:8080");
   }
 
   @Test

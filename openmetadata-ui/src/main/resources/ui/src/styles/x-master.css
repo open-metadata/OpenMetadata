@@ -890,3 +890,13 @@ body .profiler-graph .recharts-active-dot circle {
 .table-query-editor > .CodeMirror {
   height: auto !important;
 }
+
+.entity-feed-list {
+  grid-template-columns: 200px auto 200px;
+}
+.activity-feed-card-text code {
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: #ebeef1;
+  font-size: 90%;
+}

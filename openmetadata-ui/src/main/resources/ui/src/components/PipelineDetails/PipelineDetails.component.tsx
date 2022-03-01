@@ -30,6 +30,7 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
+import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -73,6 +74,10 @@ const PipelineDetails = ({
   removeLineageHandler,
   entityLineageHandler,
   isLineageLoading,
+  isentityThreadLoading,
+  entityThread,
+  postFeedHandler,
+  feedCount,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -109,6 +114,17 @@ const PipelineDetails = ({
       position: 1,
     },
     {
+      name: `Activity Feed (${feedCount})`,
+      icon: {
+        alt: 'activity_feed',
+        name: 'activity_feed',
+        title: 'Activity Feed',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',
@@ -117,7 +133,7 @@ const PipelineDetails = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
     {
       name: 'Manage',
@@ -130,7 +146,7 @@ const PipelineDetails = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 3,
+      position: 4,
     },
   ];
 
@@ -406,6 +422,22 @@ const PipelineDetails = ({
                 </>
               )}
               {activeTab === 2 && (
+                <div
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                  id="activityfeed">
+                  <div />
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    className=""
+                    feedList={entityThread}
+                    isLoading={isentityThreadLoading}
+                    postFeedHandler={postFeedHandler}
+                  />
+                  <div />
+                </div>
+              )}
+              {activeTab === 3 && (
                 <div className="tw-h-full">
                   <Entitylineage
                     addLineageHandler={addLineageHandler}
@@ -421,7 +453,7 @@ const PipelineDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 3 && !deleted && (
+              {activeTab === 4 && !deleted && (
                 <div>
                   <ManageTabComponent
                     currentTier={tier?.tagFQN}

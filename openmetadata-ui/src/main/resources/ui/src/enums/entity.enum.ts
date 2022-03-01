@@ -17,6 +17,7 @@ export enum EntityType {
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
+  DATABASE = 'database',
 }
 
 export enum ChangeType {
@@ -32,6 +33,7 @@ export enum EntityLineageDirection {
 
 export enum TabSpecificField {
   SAMPLE_DATA = 'sampleData',
+  ACTIVITY_FEED = 'activity_feed',
   TABLE_PROFILE = 'tableProfile',
   LINEAGE = 'lineage',
   COLUMNS = 'columns',

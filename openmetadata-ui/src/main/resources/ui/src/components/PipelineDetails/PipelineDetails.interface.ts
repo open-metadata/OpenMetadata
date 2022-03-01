@@ -14,6 +14,7 @@
 import { Operation } from 'fast-json-patch';
 import {
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -49,6 +50,9 @@ export interface PipeLineDetailsProp {
   tasks: Task[];
   deleted?: boolean;
   isLineageLoading?: boolean;
+  entityThread: EntityThread[];
+  isentityThreadLoading: boolean;
+  feedCount: number;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
@@ -61,4 +65,5 @@ export interface PipeLineDetailsProp {
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
+  postFeedHandler: (value: string, id: string) => void;
 }
