@@ -9,6 +9,9 @@
     "owner": {
       "type": "keyword"
     },
+    "fqdn": {
+      "type": "keyword"
+    },
     "last_updated_timestamp": {
       "type": "date",
       "format": "epoch_second"

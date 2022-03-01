@@ -197,6 +197,7 @@ class GlossaryTermESDocument(BaseModel):
     entity_type: str = "glossaryTerm"
     name: str
     display_name: str
+    fqdn: str
     description: str
     glossary_name: str
     glossary_id: str

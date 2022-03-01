@@ -876,7 +876,7 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
         .name(glossaryTerm.getName())
         .displayName(displayName)
         .description(description)
-        .fqdn(glossaryTerm.getName())
+        .fqdn(glossaryTerm.getFullyQualifiedName())
         .glossaryId(glossaryTerm.getGlossary().getId().toString())
         .glossaryName(glossaryTerm.getGlossary().getName())
         .lastUpdatedTimestamp(updatedTimestamp)
