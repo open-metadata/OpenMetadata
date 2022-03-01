@@ -147,7 +147,6 @@
             <configuration>
               <!-- optional: if not specified, it will run gulp's default task
                   (and you can remove this whole <configuration> section.) -->
-              <skipTests>true</skipTests>
               <arguments>run build-test</arguments>
               <!--arguments>build</arguments-->
             </configuration>
