@@ -127,7 +127,7 @@ public class DashboardDetailsPageTest {
     webDriver.navigate().forward();
     Thread.sleep(waitTime);
     breadcrumbTag = webDriver.findElement(common.breadCrumbTags()).getText();
-    System.out.println("Tags="+breadcrumbTag+selectedTag);
+    System.out.println("Tags=" + breadcrumbTag + selectedTag);
     Assert.assertEquals(breadcrumbTag, selectedTag);
   }
 
