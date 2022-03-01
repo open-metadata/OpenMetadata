@@ -95,7 +95,11 @@ export const getAuthConfig = (
           auth: {
             authority,
             clientId,
-            redirectUri: 'http://localhost:3000/callback',
+            redirectUri: isDev()
+              ? 'http://localhost:3000/callback'
+              : !isNil(callbackUrl)
+              ? callbackUrl
+              : `${window.location.origin}/callback`,
             postLogoutRedirectUri: '/',
           },
           cache: {
