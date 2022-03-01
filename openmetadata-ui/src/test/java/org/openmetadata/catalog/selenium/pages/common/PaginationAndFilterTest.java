@@ -149,7 +149,7 @@ public class PaginationAndFilterTest {
       Events.click(webDriver, common.selectFilterExplore("Glue"));
       Events.click(webDriver, common.selectFilterExplore("default"));
     } catch (TimeoutException exception) {
-      throw new Exception("filters are missing");
+      Assert.fail("filters are missing");
     }
   }
 
