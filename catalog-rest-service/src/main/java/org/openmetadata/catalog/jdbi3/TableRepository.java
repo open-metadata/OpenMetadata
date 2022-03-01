@@ -261,7 +261,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<TableTest> storedTableTests = getTableTests(table);
     // we will override any test case name passed by user/client with tableName + testType
     // our assumption is there is only one instance of a test type as of now.
-    tableTest.setName(table.getName() + "." + tableTest.getTableTestCase().getTestType().toString());
+    tableTest.setName(table.getName() + "." + tableTest.getTestCase().getTableTestType().toString());
     Map<String, TableTest> storedMapTableTests = new HashMap<>();
     if (storedTableTests != null) {
       for (TableTest t : storedTableTests) {
@@ -325,7 +325,7 @@ public class TableRepository extends EntityRepository<Table> {
     validateColumn(table, columnName);
     // we will override any test case name passed by user/client with columnName + testType
     // our assumption is there is only one instance of a test type as of now.
-    columnTest.setName(columnName + "." + columnTest.getTestCase().getTestType().toString());
+    columnTest.setName(columnName + "." + columnTest.getTestCase().getColumnTestType().toString());
     List<ColumnTest> storedColumnTests = getColumnTests(table, columnName);
     Map<String, ColumnTest> storedMapColumnTests = new HashMap<>();
     if (storedColumnTests != null) {

@@ -13,7 +13,7 @@
       "description": "Table Name for which this test applies.",
       "type": "string"
     },
-    "tableTestCase": {
+    "testCase": {
       "$ref": "../../tests/tableTest.json#/definitions/tableTestCase"
     },
     "executionFrequency": {

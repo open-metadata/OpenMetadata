@@ -36,7 +36,7 @@
             }
           ]
         },
-        "testType": {
+        "columnTestType": {
           "enum": [
             "columnValuesToBeUnique",
             "columnValuesToBeNotNull",

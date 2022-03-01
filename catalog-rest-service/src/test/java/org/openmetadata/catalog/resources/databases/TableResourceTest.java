@@ -1041,12 +1041,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TableRowCountToEqual tableRowCountToEqual = new TableRowCountToEqual().withValue(100);
     TableTestCase tableTestCase =
         new TableTestCase()
-            .withTestType(TableTestCase.TestType.TABLE_ROW_COUNT_TO_EQUAL)
+            .withTableTestType(TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_EQUAL)
             .withConfig(tableRowCountToEqual);
     CreateTableTest createTableTest =
         new CreateTableTest()
             .withTableName(table.getName())
-            .withTableTestCase(tableTestCase)
+            .withTestCase(tableTestCase)
             .withExecutionFrequency(TestCaseExecutionFrequency.Hourly);
     Table putResponse = putTableTest(table.getId(), createTableTest, ADMIN_AUTH_HEADERS);
     verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(createTableTest));
@@ -1058,7 +1058,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestCaseResult testCaseResult1 =
         new TestCaseResult()
             .withResult("Rows equal to 100")
-            .withStatus(TestCaseStatus.Success)
+            .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("Rows == 100")
             .withExecutionTime(100L);
     createTableTest.setResult(testCaseResult1);
@@ -1068,7 +1068,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestCaseResult testCaseResult2 =
         new TestCaseResult()
             .withResult("Rows equal to 100")
-            .withStatus(TestCaseStatus.Success)
+            .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("Rows == 100")
             .withExecutionTime(100L);
     createTableTest.setResult(testCaseResult2);
@@ -1078,10 +1078,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableRowCountToBeBetween().withMinValue(100).withMaxValue(1000);
     TableTestCase tableTestCase1 =
         new TableTestCase()
-            .withTestType(TableTestCase.TestType.TABLE_ROW_COUNT_TO_BE_BETWEEN)
+            .withTableTestType(TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_BE_BETWEEN)
             .withConfig(tableRowCountToBeBetween);
     CreateTableTest createTableTest1 =
-        new CreateTableTest().withTableTestCase(tableTestCase1).withTableName(table.getName());
+        new CreateTableTest().withTestCase(tableTestCase1).withTableName(table.getName());
     putResponse = putTableTest(table.getId(), createTableTest1, ADMIN_AUTH_HEADERS);
     // returns the current test thats updated or created
     verifyTableTest(putResponse.getName(), putResponse.getTableTests(), List.of(createTableTest1));
@@ -1100,7 +1100,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new ColumnValueLengthsToBeBetween().withMaxValue(100).withMinValue(10);
     ColumnTestCase columnTestCase =
         new ColumnTestCase()
-            .withTestType(ColumnTestCase.TestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN)
+            .withColumnTestType(ColumnTestCase.ColumnTestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN)
             .withConfig(columnValueLengthsToBeBetween);
     CreateColumnTest createColumnTest =
         new CreateColumnTest()
@@ -1118,7 +1118,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestCaseResult colTestCaseResult =
         new TestCaseResult()
             .withResult("min is > 100 and max < 1000")
-            .withStatus(TestCaseStatus.Success)
+            .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("minValue is 100 and maxValue is 1000")
             .withExecutionTime(100L);
     createColumnTest.setResult(colTestCaseResult);
@@ -1129,7 +1129,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new ColumnValuesMissingCountToBeEqual().withMissingCountValue(10);
     ColumnTestCase columnTestCase1 =
         new ColumnTestCase()
-            .withTestType(ColumnTestCase.TestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL)
+            .withColumnTestType(ColumnTestCase.ColumnTestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL)
             .withConfig(columnValuesMissingCountToBeEqual);
     CreateColumnTest createColumnTest1 =
         new CreateColumnTest()
@@ -1143,7 +1143,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columnValuesMissingCountToBeEqual = new ColumnValuesMissingCountToBeEqual().withMissingCountValue(100);
     columnTestCase1 =
         new ColumnTestCase()
-            .withTestType(ColumnTestCase.TestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL)
+            .withColumnTestType(ColumnTestCase.ColumnTestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL)
             .withConfig(columnValuesMissingCountToBeEqual);
     createColumnTest1 =
         new CreateColumnTest()
@@ -1157,7 +1157,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestCaseResult colTestCaseResult1 =
         new TestCaseResult()
             .withResult("min is > 100 and max < 1000")
-            .withStatus(TestCaseStatus.Success)
+            .withTestCaseStatus(TestCaseStatus.Success)
             .withSampleData("minValue is 100 and maxValue is 1000")
             .withExecutionTime(100L);
     createColumnTest.setResult(colTestCaseResult1);
@@ -1171,12 +1171,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // delete the table test case
     putResponse =
         deleteTableTest(
-            table.getId(), createTableTest1.getTableTestCase().getTestType().toString(), ADMIN_AUTH_HEADERS);
+            table.getId(), createTableTest1.getTestCase().getTableTestType().toString(), ADMIN_AUTH_HEADERS);
     table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
     verifyTableTest(table.getName(), table.getTableTests(), List.of(createTableTest));
 
     // delete column test case
-    deleteColumnTest(table.getId(), c1.getName(), columnTestCase1.getTestType().toString(), ADMIN_AUTH_HEADERS);
+    deleteColumnTest(table.getId(), c1.getName(), columnTestCase1.getColumnTestType().toString(), ADMIN_AUTH_HEADERS);
     table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
     verifyColumnTest(table, c1, List.of(createColumnTest));
   }
@@ -1731,14 +1731,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
     for (CreateTableTest test : expectedTests) {
       // passed in test name will be overridden in backend
-      String expectedTestName = tableName + "." + test.getTableTestCase().getTestType().toString();
+      String expectedTestName = tableName + "." + test.getTestCase().getTableTestType().toString();
       TableTest storedTest = tableTestMap.get(expectedTestName);
       assertNotNull(storedTest);
       assertEquals(expectedTestName, storedTest.getName());
       assertEquals(test.getDescription(), storedTest.getDescription());
       assertEquals(test.getExecutionFrequency(), storedTest.getExecutionFrequency());
       assertEquals(test.getOwner(), storedTest.getOwner());
-      verifyTableTestCase(test.getTableTestCase(), storedTest.getTableTestCase());
+      verifyTableTestCase(test.getTestCase(), storedTest.getTestCase());
       if (test.getResult() != null && storedTest.getResults().size() > 0) {
         verifyTestCaseResults(test.getResult(), storedTest.getResults());
       }
@@ -1746,17 +1746,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private void verifyTableTestCase(TableTestCase expected, TableTestCase actual) {
-    assertEquals(expected.getTestType(), actual.getTestType());
-    if (expected.getTestType() == TableTestCase.TestType.TABLE_COLUMN_COUNT_TO_EQUAL) {
+    assertEquals(expected.getTableTestType(), actual.getTableTestType());
+    if (expected.getTableTestType() == TableTestCase.TableTestType.TABLE_COLUMN_COUNT_TO_EQUAL) {
       TableColumnCountToEqual expectedTest = (TableColumnCountToEqual) expected.getConfig();
       TableColumnCountToEqual actualTest = JsonUtils.convertValue(actual.getConfig(), TableColumnCountToEqual.class);
       assertEquals(expectedTest.getValue(), actualTest.getValue());
-    } else if (expected.getTestType() == TableTestCase.TestType.TABLE_ROW_COUNT_TO_BE_BETWEEN) {
+    } else if (expected.getTableTestType() == TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_BE_BETWEEN) {
       TableRowCountToBeBetween expectedTest = (TableRowCountToBeBetween) expected.getConfig();
       TableRowCountToBeBetween actualTest = JsonUtils.convertValue(actual.getConfig(), TableRowCountToBeBetween.class);
       assertEquals(expectedTest.getMaxValue(), actualTest.getMaxValue());
       assertEquals(expectedTest.getMinValue(), actualTest.getMinValue());
-    } else if (expected.getTestType() == TableTestCase.TestType.TABLE_ROW_COUNT_TO_EQUAL) {
+    } else if (expected.getTableTestType() == TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_EQUAL) {
       TableRowCountToEqual expectedTest = (TableRowCountToEqual) expected.getConfig();
       TableRowCountToEqual actualTest = JsonUtils.convertValue(actual.getConfig(), TableRowCountToEqual.class);
       assertEquals(expectedTest.getValue(), actualTest.getValue());
@@ -1779,7 +1779,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     for (CreateColumnTest test : expectedTests) {
       // passed in test name will be overridden in backend
-      String expectedTestName = column.getName() + "." + test.getTestCase().getTestType().toString();
+      String expectedTestName = column.getName() + "." + test.getTestCase().getColumnTestType().toString();
       ColumnTest storedTest = columnTestMap.get(expectedTestName);
       assertNotNull(storedTest);
       assertEquals(expectedTestName, storedTest.getName());
@@ -1794,26 +1794,26 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private void verifyColumnTestCase(ColumnTestCase expected, ColumnTestCase actual) {
-    assertEquals(expected.getTestType(), actual.getTestType());
-    if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_TO_BE_UNIQUE) {
+    assertEquals(expected.getColumnTestType(), actual.getColumnTestType());
+    if (expected.getColumnTestType() == ColumnTestCase.ColumnTestType.COLUMN_VALUES_TO_BE_UNIQUE) {
       ColumnValuesToBeUnique expectedTest = (ColumnValuesToBeUnique) expected.getConfig();
       ColumnValuesToBeUnique actualTest = JsonUtils.convertValue(actual.getConfig(), ColumnValuesToBeUnique.class);
       assertEquals(expectedTest, actualTest);
-    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_TO_BE_NOT_NULL) {
+    } else if (expected.getColumnTestType() == ColumnTestCase.ColumnTestType.COLUMN_VALUES_TO_BE_NOT_NULL) {
       ColumnValuesToBeNotNull expectedTest = (ColumnValuesToBeNotNull) expected.getConfig();
       ColumnValuesToBeNotNull actualTest = JsonUtils.convertValue(actual.getConfig(), ColumnValuesToBeNotNull.class);
       assertEquals(expectedTest, actualTest);
-    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_TO_MATCH_REGEX) {
+    } else if (expected.getColumnTestType() == ColumnTestCase.ColumnTestType.COLUMN_VALUES_TO_MATCH_REGEX) {
       ColumnValuesToMatchRegex expectedTest = (ColumnValuesToMatchRegex) expected.getConfig();
       ColumnValuesToMatchRegex actualTest = JsonUtils.convertValue(actual.getConfig(), ColumnValuesToMatchRegex.class);
       assertEquals(expectedTest.getRegex(), actualTest.getRegex());
-    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN) {
+    } else if (expected.getColumnTestType() == ColumnTestCase.ColumnTestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN) {
       ColumnValueLengthsToBeBetween expectedTest = (ColumnValueLengthsToBeBetween) expected.getConfig();
       ColumnValueLengthsToBeBetween actualTest =
           JsonUtils.convertValue(actual.getConfig(), ColumnValueLengthsToBeBetween.class);
       assertEquals(expectedTest.getMaxValue(), actualTest.getMaxValue());
       assertEquals(expectedTest.getMinValue(), actualTest.getMinValue());
-    } else if (expected.getTestType() == ColumnTestCase.TestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL) {
+    } else if (expected.getColumnTestType() == ColumnTestCase.ColumnTestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL) {
       ColumnValuesMissingCountToBeEqual expectedTest = (ColumnValuesMissingCountToBeEqual) expected.getConfig();
       ColumnValuesMissingCountToBeEqual actualTest =
           JsonUtils.convertValue(actual.getConfig(), ColumnValuesMissingCountToBeEqual.class);

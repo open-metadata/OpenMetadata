@@ -24,7 +24,7 @@
             }
           ]
         },
-        "testType": {
+        "tableTestType": {
           "enum": [
             "tableRowCountToEqual",
             "tableRowCountToBeBetween",
@@ -50,11 +50,7 @@
       "description": "Description of the testcase.",
       "type": "string"
     },
-    "tableName": {
-      "description": "Table Name for which this test applies.",
-      "type": "string"
-    },
-    "tableTestCase": {
+    "testCase": {
       "$ref": "#/definitions/tableTestCase"
     },
     "executionFrequency": {
@@ -81,6 +77,6 @@
       "type": "string"
     }
   },
-  "required": ["name", "testCase", "tableName"],
+  "required": ["name", "testCase"],
   "additionalProperties": false
 }
