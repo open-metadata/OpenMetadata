@@ -1723,6 +1723,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private void verifyTableTest(String tableName, List<TableTest> actualTests, List<CreateTableTest> expectedTests)
+      throws IOException {
     assertEquals(expectedTests.size(), actualTests.size());
     Map<String, TableTest> tableTestMap = new HashMap<>();
     for (TableTest test : actualTests) {
