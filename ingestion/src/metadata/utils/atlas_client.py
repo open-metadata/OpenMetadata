@@ -39,7 +39,7 @@ class AtlasClient:
             base_url=self.config.atlas_host,
             auth_header="Authorization",
             api_version="api",
-            auth_token=self.auth_token,
+            auth_token=self.get_auth_token,
             auth_token_mode="Basic",
         )
         self.client = REST(client_config)
@@ -53,7 +53,7 @@ class AtlasClient:
         entities = response["results"]
         return entities
 
-    def get_table(self, table):
+    def get_entity(self, table):
         response = self.client.get(f"/atlas/v2/entity/bulk?guid={table}")
         return response
 
@@ -63,6 +63,9 @@ class AtlasClient:
             raise APIError(response["error"])
 
         return response
+
+    def get_auth_token(self):
+        return (self.auth_token, 0)
 
 
 def generate_http_basic_token(username, password):

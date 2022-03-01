@@ -4,18 +4,14 @@ import traceback
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, Optional
+from re import L
+from typing import Any, Dict, Iterable, List
 
-from pydantic import SecretStr
-
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
-from metadata.generated.schema.entity.data.topic import SchemaType, Topic
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
 )
@@ -24,7 +20,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.atlas_client import AtlasClient, AtlasSourceConfig
@@ -54,8 +49,8 @@ class AtlasSource(Source):
     config: AtlasSourceConfig
     atlas_client: AtlasClient
     status: AtlasSourceStatus
-    tables: List[str]
-    topics: List[str]
+    tables: Dict[str, Any]
+    topics: Dict[str, Any]
 
     def __init__(
         self,
@@ -81,14 +76,13 @@ class AtlasSource(Source):
         )
         self.atlas_client = AtlasClient(config)
         path = Path(self.config.entity_types)
-        if path.is_file():
+        if not path.is_file():
             logger.error(f"File not found {self.config.entity_types}")
             raise FileNotFoundError()
         f = open(self.config.entity_types)
         self.config.entity_types = json.load(f)
-        print(
-            "-============",
-        )
+        self.tables: Dict[str, Any] = {}
+        self.topics: Dict[str, Any] = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -97,18 +91,15 @@ class AtlasSource(Source):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        for table in self.config.entity_types["Table"].keys():
-            self.tables = self.atlas_client.list_entities(
-                entity_type=self.config.entity_types["Table"][table]
-            )
-        for topic in self.config.entity_types["Table"].keys():
-            self.topics = self.atlas_client.list_entities(
-                entity_type=self.config.entity_types["Topic"][topic]
-            )
+        for key in self.config.entity_types["Table"].keys():
+            self.tables[key] = self.atlas_client.list_entities(entity_type=key)
+        for key in self.config.entity_types["Topic"]:
+            self.topics[key] = self.atlas_client.list_entities(entity_type=key)
 
     def next_record(self):
         if self.tables:
-            yield from self._parse_table_entity()
+            for _, entity in enumerate(self.tables):
+                yield from self._parse_table_entity(entity, self.tables[entity])
         if self.topics:
             yield from self._parse_topic_entity()
 
@@ -119,8 +110,8 @@ class AtlasSource(Source):
         return self.status
 
     def _parse_topic_entity(self):
-        for topic in self.topics:
-            topic_entity = self.atlas_client.get_entity(topic)
+        for key in self.topics.keys():
+            topic_entity = self.atlas_client.get_entity(self.topics[key])
             tpc_entities = topic_entity["entities"]
             for tpc_entity in tpc_entities:
                 try:
@@ -141,15 +132,18 @@ class AtlasSource(Source):
                     logger.error("error occured", e)
                     logger.error(f"Failed to parse {topic_entity}")
 
-    def _parse_table_entity(self):
-        for table in self.tables:
+    def _parse_table_entity(self, name, entity):
+        for table in entity:
             table_entity = self.atlas_client.get_entity(table)
             tbl_entities = table_entity["entities"]
             for tbl_entity in tbl_entities:
                 try:
-                    tbl_columns = self._parse_table_columns(table_entity, table)
+                    tbl_columns = self._parse_table_columns(
+                        table_entity, tbl_entity, name
+                    )
                     tbl_attrs = tbl_entity["attributes"]
-                    db_entity = self.config.entity_types["Table"][table]["db"]
+                    db_entity = tbl_entity["relationshipAttributes"]["db"]
+
                     db = self._get_database(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
                     fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
@@ -168,15 +162,17 @@ class AtlasSource(Source):
                     )
                     yield table_and_db
 
-                    yield from self.ingest_lineage(tbl_entity["guid"])
+                    yield from self.ingest_lineage(tbl_entity["guid"], name)
 
                 except Exception as e:
                     logger.error("error occured", e)
                     logger.error(f"Failed to parse {table_entity}")
 
-    def _parse_table_columns(self, table_response, table) -> List[Column]:
+    def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []
-        col_entities = self.config.entity_types["Table"][table]["column"]
+        col_entities = tbl_entity["relationshipAttributes"][
+            self.config.entity_types["Table"][name]["column"]
+        ]
         referred_entities = table_response["referredEntities"]
         ordinal_pos = 1
         for col in col_entities:
@@ -207,15 +203,19 @@ class AtlasSource(Source):
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
-    def ingest_lineage(self, source_guid) -> Iterable[AddLineageRequest]:
+    def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
         lineage_response = self.atlas_client.get_lineage(source_guid)
         lineage_relations = lineage_response["relations"]
         tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
         for key in tbl_entity["referredEntities"].keys():
-            tbl_attrs = tbl_entity["referredEntities"][key]["attributes"]
-            db_entity = tbl_entity["db"]
+            db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
+                self.config.entity_types["Table"][name]["db"]
+            ]
             db = self._get_database(db_entity["displayText"])
-            table_name = tbl_attrs["name"]
+            table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"][
+                "table"
+            ]["displayText"]
+
             fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
             from_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
@@ -226,26 +226,42 @@ class AtlasSource(Source):
                     == "processor"
                 ):
                     continue
-                tbl_attrs = tbl_entity["referredEntities"][key]["attributes"]
-                db_entity = tbl_entity["db"]
-                db = self._get_database(db_entity["displayText"])
-                table_name = tbl_attrs["name"]
-                fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
-                to_entity_ref = self.get_lineage_entity_ref(
-                    fqn, self.metadata_config, "table"
-                )
-                lineage = AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=from_entity_ref, toEntity=to_entity_ref
+
+                tbl_entity = self.atlas_client.get_entity(edge["toEntityId"])
+                for key in tbl_entity["referredEntities"]:
+                    db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
+                        self.config.entity_types["Table"][name]["db"]
+                    ]
+
+                    db = self._get_database(db_entity["displayText"])
+                    table_name = tbl_entity["referredEntities"][key][
+                        "relationshipAttributes"
+                    ]["table"]["displayText"]
+                    fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+                    to_entity_ref = self.get_lineage_entity_ref(
+                        fqn, self.metadata_config, "table"
                     )
-                )
-                yield lineage
+                    if (
+                        from_entity_ref
+                        and to_entity_ref
+                        and not from_entity_ref == to_entity_ref
+                    ):
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=from_entity_ref, toEntity=to_entity_ref
+                            )
+                        )
+                        yield lineage
 
     def get_lineage_entity_ref(self, fqn, metadata_config, type) -> EntityReference:
         metadata = OpenMetadata(metadata_config)
         if type == "table":
             table = metadata.get_by_name(entity=Table, fqdn=fqn)
-            return EntityReference(id=table.id, type="table")
+            if not table:
+                return
+            return EntityReference(id=table.id.__root__, type="table")
         elif type == "pipeline":
             pipeline = metadata.get_by_name(entity=Pipeline, fqdn=fqn)
-            return EntityReference(id=pipeline.id, type="pipeline")
+            if not pipeline:
+                return
+            return EntityReference(id=pipeline.id.__root__, type="pipeline")
