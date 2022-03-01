@@ -58,7 +58,7 @@ const modules = {
     },
   },
   mention: {
-    allowedChars: /^[A-Za-z0-9]*$/,
+    allowedChars: /^[A-Za-z0-9_]*$/,
     mentionDenotationChars: ['@', '#'],
     source: matcher,
     showDenotationChar: false,
@@ -79,8 +79,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       placeHolder,
       onChangeHandler,
       defaultValue = '',
-    }: // onSave,
-    FeedEditorProp,
+    }: FeedEditorProp,
     ref
   ) => {
     const [value, setValue] = useState<string>(defaultValue);
@@ -102,14 +101,6 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       },
     }));
 
-    const onKeyDownHandler = (e: KeyboardEvent) => {
-      if (!(e.shiftKey && e.key === 'Enter')) {
-        if (e.key === 'Enter') {
-          // onSave?.();
-        }
-      }
-    };
-
     return (
       <div className={className}>
         <ReactQuill
@@ -120,7 +111,6 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           theme="snow"
           value={value}
           onChange={handleOnChange}
-          onKeyDown={onKeyDownHandler}
         />
       </div>
     );

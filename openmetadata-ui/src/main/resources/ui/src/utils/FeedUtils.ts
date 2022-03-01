@@ -198,20 +198,20 @@ const getEntityLinkDetail = (item: string) => {
 
 export const getBackendFormat = (message: string) => {
   let updatedMessage = message;
-  const mentionList = getMentionList(message) ?? [];
-  const hashtagList = getHahsTagList(message) ?? [];
+  const mentionList = [...new Set(getMentionList(message) ?? [])];
+  const hashtagList = [...new Set(getHahsTagList(message) ?? [])];
+  const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
+  const hashtagDetails = hashtagList.map((h) => getEntityDetail(h) ?? []);
 
-  mentionList.forEach((m) => {
-    const details = getEntityDetail(m) ?? [];
-    const updatedDetails = details.slice(-2);
+  mentionList.forEach((m, i) => {
+    const updatedDetails = mentionDetails[i].slice(-2);
     const entityLink = `<#E/${updatedDetails[0]}/${updatedDetails[1]}|${m}>`;
-    updatedMessage = updatedMessage.replace(m, entityLink);
+    updatedMessage = updatedMessage.replaceAll(m, entityLink);
   });
-  hashtagList.forEach((h) => {
-    const details = getEntityDetail(h) ?? [];
-    const updatedDetails = details.slice(-2);
+  hashtagList.forEach((h, i) => {
+    const updatedDetails = hashtagDetails[i].slice(-2);
     const entityLink = `<#E/${updatedDetails[0]}/${updatedDetails[1]}|${h}>`;
-    updatedMessage = updatedMessage.replace(h, entityLink);
+    updatedMessage = updatedMessage.replaceAll(h, entityLink);
   });
 
   return updatedMessage;
@@ -219,12 +219,13 @@ export const getBackendFormat = (message: string) => {
 
 export const getFrontEndFormat = (message: string) => {
   let updatedMessage = message;
-  const entityLinkList = getEntityLinkList(message) ?? [];
-
-  entityLinkList.forEach((m) => {
-    const details = getEntityLinkDetail(m) ?? [];
-    const markdownLink = details[3];
-    updatedMessage = updatedMessage.replace(m, markdownLink);
+  const entityLinkList = [...new Set(getEntityLinkList(message) ?? [])];
+  const entityLinkDetails = entityLinkList.map(
+    (m) => getEntityLinkDetail(m) ?? []
+  );
+  entityLinkList.forEach((m, i) => {
+    const markdownLink = entityLinkDetails[i][3];
+    updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
   return updatedMessage;

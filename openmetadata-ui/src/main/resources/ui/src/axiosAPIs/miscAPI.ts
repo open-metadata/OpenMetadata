@@ -110,6 +110,6 @@ export const getUserSuggestions: Function = (
 };
 export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
   return APIClient.get(
-    `/search/query?q=*&from=0&size=5&index=${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}`
+    `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
   );
 };
