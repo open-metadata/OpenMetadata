@@ -32,8 +32,10 @@ import {
   getTableFQNFromColumnFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -93,6 +95,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isentityThreadLoading,
   postFeedHandler,
   feedCount,
+  entityFieldThreadCount,
+  createThread,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -105,6 +109,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     dayCount: 0,
     columnJoins: [],
   });
+
+  const [threadLink, setThreadLink] = useState<string>('');
 
   const setUsageDetails = (
     usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
@@ -407,6 +413,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   };
 
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -458,6 +472,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div className="tw-col-span-3">
                   <Description
                     description={description}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      'description',
+                      entityFieldThreadCount
+                    )}
                     entityName={entityName}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
@@ -466,6 +484,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </div>
                 <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
@@ -482,14 +501,29 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       '.'
                     )}
                     columns={columns}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      'columns',
+                      entityFieldThreadCount
+                    )}
                     hasEditAccess={hasEditAccess()}
                     isReadOnly={deleted}
                     joins={tableJoinData.columnJoins as ColumnJoins[]}
                     owner={owner}
                     sampleData={sampleData}
+                    onThreadLinkSelect={onThreadLinkSelect}
                     onUpdate={onColumnsUpdate}
                   />
                 </div>
+
+                {threadLink ? (
+                  <ActivityThreadPanel
+                    createThread={createThread}
+                    open={Boolean(threadLink)}
+                    postFeedHandler={postFeedHandler}
+                    threadLink={threadLink}
+                    onCancel={onThreadPanelClose}
+                  />
+                ) : null}
               </div>
             )}
             {activeTab === 2 && (

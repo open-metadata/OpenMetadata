@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { EntityTags } from 'Models';
+import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
@@ -28,9 +28,12 @@ import {
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
+import { getFieldThreadElement } from '../../utils/FeedElementUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -78,6 +81,8 @@ const PipelineDetails = ({
   entityThread,
   postFeedHandler,
   feedCount,
+  entityFieldThreadCount,
+  createThread,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -87,6 +92,8 @@ const PipelineDetails = ({
     task: Task;
     index: number;
   }>();
+
+  const [threadLink, setThreadLink] = useState<string>('');
 
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
@@ -275,6 +282,14 @@ const PipelineDetails = ({
     }
   };
 
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -292,6 +307,10 @@ const PipelineDetails = ({
           <EntityPageInfo
             isTagEditable
             deleted={deleted}
+            entityFieldThreads={getEntityFieldThreadCounts(
+              'tags',
+              entityFieldThreadCount
+            )}
             entityName={entityName}
             extraInfo={extraInfo}
             followHandler={followPipeline}
@@ -306,6 +325,7 @@ const PipelineDetails = ({
             titleLinks={slashedPipelineName}
             version={version}
             versionHandler={versionHandler}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
           <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
@@ -321,6 +341,10 @@ const PipelineDetails = ({
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          'description',
+                          entityFieldThreadCount
+                        )}
                         entityName={entityName}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
@@ -329,6 +353,7 @@ const PipelineDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   </div>
@@ -381,6 +406,15 @@ const PipelineDetails = ({
                                         No description added
                                       </span>
                                     )}
+                                    {getFieldThreadElement(
+                                      task.name,
+                                      'description',
+                                      getEntityFieldThreadCounts(
+                                        'tasks',
+                                        entityFieldThreadCount
+                                      ) as EntityFieldThreads[],
+                                      onThreadLinkSelect
+                                    )}
                                   </div>
                                   {!deleted && (
                                     <NonAdminAction
@@ -419,6 +453,15 @@ const PipelineDetails = ({
                       </div>
                     )}
                   </div>
+                  {threadLink ? (
+                    <ActivityThreadPanel
+                      createThread={createThread}
+                      open={Boolean(threadLink)}
+                      postFeedHandler={postFeedHandler}
+                      threadLink={threadLink}
+                      onCancel={onThreadPanelClose}
+                    />
+                  ) : null}
                 </>
               )}
               {activeTab === 2 && (

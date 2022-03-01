@@ -15,6 +15,7 @@ import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
+  EntityFieldThreadCount,
   EntityTags,
   EntityThread,
   LeafNodes,
@@ -36,6 +37,7 @@ import {
   getAllFeeds,
   getFeedCount,
   postFeedById,
+  postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
@@ -54,6 +56,7 @@ import {
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
@@ -120,6 +123,9 @@ const DashboardDetailsPage = () => {
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -538,8 +544,25 @@ const DashboardDetailsPage = () => {
     getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN)).then(
       (res: AxiosResponse) => {
         setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
       }
     );
+  };
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res: AxiosResponse) => {
+        setEntityThread((pre) => [...pre, res.data]);
+        showToast({
+          variant: 'success',
+          body: 'Thread is created successfully',
+        });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while creating thread',
+        });
+      });
   };
 
   useEffect(() => {
@@ -570,12 +593,14 @@ const DashboardDetailsPage = () => {
           chartDescriptionUpdateHandler={onChartUpdate}
           chartTagUpdateHandler={handleChartTagSelection}
           charts={charts}
+          createThread={createThread}
           dashboardDetails={dashboardDetails}
           dashboardTags={tags}
           dashboardUrl={dashboardUrl}
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}

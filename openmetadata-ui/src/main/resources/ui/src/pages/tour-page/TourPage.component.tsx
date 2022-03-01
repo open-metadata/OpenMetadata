@@ -176,9 +176,11 @@ const TourPage = () => {
             addLineageHandler={mockPromiseFunction}
             columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
+            createThread={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
             description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
+            entityFieldThreadCount={[]}
             entityLineage={mockDatasetData.entityLineage}
             entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}

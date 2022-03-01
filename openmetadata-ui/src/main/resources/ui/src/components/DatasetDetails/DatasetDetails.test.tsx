@@ -82,6 +82,8 @@ const DatasetDetailsProps = {
   isentityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
+  entityFieldThreadCount: [],
+  createThread: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
@@ -112,6 +114,10 @@ jest.mock('../common/TabsPane/TabsPane', () => {
 });
 
 jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
+  return jest.fn().mockReturnValue(<p>FeedCards</p>);
+});
+
+jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 

@@ -12,12 +12,14 @@
  */
 
 import {
+  EntityFieldThreadCount,
   EntityTags,
   EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
 } from 'Models';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   EntityReference,
   Table,
@@ -65,6 +67,8 @@ export interface DatasetDetailsProps {
   isQueriesLoading?: boolean;
   isentityThreadLoading: boolean;
   feedCount: number;
+  entityFieldThreadCount: EntityFieldThreadCount[];
+  createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;

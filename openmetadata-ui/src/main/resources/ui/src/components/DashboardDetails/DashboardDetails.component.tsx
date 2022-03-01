@@ -28,10 +28,12 @@ import {
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -82,6 +84,8 @@ const DashboardDetails = ({
   isentityThreadLoading,
   postFeedHandler,
   feedCount,
+  entityFieldThreadCount,
+  createThread,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -97,7 +101,7 @@ const DashboardDetails = ({
   }>();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-
+  const [threadLink, setThreadLink] = useState<string>('');
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -332,6 +336,14 @@ const DashboardDetails = ({
       });
   };
 
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -349,6 +361,10 @@ const DashboardDetails = ({
           <EntityPageInfo
             isTagEditable
             deleted={deleted}
+            entityFieldThreads={getEntityFieldThreadCounts(
+              'tags',
+              entityFieldThreadCount
+            )}
             entityName={entityName}
             extraInfo={extraInfo}
             followHandler={followDashboard}
@@ -363,6 +379,7 @@ const DashboardDetails = ({
             titleLinks={slashedDashboardName}
             version={version}
             versionHandler={versionHandler}
+            onThreadLinkSelect={onThreadLinkSelect}
           />
           <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
@@ -379,6 +396,10 @@ const DashboardDetails = ({
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          'description',
+                          entityFieldThreadCount
+                        )}
                         entityName={entityName}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
@@ -387,6 +408,7 @@ const DashboardDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
                   </div>
@@ -544,6 +566,15 @@ const DashboardDetails = ({
                       </tbody>
                     </table>
                   </div>
+                  {threadLink ? (
+                    <ActivityThreadPanel
+                      createThread={createThread}
+                      open={Boolean(threadLink)}
+                      postFeedHandler={postFeedHandler}
+                      threadLink={threadLink}
+                      onCancel={onThreadPanelClose}
+                    />
+                  ) : null}
                 </>
               )}
               {activeTab === 2 && (

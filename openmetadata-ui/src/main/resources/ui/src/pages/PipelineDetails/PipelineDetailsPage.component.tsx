@@ -16,6 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import {
+  EntityFieldThreadCount,
   EntityTags,
   EntityThread,
   LeafNodes,
@@ -30,6 +31,7 @@ import {
   getAllFeeds,
   getFeedCount,
   postFeedById,
+  postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
@@ -54,6 +56,7 @@ import {
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   EntityReference,
   Pipeline,
@@ -122,6 +125,9 @@ const PipelineDetailsPage = () => {
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -481,8 +487,25 @@ const PipelineDetailsPage = () => {
     getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN)).then(
       (res: AxiosResponse) => {
         setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
       }
     );
+  };
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res: AxiosResponse) => {
+        setEntityThread((pre) => [...pre, res.data]);
+        showToast({
+          variant: 'success',
+          body: 'Thread is created successfully',
+        });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while creating thread',
+        });
+      });
   };
 
   useEffect(() => {
@@ -510,9 +533,11 @@ const PipelineDetailsPage = () => {
         <PipelineDetails
           activeTab={activeTab}
           addLineageHandler={addLineageHandler}
+          createThread={createThread}
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}

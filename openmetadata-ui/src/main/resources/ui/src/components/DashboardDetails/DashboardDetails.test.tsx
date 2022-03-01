@@ -75,6 +75,8 @@ const DashboardDetailsProps = {
   isentityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
+  entityFieldThreadCount: [],
+  createThread: jest.fn(),
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {

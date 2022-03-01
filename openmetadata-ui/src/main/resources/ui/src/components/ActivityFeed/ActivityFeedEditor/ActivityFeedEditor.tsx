@@ -22,6 +22,7 @@ import FeedEditor from '../../FeedEditor/FeedEditor';
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: (value: string) => void;
   buttonClass?: string;
+  placeHolder?: string;
 }
 type EditorContentRef = {
   getEditorValue: () => string;
@@ -32,6 +33,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   className,
   buttonClass = '',
   onSave,
+  placeHolder,
 }) => {
   const editorRef = useRef<EditorContentRef>();
   const [editorValue, setEditorValue] = useState<string>('');
@@ -53,6 +55,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
     <div className={classNames('tw-relative', className)}>
       <FeedEditor
         defaultValue={editorValue}
+        placeHolder={placeHolder}
         ref={editorRef}
         onChangeHandler={onChangeHandler}
         onSave={onSaveHandler}
