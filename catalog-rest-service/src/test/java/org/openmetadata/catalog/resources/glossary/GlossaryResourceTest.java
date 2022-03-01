@@ -67,11 +67,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public EntityReference getContainer(CreateGlossary createRequest) {
-    return null;
-  }
-
-  @Override
   public void validateCreatedEntity(
       Glossary createdEntity, CreateGlossary createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {

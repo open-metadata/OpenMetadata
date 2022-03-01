@@ -502,7 +502,7 @@ public interface CollectionDAO {
     void softDeleteAll(@Bind("id") String id, @Bind("entity") String entity);
 
     @SqlUpdate("UPDATE entity_relationship SET deleted = false WHERE toId = :id OR fromId = :id")
-    void recoverSoftDeleteAll(@Bind("id") String id);
+    int recoverSoftDeleteAll(@Bind("id") String id);
   }
 
   interface FeedDAO {

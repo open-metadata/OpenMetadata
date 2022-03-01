@@ -256,7 +256,7 @@ public final class EntityUtil {
 
     // TODO: add more validation for field name and array fields
 
-    return Entity.getEntityReferenceByName(entityType, fqn);
+    return Entity.getEntityReferenceByName(entityType, fqn, ALL);
   }
 
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {

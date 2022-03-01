@@ -161,12 +161,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         .withName(name)
         .withDescription(description)
         .withOwner(owner)
-        .withService(SNOWFLAKE_REFERENCE);
+        .withService(getContainer());
   }
 
   @Override
-  public EntityReference getContainer(CreateDatabase createRequest) {
-    return createRequest.getService();
+  public EntityReference getContainer() {
+    return SNOWFLAKE_REFERENCE;
   }
 
   @Override

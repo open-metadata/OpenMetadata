@@ -139,6 +139,15 @@ public final class Entity {
     return dao.findEntityReferenceByName(fqn);
   }
 
+  public static EntityReference getEntityReferenceByName(@NonNull String entity, @NonNull String fqn, Include include)
+      throws IOException {
+    EntityDAO<?> dao = DAO_MAP.get(entity);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+    }
+    return dao.findEntityReferenceByName(fqn, include);
+  }
+
   public static <T> EntityReference getEntityReference(T entity) {
     String entityType = getEntityTypeFromObject(entity);
 
@@ -224,13 +233,22 @@ public final class Entity {
     return entityRepository;
   }
 
-  public static void deleteEntity(String updatedBy, String entity, UUID entityId, boolean recursive)
+  public static void deleteEntity(String updatedBy, String entityType, UUID entityId, boolean recursive)
       throws IOException, ParseException {
-    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entity);
+    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entityType);
     if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     dao.delete(updatedBy, entityId.toString(), recursive);
+  }
+
+  public static void restoreEntity(String updatedBy, String entityType, UUID entityId)
+      throws IOException, ParseException {
+    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entityType);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    dao.restoreEntity(updatedBy, entityType, entityId);
   }
 
   public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {

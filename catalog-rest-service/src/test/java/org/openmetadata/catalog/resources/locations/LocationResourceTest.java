@@ -72,14 +72,14 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   public CreateLocation createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreateLocation()
         .withName(name)
-        .withService(AWS_STORAGE_SERVICE_REFERENCE)
+        .withService(getContainer())
         .withDescription(description)
         .withOwner(owner);
   }
 
   @Override
-  public EntityReference getContainer(CreateLocation createRequest) {
-    return createRequest.getService();
+  public EntityReference getContainer() {
+    return AWS_STORAGE_SERVICE_REFERENCE;
   }
 
   @Override

@@ -215,11 +215,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public EntityReference getContainer(CreateGlossaryTerm createRequest) {
-    return null;
-  }
-
-  @Override
   public void validateCreatedEntity(GlossaryTerm entity, CreateGlossaryTerm request, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(

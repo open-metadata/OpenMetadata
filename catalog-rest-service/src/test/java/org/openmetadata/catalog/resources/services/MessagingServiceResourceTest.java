@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
@@ -51,8 +50,16 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 @Slf4j
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
 
-  public static List<String> KAFKA_BROKERS;
+  public static List<String> KAFKA_BROKERS = List.of("192.168.1.1:0");
   public static URI SCHEMA_REGISTRY_URL;
+
+  static {
+    try {
+      SCHEMA_REGISTRY_URL = new URI("http://localhost:0");
+    } catch (URISyntaxException e) {
+      e.printStackTrace();
+    }
+  }
 
   public MessagingServiceResourceTest() {
     super(
@@ -67,12 +74,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         false,
         false);
     supportsPatch = false;
-  }
-
-  @BeforeAll
-  public static void setup() throws URISyntaxException {
-    KAFKA_BROKERS = List.of("192.168.1.1:0");
-    SCHEMA_REGISTRY_URL = new URI("http://localhost:0");
   }
 
   @Test
