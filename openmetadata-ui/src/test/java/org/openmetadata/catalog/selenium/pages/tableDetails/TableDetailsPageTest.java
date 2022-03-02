@@ -43,6 +43,8 @@ public class TableDetailsPageTest {
   String tableName = "dim_address";
   int counter = 2;
   String xpath = "//li[@data-testid='breadcrumb-link'][" + counter + "]";
+  List<String> breadCrumbTags = new ArrayList<>();
+  List<String> addedtags = new ArrayList<>();
   MyDataPage myDataPage;
   TagsPage tagsPage;
   TeamsPage teamsPage;
@@ -113,6 +115,7 @@ public class TableDetailsPageTest {
   @Order(3)
   void editDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    String updatedDescription = faker.address().toString();
     openExplorePage();
     String sendKeys = "Description Added";
     Events.click(webDriver, explorePage.selectTable());
@@ -123,7 +126,11 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(waitTime);
     String description = webDriver.findElement(tableDetails.descriptionBox()).getText();
-    Assert.assertTrue(description.equalsIgnoreCase(sendKeys));
+    if(!description.contains(updatedDescription)){
+      Assert.fail("Description not updated");
+    }else{
+      LOG.info("Description Updated");
+    }
   }
 
   @Test
@@ -139,7 +146,6 @@ public class TableDetailsPageTest {
       Events.click(webDriver, tableDetails.columnDescriptionButton());
       columnDescripitonBox = webDriver.findElement(tableDetails.columnDescriptionBox());
       Events.click(webDriver, tableDetails.columnDescriptionBox());
-      Events.sendKeys(webDriver, tableDetails.columnDescriptionBox(), Keys.CONTROL + "A");
       actions.moveToElement(columnDescripitonBox).sendKeys(sendKeys).perform();
       Thread.sleep(2000);
       Events.click(webDriver, tableDetails.saveTableDescription());
@@ -147,7 +153,11 @@ public class TableDetailsPageTest {
       webDriver.navigate().refresh();
     }
     String verifyDescription = webDriver.findElement(tableDetails.columnDescription()).getText();
-    Assert.assertEquals(verifyDescription, sendKeys);
+    if(!verifyDescription.contains(sendKeys)){
+      Assert.fail("Description not updated");
+    }else{
+      LOG.info("Description Updated");
+    }
   }
 
   @Test
@@ -155,7 +165,7 @@ public class TableDetailsPageTest {
   public void addTagsToColumn() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(3));
     ((JavascriptExecutor) webDriver)
         .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.addTag()));
     Events.click(webDriver, explorePage.addTag());
@@ -177,19 +187,19 @@ public class TableDetailsPageTest {
   void removeTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
+    Object count = webDriver.findElements(tableDetails.columnTags()).size();
     Events.click(webDriver, tableDetails.tagName());
     Thread.sleep(1000);
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
-    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTags());
-    if (updatedTags.get(0).getText().equals(tagDisplayed.get(0).getText())) {
-      Assert.fail("Selected Tag is not removed");
-    } else {
-      LOG.info("Passed");
+    Object updatedCount =  webDriver.findElements(tableDetails.columnTags());
+    if(updatedCount.equals(count)){
+      Assert.fail("Tag not removed");
+    }else{
+      LOG.info("Tag removed successfully");
     }
   }
 

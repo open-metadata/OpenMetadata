@@ -119,7 +119,7 @@ public class TopicDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(3));
     Events.click(webDriver, topicDetails.addTag());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i < 3; i++) {
@@ -142,16 +142,16 @@ public class TopicDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
-    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
+    Object count = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     Events.click(webDriver, topicDetails.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
     webDriver.navigate().refresh();
-    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTags());
-    if (updatedTags.get(1).equals(tagDisplayed.get(1))) {
-      Assert.fail("Selected Tag is not removed");
-    } else {
-      LOG.info("Passed");
+    Object updatedCount = webDriver.findElements(topicDetails.breadCrumbTags());
+    if(updatedCount.equals(count)){
+      Assert.fail("Tag not removed");
+    }else{
+      LOG.info("Tag removed successfully");
     }
   }
 
@@ -159,25 +159,28 @@ public class TopicDetailsPageTest {
   @Order(6)
   void editDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    String updatedDescription = faker.address().toString();
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
-    Assert.assertEquals(checkDescription, updatedDescription);
+    if(!checkDescription.contains(updatedDescription)){
+      Assert.fail("Description not updated");
+    }else{
+      LOG.info("Description Updated");
+    }
   }
 
   @Test
@@ -187,6 +190,8 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, common.selectTableLink(1));
     Thread.sleep(waitTime);
+    actions.perform();
+    actions.click();
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());

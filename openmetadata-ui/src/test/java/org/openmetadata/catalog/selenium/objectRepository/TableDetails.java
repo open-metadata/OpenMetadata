@@ -36,7 +36,7 @@ public class TableDetails {
   By saveTableDescription = By.xpath("//button[@data-testid=\"save\"]");
   By selectedTag =
       By.xpath("//span[@class=\"tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1\"]");
-  By breadCrumbTags = By.xpath("//div[@data-testid=\"breadcrumb-tags\"]");
+  By breadCrumbTags = By.xpath("//div[@data-testid='breadcrumb-tags']/div/span/span");
   By version = By.xpath("//button[@data-testid=\"version-button\"]");
   By versionDetailsGrid = By.xpath("//div[@class=\"tw-grid tw-gap-0.5\"]");
   By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
@@ -54,6 +54,7 @@ public class TableDetails {
   By joinedTables = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By joinedColumns = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By sampleDataTable = By.xpath("//table[@data-testid=\"sample-data-table\"]");
+  By columnTags = By.xpath("(//div[@data-testid='tag-conatiner'])[1]");
 
   public List<WebElement> versionDetailsGrid() {
     return webDriver.findElements(versionDetailsGrid);

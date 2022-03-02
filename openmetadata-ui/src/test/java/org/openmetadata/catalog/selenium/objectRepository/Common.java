@@ -159,7 +159,7 @@ public class Common {
   }
 
   public By selectTableLink(int index) {
-    return By.xpath("//button[@data-testid='table-link'][" + index +"]");
+    return By.xpath("(//button[@data-testid='table-link'])[" + index +"]");
   }
 }
 
