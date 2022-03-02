@@ -18,6 +18,8 @@ from copy import deepcopy
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
@@ -208,7 +210,6 @@ def test_tests_def():
                 "table": "service.db.name",  # FQDN
                 "table_tests": [
                     {
-                        "name": "My Table test",
                         "testCase": {
                             "config": {
                                 "value": 100,
@@ -220,7 +221,6 @@ def test_tests_def():
                 "column_tests": [
                     {
                         "columnName": "age",
-                        "name": "My Col test",
                         "testCase": {
                             "config": {
                                 "minValue": 0,
@@ -245,8 +245,7 @@ def test_tests_def():
             TestDef(
                 table="service.db.name",
                 table_tests=[
-                    TableTest(
-                        name="My Table test",
+                    CreateTableTestRequest(
                         testCase=TableTestCase(
                             config=TableRowCountToEqual(value=100),
                             tableTestType=TableTestType.tableRowCountToEqual,
@@ -254,9 +253,8 @@ def test_tests_def():
                     )
                 ],
                 column_tests=[
-                    ColumnTest(
+                    CreateColumnTestRequest(
                         columnName="age",
-                        name="My Col test",
                         testCase=ColumnTestCase(
                             config=ColumnValuesToBeBetween(minValue=0, maxValue=99),
                             columnTestType=ColumnTestType.columnValuesToBeBetween,

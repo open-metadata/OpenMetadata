@@ -18,15 +18,17 @@ and run the validations.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
-from metadata.generated.schema.tests.columnTest import ColumnTest
-from metadata.generated.schema.tests.tableTest import TableTest
+from metadata.generated.schema.tests.columnTest import ColumnTest, ColumnTestCase
+from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -153,44 +155,67 @@ class OrmProfilerProcessor(Processor[Table]):
         Log test case results
         """
         self.status.tested(name)
-        if not result.status == TestCaseStatus.Success:
+        if not result.testCaseStatus == TestCaseStatus.Success:
             self.status.failure(f"{name}: {result.result}")
 
+    @staticmethod
+    def get_test_name(table: Table, test_type: str, column_name: str = None):
+        """
+        Build a unique identifier to log the test
+        in the shape of FQDN.[column].test_type
+
+        :param table: Table Entity
+        :param test_type: We expected one test type per table & column
+        :param column_name: Column name, if logging a column test
+        :return: Unique name for this execution
+        """
+        col = f".{column_name}." if column_name else "."
+        return table.fullyQualifiedName + col + test_type
+
     def run_table_test(
-        self, table_test: TableTest, profiler_results: TableProfile
+        self, table: Table, test_case: TableTestCase, profiler_results: TableProfile
     ) -> Optional[TestCaseResult]:
         """
-        Run & log the table test against the TableProfile
-        :param table_test: Table Test to run
+        Run & log the table test against the TableProfile.
+
+        :param table: Table Entity being processed
+        :param test_case: Table Test Case to run
         :param profiler_results: Table profiler with informed metrics
         :return: TestCaseResult
         """
-        if table_test.name in self.status.tests:
+        test_name = self.get_test_name(table=table, test_type=test_case.tableTestType.value)
+        if test_name in self.status.tests:
             logger.info(
-                f"Test {table_test.name} has already been computed in this execution."
+                f"Test {test_name} has already been computed in this execution."
             )
             return None
 
         test_case_result: TestCaseResult = validate(
-            table_test.tableTestCase.config,
+            test_case.config,
             table_profile=profiler_results,
             execution_date=self.execution_date,
         )
-        self.log_test_result(name=table_test.name, result=test_case_result)
+        self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
 
     def run_column_test(
-        self, col_test: ColumnTest, profiler_results: TableProfile
+        self, table: Table, column: str, test_case: ColumnTestCase, profiler_results: TableProfile
     ) -> Optional[TestCaseResult]:
         """
         Run & log the column test against the ColumnProfile
-        :param col_test: Column Test to run
+
+        :param table: Table Entity being processed
+        :param column: Column being tested
+        :param test_case: Column Test Case to run
         :param profiler_results: Table profiler with informed metrics
         :return: TestCaseResult
         """
-        if col_test.name in self.status.tests:
+        test_name = self.get_test_name(
+            table=table, test_type=test_case.columnTestType.value, column_name=column
+        )
+        if test_name in self.status.tests:
             logger.info(
-                f"Test {col_test.name} has already been computed in this execution."
+                f"Test {test_name} has already been computed in this execution."
             )
             return None
 
@@ -199,14 +224,14 @@ class OrmProfilerProcessor(Processor[Table]):
             iter(
                 col_profiler
                 for col_profiler in profiler_results.columnProfile
-                if col_profiler.name == col_test.columnName
+                if col_profiler.name == column
             ),
             None,
         )
         if col_profiler_res is None:
             msg = (
-                f"Cannot find a profiler that computed the column {col_test.columnName}"
-                + f" Skipping validation {col_test.name}"
+                f"Cannot find a profiler that computed the column {column}"
+                + f" Skipping validation {test_name}"
             )
             self.status.failure(msg)
             return TestCaseResult(
@@ -216,11 +241,11 @@ class OrmProfilerProcessor(Processor[Table]):
             )
 
         test_case_result: TestCaseResult = validate(
-            col_test.testCase.config,
+            test_case.config,
             col_profiler_res,
             execution_date=self.execution_date,
         )
-        self.log_test_result(name=col_test.name, result=test_case_result)
+        self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
 
     def validate_config_tests(
@@ -253,19 +278,22 @@ class OrmProfilerProcessor(Processor[Table]):
         # Compute all validations against the profiler results
         for table_test in my_record_tests.table_tests:
             test_case_result = self.run_table_test(
-                table_test=table_test,
+                table=table,
+                test_case=table_test.testCase,
                 profiler_results=profiler_results,
             )
             if test_case_result:
-                table_test.results = [test_case_result]
+                table_test.result = test_case_result
 
         for column_test in my_record_tests.column_tests:
             test_case_result = self.run_column_test(
-                col_test=column_test,
+                table=table,
+                column=column_test.columnName,
+                test_case=column_test.testCase,
                 profiler_results=profiler_results,
             )
             if test_case_result:
-                column_test.results = [test_case_result]
+                column_test.result = test_case_result
 
         return my_record_tests
 
@@ -289,6 +317,11 @@ class OrmProfilerProcessor(Processor[Table]):
         :param config_tests: Results of running the configuration tests
         """
 
+        # We need to keep track of all ran tests, so let's initialize
+        # a TestDef class with either what we have from the incoming
+        # config, or leaving it empty.
+        # During the Entity processing, we will add here
+        # any tests we discover from the Entity side.
         record_tests = (
             TestDef(
                 table=config_tests.table,
@@ -305,18 +338,30 @@ class OrmProfilerProcessor(Processor[Table]):
             )
         )
 
+        # Note that the tests configured in the Entity as `TableTest` and
+        # `ColumnTest`. However, to PUT the results we need the API form:
+        # `CreateTableTestRequest` and `CreateColumnTestRequest`.
+        # We will convert the found tests before running them.
+
         # Fetch all table tests, if any
         table_tests = (
             table_test for table_test in (table.tableTests or [])
         )  # tableTests are optional, so it might be a list or None
         for table_test in table_tests:
             test_case_result = self.run_table_test(
-                table_test=table_test,
+                table=table,
+                test_case=table_test.testCase,
                 profiler_results=profiler_results,
             )
             if test_case_result:
-                table_test.results = [test_case_result]
-                record_tests.table_tests.append(table_test)
+                create_table_test = CreateTableTestRequest(
+                    description=table_test.description,
+                    testCase=table_test.testCase,
+                    executionFrequency=table_test.executionFrequency,
+                    owner=table_test.owner,
+                    result=test_case_result,
+                )
+                record_tests.table_tests.append(create_table_test)
 
         # For all columns, check if any of them has tests and fetch them
         col_tests = (
@@ -330,12 +375,21 @@ class OrmProfilerProcessor(Processor[Table]):
         for column_test in col_tests:
             if column_test:
                 test_case_result = self.run_column_test(
-                    col_test=column_test,
+                    table=table,
+                    column=column_test.columnName,
+                    test_case=column_test.testCase,
                     profiler_results=profiler_results,
                 )
                 if test_case_result:
-                    column_test.results = [test_case_result]
-                    record_tests.column_tests.append(column_test)
+                    create_column_test = CreateColumnTestRequest(
+                        columnName=column_test.columnName,
+                        description=column_test.description,
+                        testCase=column_test.testCase,
+                        executionFrequency=column_test.executionFrequency,
+                        owner=column_test.owner,
+                        result=test_case_result,
+                    )
+                    record_tests.column_tests.append(create_column_test)
 
         return record_tests
 

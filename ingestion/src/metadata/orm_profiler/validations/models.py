@@ -16,8 +16,8 @@ JSON workflows to the profiler
 from typing import List
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.tests.columnTest import ColumnTest
-from metadata.generated.schema.tests.tableTest import TableTest
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 
 
 class TestDef(ConfigModel):
@@ -31,8 +31,8 @@ class TestDef(ConfigModel):
     """
 
     table: str  # Table FQDN
-    table_tests: List[TableTest] = None
-    column_tests: List[ColumnTest] = None
+    table_tests: List[CreateTableTestRequest] = None
+    column_tests: List[CreateColumnTestRequest] = None
 
 
 class TestSuite(ConfigModel):

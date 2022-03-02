@@ -129,26 +129,23 @@ class ProfilerWorkflowTest(TestCase):
                             "table": "test_sqlite.main.users",  # FQDN
                             "table_tests": [
                                 {
-                                    "tableName": "To be removed from here",  # TODO remove this from def
-                                    "name": "My Table test",
-                                    "tableTestCase": {
+                                    "testCase": {
                                         "config": {
                                             "value": 100,
                                         },
-                                        "testType": "tableRowCountToEqual",
+                                        "tableTestType": "tableRowCountToEqual",
                                     },
                                 },
                             ],
                             "column_tests": [
                                 {
                                     "columnName": "age",
-                                    "name": "My Col test",
                                     "testCase": {
                                         "config": {
                                             "minValue": 0,
                                             "maxValue": 99,
                                         },
-                                        "testType": "columnValuesToBeBetween",
+                                        "columnTestType": "columnValuesToBeBetween",
                                     },
                                 }
                             ],

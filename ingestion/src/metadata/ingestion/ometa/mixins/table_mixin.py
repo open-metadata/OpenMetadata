@@ -6,6 +6,8 @@ To be used by OpenMetadata class
 import logging
 from typing import List, Union
 
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     DataModel,
@@ -135,7 +137,7 @@ class OMetaTableMixin:
         logger.debug("published frequently joined with %s", resp)
 
     def _add_tests(
-        self, table: Table, test: Union[TableTest, ColumnTest], path: str
+        self, table: Table, test: Union[CreateTableTestRequest, CreateColumnTestRequest], path: str
     ) -> Table:
         """
         Internal function to add test data
@@ -151,7 +153,7 @@ class OMetaTableMixin:
 
         return Table(**resp)
 
-    def add_table_test(self, table: Table, table_test: TableTest) -> Table:
+    def add_table_test(self, table: Table, table_test: CreateTableTestRequest) -> Table:
         """
         For a given table, PUT new TableTest definitions and results
 
@@ -162,7 +164,7 @@ class OMetaTableMixin:
 
         return self._add_tests(table=table, test=table_test, path="tableTest")
 
-    def add_column_test(self, table: Table, col_test: ColumnTest) -> Table:
+    def add_column_test(self, table: Table, col_test: CreateColumnTestRequest) -> Table:
         """
         For a given table, PUT new TableTest definitions and results
 
