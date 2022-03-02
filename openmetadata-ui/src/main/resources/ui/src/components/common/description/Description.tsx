@@ -131,7 +131,7 @@ const Description = ({
             isUndefined(descriptionThread) &&
             onEntityFieldSelect ? (
               <button
-                className="focus:tw-outline-none"
+                className="focus:tw-outline-none tw-ml-2"
                 data-testid="request-description"
                 onClick={() => onEntityFieldSelect?.('description')}>
                 Request Description

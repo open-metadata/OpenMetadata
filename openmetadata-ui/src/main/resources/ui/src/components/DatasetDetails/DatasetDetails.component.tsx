@@ -542,9 +542,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   <RequestDescriptionModal
                     createThread={createThread}
                     defaultValue={getDefaultValue(owner)}
-                    header={`Request description ${`"${
-                      selectedField.split('/').slice(-2)[0]
-                    }`}"`}
+                    header="Request description"
                     threadLink={getEntityFeedLink(
                       EntityType.TABLE,
                       datasetFQN,
