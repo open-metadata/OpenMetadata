@@ -220,7 +220,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size()-1;
+    Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size() - 1;
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
     } else {
