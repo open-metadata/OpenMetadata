@@ -172,7 +172,7 @@ public class UserRepository extends EntityRepository<User> {
             .findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal(), toBoolean(toInclude(user))));
   }
 
-  public List<EntityReference> validateRoles(List<UUID> roleIds) throws IOException {
+  public List<EntityReference> validateRolesByIds(List<UUID> roleIds) throws IOException {
     if (roleIds == null) {
       return Collections.emptyList(); // Return an empty roles list
     }

@@ -434,6 +434,6 @@ public class UserResource {
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(dao.validateTeams(create.getTeams()))
-        .withRoles(dao.validateRoles(create.getRoles()));
+        .withRoles(dao.validateRolesByIds(create.getRoles()));
   }
 }

@@ -18,10 +18,10 @@
       "type": "string"
     },
     "reviewers": {
-      "description": "User names of the reviewers for this glossary.",
+      "description": "User references of the reviewers for this glossary.",
       "type": "array",
       "items": {
-        "type": "string"
+        "$ref": "../../type/entityReference.json"
       }
     },
     "owner": {
