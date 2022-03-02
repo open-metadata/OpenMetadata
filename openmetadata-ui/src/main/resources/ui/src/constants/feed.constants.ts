@@ -20,3 +20,8 @@ export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
 export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E\/([^<>]+?)\/([^<>]+?)>/g;
 export const entityRegex = /<#E\/([^<>]+?)\/([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
+
+export const entityUrlMap = {
+  team: 'teams',
+  user: 'user',
+};
