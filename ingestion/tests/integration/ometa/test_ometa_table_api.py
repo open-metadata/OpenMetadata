@@ -43,7 +43,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -55,7 +55,11 @@ from metadata.generated.schema.tests.columnTest import (
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
-from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase, TableTestType
+from metadata.generated.schema.tests.tableTest import (
+    TableTest,
+    TableTestCase,
+    TableTestType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import APIError
@@ -444,7 +448,8 @@ class OMetaTableTest(TestCase):
 
         assert len(table_with_test_and_res.tableTests[0].results) == 1
         assert (
-            table_with_test_and_res.tableTests[0].results[0].testCaseStatus == TestCaseStatus.Success
+            table_with_test_and_res.tableTests[0].results[0].testCaseStatus
+            == TestCaseStatus.Success
         )
 
     def test_add_column_tests(self):
@@ -515,4 +520,7 @@ class OMetaTableTest(TestCase):
         )
 
         assert len(id_test_res.columnTests[0].results) == 1
-        assert id_test_res.columnTests[0].results[0].testCaseStatus == TestCaseStatus.Success
+        assert (
+            id_test_res.columnTests[0].results[0].testCaseStatus
+            == TestCaseStatus.Success
+        )

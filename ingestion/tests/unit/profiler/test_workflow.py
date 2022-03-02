@@ -32,7 +32,11 @@ from metadata.generated.schema.tests.columnTest import (
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
-from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase, TableTestType
+from metadata.generated.schema.tests.tableTest import (
+    TableTest,
+    TableTestCase,
+    TableTestType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig
