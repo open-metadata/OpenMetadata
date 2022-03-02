@@ -58,7 +58,7 @@ public class DashboardDetailsPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     actions = new Actions(webDriver);
     common = new Common(webDriver);
     explorePage = new ExplorePage(webDriver);
@@ -201,7 +201,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object tagCount = webDriver.findElements(common.breadCrumbTags()).size();
+    Object tagCount = webDriver.findElements(common.breadCrumbTags()).size() - 1;
     Assert.assertEquals(tagCount, 3);
   }
 
@@ -211,7 +211,7 @@ public class DashboardDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
-    Events.click(webDriver, common.selectTableLink(1));
+    Events.click(webDriver, common.selectTableLink(3));
     Object count = webDriver.findElements(dashboardDetails.chartTags()).size();
     Events.click(webDriver, dashboardDetails.addChartTag());
     Events.click(webDriver, common.removeAssociatedTag());
@@ -220,7 +220,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size();
+    Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size()-1;
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
     } else {
