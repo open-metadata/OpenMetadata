@@ -84,7 +84,6 @@ class LdapUsersSource(Source[OMetaUserProfile]):
 
     def next_record(self) -> Iterable[CreateUserRequest]:
         for user in self.users:
-            print(user)
             user_metadata = CreateUserRequest(
                 email=user["attributes"]["mail"][0],
                 displayName=user["attributes"]["cn"][0],
