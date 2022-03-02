@@ -57,6 +57,7 @@ type Props = {
   entityFieldThreads?: EntityFieldThreads[];
   onUpdate?: (columns: Table['columns']) => void;
   onThreadLinkSelect?: (value: string) => void;
+  onEntityFieldSelect?: (value: string) => void;
 };
 
 const EntityTable = ({
@@ -69,6 +70,7 @@ const EntityTable = ({
   entityFieldThreads,
   isReadOnly = false,
   onThreadLinkSelect,
+  onEntityFieldSelect,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -496,28 +498,45 @@ const EntityTable = ({
                                 )}
                               </div>
                               {!isReadOnly ? (
-                                <NonAdminAction
-                                  html={getHtmlForNonAdminAction(
-                                    Boolean(owner)
-                                  )}
-                                  isOwner={hasEditAccess}
-                                  permission={Operation.UpdateDescription}
-                                  position="top">
-                                  <button
-                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                    onClick={() => {
-                                      if (!isReadOnly) {
-                                        handleEditColumn(row.original, row.id);
-                                      }
-                                    }}>
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                </NonAdminAction>
+                                <Fragment>
+                                  <NonAdminAction
+                                    html={getHtmlForNonAdminAction(
+                                      Boolean(owner)
+                                    )}
+                                    isOwner={hasEditAccess}
+                                    permission={Operation.UpdateDescription}
+                                    position="top">
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() => {
+                                        if (!isReadOnly) {
+                                          handleEditColumn(
+                                            row.original,
+                                            row.id
+                                          );
+                                        }
+                                      }}>
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  </NonAdminAction>
+                                  {!cell.value ? (
+                                    <button
+                                      className="focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
+                                      data-testid="request-description"
+                                      onClick={() => {
+                                        onEntityFieldSelect?.(
+                                          `columns/${cell.row.cells[0].value}`
+                                        );
+                                      }}>
+                                      Request Description
+                                    </button>
+                                  ) : null}
+                                </Fragment>
                               ) : null}
                             </div>
                           </div>

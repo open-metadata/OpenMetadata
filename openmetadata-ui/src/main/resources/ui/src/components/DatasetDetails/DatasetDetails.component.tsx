@@ -17,6 +17,7 @@ import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
+import { EntityType } from '../../enums/entity.enum';
 import {
   JoinedWith,
   Table,
@@ -32,6 +33,8 @@ import {
   getTableFQNFromColumnFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -43,6 +46,7 @@ import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ManageTab from '../ManageTab/ManageTab.component';
+import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTable, {
   SampleColumns,
 } from '../SampleDataTable/SampleDataTable.component';
@@ -111,6 +115,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
 
   const setUsageDetails = (
     usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
@@ -484,6 +496,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
+                    onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </div>
@@ -510,6 +523,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     joins={tableJoinData.columnJoins as ColumnJoins[]}
                     owner={owner}
                     sampleData={sampleData}
+                    onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                     onUpdate={onColumnsUpdate}
                   />
@@ -522,6 +536,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     postFeedHandler={postFeedHandler}
                     threadLink={threadLink}
                     onCancel={onThreadPanelClose}
+                  />
+                ) : null}
+                {selectedField ? (
+                  <RequestDescriptionModal
+                    createThread={createThread}
+                    defaultValue={getDefaultValue(owner)}
+                    header={`Request description ${`"${selectedField}`}"`}
+                    threadLink={`${getEntityFeedLink(
+                      EntityType.TABLE,
+                      datasetFQN
+                    )}/${selectedField}`}
+                    onCancel={closeRequestModal}
                   />
                 ) : null}
               </div>

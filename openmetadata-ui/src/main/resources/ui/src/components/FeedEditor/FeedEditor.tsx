@@ -71,10 +71,16 @@ const modules = {
 
 const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   (
-    { className, editorClass, placeHolder, onChangeHandler }: FeedEditorProp,
+    {
+      className,
+      editorClass,
+      placeHolder,
+      onChangeHandler,
+      defaultValue,
+    }: FeedEditorProp,
     ref
   ) => {
-    const [value, setValue] = useState<string>('');
+    const [value, setValue] = useState<string>(defaultValue ?? '');
 
     const handleOnChange = (value: string) => {
       setValue(value);

@@ -95,6 +95,7 @@ import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
+import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
@@ -247,6 +248,7 @@ export const Icons = {
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
   PAPER_PLANE: 'icon-paper-plane',
+  PAPER_PLANE_PRIMARY: 'icon-paper-plane-primary',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -713,6 +715,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.PAPER_PLANE:
       IconComponent = IconPaperPlane;
+
+      break;
+    case Icons.PAPER_PLANE_PRIMARY:
+      IconComponent = IconPaperPlanePrimary;
 
       break;
 

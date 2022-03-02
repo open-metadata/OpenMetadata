@@ -38,6 +38,7 @@ type Props = {
   onCancel?: () => void;
   onDescriptionUpdate?: (value: string) => void;
   onSuggest?: (value: string) => void;
+  onEntityFieldSelect?: (value: string) => void;
 };
 
 const Description = ({
@@ -54,6 +55,7 @@ const Description = ({
   entityName,
   entityFieldThreads,
   onThreadLinkSelect,
+  onEntityFieldSelect,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
 
@@ -125,6 +127,14 @@ const Description = ({
                 />
               </button>
             </NonAdminAction>
+            {!description?.trim() ? (
+              <button
+                className="focus:tw-outline-none"
+                data-testid="request-description"
+                onClick={() => onEntityFieldSelect?.('description')}>
+                Request Description
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
