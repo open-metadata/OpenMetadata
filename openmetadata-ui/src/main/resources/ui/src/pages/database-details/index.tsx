@@ -16,7 +16,12 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityThread, ExtraInfo, Paging } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityThread,
+  ExtraInfo,
+  Paging,
+} from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
@@ -28,9 +33,11 @@ import {
   getAllFeeds,
   getFeedCount,
   postFeedById,
+  postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -52,6 +59,7 @@ import {
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
 import useToastContext from '../../hooks/useToastContext';
@@ -65,6 +73,7 @@ import {
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -100,6 +109,11 @@ const DatabaseDetails: FunctionComponent = () => {
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+
+  const [threadLink, setThreadLink] = useState<string>('');
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -187,6 +201,28 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+      .then((res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching feed count',
+        });
+      });
+  };
+
   const getDetailsByFQN = () => {
     getDatabaseDetailsByFQN(databaseFQN, ['owner'])
       .then((res: AxiosResponse) => {
@@ -260,6 +296,7 @@ const DatabaseDetails: FunctionComponent = () => {
           setDatabase(updatedDatabaseDetails);
           setDescription(updatedHTML);
           setIsEdit(false);
+          getEntityFeedCount();
         })
         .catch((err: AxiosError) => {
           const errMsg =
@@ -367,15 +404,21 @@ const DatabaseDetails: FunctionComponent = () => {
         });
       });
   };
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+
+  const createThread = (data: CreateThread) => {
+    postThread(data)
       .then((res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
+        setEntityThread((pre) => [...pre, res.data]);
+        getEntityFeedCount();
+        showToast({
+          variant: 'success',
+          body: 'Thread is created successfully',
+        });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Error while fetching feed count',
+          body: 'Error while creating thread',
         });
       });
   };
@@ -448,11 +491,16 @@ const DatabaseDetails: FunctionComponent = () => {
               <Description
                 blurWithBodyBG
                 description={description}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  'description',
+                  entityFieldThreadCount
+                )}
                 entityName={databaseName}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
                 onDescriptionUpdate={onDescriptionUpdate}
+                onThreadLinkSelect={onThreadLinkSelect}
               />
             </div>
             <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
@@ -625,6 +673,15 @@ const DatabaseDetails: FunctionComponent = () => {
                 )}
               </div>
             </div>
+            {threadLink ? (
+              <ActivityThreadPanel
+                createThread={createThread}
+                open={Boolean(threadLink)}
+                postFeedHandler={postFeedHandler}
+                threadLink={threadLink}
+                onCancel={onThreadPanelClose}
+              />
+            ) : null}
           </div>
         </PageContainer>
       )}
