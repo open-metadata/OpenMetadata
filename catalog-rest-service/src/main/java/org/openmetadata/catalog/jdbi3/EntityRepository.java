@@ -861,6 +861,14 @@ public abstract class EntityRepository<T> {
     return daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
   }
 
+  public int addBidirectionalRelationship(
+      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
+    if (fromId.compareTo(toId) < 0) {
+      return daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+    }
+    return daoCollection.relationshipDAO().insert(toId, fromId, toEntity, fromEntity, relationship.ordinal());
+  }
+
   public void setOwner(UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
@@ -889,6 +897,26 @@ public abstract class EntityRepository<T> {
     return daoCollection
         .relationshipDAO()
         .findTo(fromId.toString(), fromEntity, relationship.ordinal(), toEntity, deleted);
+  }
+
+  public void validateUsers(List<EntityReference> entityReferences) throws IOException {
+    if (entityReferences != null) {
+      entityReferences.sort(EntityUtil.compareEntityReference);
+      for (EntityReference entityReference : entityReferences) {
+        EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
+        entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
+      }
+    }
+  }
+
+  public void validateRoles(List<EntityReference> entityReferences) throws IOException {
+    if (entityReferences != null) {
+      entityReferences.sort(EntityUtil.compareEntityReference);
+      for (EntityReference entityReference : entityReferences) {
+        EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
+        entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
+      }
+    }
   }
 
   enum Operation {
@@ -1133,6 +1161,69 @@ public abstract class EntityRepository<T> {
         changeDescription.getFieldsDeleted().add(fieldChange);
       }
       return !addedItems.isEmpty() || !deletedItems.isEmpty();
+    }
+
+    /**
+     * Remove `fromEntityType:fromId` -- `relationType` ---> `toEntityType:origToRefs` Add `fromEntityType:fromId` --
+     * `relationType` ---> `toEntityType:updatedToRefs` and record it as change for entity field `field`.
+     */
+    public final void updateToRelationships(
+        String field,
+        String fromEntityType,
+        UUID fromId,
+        Relationship relationshipType,
+        String toEntityType,
+        List<EntityReference> origToRefs,
+        List<EntityReference> updatedToRefs)
+        throws JsonProcessingException {
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      if (!recordListChange(field, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
+        // No changes between original and updated.
+        return;
+      }
+      // Remove relationships from original
+      daoCollection
+          .relationshipDAO()
+          .deleteFrom(fromId.toString(), fromEntityType, relationshipType.ordinal(), toEntityType);
+      // Add relationships from updated
+      for (EntityReference ref : updatedToRefs) {
+        addRelationship(fromId, ref.getId(), fromEntityType, toEntityType, relationshipType);
+      }
+      updatedToRefs.sort(EntityUtil.compareEntityReference);
+      origToRefs.sort(EntityUtil.compareEntityReference);
+    }
+
+    /**
+     * Remove `fromEntityType:origFromRefs` -- `relationType` ---> `toEntityType:toId` Add
+     * `fromEntityType:updatedFromRefs` -- `relationType` ---> `toEntityType:toId` and record it as change for entity
+     * field `field`.
+     */
+    public final void updateFromRelationships(
+        String field,
+        String fromEntityType,
+        List<EntityReference> originFromRefs,
+        List<EntityReference> updatedFromRefs,
+        Relationship relationshipType,
+        String toEntityType,
+        UUID toId)
+        throws JsonProcessingException {
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      if (!recordListChange(field, originFromRefs, updatedFromRefs, added, deleted, entityReferenceMatch)) {
+        // No changes between original and updated.
+        return;
+      }
+      // Remove relationships from original
+      daoCollection
+          .relationshipDAO()
+          .deleteTo(toId.toString(), fromEntityType, relationshipType.ordinal(), toEntityType);
+      // Add relationships from updated
+      for (EntityReference ref : updatedFromRefs) {
+        addRelationship(ref.getId(), toId, fromEntityType, toEntityType, relationshipType);
+      }
+      updatedFromRefs.sort(EntityUtil.compareEntityReference);
+      originFromRefs.sort(EntityUtil.compareEntityReference);
     }
 
     public final void storeUpdate() throws IOException {

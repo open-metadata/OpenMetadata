@@ -1952,7 +1952,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     for (EntityReference expected : expectedList) {
       EntityReference actual =
           actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);
-      assertNotNull(actual, "Expected entity " + expected.getId() + " not found");
+      assertNotNull(actual, "Expected entity reference " + expected.getId() + " not found");
+    }
+  }
+
+  protected void assertStrings(List<String> expectedList, List<String> actualList) {
+    for (String expected : expectedList) {
+      String actual = actualList.stream().filter(a -> EntityUtil.stringMatch.test(a, expected)).findAny().orElse(null);
+      assertNotNull(actual, "Expected string " + expected + " not found");
     }
   }
 

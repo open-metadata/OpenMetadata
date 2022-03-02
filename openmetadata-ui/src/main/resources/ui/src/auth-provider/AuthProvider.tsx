@@ -15,6 +15,7 @@ import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError, AxiosResponse } from 'axios';
+import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { UserPermissions } from 'Models';
@@ -66,6 +67,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const cookieStorage = new CookieStorage();
 const userAPIQueryFields = 'profile,teams,roles';
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
@@ -150,7 +152,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const getUpdatedUser = (data: User, user: OidcUser) => {
-    const getAdminCookie = localStorage.getItem(isAdminUpdated);
+    let getAdminCookie = localStorage.getItem(isAdminUpdated);
+
+    // TODO: Remove when using cookie no more
+    if (!getAdminCookie) {
+      getAdminCookie = cookieStorage.getItem(isAdminUpdated);
+      if (getAdminCookie) {
+        localStorage.setItem(isAdminUpdated, getAdminCookie);
+      }
+    }
+
     if (getAdminCookie) {
       appState.updateUserDetails(data);
     } else {
@@ -365,6 +376,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     );
   }, []);
+
+  useEffect(() => {
+    appState.updateAuthState(isAuthDisabled);
+  }, [isAuthDisabled]);
 
   useEffect(() => {
     return history.listen((location) => {

@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/glossaryTerm.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GlossaryTerm",
-  "description": "This schema defines the Glossary term entities.",
+  "description": "This schema defines te Glossary term entities.",
   "type": "object",
   "definitions": {
     "name": {
@@ -92,10 +92,6 @@
     },
     "updatedBy": {
       "description": "User who made the update.",
-      "type": "string"
-    },
-    "skos": {
-      "description": "SKOS data in JSON-LD format",
       "type": "string"
     },
     "href": {
