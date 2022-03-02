@@ -173,6 +173,7 @@ public class PaginationAndFilterTest {
     webDriver.navigate().back();
     webDriver.navigate().refresh();
     Thread.sleep(2000);
+    Events.click(webDriver,common.viewMore());
     Events.click(webDriver, common.selectFilterExplore("PII.None"));
     Events.click(webDriver, common.selectFilterExplore("shopify"));
     Thread.sleep(2000);

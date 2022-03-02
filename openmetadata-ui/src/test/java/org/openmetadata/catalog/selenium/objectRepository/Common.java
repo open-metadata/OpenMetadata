@@ -64,8 +64,8 @@ public class Common {
   By tableCount = By.xpath("(//span[@data-testid='filter-count'])[1]");
   By removeAssociatedTag = By.xpath("//span[@data-testid='remove']");
   By breadCrumb = By.xpath("//li[@data-testid='breadcrumb-link']");
-  By descriptionContainer = By.xpath("//div[@data-testid='description']/div/p");
-  By manage = By.xpath("//button[@data-testid='tab'][contains(text(),'Manage')]");
+  By descriptionContainer = By.xpath("(//div[@data-testid='description']/div/span)[1]");
+  By manage = By.xpath("//button[@data-testid='tab'][@id='manage']");
   By selectTier1 = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
   By difference = By.xpath("//span[@class='diff-added']");
   By differenceRemoved = By.xpath("//span[@class='diff-removed']");
@@ -84,6 +84,7 @@ public class Common {
   By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])");
   By tagsAdded = By.cssSelector("span[class='tw-no-underline hover:tw-no-underline tw-px-1']");
   By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
+  By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p]");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);

@@ -190,31 +190,22 @@ class Explore {
     Events.click(webDriver, tableDetails.saveTag());
     webDriver.navigate().back();
     Events.click(webDriver, explorePage.explore());
-    WebElement serviceText = webDriver.findElement(explorePage.serviceText());
-    WebElement tierText = webDriver.findElement(explorePage.tierText());
-    WebElement tagText = webDriver.findElement(explorePage.tagText());
-    WebElement databaseText = webDriver.findElement(explorePage.databaseText());
-
-    if (serviceText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
+    try{
+      webDriver.findElement(explorePage.serviceText());
+    } catch(NoSuchElementException noSuchElementException){
       Assert.fail("Service Text Not displayed");
     }
-    if (tierText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
+    try{
+      webDriver.findElement(explorePage.tierText());
+    } catch (NoSuchElementException noSuchElementException){
       Assert.fail("Tier Text Not displayed");
     }
-    if (tagText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
-      Assert.fail("Tag Text Not displayed");
-    }
-    if (databaseText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
+    try{
+      webDriver.findElement(explorePage.databaseText());
+    } catch (NoSuchElementException noSuchElementException){
       Assert.fail("Database Text Not displayed");
     }
+
   }
 
   @Test

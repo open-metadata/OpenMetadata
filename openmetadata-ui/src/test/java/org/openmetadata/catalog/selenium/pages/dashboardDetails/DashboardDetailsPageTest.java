@@ -103,7 +103,8 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
-    String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    Thread.sleep(waitTime);
+    String checkDescription = webDriver.findElement(dashboardDetails.dashboardDescriptionBox()).getText();
     Assert.assertEquals(checkDescription, updatedDescription);
   }
 

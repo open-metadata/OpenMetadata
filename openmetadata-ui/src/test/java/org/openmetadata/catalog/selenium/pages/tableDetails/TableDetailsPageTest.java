@@ -159,17 +159,17 @@ public class TableDetailsPageTest {
     ((JavascriptExecutor) webDriver)
         .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.addTag()));
     Events.click(webDriver, explorePage.addTag());
-    Events.click(webDriver, tableDetails.addTagTextBox());
-    Events.sendKeys(webDriver, tableDetails.addTagTextBox(), "P");
-    Events.click(webDriver, tableDetails.selectTag());
-    String selectedTag = webDriver.findElement(tableDetails.selectedTag()).getText();
+    for(int i = 0; i < 2; i++){
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
+      Events.click(webDriver, common.tagListItem());
+      Thread.sleep(waitTime);
+    }
+    Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(2000);
-    Events.click(webDriver, tableDetails.saveTag());
-    Thread.sleep(2000);
-    ((JavascriptExecutor) webDriver)
-        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.explore()));
-    String TagDisplayed = webDriver.findElement(tableDetails.breadCrumbTags()).getText();
-    Assert.assertEquals(selectedTag, TagDisplayed);
+    webDriver.navigate().refresh();
+    Thread.sleep(waitTime);
+    Object tagCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
+    Assert.assertEquals(tagCount, 2);
   }
 
   @Test
@@ -183,9 +183,10 @@ public class TableDetailsPageTest {
     Thread.sleep(1000);
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTags());
-    if (updatedTags.contains(tagDisplayed.get(1))) {
+    if (updatedTags.get(0).getText().equals(tagDisplayed.get(0).getText())) {
       Assert.fail("Selected Tag is not removed");
     } else {
       LOG.info("Passed");
