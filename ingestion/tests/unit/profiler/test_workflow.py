@@ -25,12 +25,12 @@ from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
 from metadata.generated.schema.tests.columnTest import (
     ColumnTest,
     ColumnTestCase,
-    TestType1,
+    ColumnTestType,
 )
-from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
+from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
-from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase, TestType
+from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig
@@ -208,13 +208,12 @@ def test_tests_def():
                 "table": "service.db.name",  # FQDN
                 "table_tests": [
                     {
-                        "tableName": "To be removed from here",  # TODO remove this from def
                         "name": "My Table test",
-                        "tableTestCase": {
+                        "testCase": {
                             "config": {
                                 "value": 100,
                             },
-                            "testType": "tableRowCountToEqual",
+                            "tableTestType": "tableRowCountToEqual",
                         },
                     },
                 ],
@@ -227,7 +226,7 @@ def test_tests_def():
                                 "minValue": 0,
                                 "maxValue": 99,
                             },
-                            "testType": "columnValuesToBeBetween",
+                            "columnTestType": "columnValuesToBeBetween",
                         },
                     }
                 ],
@@ -247,11 +246,10 @@ def test_tests_def():
                 table="service.db.name",
                 table_tests=[
                     TableTest(
-                        tableName="To be removed from here",
                         name="My Table test",
-                        tableTestCase=TableTestCase(
+                        testCase=TableTestCase(
                             config=TableRowCountToEqual(value=100),
-                            testType=TestType.tableRowCountToEqual,
+                            tableTestType=TableTestType.tableRowCountToEqual,
                         ),
                     )
                 ],
@@ -261,7 +259,7 @@ def test_tests_def():
                         name="My Col test",
                         testCase=ColumnTestCase(
                             config=ColumnValuesToBeBetween(minValue=0, maxValue=99),
-                            testType=TestType1.columnValuesToBeBetween,
+                            columnTestType=ColumnTestType.columnValuesToBeBetween,
                         ),
                     )
                 ],

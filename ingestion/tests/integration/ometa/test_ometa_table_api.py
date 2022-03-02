@@ -41,19 +41,19 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.tests.basic import Status1, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
 from metadata.generated.schema.tests.columnTest import (
     ColumnTest,
     ColumnTestCase,
-    TestType1,
+    ColumnTestType,
 )
-from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
+from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
-from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase, TestType
+from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import APIError
@@ -410,9 +410,9 @@ class OMetaTableTest(TestCase):
             name="first_table_test",
             description="Testing something",
             tableName="To remove",
-            tableTestCase=TableTestCase(
+            testCase=TableTestCase(
                 config=TableRowCountToEqual(value=100),
-                testType=TestType.tableRowCountToEqual,
+                testType=TableTestType.tableRowCountToEqual,
             ),
         )
 
@@ -421,21 +421,21 @@ class OMetaTableTest(TestCase):
         )
 
         assert len(table_with_test.tableTests) == 1
-        assert table_with_test.tableTests[0].tableTestCase == table_test.tableTestCase
+        assert table_with_test.tableTests[0].testCase == table_test.testCase
 
         test_case_result = TestCaseResult(
             result="some result",
             executionTime=datetime.now().timestamp(),
-            status=Status1.Success,
+            status=TestCaseStatus.Success,
         )
 
         table_test_with_res = TableTest(
             name="first_table_test",
             description="Testing something",
             tableName="To remove",
-            tableTestCase=TableTestCase(
+            testCase=TableTestCase(
                 config=TableRowCountToEqual(value=100),
-                testType=TestType.tableRowCountToEqual,
+                testType=TableTestType.tableRowCountToEqual,
             ),
             results=[test_case_result],
         )
@@ -446,7 +446,7 @@ class OMetaTableTest(TestCase):
 
         assert len(table_with_test_and_res.tableTests[0].results) == 1
         assert (
-            table_with_test_and_res.tableTests[0].results[0].status == Status1.Success
+            table_with_test_and_res.tableTests[0].results[0].testCaseStatus == TestCaseStatus.Success
         )
 
     def test_add_column_tests(self):
@@ -461,7 +461,7 @@ class OMetaTableTest(TestCase):
             columnName="id",
             testCase=ColumnTestCase(
                 config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
-                testType=TestType1.columnValuesToBeBetween,
+                testType=ColumnTestType.columnValuesToBeBetween,
             ),
         )
 
@@ -482,7 +482,7 @@ class OMetaTableTest(TestCase):
                 columnName="random_column",
                 testCase=ColumnTestCase(
                     config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
-                    testType=TestType1.columnValuesToBeBetween,
+                    testType=ColumnTestType.columnValuesToBeBetween,
                 ),
             )
 
@@ -491,7 +491,7 @@ class OMetaTableTest(TestCase):
         col_test_res = TestCaseResult(
             result="some result",
             executionTime=datetime.now().timestamp(),
-            status=Status1.Success,
+            status=TestCaseStatus.Success,
         )
 
         col_test_with_res = ColumnTest(
@@ -499,7 +499,7 @@ class OMetaTableTest(TestCase):
             columnName="id",
             testCase=ColumnTestCase(
                 config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
-                testType=TestType1.columnValuesToBeBetween,
+                testType=ColumnTestType.columnValuesToBeBetween,
             ),
             results=[col_test_res],
         )
@@ -520,4 +520,4 @@ class OMetaTableTest(TestCase):
         )
 
         assert len(id_test_res.columnTests[0].results) == 1
-        assert id_test_res.columnTests[0].results[0].status == Status1.Success
+        assert id_test_res.columnTests[0].results[0].testCaseStatus == TestCaseStatus.Success

@@ -24,7 +24,7 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableProfile
-from metadata.generated.schema.tests.basic import Status1, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTest
 from metadata.generated.schema.tests.tableTest import TableTest
 from metadata.ingestion.api.common import WorkflowContext
@@ -153,7 +153,7 @@ class OrmProfilerProcessor(Processor[Table]):
         Log test case results
         """
         self.status.tested(name)
-        if not result.status == Status1.Success:
+        if not result.status == TestCaseStatus.Success:
             self.status.failure(f"{name}: {result.result}")
 
     def run_table_test(
@@ -211,7 +211,7 @@ class OrmProfilerProcessor(Processor[Table]):
             self.status.failure(msg)
             return TestCaseResult(
                 executionTime=self.execution_date.timestamp(),
-                status=Status1.Aborted,
+                status=TestCaseStatus.Aborted,
                 result=msg,
             )
 

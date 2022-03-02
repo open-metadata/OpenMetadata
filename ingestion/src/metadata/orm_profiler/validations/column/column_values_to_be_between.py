@@ -16,7 +16,7 @@ ColumnValuesToBeBetween validation implementation
 from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
-from metadata.generated.schema.tests.basic import Status1, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -45,14 +45,14 @@ def column_values_to_be_between(
         )
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(), status=Status1.Aborted, result=msg
+            executionTime=execution_date.timestamp(), testCaseStatus=TestCaseStatus.Aborted, result=msg
         )
 
     status = (
-        Status1.Success
+        TestCaseStatus.Success
         if col_profile.min >= test_case.minValue
         and col_profile.max <= test_case.maxValue
-        else Status1.Failed
+        else TestCaseStatus.Failed
     )
     result = (
         f"Found min={col_profile.min}, max={col_profile.max} vs."
@@ -60,5 +60,5 @@ def column_values_to_be_between(
     )
 
     return TestCaseResult(
-        executionTime=execution_date.timestamp(), status=status, result=result
+        executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
     )

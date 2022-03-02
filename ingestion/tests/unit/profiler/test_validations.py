@@ -18,7 +18,7 @@ Each test should validate the Success, Failure and Aborted statuses
 from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
-from metadata.generated.schema.tests.basic import Status1, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import ColumnValuesToBeBetween
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import ColumnValuesToBeUnique
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
@@ -45,7 +45,7 @@ def test_table_row_count_to_equal():
     )
     assert res_ok == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Success,
+        testCaseStatus=TestCaseStatus.Success,
         result="Found 100.0 rows vs. the expected 100",
     )
 
@@ -57,7 +57,7 @@ def test_table_row_count_to_equal():
 
     assert res_ko == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Failed,
+        testCaseStatus=TestCaseStatus.Failed,
         result="Found 100.0 rows vs. the expected 50",
     )
 
@@ -73,7 +73,7 @@ def test_table_row_count_to_equal():
 
     assert res_aborted == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Aborted,
+        testCaseStatus=TestCaseStatus.Aborted,
         result="rowCount should not be None for TableRowCountToEqual",
     )
 
@@ -97,7 +97,7 @@ def test_column_values_to_be_between():
     )
     assert res_ok == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Success,
+        testCaseStatus=TestCaseStatus.Success,
         result="Found min=1.0, max=3.0 vs. the expected min=0, max=3.",
     )
 
@@ -111,7 +111,7 @@ def test_column_values_to_be_between():
 
     assert res_ko == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Failed,
+        testCaseStatus=TestCaseStatus.Failed,
         result="Found min=1.0, max=3.0 vs. the expected min=0, max=2.",
     )
 
@@ -129,7 +129,7 @@ def test_column_values_to_be_between():
 
     assert res_aborted == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Aborted,
+        testCaseStatus=TestCaseStatus.Aborted,
         result=("We expect `min` & `max` to be informed on the profiler for ColumnValuesToBeBetween"
                 + " but got min=1.0, max=None."
                 )
@@ -153,7 +153,7 @@ def test_column_values_to_be_unique():
     )
     assert res_ok == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Success,
+        testCaseStatus=TestCaseStatus.Success,
         result=("Found valuesCount=10.0 vs. uniqueCount=10.0."
                 + " Both counts should be equal for column values to be unique."),
     )
@@ -171,7 +171,7 @@ def test_column_values_to_be_unique():
 
     assert res_ko == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Failed,
+        testCaseStatus=TestCaseStatus.Failed,
         result=("Found valuesCount=10.0 vs. uniqueCount=5.0."
                 + " Both counts should be equal for column values to be unique."),
     )
@@ -186,7 +186,7 @@ def test_column_values_to_be_unique():
 
     assert res_aborted == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
-        status=Status1.Aborted,
+        testCaseStatus=TestCaseStatus.Aborted,
         result=("We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
                 + " but got valuesCount=None, uniqueCount=None."
                 )
