@@ -21,9 +21,7 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
@@ -361,13 +359,23 @@ public class RoleRepository extends EntityRepository<Role> {
         updatedDefaultRole = updatedDefaultRole.withDefault(false);
         new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
       }
+      List<User> users = getAllUsers();
+      if (users.isEmpty()) {
+        return;
+      }
       LOG.info("Creating 'user --- has ---> role' relationship for {} role", role.getName());
-      updateUsers(new RoleEntityInterface(role).getEntityReference(), null);
+      for (User user : users) {
+        daoCollection
+            .relationshipDAO()
+            .insert(user.getId(), role.getId(), Entity.USER, Entity.ROLE, Relationship.HAS.ordinal());
+      }
     }
 
     private void setDefaultToFalse(Role role) {
       LOG.info("Deleting 'user --- has ---> role' relationship for {} role", role.getName());
-      updateUsers(null, new RoleEntityInterface(role).getEntityReference());
+      daoCollection
+          .relationshipDAO()
+          .deleteTo(role.getId().toString(), Entity.ROLE, Relationship.HAS.ordinal(), Entity.USER);
     }
 
     private List<User> getAllUsers() {
@@ -382,44 +390,6 @@ public class RoleRepository extends EntityRepository<Role> {
       } catch (GeneralSecurityException | IOException | ParseException e) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));
       }
-    }
-
-    private void updateUsers(EntityReference addRole, EntityReference removeRole) {
-      List<User> users = getAllUsers();
-      if (users.isEmpty()) {
-        return;
-      }
-      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-      users
-          .parallelStream()
-          .forEach(
-              user -> {
-                try {
-                  updateUser(userRepository, user, addRole, removeRole);
-                } catch (IOException | ParseException e) {
-                  throw new RuntimeException(e);
-                }
-              });
-    }
-
-    private void updateUser(
-        EntityRepository<User> userRepository, User user, EntityReference addRole, EntityReference removeRole)
-        throws IOException, ParseException {
-      User origUser = userRepository.get(null, user.getId().toString(), UserRepository.USER_PATCH_FIELDS);
-      User updatedUser = userRepository.get(null, user.getId().toString(), UserRepository.USER_PATCH_FIELDS);
-      List<EntityReference> roles = updatedUser.getRoles();
-      if (roles == null) {
-        roles = new ArrayList<>();
-      }
-      Set<EntityReference> rolesSet = new HashSet<>(roles);
-      if (addRole != null) {
-        rolesSet.add(addRole);
-      }
-      if (removeRole != null) {
-        rolesSet.remove(removeRole);
-      }
-      updatedUser.setRoles(new ArrayList<>(rolesSet));
-      Entity.getEntityRepository(Entity.USER).getUpdater(origUser, updatedUser, Operation.PATCH).update();
     }
   }
 }
