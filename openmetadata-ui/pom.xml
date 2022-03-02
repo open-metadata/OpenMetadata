@@ -142,13 +142,9 @@
             <goals>
               <goal>yarn</goal>
             </goals>
-            <!-- optional: the default phase is "generate-resources" -->
             <phase>test</phase>
             <configuration>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
               <arguments>run build-test</arguments>
-              <!--arguments>build</arguments-->
             </configuration>
           </execution>
           <execution>
