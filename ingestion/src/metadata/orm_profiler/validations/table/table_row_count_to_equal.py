@@ -15,7 +15,7 @@ TableRowCountToEqual validation implementation
 from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import TableProfile
-from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
@@ -41,11 +41,15 @@ def table_row_count_to_equal(
         msg = "rowCount should not be None for TableRowCountToEqual"
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(), testCaseStatus=TestCaseStatus.Aborted, result=msg
+            executionTime=execution_date.timestamp(),
+            testCaseStatus=TestCaseStatus.Aborted,
+            result=msg,
         )
 
     status = (
-        TestCaseStatus.Success if table_profile.rowCount == test_case.value else TestCaseStatus.Failed
+        TestCaseStatus.Success
+        if table_profile.rowCount == test_case.value
+        else TestCaseStatus.Failed
     )
     result = f"Found {table_profile.rowCount} rows vs. the expected {test_case.value}"
 

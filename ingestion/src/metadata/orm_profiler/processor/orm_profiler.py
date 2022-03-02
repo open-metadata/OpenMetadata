@@ -26,7 +26,7 @@ from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTes
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableProfile
-from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.columnTest import ColumnTest, ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase
 from metadata.ingestion.api.common import WorkflowContext
@@ -183,7 +183,9 @@ class OrmProfilerProcessor(Processor[Table]):
         :param profiler_results: Table profiler with informed metrics
         :return: TestCaseResult
         """
-        test_name = self.get_test_name(table=table, test_type=test_case.tableTestType.value)
+        test_name = self.get_test_name(
+            table=table, test_type=test_case.tableTestType.value
+        )
         if test_name in self.status.tests:
             logger.info(
                 f"Test {test_name} has already been computed in this execution."
@@ -199,7 +201,11 @@ class OrmProfilerProcessor(Processor[Table]):
         return test_case_result
 
     def run_column_test(
-        self, table: Table, column: str, test_case: ColumnTestCase, profiler_results: TableProfile
+        self,
+        table: Table,
+        column: str,
+        test_case: ColumnTestCase,
+        profiler_results: TableProfile,
     ) -> Optional[TestCaseResult]:
         """
         Run & log the column test against the ColumnProfile

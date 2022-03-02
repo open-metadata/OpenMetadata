@@ -16,7 +16,7 @@ ColumnValuesToBeUnique validation implementation
 from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
-from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
 )
@@ -45,7 +45,9 @@ def column_values_to_be_unique(
         )
         logger.error(msg)
         return TestCaseResult(
-            executionTime=execution_date.timestamp(), testCaseStatus=TestCaseStatus.Aborted, result=msg
+            executionTime=execution_date.timestamp(),
+            testCaseStatus=TestCaseStatus.Aborted,
+            result=msg,
         )
 
     status = (

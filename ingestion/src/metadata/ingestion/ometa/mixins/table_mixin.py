@@ -137,7 +137,10 @@ class OMetaTableMixin:
         logger.debug("published frequently joined with %s", resp)
 
     def _add_tests(
-        self, table: Table, test: Union[CreateTableTestRequest, CreateColumnTestRequest], path: str
+        self,
+        table: Table,
+        test: Union[CreateTableTestRequest, CreateColumnTestRequest],
+        path: str,
     ) -> Table:
         """
         Internal function to add test data
