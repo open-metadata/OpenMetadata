@@ -8,29 +8,22 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Distinct Count Metric definition
+This Model is required to ingest the sample data
+from sample_data.py source.
+
+The usual process to add new tests is either via the UI
+or by using the ORM Profiler.
 """
-from sqlalchemy import distinct, func
+from typing import Optional
 
-from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from pydantic import BaseModel
+
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 
 
-class DistinctCount(StaticMetric):
-    """
-    Distinct COUNT Metric
-
-    Given a column, return the Distinct count. Ignores NULL values
-    """
-
-    @classmethod
-    def name(cls):
-        return "distinctCount"
-
-    def metric_type(self):
-        return int
-
-    @_label
-    def fn(self):
-        return func.count(distinct(self.col))
+class OMetaTableTest(BaseModel):
+    table_name: str
+    table_test: Optional[CreateTableTestRequest] = None
+    column_test: Optional[CreateColumnTestRequest] = None

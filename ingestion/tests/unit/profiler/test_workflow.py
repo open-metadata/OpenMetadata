@@ -18,7 +18,25 @@ from copy import deepcopy
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
+    ColumnValuesToBeBetween,
+)
+from metadata.generated.schema.tests.columnTest import (
+    ColumnTest,
+    ColumnTestCase,
+    ColumnTestType,
+)
+from metadata.generated.schema.tests.table.tableRowCountToEqual import (
+    TableRowCountToEqual,
+)
+from metadata.generated.schema.tests.tableTest import (
+    TableTest,
+    TableTestCase,
+    TableTestType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig
@@ -26,6 +44,7 @@ from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
 from metadata.orm_profiler.profiles.default import DefaultProfiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
+from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 config = {
     "source": {"type": "sqlite", "config": {"service_name": "my_service"}},
@@ -52,7 +71,7 @@ def test_init_workflow():
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)
     assert workflow.processor.config.profiler is None
-    assert workflow.processor.config.tests is None
+    assert workflow.processor.config.test_suite is None
 
 
 def test_filter_entities():
@@ -188,110 +207,66 @@ def test_tests_def():
     Validate the test case definition
     """
     test_config = deepcopy(config)
-    test_config["processor"]["config"]["tests"] = {
-        "name": "my_tests",
-        "table_tests": [
+    test_config["processor"]["config"]["test_suite"] = {
+        "name": "My Test Suite",
+        "tests": [
             {
-                "name": "first_test",
-                "table": "service.db.name",
-                "expression": "row_count > 100",
-                "enabled": False,
-            },
-            {
-                "name": "another_test",
-                "table": "service.db.name",
-                "expression": "row_count > 1000 & row_count < 2000",
-            },
-        ],
-        "column_tests": [
-            {
-                "table": "service.db.name",
-                "name": "set_of_col_tests",
-                "columns": [
+                "table": "service.db.name",  # FQDN
+                "table_tests": [
                     {
-                        "name": "first_col_test",
-                        "column": "column_name_1",
-                        "expression": "min > 5",
-                    },
-                    {
-                        "name": "another_col_test",
-                        "column": "column_name_1",
-                        "expression": "min > 5 & min < 10",
-                    },
-                    {
-                        "name": "second_col_test",
-                        "column": "column_name_2",
-                        "expression": "null_ratio < 0.1",
+                        "testCase": {
+                            "config": {
+                                "value": 100,
+                            },
+                            "tableTestType": "tableRowCountToEqual",
+                        },
                     },
                 ],
-            }
+                "column_tests": [
+                    {
+                        "columnName": "age",
+                        "testCase": {
+                            "config": {
+                                "minValue": 0,
+                                "maxValue": 99,
+                            },
+                            "columnTestType": "columnValuesToBeBetween",
+                        },
+                    }
+                ],
+            },
         ],
     }
 
     test_workflow = ProfilerWorkflow.create(test_config)
 
     assert isinstance(test_workflow.processor, OrmProfilerProcessor)
-    tests = test_workflow.processor.config.tests
+    suite = test_workflow.processor.config.test_suite
 
-    assert tests.name == "my_tests"
+    expected = TestSuite(
+        name="My Test Suite",
+        tests=[
+            TestDef(
+                table="service.db.name",
+                table_tests=[
+                    CreateTableTestRequest(
+                        testCase=TableTestCase(
+                            config=TableRowCountToEqual(value=100),
+                            tableTestType=TableTestType.tableRowCountToEqual,
+                        ),
+                    )
+                ],
+                column_tests=[
+                    CreateColumnTestRequest(
+                        columnName="age",
+                        testCase=ColumnTestCase(
+                            config=ColumnValuesToBeBetween(minValue=0, maxValue=99),
+                            columnTestType=ColumnTestType.columnValuesToBeBetween,
+                        ),
+                    )
+                ],
+            )
+        ],
+    )
 
-    # Check cardinality
-    assert len(tests.table_tests) == 2
-    assert len(tests.column_tests) == 1
-    assert len(tests.column_tests[0].columns) == 3
-
-    assert tests.table_tests[0].name == "first_test"
-    assert tests.table_tests[0].table == "service.db.name"
-    assert tests.table_tests[0].expression[0].metric == "rowCount"
-    assert not tests.table_tests[0].enabled
-
-    assert tests.column_tests[0].columns[0].name == "first_col_test"
-    assert tests.column_tests[0].columns[0].column == "column_name_1"
-    assert tests.column_tests[0].columns[0].expression[0].metric == "min"
-    assert tests.column_tests[0].columns[0].enabled
-
-    # We cannot do a 1:1 general assertion because we are dynamically
-    # creating the Validation classes. Then, the internal IDs don't match
-    # and the assertion fails. However, and for visual representation,
-    # the resulting class looks like follows:
-
-    # TestDef(
-    #     name="my_tests",
-    #     table_tests=[
-    #         # I can have multiple tests on the same table
-    #         TableTest(
-    #             name="first_test",
-    #             table="service.db.name",
-    #             expression="row_number > 100",  # This will be one Validation
-    #             enabled=False,
-    #         ),
-    #         TableTest(
-    #             name="another_test",
-    #             table="service.db.name",
-    #             expression="row_number > 1000 & row_number < 2000",  # This will be two Validations
-    #         ),
-    #     ],
-    #     column_tests=[
-    #         ColumnTest(
-    #             table="service.db.name",
-    #             name="set_of_col_tests",
-    #             columns=[
-    #                 ColumnTestExpression(
-    #                     name="first_col_test",
-    #                     column="column_name_1",
-    #                     expression="min > 5",  # One Validation
-    #                 ),
-    #                 ColumnTestExpression(
-    #                     name="another_col_test",
-    #                     column="column_name_1",
-    #                     expression="min > 5 & min < 10",  # Two Validations
-    #                 ),
-    #                 ColumnTestExpression(
-    #                     name="second_col_test",
-    #                     column="column_name_2",
-    #                     expression="null_ratio < 0.1",  # One Validation
-    #                 ),
-    #             ],
-    #         )
-    #     ],
-    # )
+    assert suite == expected

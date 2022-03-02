@@ -11,7 +11,7 @@
 
 import logging
 import traceback
-from typing import TypeVar
+from typing import TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
@@ -29,6 +29,8 @@ from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequ
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -41,6 +43,7 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
+from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -73,6 +76,9 @@ class MetadataRestSinkConfig(ConfigModel):
 class MetadataRestSink(Sink[Entity]):
     config: MetadataRestSinkConfig
     status: SinkStatus
+
+    # We want to catch any errors that might happen during the sink
+    # pylint: disable=broad-except
 
     def __init__(
         self,
@@ -121,6 +127,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_ml_model(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
+        elif isinstance(record, OMetaTableTest):
+            self.write_table_tests(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -471,6 +479,33 @@ class MetadataRestSink(Sink[Entity]):
             logger.info(
                 f"{record.table.name} doesn't exist in source state, marking it as deleted"
             )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(traceback.print_exc())
+            logger.error(err)
+
+    def write_table_tests(self, record: OMetaTableTest) -> None:
+        """
+        Iterate over all table_tests and column_tests
+        for the given table and add them to the backend.
+
+        :param record: Sample data record
+        """
+        try:
+            # Fetch the table that we have already ingested
+            table = self.metadata.get_by_name(entity=Table, fqdn=record.table_name)
+
+            test = None
+            if record.table_test:
+                self.metadata.add_table_test(table=table, table_test=record.table_test)
+                test = record.table_test.testCase.tableTestType.value
+
+            if record.column_test:
+                self.metadata.add_column_test(table=table, col_test=record.column_test)
+                test = record.column_test.testCase.columnTestType.value
+
+            logger.info(f"Table Tests: {record.table_name}.{test}")
+            self.status.records_written(f"Table Tests: {record.table_name}.{test}")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
