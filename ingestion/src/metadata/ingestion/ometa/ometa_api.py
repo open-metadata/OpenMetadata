@@ -62,7 +62,6 @@ from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str
 
 logger = logging.getLogger(__name__)
 
-
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
 C = TypeVar("C", bound=BaseModel)
@@ -131,7 +130,9 @@ class OpenMetadata(
             base_url=self.config.api_endpoint,
             api_version=self.config.api_version,
             auth_header="X-Catalog-Source",
-            auth_token=asyncio.run(self._auth_provider.auth_token()),
+            auth_token=asyncio.run(self._auth_provider.auth_token())
+            if self.config.auth_provider_type == "okta"
+            else self._auth_provider.auth_token(),
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
