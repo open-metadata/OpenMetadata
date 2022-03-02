@@ -59,9 +59,7 @@ const RequestDescriptionModal: FC<RequestDescriptionModalProp> = ({
             </svg>
           </div>
         </div>
-        <div
-          className={classNames('tw-modal-body tw-px-0')}
-          data-testid="body-text">
+        <div className={classNames('tw-px-0 tw-py-3')} data-testid="body-text">
           <ActivityFeedEditor
             buttonClass="tw-mr-4 tw-pb-3"
             defaultValue={defaultValue}

@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { cloneDeep, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -524,13 +524,21 @@ const EntityTable = ({
                                       />
                                     </button>
                                   </NonAdminAction>
-                                  {!cell.value ? (
+                                  {!cell.value &&
+                                  isNil(
+                                    getFieldThreadElement(
+                                      cell.row.cells[0].value,
+                                      'description',
+                                      entityFieldThreads as EntityFieldThreads[],
+                                      onThreadLinkSelect
+                                    )
+                                  ) ? (
                                     <button
                                       className="focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
                                       data-testid="request-description"
                                       onClick={() => {
                                         onEntityFieldSelect?.(
-                                          `columns/${cell.row.cells[0].value}`
+                                          `columns/${cell.row.cells[0].value}/description`
                                         );
                                       }}>
                                       Request Description

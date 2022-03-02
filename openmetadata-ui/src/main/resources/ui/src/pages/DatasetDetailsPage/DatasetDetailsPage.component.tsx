@@ -574,6 +574,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     postThread(data)
       .then((res: AxiosResponse) => {
         setEntityThread((pre) => [...pre, res.data]);
+        getEntityFeedCount();
         showToast({
           variant: 'success',
           body: 'Thread is created successfully',

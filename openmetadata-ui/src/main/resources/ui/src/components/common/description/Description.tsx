@@ -127,7 +127,7 @@ const Description = ({
                 />
               </button>
             </NonAdminAction>
-            {!description?.trim() ? (
+            {!description?.trim() && isUndefined(descriptionThread) ? (
               <button
                 className="focus:tw-outline-none"
                 data-testid="request-description"

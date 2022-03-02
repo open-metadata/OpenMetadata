@@ -471,9 +471,10 @@ export const getInfoElements = (data: ExtraInfo) => {
 
 export const getEntityFeedLink: Function = (
   type: string,
-  fqn: string
+  fqn: string,
+  field?: string
 ): string | undefined => {
   if (isUndefined(type) || isUndefined(fqn)) return undefined;
 
-  return `<#E/${type}/${fqn}>`;
+  return `<#E/${type}/${fqn}${field ? `/${field}` : ''}>`;
 };
