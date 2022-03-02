@@ -189,6 +189,7 @@ const GlossaryDetails = ({ glossary, updateGlossary }: props) => {
       <div className="tw--ml-5" data-testid="description-container">
         <Description
           blurWithBodyBG
+          removeBlur
           description={glossary?.description || ''}
           entityName={glossary?.displayName ?? glossary?.name}
           isEdit={isDescriptionEditable}

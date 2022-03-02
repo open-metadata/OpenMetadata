@@ -1,4 +1,4 @@
-import { LoadingState } from 'Models';
+import { FormatedUsersData, LoadingState } from 'Models';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -8,6 +8,7 @@ export interface AddGlossaryTermProps {
   glossaryData: Glossary;
   saveState: LoadingState;
   allowAccess: boolean;
+  users: Array<FormatedUsersData>;
   onSave: (value: CreateGlossaryTerm) => void;
   onCancel: () => void;
 }

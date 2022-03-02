@@ -43,7 +43,6 @@ const GlossaryTerms = ({
   queryParams,
   showGlossaryDetails,
   updateReviewer,
-  updateGlossaryDescription,
   handleSelectedKey,
   handleExpand,
   activeTabHandler,

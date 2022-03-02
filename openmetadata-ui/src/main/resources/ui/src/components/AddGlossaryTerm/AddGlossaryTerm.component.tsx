@@ -1,7 +1,7 @@
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isUndefined } from 'lodash';
 import { EditorContentRef, FormatedUsersData } from 'Models';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import UserCard from '../../pages/teams/UserCard';
@@ -27,6 +27,7 @@ const AddGlossaryTerm = ({
   parentGlossaryData,
   allowAccess,
   glossaryData,
+  users,
   onSave,
   onCancel,
   saveState = 'initial',
@@ -38,10 +39,18 @@ const AddGlossaryTerm = ({
   });
 
   const [name, setName] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>(users);
+  const [referenceName, setReferenceName] = useState('');
+  const [referenceUrl, setReferenceUrl] = useState('');
+  const [synonyms, setSynonyms] = useState('');
+
+  useEffect(() => {
+    if (users.length) {
+      setReviewer(users);
+    }
+  }, [users]);
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
@@ -73,8 +82,20 @@ const AddGlossaryTerm = ({
 
         break;
       }
-      case 'displayName': {
-        setDisplayName(value);
+
+      case 'referenceName': {
+        setReferenceName(value);
+
+        break;
+      }
+
+      case 'endPoint': {
+        setReferenceUrl(value);
+
+        break;
+      }
+      case 'synonyms': {
+        setSynonyms(value);
 
         break;
       }
@@ -97,15 +118,26 @@ const AddGlossaryTerm = ({
     if (validateForm()) {
       const data: CreateGlossaryTerm = {
         name,
-        displayName: isEmpty(displayName) ? name : displayName,
+        displayName: name,
         description: markdownRef.current?.getEditorContent() || undefined,
-        // reviewers: reviewer,
+        reviewers: reviewer.map((r) => ({
+          id: r.id,
+          type: r.type,
+        })),
+        references:
+          referenceUrl && referenceName
+            ? {
+                endpoint: referenceUrl,
+                name: referenceName,
+              }
+            : undefined,
         parent: !isUndefined(parentGlossaryData)
           ? {
               type: 'glossaryTerm',
               id: parentGlossaryData.id,
             }
           : undefined,
+        synonyms: synonyms.split(','),
         glossary: {
           id: glossaryData.id,
           type: 'glossary',
@@ -205,22 +237,7 @@ const AddGlossaryTerm = ({
 
           {showErrorMsg.name && errorMsg('Glossary term name is required.')}
         </Field>
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="name">
-            Display Name:
-          </label>
 
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="display-name"
-            id="displayName"
-            name="displayName"
-            placeholder="Display name"
-            type="text"
-            value={displayName}
-            onChange={handleValidation}
-          />
-        </Field>
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-0"
@@ -235,8 +252,61 @@ const AddGlossaryTerm = ({
           />
         </Field>
 
+        <div className="tw-flex tw-w-full tw-gap-5">
+          <div className="tw-w-6/12">
+            <label className="tw-block tw-form-label" htmlFor="referenceName">
+              Reference Name:
+            </label>
+
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="referenceName"
+              id="referenceName"
+              name="referenceName"
+              placeholder="Reference name"
+              type="text"
+              value={referenceName}
+              onChange={handleValidation}
+            />
+          </div>
+
+          <div className="tw-w-6/12">
+            <label className="tw-block tw-form-label" htmlFor="endPoint">
+              Reference Url:
+            </label>
+
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="endPoint"
+              id="endPoint"
+              name="endPoint"
+              placeholder="http://example.com"
+              type="text"
+              value={referenceUrl}
+              onChange={handleValidation}
+            />
+          </div>
+        </div>
+
         <Field>
-          {/* <div className="tw-flex tw-items-center tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="synonyms">
+            Synonyms:
+          </label>
+
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="synonyms"
+            id="synonyms"
+            name="synonyms"
+            placeholder="Enter comma seprated keywords"
+            type="text"
+            value={synonyms}
+            onChange={handleValidation}
+          />
+        </Field>
+
+        <Field>
+          <div className="tw-flex tw-items-center tw-mt-4">
             <p className="w-form-label tw-mr-3">Reviewers: </p>
             <Button
               className="tw-h-5 tw-px-2"
@@ -246,7 +316,7 @@ const AddGlossaryTerm = ({
               onClick={() => setShowRevieweModal(true)}>
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
-          </div> */}
+          </div>
           <div className="tw-my-4 tw-grid tw-grid-cols-2 tw-gap-4">
             {Boolean(reviewer.length) &&
               reviewer.map((d) => {

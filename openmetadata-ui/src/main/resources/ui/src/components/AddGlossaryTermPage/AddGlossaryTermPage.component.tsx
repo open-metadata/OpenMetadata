@@ -1,5 +1,5 @@
 import { AxiosError, AxiosResponse } from 'axios';
-import { LoadingState } from 'Models';
+import { FormatedUsersData, LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -7,6 +7,7 @@ import {
   getGlossariesByName,
   getGlossaryTermsByFQN,
 } from '../../axiosAPIs/glossaryAPI';
+import { getUserByName } from '../../axiosAPIs/userAPI';
 import { ROUTES } from '../../constants/constants';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -15,6 +16,7 @@ import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import AddGlossaryTerm from '../AddGlossaryTerm/AddGlossaryTerm.component';
 import PageContainerV1 from '../containers/PageContainerV1';
+import Loader from '../Loader/Loader';
 
 const AddGlossaryTermPage = () => {
   const { glossaryName, glossaryTermsFQN } =
@@ -23,7 +25,9 @@ const AddGlossaryTermPage = () => {
   const history = useHistory();
   const { isAuthDisabled, isAdminUser } = useAuth();
   const [status, setStatus] = useState<LoadingState>('initial');
+  const [isLoading, setIsLoading] = useState(true);
   const [glossaryData, setGlossaryData] = useState<Glossary>();
+  const [users, setUsers] = useState<Array<FormatedUsersData>>([]);
   const [parentGlossaryData, setParentGlossaryData] = useState<GlossaryTerm>();
 
   const goToGlossary = () => {
@@ -53,17 +57,41 @@ const AddGlossaryTermPage = () => {
       });
   };
 
+  const getUserObject = async (reviewers: string[]) => {
+    setIsLoading(true);
+    const promiseArr = reviewers.map((reviewer) => getUserByName(reviewer));
+
+    await Promise.allSettled(promiseArr).then(
+      (res: PromiseSettledResult<AxiosResponse>[]) => {
+        if (res.length) {
+          const usersObj = res.map((r) => {
+            if (r.status === 'fulfilled') {
+              return { ...r.value.data, type: 'user' };
+            }
+          });
+
+          setUsers(usersObj);
+        }
+        setIsLoading(false);
+      }
+    );
+  };
+
   const fetchGlossaryData = () => {
     getGlossariesByName(glossaryName, ['tags', 'owner'])
       .then((res: AxiosResponse) => {
         setGlossaryData(res.data);
+        if (res.data.reviewers.length) {
+          getUserObject(res.data.reviewers);
+        }
       })
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
           body: err.message || 'Error while fetching glossary!',
         });
-      });
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const fetchGlossaryTermsByName = (name: string) => {
@@ -97,14 +125,19 @@ const AddGlossaryTermPage = () => {
 
   return (
     <PageContainerV1>
-      <AddGlossaryTerm
-        allowAccess={isAdminUser || isAuthDisabled}
-        glossaryData={glossaryData as Glossary}
-        parentGlossaryData={parentGlossaryData}
-        saveState={status}
-        onCancel={handleCancel}
-        onSave={onSave}
-      />
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <AddGlossaryTerm
+          allowAccess={isAdminUser || isAuthDisabled}
+          glossaryData={glossaryData as Glossary}
+          parentGlossaryData={parentGlossaryData}
+          saveState={status}
+          users={users}
+          onCancel={handleCancel}
+          onSave={onSave}
+        />
+      )}
     </PageContainerV1>
   );
 };

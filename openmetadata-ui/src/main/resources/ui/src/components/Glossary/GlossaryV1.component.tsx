@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
@@ -16,6 +17,7 @@ import TreeView from '../common/TreeView/TreeView.component';
 import PageLayout from '../containers/PageLayout';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
+import Loader from '../Loader/Loader';
 
 type Props = {
   glossaryList: ModifiedGlossaryData[];
@@ -30,6 +32,8 @@ type Props = {
   updateGlossary: (value: Glossary) => void;
   handleGlossaryTermUpdate: (value: GlossaryTerm) => void;
   handleSelectedData: (data: Glossary | GlossaryTerm, pos: string) => void;
+  handleChildLoading: (status: boolean) => void;
+  isChildLoading: boolean;
   // handlePathChange: (
   //   glossary: string,
   //   glossaryTermsFQN?: string | undefined
@@ -48,11 +52,13 @@ const GlossaryV1 = ({
   handleSelectedKey,
   selectedData,
   isGlossaryActive,
+  isChildLoading,
   handleSelectedData,
   handleAddGlossaryClick,
   handleAddGlossaryTermClick,
   handleGlossaryTermUpdate,
   updateGlossary,
+  handleChildLoading,
 }: // handlePathChange,
 Props) => {
   const treeRef = useRef<RcTree<DataNode>>(null);
@@ -92,6 +98,7 @@ Props) => {
     _event: React.MouseEvent<HTMLElement, MouseEvent>,
     node: EventDataNode
   ) => {
+    handleChildLoading(true);
     const key = node.key as string;
     const breadCrumbData = (treeRef.current?.state.keyEntities[key].nodes ||
       []) as ModifiedDataNode[];
@@ -184,7 +191,10 @@ Props) => {
           </Button>
         </NonAdminAction>
       </div>
-      {selectedData &&
+      {isChildLoading ? (
+        <Loader />
+      ) : (
+        !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
             glossary={selectedData as Glossary}
@@ -195,7 +205,8 @@ Props) => {
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
           />
-        ))}
+        ))
+      )}
     </PageLayout>
   );
 };

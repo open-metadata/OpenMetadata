@@ -1,8 +1,11 @@
+import classNames from 'classnames';
+import { cloneDeep, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { LabelType, State } from '../../generated/type/tagLabel';
+import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Description from '../common/description/Description';
@@ -26,7 +29,7 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
 
   const tabs = [
     {
-      name: 'Relationships',
+      name: 'Related Terms',
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -46,6 +49,17 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
       },
       isProtected: false,
       position: 2,
+    },
+    {
+      name: 'Reviewer',
+      icon: {
+        alt: 'schema',
+        name: 'icon-schema',
+        title: 'Schema',
+        selectedName: 'icon-schemacolor',
+      },
+      isProtected: false,
+      position: 3,
     },
   ];
 
@@ -117,22 +131,89 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
     setIsTagEditable(false);
   };
 
+  const handleRemoveReviewer = (id: string) => {
+    let updatedGlossaryTerm = cloneDeep(glossaryTerm);
+    const reviewer = updatedGlossaryTerm.reviewers?.filter(
+      (reviewer) => reviewer.id !== id
+    );
+    updatedGlossaryTerm = {
+      ...updatedGlossaryTerm,
+      reviewers: reviewer,
+    };
+
+    handleGlossaryTermUpdate(updatedGlossaryTerm);
+  };
+
   return (
     <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
-      <div className="tw-flex tw-gap-5">
-        <div>
-          <p className="tw-font-medium tw-mb-2">Glossary</p>
-          <p className="tw-font-medium tw-mb-2">Status</p>
-        </div>
-        <div>
-          <p className="tw-text-grey-muted tw-mb-2">
-            {glossaryTerm.glossary.name}
-          </p>
-          <p className="tw-text-grey-muted tw-mb-2">{glossaryTerm.status}</p>
+      <div className="tw-flex tw-gap-5 tw-mb-2">
+        <div className="tw-font-medium">Status</div>
+        <div className="tw-text-grey-muted">{glossaryTerm.status}</div>
+      </div>
+
+      <div className="tw-flex tw-gap-5 tw-mb-2">
+        <div className="tw-font-medium">Reference</div>
+        <div className="tw-text-grey-muted">
+          {!isEmpty(glossaryTerm.references) ? (
+            <a
+              className="link-text tw-flex"
+              data-testid="owner-link"
+              href={glossaryTerm.references?.endpoint}
+              rel="noopener noreferrer"
+              target="_blank">
+              <>
+                <span
+                  className={classNames('tw-mr-1 tw-inline-block tw-truncate', {
+                    'tw-w-52':
+                      (glossaryTerm.references?.name as string).length > 32,
+                  })}
+                  title={glossaryTerm.references?.name as string}>
+                  {glossaryTerm.references?.name}
+                </span>
+
+                <SVGIcons
+                  alt="external-link"
+                  className="tw-align-middle"
+                  icon="external-link"
+                  width="12px"
+                />
+              </>
+            </a>
+          ) : (
+            '--'
+          )}
         </div>
       </div>
 
+      {glossaryTerm.synonyms && glossaryTerm.synonyms.length > 0 && (
+        <div className="tw-mb-2">
+          <SVGIcons
+            alt="icon-tag"
+            className="tw-mx-1"
+            icon="icon-tag-grey"
+            width="16"
+          />
+          {glossaryTerm.synonyms.map((term, index) => (
+            <Tags
+              isRemovable
+              className="tw-bg-gray-200"
+              key={index}
+              tag={term}
+              type="contained"
+            />
+          ))}
+        </div>
+      )}
+
       <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
+        {glossaryTerm?.tags && glossaryTerm?.tags.length > 0 && (
+          <SVGIcons
+            alt="icon-tag"
+            className="tw-mx-1"
+            icon="icon-tag-grey"
+            width="16"
+          />
+        )}
         <NonAdminAction
           position="bottom"
           title={TITLE_FOR_NON_ADMIN_ACTION}
@@ -183,6 +264,7 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
       <div className="tw--ml-5" data-testid="description-container">
         <Description
           blurWithBodyBG
+          removeBlur
           description={glossaryTerm.description || ''}
           entityName={glossaryTerm?.displayName ?? glossaryTerm?.name}
           isEdit={isDescriptionEditable}
@@ -200,9 +282,26 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
           tabs={tabs}
         />
 
-        <div className="tw-bg-white tw-flex-grow tw-py-4">
+        <div className="tw-flex-grow tw-py-4">
           {activeTab === 1 && <RelationshipTab />}
           {activeTab === 2 && <AssetsTabs />}
+          {activeTab === 3 && (
+            <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
+              {glossaryTerm.reviewers?.map((term) => (
+                <UserCard
+                  isActionVisible
+                  isIconVisible
+                  item={{
+                    name: term.name || '',
+                    description: term.displayName || '',
+                    id: term.id,
+                  }}
+                  key={term.name}
+                  onRemove={handleRemoveReviewer}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

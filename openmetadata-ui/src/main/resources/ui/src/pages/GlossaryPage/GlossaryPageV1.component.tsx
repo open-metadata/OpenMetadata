@@ -29,6 +29,7 @@ const GlossaryPageV1 = () => {
   const history = useHistory();
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isChildLoading, setIsChildLoading] = useState(true);
   const [glossariesList, setGlossariesList] = useState<
     Array<ModifiedGlossaryData>
   >([]);
@@ -37,6 +38,10 @@ const GlossaryPageV1 = () => {
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isGlossaryActive, setIsGlossaryActive] = useState(true);
   //   console.log(glossariesList);
+
+  const handleChildLoading = (status: boolean) => {
+    setIsChildLoading(status);
+  };
 
   const fetchGlossaryTermsData = (id?: string) => {
     getGlossaryTerms(id, ['children', 'relatedTerms', 'reviewers', 'tags'])
@@ -65,9 +70,11 @@ const GlossaryPageV1 = () => {
         const { data } = res.data;
         if (data) {
           setGlossariesList(data);
-          setSelectedData(data[0]);
-          setSelectedKey(data[0].name);
-          fetchGlossaryTermsData(data[0].id);
+          if (data.length) {
+            setSelectedData(data[0]);
+            setSelectedKey(data[0].name);
+            fetchGlossaryTermsData(data[0].id);
+          }
         }
       })
       .catch((err: AxiosError) => {
@@ -78,6 +85,7 @@ const GlossaryPageV1 = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        handleChildLoading(false);
       });
   };
 
@@ -111,7 +119,8 @@ const GlossaryPageV1 = () => {
           variant: 'error',
           body: err.message || 'Error while fetching glossary terms!',
         });
-      });
+      })
+      .finally(() => handleChildLoading(false));
   };
 
   const saveUpdatedGlossaryData = (
@@ -185,12 +194,14 @@ const GlossaryPageV1 = () => {
   };
 
   const handleSelectedData = (data: Glossary | GlossaryTerm, pos: string) => {
+    handleChildLoading(true);
     const hierarchy = pos.split('-').splice(1);
     // console.log(hierarchy);
     if (hierarchy.length < 2) {
       setSelectedData(data);
       fetchGlossaryTermsData(data.id);
       setIsGlossaryActive(true);
+      handleChildLoading(false);
     } else {
       fetchGlossaryTermsByName(
         (data as GlossaryTerm)?.fullyQualifiedName || data?.name,
@@ -213,10 +224,12 @@ const GlossaryPageV1 = () => {
           glossaryList={glossariesList as ModifiedGlossaryData[]}
           handleAddGlossaryClick={handleAddGlossaryClick}
           handleAddGlossaryTermClick={handleAddGlossaryTermClick}
+          handleChildLoading={handleChildLoading}
           handleExtendedKey={handleExtendedKey}
           handleGlossaryTermUpdate={handleGlossaryTermUpdate}
           handleSelectedData={handleSelectedData}
           handleSelectedKey={handleSelectedKey}
+          isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
           selectedData={selectedData as Glossary | GlossaryTerm}
           selectedKey={selectedKey}
