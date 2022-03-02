@@ -16,9 +16,13 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.util.EntityUtil.stringMatch;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -39,8 +43,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags");
-  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags");
+  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags,reviewers");
+  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags,reviewers");
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -166,11 +170,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
     for (EntityReference relTerm : Optional.ofNullable(entity.getRelatedTerms()).orElse(Collections.emptyList())) {
       // Make this bidirectional relationship
-      addRelationship(
+      addBidirectionalRelationship(
           entity.getId(), relTerm.getId(), Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, Relationship.RELATED_TO);
     }
     for (EntityReference reviewer : Optional.ofNullable(entity.getReviewers()).orElse(Collections.emptyList())) {
-      // Make this bidirectional relationship
       addRelationship(reviewer.getId(), entity.getId(), Entity.USER, Entity.GLOSSARY_TERM, Relationship.REVIEWS);
     }
 
@@ -349,7 +352,31 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      // TODO
+      updateSynonyms(original.getEntity(), updated.getEntity());
+      updateReviewers(original.getEntity(), updated.getEntity());
+    }
+
+    private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
+      List<String> origSynonyms = Optional.ofNullable(origTerm.getSynonyms()).orElse(Collections.emptyList());
+      List<String> updatedSynonyms = Optional.ofNullable(updatedTerm.getSynonyms()).orElse(Collections.emptyList());
+
+      List<String> added = new ArrayList<>();
+      List<String> deleted = new ArrayList<>();
+      recordListChange("synonyms", origSynonyms, updatedSynonyms, added, deleted, stringMatch);
+    }
+
+    private void updateReviewers(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
+      List<EntityReference> origUsers = Optional.ofNullable(origTerm.getReviewers()).orElse(Collections.emptyList());
+      List<EntityReference> updatedUsers =
+          Optional.ofNullable(updatedTerm.getReviewers()).orElse(Collections.emptyList());
+      updateFromRelationships(
+          "reviewers",
+          Entity.USER,
+          origUsers,
+          updatedUsers,
+          Relationship.REVIEWS,
+          Entity.GLOSSARY_TERM,
+          origTerm.getId());
     }
   }
 }

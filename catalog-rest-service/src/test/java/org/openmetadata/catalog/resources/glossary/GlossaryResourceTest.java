@@ -22,10 +22,12 @@ import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
@@ -33,8 +35,12 @@ import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
@@ -55,6 +61,26 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
+  }
+
+  @Test
+  void patch_addDeleteReviewers(TestInfo test) throws IOException {
+    CreateGlossary create = createRequest(getEntityName(test), "", "", null);
+    Glossary glossary = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add reviewer USER1 in PATCH request
+    String origJson = JsonUtils.pojoToJson(glossary);
+    glossary.withReviewers(List.of(USER_OWNER1));
+    ChangeDescription change = getChangeDescription(glossary.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER1)));
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove a reviewer in PATCH request
+    origJson = JsonUtils.pojoToJson(glossary);
+    glossary.withReviewers(null);
+    change = getChangeDescription(glossary.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER_OWNER1)));
+    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
   @Override
@@ -91,6 +117,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     // Entity specific validation
     TestUtils.validateTags(expected.getTags(), patched.getTags());
+    TestUtils.assertEntityReferenceList(expected.getReviewers(), patched.getReviewers());
   }
 
   @Override
@@ -120,6 +147,13 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     if (expected == actual) {
       return;
     }
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.equals("reviewers")) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEntityReferencesFieldChange(expectedRefs, actualRefs);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }
