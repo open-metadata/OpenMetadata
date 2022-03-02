@@ -93,7 +93,6 @@ class ProfilerTest(TestCase):
             missingCount=None,
             uniqueCount=2,
             uniqueProportion=1.0,
-            distinctCount=2,
             min=30.0,
             max=31.0,
             minLength=None,
