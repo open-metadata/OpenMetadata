@@ -408,7 +408,6 @@ public abstract class EntityRepository<T> {
     T original = setFields(dao.findEntityById(id), patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
-    System.out.println("XXX patch is " + patch);
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
     updatedEntity.setUpdateDetails(user, System.currentTimeMillis());
@@ -1189,10 +1188,6 @@ public abstract class EntityRepository<T> {
           .deleteFrom(fromId.toString(), fromEntityType, relationshipType.ordinal(), toEntityType);
       // Add relationships from updated
       for (EntityReference ref : updatedToRefs) {
-        System.out.println(
-            String.format(
-                "XXX relationship %s:%s to %s:%s of type %s",
-                fromEntityType, fromId, toEntityType, ref.getId(), relationshipType));
         addRelationship(fromId, ref.getId(), fromEntityType, toEntityType, relationshipType);
       }
       updatedToRefs.sort(EntityUtil.compareEntityReference);
@@ -1225,10 +1220,6 @@ public abstract class EntityRepository<T> {
           .deleteTo(toId.toString(), fromEntityType, relationshipType.ordinal(), toEntityType);
       // Add relationships from updated
       for (EntityReference ref : updatedFromRefs) {
-        System.out.println(
-            String.format(
-                "XXX relationship %s:%s to %s:%s of type %s",
-                fromEntityType, ref, toEntityType, toId, relationshipType));
         addRelationship(ref.getId(), toId, fromEntityType, toEntityType, relationshipType);
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
