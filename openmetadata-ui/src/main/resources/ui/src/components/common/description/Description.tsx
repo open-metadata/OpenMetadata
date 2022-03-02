@@ -127,7 +127,9 @@ const Description = ({
                 />
               </button>
             </NonAdminAction>
-            {!description?.trim() && isUndefined(descriptionThread) ? (
+            {!description?.trim() &&
+            isUndefined(descriptionThread) &&
+            onEntityFieldSelect ? (
               <button
                 className="focus:tw-outline-none"
                 data-testid="request-description"
