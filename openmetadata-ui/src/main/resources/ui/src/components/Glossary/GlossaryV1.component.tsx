@@ -20,6 +20,7 @@ import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
 
 type Props = {
+  isHasAccess: boolean;
   glossaryList: ModifiedGlossaryData[];
   selectedKey: string;
   extendedKey: string[];
@@ -45,6 +46,7 @@ type ModifiedDataNode = DataNode & {
 };
 
 const GlossaryV1 = ({
+  isHasAccess,
   glossaryList,
   selectedKey,
   extendedKey,
@@ -135,7 +137,7 @@ Props) => {
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
-                // 'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                'tw-opacity-40': isHasAccess,
               })}
               data-testid="add-category"
               size="small"
@@ -150,7 +152,7 @@ Props) => {
           <SearchInput
             placeholder="Search term..."
             searchValue={searchText}
-            typingInterval={500}
+            typingInterval={200}
             onSearch={handleSearchAction}
           />
 
@@ -180,14 +182,14 @@ Props) => {
         <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
           <Button
             className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-              //   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              'tw-opacity-40': isHasAccess,
             })}
             data-testid="add-new-tag-button"
             size="small"
             theme="primary"
             variant="contained"
             onClick={handleAddGlossaryTermClick}>
-            Add new term
+            Add New Term
           </Button>
         </NonAdminAction>
       </div>
@@ -198,12 +200,14 @@ Props) => {
         (isGlossaryActive ? (
           <GlossaryDetails
             glossary={selectedData as Glossary}
+            isHasAccess={isHasAccess}
             updateGlossary={updateGlossary}
           />
         ) : (
           <GlossaryTermsV1
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+            isHasAccess={isHasAccess}
           />
         ))
       )}

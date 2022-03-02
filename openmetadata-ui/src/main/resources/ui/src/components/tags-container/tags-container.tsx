@@ -34,6 +34,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onSelectionChange,
   showTags = true,
   type,
+  dropDownHorzPosRight = true,
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
@@ -218,9 +219,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             />
             {newTag && (
               <DropDownList
-                horzPosRight
                 domPosition={inputDomRect}
                 dropDownList={getTagList()}
+                horzPosRight={dropDownHorzPosRight}
                 searchString={newTag}
                 onSelect={handleTagSelection}
               />

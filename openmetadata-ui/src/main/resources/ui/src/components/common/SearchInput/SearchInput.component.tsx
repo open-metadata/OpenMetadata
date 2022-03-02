@@ -75,7 +75,7 @@ const SearchInput = ({
       <div className="tw-flex tw-bg-body-main tw-h-8 tw-relative">
         <SVGIcons
           alt="icon-search"
-          className="tw-absolute tw-block tw-z-10 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none"
+          className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none"
           icon={searchIcon}
         />
         <input

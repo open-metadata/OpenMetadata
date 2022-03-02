@@ -13,7 +13,8 @@
  */
 
 /**
- * This schema defines the Glossary entity based on SKOS.
+ * This schema defines the Glossary entity. A Glossary is collection of hierarchical
+ * GlossaryTerms.
  */
 export interface Glossary {
   /**
@@ -49,9 +50,9 @@ export interface Glossary {
    */
   owner?: EntityReference;
   /**
-   * User names of the reviewers for this glossary.
+   * User references of the reviewers for this glossary.
    */
-  reviewers?: string[];
+  reviewers?: EntityReference[];
   /**
    * Tags for this glossary.
    */

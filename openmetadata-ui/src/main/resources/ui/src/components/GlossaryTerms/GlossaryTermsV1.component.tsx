@@ -1,31 +1,41 @@
 import classNames from 'classnames';
-import { cloneDeep, isEmpty } from 'lodash';
-import { EntityTags } from 'Models';
-import React, { useState } from 'react';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
+import { EntityTags, FormatedUsersData } from 'Models';
+import React, { useEffect, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import TabsPane from '../common/TabsPane/TabsPane';
+import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
 type Props = {
+  isHasAccess: boolean;
   glossaryTerm: GlossaryTerm;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
 };
 
-const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
+const GlossaryTermsV1 = ({
+  isHasAccess,
+  glossaryTerm,
+  handleGlossaryTermUpdate,
+}: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [activeTab, setActiveTab] = useState(1);
+  const [showRevieweModal, setShowRevieweModal] = useState(false);
+  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
 
   const tabs = [
     {
@@ -62,6 +72,27 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
       position: 3,
     },
   ];
+
+  const onReviewerModalCancel = () => {
+    setShowRevieweModal(false);
+  };
+
+  const handleReviewerSave = (data: Array<FormatedUsersData>) => {
+    if (!isEqual(data, reviewer)) {
+      let updatedGlossaryTerm = cloneDeep(glossaryTerm);
+      const oldReviewer = data.filter((d) => includes(reviewer, d));
+      const newReviewer = data
+        .filter((d) => !includes(reviewer, d))
+        .map((d) => ({ id: d.id, type: d.type }));
+      updatedGlossaryTerm = {
+        ...updatedGlossaryTerm,
+        reviewers: [...oldReviewer, ...newReviewer],
+      };
+      setReviewer(data);
+      handleGlossaryTermUpdate(updatedGlossaryTerm);
+    }
+    onReviewerModalCancel();
+  };
 
   const activeTabHandler = (tab: number) => {
     setActiveTab(tab);
@@ -144,16 +175,76 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
     handleGlossaryTermUpdate(updatedGlossaryTerm);
   };
 
+  useEffect(() => {
+    if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
+      setReviewer(
+        glossaryTerm.reviewers.map((d) => ({
+          ...(d as FormatedUsersData),
+          type: 'user',
+        }))
+      );
+    }
+  }, []);
+
+  const rightPosButton = () => {
+    return (
+      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+        <Button
+          className={classNames('tw-h-8 tw-rounded', {
+            'tw-opacity-40': isHasAccess,
+          })}
+          data-testid="add-new-tag-button"
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={() => setShowRevieweModal(true)}>
+          Add New Reviewer
+        </Button>
+      </NonAdminAction>
+    );
+  };
+
+  const getReviewerTabData = () => {
+    return glossaryTerm.reviewers && glossaryTerm.reviewers.length > 0 ? (
+      <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
+        {glossaryTerm.reviewers?.map((term) => (
+          <UserCard
+            isActionVisible
+            isIconVisible
+            item={{
+              name: term.name || '',
+              description: term.displayName || '',
+              id: term.id,
+            }}
+            key={term.name}
+            onRemove={handleRemoveReviewer}
+          />
+        ))}
+      </div>
+    ) : (
+      <ErrorPlaceHolder>
+        <p className="tw-text-base tw-text-center">No Reviewer Added.</p>
+        <p className="tw-text-lg tw-text-center tw-mt-2">{rightPosButton()}</p>
+      </ErrorPlaceHolder>
+    );
+  };
+
   return (
     <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
       <div className="tw-flex tw-gap-5 tw-mb-2">
-        <div className="tw-font-medium">Status</div>
-        <div className="tw-text-grey-muted">{glossaryTerm.status}</div>
+        <div className="tw-font-medium">Synonyms</div>
+        <div>
+          {glossaryTerm.synonyms && glossaryTerm.synonyms?.length > 0 ? (
+            <span>{glossaryTerm.synonyms.join(', ')}</span>
+          ) : (
+            '--'
+          )}
+        </div>
       </div>
 
       <div className="tw-flex tw-gap-5 tw-mb-2">
         <div className="tw-font-medium">Reference</div>
-        <div className="tw-text-grey-muted">
+        <div>
           {!isEmpty(glossaryTerm.references) ? (
             <a
               className="link-text tw-flex"
@@ -185,25 +276,10 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
         </div>
       </div>
 
-      {glossaryTerm.synonyms && glossaryTerm.synonyms.length > 0 && (
-        <div className="tw-mb-2">
-          <SVGIcons
-            alt="icon-tag"
-            className="tw-mx-1"
-            icon="icon-tag-grey"
-            width="16"
-          />
-          {glossaryTerm.synonyms.map((term, index) => (
-            <Tags
-              isRemovable
-              className="tw-bg-gray-200"
-              key={index}
-              tag={term}
-              type="contained"
-            />
-          ))}
-        </div>
-      )}
+      <div className="tw-flex tw-gap-5 tw-mb-2">
+        <div className="tw-font-medium">Status</div>
+        <div>{glossaryTerm.status}</div>
+      </div>
 
       <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
         {glossaryTerm?.tags && glossaryTerm?.tags.length > 0 && (
@@ -225,12 +301,14 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
               setIsTagEditable(true);
             }}>
             <TagsContainer
+              dropDownHorzPosRight={false}
               editable={isTagEditable}
               isLoading={isTagLoading}
               selectedTags={getSelectedTags()}
               showTags={!isTagEditable}
               size="small"
               tagList={tagList}
+              type="label"
               onCancel={() => {
                 handleTagSelection();
               }}
@@ -278,6 +356,13 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
         <TabsPane
           activeTab={activeTab}
           className="tw-flex-initial"
+          rightPosButton={
+            glossaryTerm.reviewers &&
+            glossaryTerm.reviewers.length > 0 &&
+            activeTab === 3
+              ? rightPosButton()
+              : undefined
+          }
           setActiveTab={activeTabHandler}
           tabs={tabs}
         />
@@ -285,24 +370,17 @@ const GlossaryTermsV1 = ({ glossaryTerm, handleGlossaryTermUpdate }: Props) => {
         <div className="tw-flex-grow tw-py-4">
           {activeTab === 1 && <RelationshipTab />}
           {activeTab === 2 && <AssetsTabs />}
-          {activeTab === 3 && (
-            <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
-              {glossaryTerm.reviewers?.map((term) => (
-                <UserCard
-                  isActionVisible
-                  isIconVisible
-                  item={{
-                    name: term.name || '',
-                    description: term.displayName || '',
-                    id: term.id,
-                  }}
-                  key={term.name}
-                  onRemove={handleRemoveReviewer}
-                />
-              ))}
-            </div>
-          )}
+          {activeTab === 3 && getReviewerTabData()}
         </div>
+
+        {showRevieweModal && (
+          <ReviewerModal
+            header="Add Reviewer"
+            reviewer={reviewer}
+            onCancel={onReviewerModalCancel}
+            onSave={handleReviewerSave}
+          />
+        )}
       </div>
     </div>
   );

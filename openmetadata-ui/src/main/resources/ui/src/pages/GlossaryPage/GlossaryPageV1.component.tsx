@@ -16,6 +16,7 @@ import Loader from '../../components/Loader/Loader';
 import { getAddGlossaryTermsPath, ROUTES } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 
 export type ModifiedGlossaryData = Glossary & {
@@ -26,6 +27,7 @@ const GlossaryPageV1 = () => {
   // const { glossaryName, glossaryTermsFQN } =
   // useParams<{ [key: string]: string }>();
 
+  const { isAdminUser, isAuthDisabled } = useAuth();
   const history = useHistory();
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -65,7 +67,7 @@ const GlossaryPageV1 = () => {
 
   const fetchGlossaryList = (pagin = '') => {
     setIsLoading(true);
-    getGlossaries(pagin, ['owner', 'tags'])
+    getGlossaries(pagin, ['owner', 'tags', 'reviewers'])
       .then((res: AxiosResponse) => {
         const { data } = res.data;
         if (data) {
@@ -231,6 +233,7 @@ const GlossaryPageV1 = () => {
           handleSelectedKey={handleSelectedKey}
           isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
+          isHasAccess={!isAdminUser && !isAuthDisabled}
           selectedData={selectedData as Glossary | GlossaryTerm}
           selectedKey={selectedKey}
           updateGlossary={updateGlossary}

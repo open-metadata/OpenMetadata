@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep } from 'lodash';
 import { EditorContentRef, FormatedUsersData } from 'Models';
 import React, { useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -35,7 +35,6 @@ const AddGlossary = ({
   });
 
   const [name, setName] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
@@ -66,11 +65,6 @@ const AddGlossary = ({
 
         break;
       }
-      case 'displayName': {
-        setDisplayName(value);
-
-        break;
-      }
     }
     setShowErrorMsg((prev) => {
       return { ...prev, name };
@@ -94,9 +88,9 @@ const AddGlossary = ({
     if (validateForm()) {
       const data: CreateGlossary = {
         name,
-        displayName: isEmpty(displayName) ? name : displayName,
+        displayName: name,
         description: markdownRef.current?.getEditorContent() || undefined,
-        reviewers: reviewer.map((d) => d.name),
+        reviewers: reviewer.map((d) => ({ id: d.id, type: d.type })),
         owner: {
           id: getCurrentUserId(),
           type: 'user',
@@ -195,22 +189,6 @@ const AddGlossary = ({
           />
 
           {showErrorMsg.name && errorMsg('Glossary name is required.')}
-        </Field>
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="name">
-            Display Name:
-          </label>
-
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="display-name"
-            id="displayName"
-            name="displayName"
-            placeholder="Display name"
-            type="text"
-            value={displayName}
-            onChange={handleValidation}
-          />
         </Field>
         <Field>
           <label

@@ -87,7 +87,7 @@ const GlossaryTermPage: FunctionComponent = () => {
 
   const fetchGlossaryData = () => {
     setIsLoading(true);
-    getGlossariesByName(glossaryName, ['tags', 'owner'])
+    getGlossariesByName(glossaryName, ['tags', 'owner', 'reviewers'])
       .then((res: AxiosResponse) => {
         setGlossaryData(res.data);
         setSlashedTableName([

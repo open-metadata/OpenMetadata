@@ -1,17 +1,24 @@
 import classNames from 'classnames';
-import { cloneDeep, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef, FormatedUsersData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
-import UserCard from '../../pages/teams/UserCard';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
+import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
+import Tags from '../tags/tags';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
+
+type DynamicReferenceFieldType = {
+  name: string;
+  endpoint: string;
+};
 
 const Field = ({
   children,
@@ -27,7 +34,6 @@ const AddGlossaryTerm = ({
   parentGlossaryData,
   allowAccess,
   glossaryData,
-  users,
   onSave,
   onCancel,
   saveState = 'initial',
@@ -41,16 +47,24 @@ const AddGlossaryTerm = ({
   const [name, setName] = useState('');
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>(users);
-  const [referenceName, setReferenceName] = useState('');
-  const [referenceUrl, setReferenceUrl] = useState('');
+  const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
+  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
   const [synonyms, setSynonyms] = useState('');
+  const [referances, setReferances] = useState<DynamicReferenceFieldType[]>([]);
 
   useEffect(() => {
-    if (users.length) {
-      setReviewer(users);
+    if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
+      setReviewer(glossaryData?.reviewers as FormatedUsersData[]);
     }
-  }, [users]);
+  }, [glossaryData]);
+
+  const onRelatedTermsModalCancel = () => {
+    setShowRelatedTermsModal(false);
+  };
+
+  const handleRelatedTermsSave = (/* _terms: Array<FormatedUsersData> */) => {
+    onRelatedTermsModalCancel();
+  };
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
@@ -61,8 +75,11 @@ const AddGlossaryTerm = ({
     onReviewerModalCancel();
   };
 
-  const handleOptionRemove = (id: string) => {
-    setReviewer((pre) => pre.filter((option) => option.id !== id));
+  const handleOptionRemove = (
+    _event: React.MouseEvent<HTMLElement, MouseEvent>,
+    removedTag: string
+  ) => {
+    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
   };
 
   const handleValidation = (
@@ -83,17 +100,6 @@ const AddGlossaryTerm = ({
         break;
       }
 
-      case 'referenceName': {
-        setReferenceName(value);
-
-        break;
-      }
-
-      case 'endPoint': {
-        setReferenceUrl(value);
-
-        break;
-      }
       case 'synonyms': {
         setSynonyms(value);
 
@@ -103,6 +109,26 @@ const AddGlossaryTerm = ({
     setShowErrorMsg((prev) => {
       return { ...prev, name };
     });
+  };
+
+  const addReferenceFields = () => {
+    setReferances([...referances, { name: '', endpoint: '' }]);
+  };
+
+  const removeReferenceFields = (i: number) => {
+    const newFormValues = [...referances];
+    newFormValues.splice(i, 1);
+    setReferances(newFormValues);
+  };
+
+  const handleReferenceFieldsChange = (
+    i: number,
+    field: keyof DynamicReferenceFieldType,
+    value: string
+  ) => {
+    const newFormValues = [...referances];
+    newFormValues[i][field] = value;
+    setReferances(newFormValues);
   };
 
   const validateForm = () => {
@@ -115,6 +141,9 @@ const AddGlossaryTerm = ({
   };
 
   const handleSave = () => {
+    const updatedReference = referances.filter(
+      (ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name)
+    );
     if (validateForm()) {
       const data: CreateGlossaryTerm = {
         name,
@@ -125,19 +154,14 @@ const AddGlossaryTerm = ({
           type: r.type,
         })),
         references:
-          referenceUrl && referenceName
-            ? {
-                endpoint: referenceUrl,
-                name: referenceName,
-              }
-            : undefined,
+          updatedReference.length > 0 ? updatedReference[0] : undefined,
         parent: !isUndefined(parentGlossaryData)
           ? {
               type: 'glossaryTerm',
               id: parentGlossaryData.id,
             }
           : undefined,
-        synonyms: synonyms.split(','),
+        synonyms: synonyms ? synonyms.split(',') : undefined,
         glossary: {
           id: glossaryData.id,
           type: 'glossary',
@@ -252,42 +276,6 @@ const AddGlossaryTerm = ({
           />
         </Field>
 
-        <div className="tw-flex tw-w-full tw-gap-5">
-          <div className="tw-w-6/12">
-            <label className="tw-block tw-form-label" htmlFor="referenceName">
-              Reference Name:
-            </label>
-
-            <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="referenceName"
-              id="referenceName"
-              name="referenceName"
-              placeholder="Reference name"
-              type="text"
-              value={referenceName}
-              onChange={handleValidation}
-            />
-          </div>
-
-          <div className="tw-w-6/12">
-            <label className="tw-block tw-form-label" htmlFor="endPoint">
-              Reference Url:
-            </label>
-
-            <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="endPoint"
-              id="endPoint"
-              name="endPoint"
-              placeholder="http://example.com"
-              type="text"
-              value={referenceUrl}
-              onChange={handleValidation}
-            />
-          </div>
-        </div>
-
         <Field>
           <label className="tw-block tw-form-label" htmlFor="synonyms">
             Synonyms:
@@ -305,9 +293,98 @@ const AddGlossaryTerm = ({
           />
         </Field>
 
+        <div data-testid="referances">
+          <div className="tw-flex tw-items-center tw-mt-6">
+            <p className="w-form-label tw-mr-3">References</p>
+            <Button
+              className="tw-h-5 tw-px-2"
+              size="x-small"
+              theme="primary"
+              variant="contained"
+              onClick={addReferenceFields}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
+          </div>
+
+          {referances.map((value, i) => (
+            <div className="tw-flex tw-items-center" key={i}>
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
+                <Field>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    id={`name-${i}`}
+                    name="key"
+                    placeholder="Name"
+                    type="text"
+                    value={value.name}
+                    onChange={(e) =>
+                      handleReferenceFieldsChange(i, 'name', e.target.value)
+                    }
+                  />
+                </Field>
+                <Field>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    id={`url-${i}`}
+                    name="endpoint"
+                    placeholder="url"
+                    type="text"
+                    value={value.endpoint}
+                    onChange={(e) =>
+                      handleReferenceFieldsChange(i, 'endpoint', e.target.value)
+                    }
+                  />
+                </Field>
+              </div>
+              <button
+                className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
+                onClick={(e) => {
+                  removeReferenceFields(i);
+                  e.preventDefault();
+                }}>
+                <SVGIcons
+                  alt="delete"
+                  icon="icon-delete"
+                  title="Delete"
+                  width="12px"
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+
         <Field>
           <div className="tw-flex tw-items-center tw-mt-4">
-            <p className="w-form-label tw-mr-3">Reviewers: </p>
+            <p className="w-form-label tw-mr-3">Related terms </p>
+            <Button
+              className="tw-h-5 tw-px-2"
+              size="x-small"
+              theme="primary"
+              variant="contained"
+              onClick={() => setShowRelatedTermsModal(true)}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
+          </div>
+          <div className="tw-my-4">
+            {/* {Boolean(reviewer.length) &&
+              reviewer.map((d, index) => {
+                return (
+                  <Tags
+                    isRemovable
+                    editable
+                    className="tw-bg-gray-200"
+                    key={index}
+                    tag={d.name}
+                    type="contained"
+                    removeTag={handleOptionRemove}
+                  />
+                );
+              })} */}
+          </div>
+        </Field>
+        <Field>
+          <div className="tw-flex tw-items-center tw-mt-4">
+            <p className="w-form-label tw-mr-3">Reviewers </p>
             <Button
               className="tw-h-5 tw-px-2"
               size="x-small"
@@ -317,20 +394,18 @@ const AddGlossaryTerm = ({
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
           </div>
-          <div className="tw-my-4 tw-grid tw-grid-cols-2 tw-gap-4">
+          <div className="tw-my-4">
             {Boolean(reviewer.length) &&
-              reviewer.map((d) => {
+              reviewer.map((d, index) => {
                 return (
-                  <UserCard
-                    isActionVisible
-                    isIconVisible
-                    item={{
-                      name: d.name,
-                      description: d.displayName,
-                      id: d.id,
-                    }}
-                    key={d.id}
-                    onRemove={handleOptionRemove}
+                  <Tags
+                    editable
+                    isRemovable
+                    className="tw-bg-gray-200"
+                    key={index}
+                    removeTag={handleOptionRemove}
+                    tag={d.name}
+                    type="contained"
                   />
                 );
               })}
@@ -349,6 +424,15 @@ const AddGlossaryTerm = ({
           {getSaveButton()}
         </Field>
       </div>
+
+      {showRelatedTermsModal && (
+        <RelatedTermsModal
+          header="Add Related Terms"
+          onCancel={onRelatedTermsModalCancel}
+          onSave={handleRelatedTermsSave}
+        />
+      )}
+
       {showRevieweModal && (
         <ReviewerModal
           header="Add Reviewer"

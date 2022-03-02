@@ -23,45 +23,41 @@ import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
 
-type ReviewerModalProp = {
-  reviewer?: Array<FormatedUsersData>;
+type RelatedTermsModalProp = {
+  relatedTerms?: Array<FormatedUsersData>;
   onCancel: () => void;
   onSave: (reviewer: Array<FormatedUsersData>) => void;
   header: string;
 };
 
-const ReviewerModal = ({
-  reviewer,
+const RelatedTermsModal = ({
+  relatedTerms,
   onCancel,
   onSave,
   header,
-}: ReviewerModalProp) => {
+}: RelatedTermsModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [options, setOptions] = useState<FormatedUsersData[]>([]);
   const [selectedOption, setSelectedOption] = useState<FormatedUsersData[]>(
-    reviewer ?? []
+    relatedTerms ?? []
   );
 
   const querySearch = (search = '') => {
     return isEmpty(search)
-      ? searchData('*', 1, 10, '', '', '', SearchIndex.USER)
-      : getSuggestions(search, SearchIndex.USER);
+      ? searchData('*', 1, 10, '', '', '', SearchIndex.GLOSSARY)
+      : getSuggestions(search, SearchIndex.GLOSSARY);
   };
 
   const handleSearchAction = (text: string) => {
     setIsLoading(true);
     setSearchText(text);
-    querySearch(text)
-      .then((res: AxiosResponse) => {
-        setOptions(
-          formatUsersResponse(res.data.suggest['table-suggest'][0].options)
-        );
-      })
-      .catch(() => {
-        setOptions(selectedOption);
-      })
-      .finally(() => setIsLoading(false));
+    querySearch(text).then((res: AxiosResponse) => {
+      setOptions(
+        formatUsersResponse(res.data.suggest['table-suggest'][0].options)
+      );
+      setIsLoading(false);
+    });
   };
 
   const isIncludeInOptions = (id: string): boolean => {
@@ -106,8 +102,8 @@ const ReviewerModal = ({
   };
 
   useEffect(() => {
-    if (!isUndefined(reviewer) && reviewer.length) {
-      setOptions(reviewer);
+    if (!isUndefined(relatedTerms) && relatedTerms.length) {
+      setOptions(relatedTerms);
       setIsLoading(false);
     } else {
       initialSearch();
@@ -130,7 +126,7 @@ const ReviewerModal = ({
             typingInterval={1500}
             onSearch={handleSearchAction}
           />
-          <div style={{ minHeight: '245px' }}>
+          <div className="tw-min-h-32">
             {isLoading ? (
               <Loader />
             ) : options.length > 0 ? (
@@ -139,7 +135,7 @@ const ReviewerModal = ({
               </div>
             ) : (
               <p className="tw-text-center tw-mt-10 tw-text-grey-muted tw-text-base">
-                No user available
+                No terms available
               </p>
             )}
           </div>
@@ -167,4 +163,4 @@ const ReviewerModal = ({
   );
 };
 
-export default ReviewerModal;
+export default RelatedTermsModal;

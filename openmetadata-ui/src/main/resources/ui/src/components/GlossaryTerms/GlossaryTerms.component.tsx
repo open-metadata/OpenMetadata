@@ -304,6 +304,7 @@ const GlossaryTerms = ({
         <Loader />
       ) : showGlossaryDetails ? (
         <GlossaryDetails
+          isHasAccess
           glossary={glossaryDetails}
           updateGlossary={updateReviewer}
         />

@@ -13,7 +13,7 @@
  */
 
 /**
- * This schema defines the Glossary term entities.
+ * This schema defines te Glossary term entities.
  */
 export interface GlossaryTerm {
   /**
@@ -42,7 +42,7 @@ export interface GlossaryTerm {
    */
   fullyQualifiedName?: string;
   /**
-   * Glosary that this term belongs to.
+   * Glossary that this term belongs to.
    */
   glossary: EntityReference;
   /**
@@ -74,10 +74,6 @@ export interface GlossaryTerm {
    * User names of the reviewers for this glossary.
    */
   reviewers?: EntityReference[];
-  /**
-   * SKOS data in JSON-LD format
-   */
-  skos?: string;
   /**
    * Status of the glossary term.
    */
@@ -154,7 +150,7 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Glosary that this term belongs to.
+ * Glossary that this term belongs to.
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
  * of the glossary.

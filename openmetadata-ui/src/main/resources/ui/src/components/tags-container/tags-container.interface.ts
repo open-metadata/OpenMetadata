@@ -18,6 +18,7 @@ import { TagProps } from '../tags/tags.interface';
 export type TagsContainerProps = {
   children?: ReactNode;
   editable?: boolean;
+  dropDownHorzPosRight?: boolean;
   selectedTags: Array<EntityTags>;
   tagList: Array<string>;
   type?: TagProps['type'];
