@@ -65,7 +65,7 @@ public class Common {
   By removeAssociatedTag = By.xpath("//span[@data-testid='remove']");
   By breadCrumb = By.xpath("//li[@data-testid='breadcrumb-link']");
   By descriptionContainer = By.xpath("(//div[@data-testid='description']/div/span)[1]");
-  By manage = By.xpath("//button[@data-testid='tab'][@id='manage']");
+  By manage = By.cssSelector("[id='manage']");
   By selectTier1 = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
   By difference = By.xpath("//span[@class='diff-added']");
   By differenceRemoved = By.xpath("//span[@class='diff-removed']");
@@ -157,4 +157,9 @@ public class Common {
   public List<WebElement> breadCrumb() {
     return webDriver.findElements(breadCrumb);
   }
+
+  public By selectTableLink(int index) {
+    return By.xpath("//button[@data-testid='table-link'][" + index +"]");
+  }
 }
+

@@ -57,6 +57,7 @@ public class TopicDetailsPageTest {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
+    options.addArguments("--no-sandbox");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
@@ -184,7 +185,7 @@ public class TopicDetailsPageTest {
   public void checkManage() throws InterruptedException {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
