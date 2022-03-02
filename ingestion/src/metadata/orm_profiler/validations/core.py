@@ -27,6 +27,7 @@ from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.column.column_values_to_be_between import (
     column_values_to_be_between,
 )
+from metadata.orm_profiler.validations.column.column_values_to_be_unique import column_values_to_be_unique
 from metadata.orm_profiler.validations.table.table_row_count_to_equal import (
     table_row_count_to_equal,
 )
@@ -37,12 +38,18 @@ logger = logger()
 @singledispatch
 def validate(test_case, *args, **kwargs) -> TestCaseResult:
     """
-    Default function to validate test cases
+    Default function to validate test cases.
+
+    Note that the first argument should be a positional argument.
     """
     raise NotImplementedError(
         f"Missing test case validation implementation for {type(test_case)}."
     )
 
 
-validate.register(column_values_to_be_between)
+# Table Tests
 validate.register(table_row_count_to_equal)
+
+# Column Tests
+validate.register(column_values_to_be_between)
+validate.register(column_values_to_be_unique)
