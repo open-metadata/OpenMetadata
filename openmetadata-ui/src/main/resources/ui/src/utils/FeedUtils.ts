@@ -83,7 +83,7 @@ export const getReplyText = (count: number) => {
   if (count === 0) return 'Reply in thread';
   if (count === 1) return `${count} Reply`;
 
-  return `${count} Replies`;
+  return `${count} older replies`;
 };
 
 export const getEntityFieldThreadCounts = (

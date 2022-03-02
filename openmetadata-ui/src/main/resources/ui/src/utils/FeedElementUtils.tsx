@@ -16,6 +16,7 @@ import { EntityFieldThreads } from 'Models';
 import React from 'react';
 import { EntityReference } from '../generated/entity/teams/user';
 import { getThreadField } from './FeedUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getFieldThreadElement = (
   columnName: string,
@@ -34,13 +35,14 @@ export const getFieldThreadElement = (
 
   return !isEmpty(threadValue) ? (
     <p
-      className="tw-text-right link-text"
+      className="tw-text-right link-text tw-text-base"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onThreadLinkSelect?.(threadValue.entityLink);
       }}>
-      <i className="far fa-comment" /> {threadValue.count} threads
+      <SVGIcons alt="comments" icon={Icons.COMMENT} width="18px" />{' '}
+      {threadValue.count}
     </p>
   ) : null;
 };

@@ -21,7 +21,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getInfoElements } from '../../../utils/EntityUtils';
-import SVGIcons from '../../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getFollowerDetail } from '../../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import TagsContainer from '../../tags-container/tags-container';
@@ -407,9 +407,10 @@ const EntityPageInfo = ({
             </NonAdminAction>
             {!isUndefined(tagThread) ? (
               <p
-                className="tw-text-right link-text tw-ml-1"
+                className="tw-text-right link-text tw-ml-1 tw-text-base"
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-                <i className="far fa-comment" /> {tagThread.count} threads
+                <SVGIcons alt="comments" icon={Icons.COMMENT} width="18px" />{' '}
+                {tagThread.count}
               </p>
             ) : null}
           </Fragment>

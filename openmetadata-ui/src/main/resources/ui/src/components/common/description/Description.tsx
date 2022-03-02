@@ -18,7 +18,7 @@ import React from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -85,12 +85,12 @@ const Description = ({
             )}
             {!isUndefined(descriptionThread) ? (
               <p
-                className="tw-text-right link-text"
+                className="tw-text-right link-text tw-text-base"
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
                 }>
-                <i className="far fa-comment" /> {descriptionThread.count}{' '}
-                threads
+                <SVGIcons alt="comments" icon={Icons.COMMENT} width="18px" />{' '}
+                {descriptionThread.count}{' '}
               </p>
             ) : null}
           </div>

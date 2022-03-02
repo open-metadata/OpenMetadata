@@ -61,7 +61,7 @@ export const FeedListSeparator: FC<FeedListSeparatorProp> = ({
     <div className={className}>
       <div className="tw-flex tw-justify-center">
         <hr className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0" />
-        <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
+        <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-body tw-font-medium">
           {relativeDay}
         </span>
       </div>
@@ -91,7 +91,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           };
           const postLength = feed.posts.length;
           const replies = feed.postsCount;
-          const repliedUsers = feed.posts.map((f) => f.from);
+          const repliedUsers = feed.posts.map((f) => f.from).slice(0, 2);
           const lastPost = feed.posts[postLength - 1];
 
           return (
@@ -104,15 +104,11 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {postLength > 0 ? (
                 <Fragment>
-                  <ActivityFeedCard
-                    className="tw-mb-6 tw-ml-9"
-                    feed={lastPost}
-                    isEntityFeed={isEntityFeed}
-                  />
                   <div className="tw-mb-6">
                     <div className="tw-ml-9 tw-flex tw-mb-6">
                       <FeedFooter
                         isFooterVisible
+                        className="tw--mt-4"
                         lastReplyTimeStamp={lastPost?.postTs}
                         repliedUsers={repliedUsers}
                         replies={replies}
@@ -123,23 +119,27 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                           onViewMore();
                         }}
                       />
-                      <span className="tw-mx-1.5 tw-mt-1 tw-inline-block tw-text-gray-400">
-                        |
-                      </span>
-                      <p
-                        className="link-text tw-text-xs tw-mt-1.5 tw-underline"
-                        onClick={() => onThreadIdSelect(feed.id)}>
-                        Reply
-                      </p>
                     </div>
-                    {selctedThreadId === feed.id ? (
-                      <ActivityFeedEditor
-                        buttonClass="tw-mr-4"
-                        className="tw-ml-5 tw-mr-2"
-                        onSave={postFeed}
-                      />
-                    ) : null}
                   </div>
+                  <ActivityFeedCard
+                    className="tw-mb-6 tw-ml-9"
+                    feed={lastPost}
+                    isEntityFeed={isEntityFeed}
+                  />
+                  <p
+                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
+                    onClick={() => {
+                      onThreadIdSelect(feed.id);
+                    }}>
+                    Reply
+                  </p>
+                  {selctedThreadId === feed.id ? (
+                    <ActivityFeedEditor
+                      buttonClass="tw-mr-4"
+                      className="tw-ml-5 tw-mr-2"
+                      onSave={postFeed}
+                    />
+                  ) : null}
                 </Fragment>
               ) : (
                 <p

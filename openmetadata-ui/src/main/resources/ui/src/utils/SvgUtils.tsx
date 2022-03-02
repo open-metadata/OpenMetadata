@@ -25,6 +25,7 @@ import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
+import IconComments from '../assets/svg/comment.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
@@ -249,6 +250,7 @@ export const Icons = {
   ICON_DOWN: 'icon-down',
   PAPER_PLANE: 'icon-paper-plane',
   PAPER_PLANE_PRIMARY: 'icon-paper-plane-primary',
+  COMMENT: 'icon-comment',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -719,6 +721,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.PAPER_PLANE_PRIMARY:
       IconComponent = IconPaperPlanePrimary;
+
+      break;
+    case Icons.COMMENT:
+      IconComponent = IconComments;
 
       break;
 

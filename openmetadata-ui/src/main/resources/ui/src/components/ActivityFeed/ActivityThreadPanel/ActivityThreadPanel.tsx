@@ -28,7 +28,6 @@ import { CreateThread } from '../../../generated/api/feed/createThread';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
-  getReplyText,
 } from '../../../utils/FeedUtils';
 import ActivityFeedCard, {
   FeedFooter,
@@ -103,31 +102,31 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                     />
                     {postLength > 0 ? (
                       <Fragment>
-                        <ActivityFeedCard
-                          isEntityFeed
-                          className="tw-mb-6 tw-ml-9"
-                          feed={lastPost}
-                        />
                         <div className="tw-mb-6">
                           <div className="tw-ml-9 tw-flex tw-mb-6">
                             <FeedFooter
                               isFooterVisible
+                              className="tw--mt-4"
                               lastReplyTimeStamp={lastPost?.postTs}
                               repliedUsers={repliedUsers}
                               replies={replies}
                               threadId={thread.id}
                               onThreadSelect={() => onThreadSelect(thread.id)}
                             />
-                            <span className="tw-mx-1.5 tw-mt-1 tw-inline-block tw-text-gray-400">
-                              |
-                            </span>
-                            <p
-                              className="link-text tw-text-xs tw-mt-1.5 tw-underline"
-                              onClick={() => onThreadIdSelect(thread.id)}>
-                              Reply
-                            </p>
                           </div>
                         </div>
+                        <ActivityFeedCard
+                          isEntityFeed
+                          className="tw-mb-6 tw-ml-9"
+                          feed={lastPost}
+                        />
+                        <p
+                          className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
+                          onClick={() => {
+                            onThreadIdSelect(thread.id);
+                          }}>
+                          Reply
+                        </p>
                       </Fragment>
                     ) : (
                       <p
@@ -185,8 +184,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
         {repliesLength > 0 ? (
           <Fragment>
             <div className="tw-mb-3 tw-flex">
-              <span>{getReplyText(repliesLength)}</span>
-              <span className="tw-flex-auto tw-self-center tw-ml-1.5">
+              <span className="tw-flex-auto tw-self-center">
                 <hr />
               </span>
             </div>
@@ -304,6 +302,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
           entityField={entityField as string}
+          noun="Conversations"
           onCancel={onCancel}
         />
         {!isUndefined(selectedThread) ? (
