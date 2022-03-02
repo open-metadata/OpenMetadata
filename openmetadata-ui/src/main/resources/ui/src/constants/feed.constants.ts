@@ -14,3 +14,9 @@
 export const EntityRegExPattern = /<#E\/([^<>]+?)\/([^<>]+?)\/([^<>]+?)>/;
 
 export const EntityRegEx = new RegExp(EntityRegExPattern);
+
+export const mentionRegEx = /\[@(.+?)?\]\((.+?)?\)/g;
+export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
+export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
+export const entityLinkRegEx = /<#E\/([^<>]+?)\/([^<>]+?)>/g;
+export const entityRegex = /<#E\/([^<>]+?)\/([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;

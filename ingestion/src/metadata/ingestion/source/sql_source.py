@@ -644,7 +644,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def _check_col_length(self, datatype, col_raw_type):
         if datatype and datatype.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
-            return col_raw_type.length if col_raw_type.length else 1
+            try:
+                return col_raw_type.length if col_raw_type.length else 1
+            except AttributeError:
+                return 1
 
     def run_data_profiler(self, table: str, schema: str) -> TableProfile:
         """

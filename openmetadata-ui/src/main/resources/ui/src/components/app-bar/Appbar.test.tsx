@@ -27,6 +27,18 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 jest.mock('../nav-bar/NavBar', () => {
   return jest.fn().mockReturnValue(<p>NavBar</p>);
 });

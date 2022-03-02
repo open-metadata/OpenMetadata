@@ -17,6 +17,8 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import loginBG from '../../assets/img/login-bg.jpeg';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
+import LoginButton from '../../components/LoginButton/LoginButton';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -24,52 +26,60 @@ import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
   const history = useHistory();
+  const { isAuthDisabled, authConfig, onLoginHandler } = useAuthContext();
 
   const handleSignIn = () => {
-    appState.authProvider.signingIn = true;
+    onLoginHandler && onLoginHandler();
   };
 
   const getSignInButton = (): JSX.Element => {
-    let ssoBrandName = '';
-    let ssoBrandLogo = '';
-    switch (appState.authProvider.provider) {
+    let btnComponent: JSX.Element;
+    switch (authConfig.provider) {
       case AuthTypes.GOOGLE: {
-        ssoBrandLogo = Icons.GOOGLE_ICON;
-        ssoBrandName = 'Google';
+        btnComponent = (
+          <LoginButton
+            ssoBrandLogo={Icons.GOOGLE_ICON}
+            ssoBrandName="Google"
+            onClick={handleSignIn}
+          />
+        );
 
         break;
       }
       case AuthTypes.OKTA: {
-        ssoBrandLogo = Icons.OKTA_ICON;
-        ssoBrandName = 'Okta';
+        btnComponent = (
+          <LoginButton
+            ssoBrandLogo={Icons.OKTA_ICON}
+            ssoBrandName="Okta"
+            onClick={handleSignIn}
+          />
+        );
 
         break;
       }
-      case AuthTypes.AUTH0: {
-        ssoBrandLogo = Icons.AUTH0_ICON;
-        ssoBrandName = 'Auth0';
+      case AuthTypes.AZURE: {
+        btnComponent = (
+          <LoginButton
+            ssoBrandLogo={Icons.AZURE_ICON}
+            ssoBrandName="Azure"
+            onClick={handleSignIn}
+          />
+        );
 
         break;
       }
-      // TODO: Add "case AuthTypes.GITHUB" after adding support for Github SSO
+      // TODO: Add "case AuthTypes.GITHUB, AuthTypes.AUTH0" after adding support for these SSO
       default: {
+        btnComponent = <></>;
+
         break;
       }
     }
 
-    return ssoBrandName ? (
-      <button className="tw-signin-button tw-mx-auto">
-        <SVGIcons alt={`${ssoBrandName} Logo`} icon={ssoBrandLogo} width="30" />
-        <span className="tw-ml-3 tw-font-medium tw-text-grey-muted tw-text-xl">
-          Sign in with {ssoBrandName}
-        </span>
-      </button>
-    ) : (
-      <></>
-    );
+    return btnComponent;
   };
 
-  if (appState.authDisabled || !isEmpty(appState.userDetails)) {
+  if (isAuthDisabled || !isEmpty(appState.userDetails)) {
     history.push(ROUTES.HOME);
   }
 
@@ -84,9 +94,7 @@ const SigninPage = () => {
             Centralized Metadata Store, Discover, Collaborate and get your Data
             Right
           </p>
-          <div className="tw-mt-24" onClick={handleSignIn}>
-            {getSignInButton()}
-          </div>
+          <div className="tw-mt-24">{getSignInButton()}</div>
         </div>
       </div>
       <div className="tw-w-7/12 tw-relative">

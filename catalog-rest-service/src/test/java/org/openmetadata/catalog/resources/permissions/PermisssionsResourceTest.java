@@ -92,6 +92,7 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
                 put(MetadataOperation.UpdateOwner, Boolean.TRUE);
                 put(MetadataOperation.UpdateTags, Boolean.TRUE);
                 put(MetadataOperation.DecryptTokens, Boolean.TRUE);
+                put(MetadataOperation.UpdateTeam, Boolean.TRUE);
               }
             }),
         Arguments.of(
@@ -105,6 +106,7 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
                 put(MetadataOperation.UpdateOwner, Boolean.TRUE);
                 put(MetadataOperation.UpdateTags, Boolean.TRUE);
                 put(MetadataOperation.DecryptTokens, Boolean.FALSE);
+                put(MetadataOperation.UpdateTeam, Boolean.FALSE);
               }
             }),
         Arguments.of(
@@ -118,6 +120,7 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
                 put(MetadataOperation.UpdateOwner, Boolean.FALSE);
                 put(MetadataOperation.UpdateTags, Boolean.FALSE);
                 put(MetadataOperation.DecryptTokens, Boolean.FALSE);
+                put(MetadataOperation.UpdateTeam, Boolean.FALSE);
               }
             }));
   }
