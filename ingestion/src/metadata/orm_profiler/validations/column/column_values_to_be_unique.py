@@ -17,16 +17,18 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import Status1, TestCaseResult
-from metadata.generated.schema.tests.column.columnValuesToBeUnique import ColumnValuesToBeUnique
+from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
+    ColumnValuesToBeUnique,
+)
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
 
 
 def column_values_to_be_unique(
-        _: ColumnValuesToBeUnique,
-        col_profile: ColumnProfile,
-        execution_date: datetime,
+    _: ColumnValuesToBeUnique,
+    col_profile: ColumnProfile,
+    execution_date: datetime,
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -38,8 +40,8 @@ def column_values_to_be_unique(
 
     if col_profile.valuesCount is None or col_profile.uniqueCount is None:
         msg = (
-                "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
-                + f" but got valuesCount={col_profile.valuesCount}, uniqueCount={col_profile.uniqueCount}."
+            "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
+            + f" but got valuesCount={col_profile.valuesCount}, uniqueCount={col_profile.uniqueCount}."
         )
         logger.error(msg)
         return TestCaseResult(
@@ -52,8 +54,8 @@ def column_values_to_be_unique(
         else Status1.Failed
     )
     result = (
-            f"Found valuesCount={col_profile.valuesCount} vs. uniqueCount={col_profile.uniqueCount}."
-            + f" Both counts should be equal for column values to be unique."
+        f"Found valuesCount={col_profile.valuesCount} vs. uniqueCount={col_profile.uniqueCount}."
+        + f" Both counts should be equal for column values to be unique."
     )
 
     return TestCaseResult(
