@@ -87,7 +87,8 @@
     "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx}' --fix",
     "pretty": "prettier . --config './.prettierrc' --write",
-    "build-check": "yarn run lint && yarn run test",
+    "build-check": "yarn run lint",
+    "build-test": "yarn run test",
     "commit-check": "yarn run pretty && yarn run build-check && yarn run build",
     "json2ts": "./json2ts.sh ../../../../../catalog-rest-service/src/main/resources/json/schema ./src/generated && yarn run lint:fix"
   },

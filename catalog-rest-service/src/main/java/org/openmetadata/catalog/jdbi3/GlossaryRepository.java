@@ -19,10 +19,13 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -30,6 +33,7 @@ import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.resources.glossary.GlossaryResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -37,8 +41,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final Fields GLOSSARY_UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags");
-  private static final Fields GLOSSARY_PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags");
+  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags,reviewers");
+  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags,reviewers");
 
   public GlossaryRepository(CollectionDAO dao) {
     super(
@@ -47,8 +51,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         Glossary.class,
         dao.glossaryDAO(),
         dao,
-        GLOSSARY_PATCH_FIELDS,
-        GLOSSARY_UPDATE_FIELDS,
+        PATCH_FIELDS,
+        UPDATE_FIELDS,
         true,
         true,
         false);
@@ -63,13 +67,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public Glossary setFields(Glossary glossary, Fields fields) throws IOException, ParseException {
     glossary.setOwner(fields.contains(FIELD_OWNER) ? getOwner(glossary) : null);
     glossary.setTags(fields.contains("tags") ? getTags(glossary.getName()) : null);
+    glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
     return glossary;
   }
 
   @Override
   public void prepare(Glossary glossary) throws IOException, ParseException {
     glossary.setOwner(helper(glossary).validateOwnerOrNull());
-    // TODO validate reviewers
+    validateUsers(glossary.getReviewers());
     glossary.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), glossary.getTags()));
   }
 
@@ -78,7 +83,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = glossary.getOwner();
     List<TagLabel> tags = glossary.getTags();
-    // TODO Add relationships for reviewers
+    List<EntityReference> reviewers = glossary.getReviewers();
 
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     glossary.withOwner(null).withHref(null).withTags(null);
@@ -90,14 +95,16 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
 
     // Restore the relationships
-    glossary.withOwner(owner).withTags(tags);
+    glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);
   }
 
   @Override
   public void storeRelationships(Glossary glossary) {
-    // TODO Add relationships for  related terms, and reviewers
     setOwner(glossary, glossary.getOwner());
     applyTags(glossary);
+    for (EntityReference reviewer : Optional.ofNullable(glossary.getReviewers()).orElse(Collections.emptyList())) {
+      addRelationship(reviewer.getId(), glossary.getId(), Entity.USER, Entity.GLOSSARY, Relationship.REVIEWS);
+    }
   }
 
   @Override
@@ -108,6 +115,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   public EntityUpdater getUpdater(Glossary original, Glossary updated, Operation operation) {
     return new GlossaryUpdater(original, updated, operation);
+  }
+
+  private List<EntityReference> getReviewers(Glossary entity) throws IOException {
+    List<String> ids =
+        findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
+    System.out.println("XXX reviewers for " + entity.getId() + " " + ids);
+    return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   public static class GlossaryEntityInterface implements EntityInterface<Glossary> {
@@ -259,6 +273,26 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public class GlossaryUpdater extends EntityUpdater {
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException, ParseException {
+      updateReviewers(original.getEntity(), updated.getEntity());
+    }
+
+    private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) throws JsonProcessingException {
+      List<EntityReference> origUsers =
+          Optional.ofNullable(origGlossary.getReviewers()).orElse(Collections.emptyList());
+      List<EntityReference> updatedUsers =
+          Optional.ofNullable(updatedGlossary.getReviewers()).orElse(Collections.emptyList());
+      updateFromRelationships(
+          "reviewers",
+          Entity.USER,
+          origUsers,
+          updatedUsers,
+          Relationship.REVIEWS,
+          Entity.GLOSSARY,
+          origGlossary.getId());
     }
   }
 }

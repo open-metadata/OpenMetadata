@@ -50,10 +50,14 @@ import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
@@ -178,6 +182,28 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         glossaryTermMismatch(term1.getId().toString(), glossary2.getId().toString()));
   }
 
+  @Test
+  void patch_addDeleteReviewers(TestInfo test) throws IOException {
+    CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+    GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add reviewer USER1 in PATCH request
+    String origJson = JsonUtils.pojoToJson(term);
+    term.withReviewers(List.of(USER_OWNER1)).withSynonyms(List.of("synonym1"));
+    ChangeDescription change = getChangeDescription(term.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER1)));
+    change.getFieldsAdded().add(new FieldChange().withName("synonyms").withNewValue(List.of("synonym1")));
+    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove a reviewer in PATCH request
+    origJson = JsonUtils.pojoToJson(term);
+    term.withReviewers(null).withSynonyms(null);
+    change = getChangeDescription(term.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER_OWNER1)));
+    change.getFieldsDeleted().add(new FieldChange().withName("synonyms").withOldValue(List.of("synonym1")));
+    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws HttpResponseException {
     EntityReference glossaryRef = new GlossaryEntityInterface(glossary).getEntityReference();
     EntityReference parentRef = parent != null ? new GlossaryTermEntityInterface(parent).getEntityReference() : null;
@@ -281,6 +307,18 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     if (expected == actual) {
       return;
     }
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.equals("reviewers")) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEntityReferencesFieldChange(expectedRefs, actualRefs);
+    } else if (fieldName.equals("synonyms")) {
+      @SuppressWarnings("unchecked")
+      List<String> expectedRefs = (List<String>) expected;
+      List<String> actualRefs = JsonUtils.readObjects(actual.toString(), String.class);
+      assertStrings(expectedRefs, actualRefs);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }
