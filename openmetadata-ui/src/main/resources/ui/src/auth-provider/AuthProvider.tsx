@@ -20,6 +20,7 @@ import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { UserPermissions } from 'Models';
 import React, {
+  ComponentType,
   createContext,
   ReactNode,
   useContext,
@@ -29,8 +30,9 @@ import React, {
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import appState from '../AppState';
-import GoogleAuthenticator from '../authenticators/GoogleAuthenticator';
+// import GoogleAuthenticator from '../authenticators/GoogleAuthenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
+import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
 import axiosClient from '../axiosAPIs';
 import {
@@ -53,6 +55,7 @@ import useToastContext from '../hooks/useToastContext';
 import {
   getAuthConfig,
   getNameFromEmail,
+  getUserManagerConfig,
   isProtectedRoute,
   isTourRoute,
   msalInstance,
@@ -64,13 +67,17 @@ import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import OktaAuthProvider from './okta-auth-provider';
 
 interface AuthProviderProps {
+  childComponentType: ComponentType;
   children: ReactNode;
 }
 
 const cookieStorage = new CookieStorage();
 const userAPIQueryFields = 'profile,teams,roles';
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({
+  childComponentType,
+  children,
+}: AuthProviderProps) => {
   const location = useLocation();
   const history = useHistory();
   const showToast = useToastContext();
@@ -217,7 +224,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const getAuthenticatedUser = (config: Record<string, string | boolean>) => {
     switch (config?.provider) {
       case AuthTypes.OKTA:
-      case AuthTypes.AZURE: {
+      case AuthTypes.AZURE:
+      case AuthTypes.GOOGLE: {
         getLoggedInUserDetails();
 
         break;
@@ -324,13 +332,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         );
       }
       case AuthTypes.GOOGLE: {
-        return (
-          <GoogleAuthenticator
+        return authConfig ? (
+          // <GoogleAuthenticator
+          //   ref={authenticatorRef}
+          //   onLoginSuccess={handleSuccessfulLogin}
+          //   onLogoutSuccess={handleSuccessfulLogout}>
+          //   {children}
+          // </GoogleAuthenticator>
+          <OidcAuthenticator
+            childComponentType={childComponentType}
             ref={authenticatorRef}
+            userConfig={getUserManagerConfig({
+              ...(authConfig as Record<string, string>),
+            })}
             onLoginSuccess={handleSuccessfulLogin}
             onLogoutSuccess={handleSuccessfulLogout}>
             {children}
-          </GoogleAuthenticator>
+          </OidcAuthenticator>
+        ) : (
+          <Loader />
         );
       }
       case AuthTypes.AZURE: {

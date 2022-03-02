@@ -23,7 +23,7 @@ const App: FunctionComponent = () => {
       <div className="content-wrapper" data-testid="content-wrapper">
         <ToastContextProvider>
           <Router>
-            <AuthProvider>
+            <AuthProvider childComponentType={AppRouter}>
               <AppRouter />
             </AuthProvider>
           </Router>
