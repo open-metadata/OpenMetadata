@@ -27,7 +27,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -47,7 +47,6 @@ public class TagsPageTest {
   static Faker faker = new Faker();
   static String tagCategoryDisplayName = faker.name().firstName();
   static String tagDisplayName = faker.name().firstName();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -229,7 +228,7 @@ public class TagsPageTest {
     Events.click(webDriver, common.containsText("PersonalData"));
     Thread.sleep(2000);
     String usageCount = webDriver.findElement(tagsPage.aTagUsageCountElementIndex(1)).getAttribute("innerHTML");
-    Assert.assertEquals(usageCount, "0");
+    Assert.assertEquals(usageCount, "Not Used");
   }
 
   @Test
@@ -270,16 +269,15 @@ public class TagsPageTest {
   public void addSelfAssociatedTag() throws Exception {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
     Events.click(webDriver, tagsPage.addAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     try {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
       WebElement sameTag = webDriver.findElement(common.tagListItem());
       if (sameTag.isDisplayed()) {
-        Assert.fail();
+        Assert.fail("Same name tag displayed");
       }
-    } catch (TimeoutException exception) {
+    } catch (NoSuchElementException exception) {
       LOG.info("Success");
     }
   }

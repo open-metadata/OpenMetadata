@@ -87,10 +87,12 @@ def test_create_table_service(catalog_service):
         service=EntityReference(id=postgres_dbservice.id, type="databaseService"),
     )
     created_database = client.create_database(create_database_request)
-    db_ref = EntityReference(id=created_database.id.__root__, name=created_database.name.__root__, type="database")
-    table = CreateTableRequest(
-        name=table_name, columns=columns, database=db_ref
+    db_ref = EntityReference(
+        id=created_database.id.__root__,
+        name=created_database.name.__root__,
+        type="database",
     )
+    table = CreateTableRequest(name=table_name, columns=columns, database=db_ref)
     created_table = client.create_or_update_table(table)
     if created_database and created_table:
         assert 1

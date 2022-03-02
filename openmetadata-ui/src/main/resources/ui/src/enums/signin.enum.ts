@@ -16,4 +16,5 @@ export enum AuthTypes {
   GITHUB = 'github',
   OKTA = 'okta',
   AUTH0 = 'auth0',
+  AZURE = 'azure',
 }

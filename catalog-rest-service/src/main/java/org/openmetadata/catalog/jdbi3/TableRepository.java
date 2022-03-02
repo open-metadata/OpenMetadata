@@ -50,6 +50,7 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.TableTest;
@@ -260,27 +261,23 @@ public class TableRepository extends EntityRepository<Table> {
     List<TableTest> storedTableTests = getTableTests(table);
     // we will override any test case name passed by user/client with tableName + testType
     // our assumption is there is only one instance of a test type as of now.
-    tableTest.setName(table.getName() + "." + tableTest.getTableTestCase().getTestType().toString());
+    tableTest.setName(table.getName() + "." + tableTest.getTestCase().getTableTestType().toString());
     Map<String, TableTest> storedMapTableTests = new HashMap<>();
     if (storedTableTests != null) {
       for (TableTest t : storedTableTests) {
         storedMapTableTests.put(t.getName(), t);
       }
     }
-    // new test add UUID
-    if (!storedMapTableTests.containsKey(tableTest.getName())) {
-      tableTest.setId(UUID.randomUUID());
-    }
-
-    // process test result
-    if (storedMapTableTests.containsKey(tableTest.getName())
-        && tableTest.getResults() != null
-        && !tableTest.getResults().isEmpty()) {
+    // existing test, use the previous UUID
+    if (storedMapTableTests.containsKey(tableTest.getName())) {
       TableTest prevTableTest = storedMapTableTests.get(tableTest.getName());
-      List<TestCaseResult> prevTestCaseResults = prevTableTest.getResults();
-      List<TestCaseResult> newTestCaseResults = tableTest.getResults();
-      newTestCaseResults.addAll(prevTestCaseResults);
-      tableTest.setResults(newTestCaseResults);
+      tableTest.setId(prevTableTest.getId());
+      // process test result
+      if (tableTest.getResults() != null && !tableTest.getResults().isEmpty()) {
+        List<TestCaseResult> prevTestCaseResults = prevTableTest.getResults();
+        prevTestCaseResults.addAll(tableTest.getResults());
+        tableTest.setResults(prevTestCaseResults);
+      }
     }
 
     storedMapTableTests.put(tableTest.getName(), tableTest);
@@ -289,7 +286,35 @@ public class TableRepository extends EntityRepository<Table> {
         .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableTests", "tableTest", JsonUtils.pojoToJson(updatedTests));
     setFields(table, Fields.EMPTY_FIELDS);
-    return table.withTableTests(getTableTests(table));
+    // return the only test instead of querying all tests and results
+    return table.withTableTests(List.of(tableTest));
+  }
+
+  @Transaction
+  public Table deleteTableTest(UUID tableId, String tableTestType) throws IOException, ParseException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    // if ID is not passed we treat it as a new test case being added
+    List<TableTest> storedTableTests = getTableTests(table);
+    // we will override any test case name passed by user/client with tableName + testType
+    // our assumption is there is only one instance of a test type as of now.
+    String tableTestName = table.getName() + "." + tableTestType;
+    Map<String, TableTest> storedMapTableTests = new HashMap<>();
+    if (storedTableTests != null) {
+      for (TableTest t : storedTableTests) {
+        storedMapTableTests.put(t.getName(), t);
+      }
+    }
+    if (!storedMapTableTests.containsKey(tableTestName)) {
+      throw new EntityNotFoundException(String.format("Failed to find %s for %s", tableTestName, table.getName()));
+    }
+    TableTest deleteTableTest = storedMapTableTests.get(tableTestName);
+    storedMapTableTests.remove(tableTestName);
+    List<TableTest> updatedTests = new ArrayList<>(storedMapTableTests.values());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(tableId.toString(), "table.tableTests", "tableTest", JsonUtils.pojoToJson(updatedTests));
+    return table.withTableTests(List.of(deleteTableTest));
   }
 
   @Transaction
@@ -300,7 +325,7 @@ public class TableRepository extends EntityRepository<Table> {
     validateColumn(table, columnName);
     // we will override any test case name passed by user/client with columnName + testType
     // our assumption is there is only one instance of a test type as of now.
-    columnTest.setName(columnName + "." + columnTest.getTestCase().getTestType().toString());
+    columnTest.setName(columnName + "." + columnTest.getTestCase().getColumnTestType().toString());
     List<ColumnTest> storedColumnTests = getColumnTests(table, columnName);
     Map<String, ColumnTest> storedMapColumnTests = new HashMap<>();
     if (storedColumnTests != null) {
@@ -309,20 +334,17 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
-    // new test, generate UUID
-    if (!storedMapColumnTests.containsKey(columnTest.getName())) {
-      columnTest.setId(UUID.randomUUID());
-    }
-
-    // process test result
-    if (storedMapColumnTests.containsKey(columnTest.getName())
-        && columnTest.getResults() != null
-        && !columnTest.getResults().isEmpty()) {
+    // existingTest use the previous UUID
+    if (storedMapColumnTests.containsKey(columnTest.getName())) {
       ColumnTest prevColumnTest = storedMapColumnTests.get(columnTest.getName());
-      List<TestCaseResult> prevTestCaseResults = prevColumnTest.getResults();
-      List<TestCaseResult> newTestCaseResults = columnTest.getResults();
-      newTestCaseResults.addAll(prevTestCaseResults);
-      columnTest.setResults(newTestCaseResults);
+      columnTest.setId(prevColumnTest.getId());
+
+      // process test results
+      if (columnTest.getResults() != null && !columnTest.getResults().isEmpty()) {
+        List<TestCaseResult> prevTestCaseResults = prevColumnTest.getResults();
+        prevTestCaseResults.addAll(columnTest.getResults());
+        columnTest.setResults(prevTestCaseResults);
+      }
     }
 
     storedMapColumnTests.put(columnTest.getName(), columnTest);
@@ -332,7 +354,48 @@ public class TableRepository extends EntityRepository<Table> {
         .entityExtensionDAO()
         .insert(table.getId().toString(), extension, "columnTest", JsonUtils.pojoToJson(updatedTests));
     setFields(table, Fields.EMPTY_FIELDS);
-    getColumnTests(true, table);
+    // return the newly created/updated column test only
+    for (Column column : table.getColumns()) {
+      if (column.getName().equals(columnName)) {
+        column.setColumnTests(List.of(columnTest));
+      }
+    }
+    return table;
+  }
+
+  @Transaction
+  public Table deleteColumnTest(UUID tableId, String columnName, String columnTestType) throws IOException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    validateColumn(table, columnName);
+    // we will override any test case name passed by user/client with columnName + testType
+    // our assumption is there is only one instance of a test type as of now.
+    String columnTestName = columnName + "." + columnTestType;
+    List<ColumnTest> storedColumnTests = getColumnTests(table, columnName);
+    Map<String, ColumnTest> storedMapColumnTests = new HashMap<>();
+    if (storedColumnTests != null) {
+      for (ColumnTest ct : storedColumnTests) {
+        storedMapColumnTests.put(ct.getName(), ct);
+      }
+    }
+
+    if (!storedMapColumnTests.containsKey(columnTestName)) {
+      throw new EntityNotFoundException(String.format("Failed to find %s for %s", columnTestName, table.getName()));
+    }
+
+    ColumnTest deleteColumnTest = storedMapColumnTests.get(columnTestName);
+    storedMapColumnTests.remove(columnTestName);
+    List<ColumnTest> updatedTests = new ArrayList<>(storedMapColumnTests.values());
+    String extension = "table.column." + columnName + ".tests";
+    daoCollection
+        .entityExtensionDAO()
+        .insert(table.getId().toString(), extension, "columnTest", JsonUtils.pojoToJson(updatedTests));
+    // return the newly created/updated column test only
+    for (Column column : table.getColumns()) {
+      if (column.getName().equals(columnName)) {
+        column.setColumnTests(List.of(deleteColumnTest));
+      }
+    }
     return table;
   }
 

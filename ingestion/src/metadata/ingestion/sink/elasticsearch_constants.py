@@ -477,6 +477,9 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           "display_name": {
             "type": "text"
           },
+           "fqdn": {
+              "type": "keyword"
+            },
           "owner": {
             "type": "keyword"
           },

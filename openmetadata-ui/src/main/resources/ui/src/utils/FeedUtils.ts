@@ -18,7 +18,20 @@ import {
   EntityThreadField,
 } from 'Models';
 import TurndownService from 'turndown';
-import { EntityRegEx } from '../constants/feed.constants';
+import {
+  getInitialEntity,
+  getInitialUsers,
+  getSuggestions,
+  getUserSuggestions,
+} from '../axiosAPIs/miscAPI';
+import {
+  entityLinkRegEx,
+  entityRegex,
+  EntityRegEx,
+  hashtagRegEx,
+  linkRegEx,
+  mentionRegEx,
+} from '../constants/feed.constants';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -94,4 +107,126 @@ export const getEntityFieldThreadCounts = (
 
 export const getThreadField = (value: string, separator = '/') => {
   return value.split(separator).slice(-2);
+};
+
+export async function suggestions(searchTerm: string, mentionChar: string) {
+  if (mentionChar === '@') {
+    let atValues = [];
+    if (!searchTerm) {
+      const data = await getInitialUsers();
+      const hits = data.data.hits.hits;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      atValues = hits.map((hit: any) => {
+        return {
+          id: hit._id,
+          value: `@${hit._source.display_name}`,
+          link: `${document.location.protocol}//${document.location.host}/${hit._source.entity_type}/${hit._source.name}`,
+        };
+      });
+    } else {
+      const data = await getUserSuggestions(searchTerm);
+      const hits = data.data.suggest['table-suggest'][0]['options'];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      atValues = hits.map((hit: any) => {
+        return {
+          id: hit._id,
+          value: `@${hit._source.display_name}`,
+          link: `${document.location.protocol}//${document.location.host}/${hit._source.entity_type}/${hit._source.name}`,
+        };
+      });
+    }
+
+    return atValues;
+  } else {
+    let hashValues = [];
+    if (!searchTerm) {
+      const data = await getInitialEntity();
+      const hits = data.data.hits.hits;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      hashValues = hits.map((hit: any) => {
+        return {
+          id: hit._id,
+          value: `#${hit._source.name}`,
+          link: `${document.location.protocol}//${document.location.host}/${hit._source.entity_type}/${hit._source.fqdn}`,
+        };
+      });
+    } else {
+      const data = await getSuggestions(searchTerm);
+      const hits = data.data.suggest['table-suggest'][0]['options'];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      hashValues = hits.map((hit: any) => {
+        return {
+          id: hit._id,
+          value: `#${hit._source.name}`,
+          link: `${document.location.protocol}//${document.location.host}/${hit._source.entity_type}/${hit._source.fqdn}`,
+        };
+      });
+    }
+
+    return hashValues;
+  }
+}
+
+export async function matcher(
+  searchTerm: string,
+  renderList: Function,
+  mentionChar: string
+) {
+  const matches = await suggestions(searchTerm, mentionChar);
+  renderList(matches, searchTerm);
+}
+
+const getMentionList = (message: string) => {
+  return message.match(mentionRegEx);
+};
+
+const getHashTagList = (message: string) => {
+  return message.match(hashtagRegEx);
+};
+
+const getEntityDetail = (item: string) => {
+  return item.match(linkRegEx);
+};
+
+const getEntityLinkList = (message: string) => {
+  return message.match(entityLinkRegEx);
+};
+
+const getEntityLinkDetail = (item: string) => {
+  return item.match(entityRegex);
+};
+
+export const getBackendFormat = (message: string) => {
+  let updatedMessage = message;
+  const mentionList = [...new Set(getMentionList(message) ?? [])];
+  const hashtagList = [...new Set(getHashTagList(message) ?? [])];
+  const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
+  const hashtagDetails = hashtagList.map((h) => getEntityDetail(h) ?? []);
+
+  mentionList.forEach((m, i) => {
+    const updatedDetails = mentionDetails[i].slice(-2);
+    const entityLink = `<#E/${updatedDetails[0]}/${updatedDetails[1]}|${m}>`;
+    updatedMessage = updatedMessage.replaceAll(m, entityLink);
+  });
+  hashtagList.forEach((h, i) => {
+    const updatedDetails = hashtagDetails[i].slice(-2);
+    const entityLink = `<#E/${updatedDetails[0]}/${updatedDetails[1]}|${h}>`;
+    updatedMessage = updatedMessage.replaceAll(h, entityLink);
+  });
+
+  return updatedMessage;
+};
+
+export const getFrontEndFormat = (message: string) => {
+  let updatedMessage = message;
+  const entityLinkList = [...new Set(getEntityLinkList(message) ?? [])];
+  const entityLinkDetails = entityLinkList.map(
+    (m) => getEntityLinkDetail(m) ?? []
+  );
+  entityLinkList.forEach((m, i) => {
+    const markdownLink = entityLinkDetails[i][3];
+    updatedMessage = updatedMessage.replaceAll(m, markdownLink);
+  });
+
+  return updatedMessage;
 };

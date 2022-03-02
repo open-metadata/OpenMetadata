@@ -77,7 +77,6 @@ plugins: Dict[str, Set[str]] = {
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",
     },
-    
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},

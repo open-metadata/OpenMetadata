@@ -968,3 +968,52 @@
   min-height: 100px;
   max-height: 500px;
 }
+
+.ql-mention-list-container {
+  width: 270px;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  background-color: #fff;
+  box-shadow: 0 2px 12px 0 rgb(30 30 30 / 8%);
+  z-index: 9001;
+  overflow: auto;
+}
+.ql-mention-list-container .ql-mention-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.ql-mention-list-item {
+  cursor: pointer;
+  line-height: 44px;
+  font-size: 16px;
+  padding: 0 20px;
+  vertical-align: middle;
+}
+.ql-mention-list-item.selected {
+  background-color: #dbd1f9;
+  text-decoration: none;
+}
+
+.ql-insertMention::after {
+  content: '@';
+  font-weight: bold;
+  font-size: 18px;
+  display: block;
+  margin-top: -4px;
+}
+.ql-insertRef::after {
+  content: '#';
+  font-weight: bold;
+  font-size: 18px;
+  display: block;
+  margin-top: -4px;
+}
+.ql-mention-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 40px;
+}

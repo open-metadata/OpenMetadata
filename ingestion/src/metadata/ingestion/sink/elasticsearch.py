@@ -12,12 +12,10 @@
 import json
 import logging
 import ssl
-import time
 import traceback
 from datetime import datetime
 from typing import List, Optional
 
-from dateutil import parser
 from elasticsearch import Elasticsearch
 from elasticsearch.connection import create_ssl_context
 
@@ -578,6 +576,7 @@ class ElasticsearchSink(Sink[Entity]):
             deleted=glossary_term.deleted,
             name=glossary_term.name.__root__,
             display_name=glossary_term.displayName,
+            fqdn=glossary_term.fullyQualifiedName,
             description=glossary_term.description,
             glossary_id=str(glossary_term.glossary.id.__root__),
             glossary_name=glossary_term.glossary.name,
