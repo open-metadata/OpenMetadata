@@ -126,9 +126,9 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(waitTime);
     String description = webDriver.findElement(tableDetails.descriptionBox()).getText();
-    if(!description.contains(updatedDescription)){
+    if (!description.contains(updatedDescription)) {
       Assert.fail("Description not updated");
-    }else{
+    } else {
       LOG.info("Description Updated");
     }
   }
@@ -153,9 +153,9 @@ public class TableDetailsPageTest {
       webDriver.navigate().refresh();
     }
     String verifyDescription = webDriver.findElement(tableDetails.columnDescription()).getText();
-    if(!verifyDescription.contains(sendKeys)){
+    if (!verifyDescription.contains(sendKeys)) {
       Assert.fail("Description not updated");
-    }else{
+    } else {
       LOG.info("Description Updated");
     }
   }
@@ -195,10 +195,10 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.saveTag());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Object updatedCount =  webDriver.findElements(tableDetails.columnTags());
-    if(updatedCount.equals(count)){
+    Object updatedCount = webDriver.findElements(tableDetails.columnTags());
+    if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
-    }else{
+    } else {
       LOG.info("Tag removed successfully");
     }
   }

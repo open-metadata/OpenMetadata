@@ -145,9 +145,9 @@ public class DashboardDetailsPageTest {
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     Object updatedCount = webDriver.findElements(common.breadCrumbTags()).size();
-    if(updatedCount.equals(count)){
+    if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
-    }else{
+    } else {
       LOG.info("Tag removed successfully");
     }
   }
@@ -176,9 +176,9 @@ public class DashboardDetailsPageTest {
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     String checkDescription = dashboardDetails.getDescriptionBox().getText();
-    if(!checkDescription.contains(updatedDescription)){
+    if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
-    }else{
+    } else {
       LOG.info("Description Updated");
     }
   }
@@ -221,9 +221,9 @@ public class DashboardDetailsPageTest {
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size();
-    if(updatedCount.equals(count)){
+    if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
-    }else{
+    } else {
       LOG.info("Tag removed successfully");
     }
   }

@@ -148,9 +148,9 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, common.saveAssociatedTag());
     webDriver.navigate().refresh();
     Object updatedCount = webDriver.findElements(topicDetails.breadCrumbTags());
-    if(updatedCount.equals(count)){
+    if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
-    }else{
+    } else {
       LOG.info("Tag removed successfully");
     }
   }
@@ -176,9 +176,9 @@ public class TopicDetailsPageTest {
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
-    if(!checkDescription.contains(updatedDescription)){
+    if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
-    }else{
+    } else {
       LOG.info("Description Updated");
     }
   }

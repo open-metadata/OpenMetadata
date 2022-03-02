@@ -107,9 +107,9 @@ public class PipelineDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
-    if(!checkDescription.contains(updatedDescription)){
+    if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
-    }else{
+    } else {
       LOG.info("Description Updated");
     }
   }
@@ -151,9 +151,9 @@ public class PipelineDetailsPageTest {
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     Object updatedCount = webDriver.findElements(common.breadCrumbTags());
-    if(updatedCount.equals(count)){
+    if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
-    }else{
+    } else {
       LOG.info("Tag removed successfully");
     }
   }
@@ -183,9 +183,9 @@ public class PipelineDetailsPageTest {
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     String checkDescription = pipelineDetails.getDescriptionBox().getText();
-    if(!checkDescription.contains(updatedDescription)){
+    if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
-    }else{
+    } else {
       LOG.info("Description Updated");
     }
   }
