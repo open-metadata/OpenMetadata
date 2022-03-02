@@ -13,7 +13,7 @@
 Models to map tests and validations from
 JSON workflows to the profiler
 """
-from typing import List
+from typing import List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
@@ -31,8 +31,8 @@ class TestDef(ConfigModel):
     """
 
     table: str  # Table FQDN
-    table_tests: List[CreateTableTestRequest] = None
-    column_tests: List[CreateColumnTestRequest] = None
+    table_tests: Optional[List[CreateTableTestRequest]] = None
+    column_tests: Optional[List[CreateColumnTestRequest]] = None
 
 
 class TestSuite(ConfigModel):
