@@ -333,7 +333,7 @@ public class DatabaseServiceResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException, ParseException {
     DatabaseService service = getService(update, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(service));
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service, true);
     addHref(uriInfo, decryptOrNullify(securityContext, response.getEntity()));
     return response.toResponse();
