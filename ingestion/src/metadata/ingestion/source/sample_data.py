@@ -293,17 +293,17 @@ class SampleDataSource(Source[Entity]):
         pass
 
     def next_record(self) -> Iterable[Entity]:
-        # yield from self.ingest_users()
-        # yield from self.ingest_locations()
-        # yield from self.ingest_glue()
-        # yield from self.ingest_tables()
+        yield from self.ingest_users()
+        yield from self.ingest_locations()
+        yield from self.ingest_glue()
+        yield from self.ingest_tables()
         yield from self.ingest_table_tests()
-        # yield from self.ingest_topics()
-        # yield from self.ingest_charts()
-        # yield from self.ingest_dashboards()
-        # yield from self.ingest_pipelines()
-        # yield from self.ingest_lineage()
-        # yield from self.ingest_mlmodels()
+        yield from self.ingest_topics()
+        yield from self.ingest_charts()
+        yield from self.ingest_dashboards()
+        yield from self.ingest_pipelines()
+        yield from self.ingest_lineage()
+        yield from self.ingest_mlmodels()
 
     def ingest_locations(self) -> Iterable[Location]:
         for location in self.locations["locations"]:
