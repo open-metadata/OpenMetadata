@@ -20,22 +20,16 @@ from copy import deepcopy
 from unittest import TestCase
 
 import pytest
-from metadata.config.common import WorkflowExecutionError
-
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-
-from metadata.generated.schema.entity.data.table import Table
-
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-
-from metadata.ingestion.api.workflow import Workflow
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
+from metadata.config.common import WorkflowExecutionError
+from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.engines import create_and_bind_session
-
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared"
 
@@ -44,8 +38,8 @@ ingestion_config = {
         "type": "sqlite",
         "config": {
             "service_name": "test_sqlite",
-            "database": sqlite_shared  # We need this to share the session
-        }
+            "database": sqlite_shared,  # We need this to share the session
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "metadata_server": {
@@ -74,7 +68,9 @@ class ProfilerWorkflowTest(TestCase):
     Run the end to end workflow and validate
     """
 
-    engine = create_engine(f"sqlite+pysqlite:///{sqlite_shared}", echo=True, future=True)
+    engine = create_engine(
+        f"sqlite+pysqlite:///{sqlite_shared}", echo=True, future=True
+    )
     session = create_and_bind_session(engine)
 
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
@@ -106,7 +102,9 @@ class ProfilerWorkflowTest(TestCase):
         Validate that the ingestion ran correctly
         """
 
-        table_entity: Table = self.metadata.get_by_name(entity=Table, fqdn="test_sqlite.main.users")
+        table_entity: Table = self.metadata.get_by_name(
+            entity=Table, fqdn="test_sqlite.main.users"
+        )
         assert table_entity.fullyQualifiedName == "test_sqlite.main.users"
 
     def test_profiler_workflow(self):
@@ -139,18 +137,18 @@ class ProfilerWorkflowTest(TestCase):
                                 {
                                     "name": "check name count",
                                     "column": "name",
-                                    "expression": "count < 10"
+                                    "expression": "count < 10",
                                 },
                                 {
                                     "name": "check null count",
                                     "column": "nickname",
-                                    "expression": "null_count == 0"
-                                }
-                            ]
+                                    "expression": "null_count == 0",
+                                },
+                            ],
                         }
-                    ]
-                }
-            }
+                    ],
+                },
+            },
         }
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
@@ -158,7 +156,9 @@ class ProfilerWorkflowTest(TestCase):
         status = profiler_workflow.print_status()
         profiler_workflow.stop()
 
-        assert status == 1  # We have a test error, so we get a failure with exit status 1
+        assert (
+            status == 1
+        )  # We have a test error, so we get a failure with exit status 1
 
         with pytest.raises(WorkflowExecutionError):
             profiler_workflow.raise_from_status()

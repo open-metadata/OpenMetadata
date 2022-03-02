@@ -9,6 +9,7 @@
     "columnTestCase": {
       "description": "Column Test Case.",
       "type": "object",
+      "javaType": "org.openmetadata.catalog.tests.ColumnTestCase",
       "properties": {
         "config": {
           "oneOf": [
@@ -35,7 +36,7 @@
             }
           ]
         },
-        "testType": {
+        "columnTestType": {
           "enum": [
             "columnValuesToBeUnique",
             "columnValuesToBeNotNull",
@@ -94,11 +95,6 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
-    },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
     }
   },
   "required": ["name", "column", "testCase"],

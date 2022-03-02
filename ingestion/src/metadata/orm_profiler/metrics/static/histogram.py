@@ -14,7 +14,6 @@ Histogram Metric definition
 """
 from typing import Optional
 
-import numpy as np
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 

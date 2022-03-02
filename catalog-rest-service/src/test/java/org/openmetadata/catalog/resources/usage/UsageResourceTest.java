@@ -58,7 +58,7 @@ import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UsageResourceTest extends CatalogApplicationTest {
+class UsageResourceTest extends CatalogApplicationTest {
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
   public static final int DAYS_OF_USAGE = 32;
@@ -75,7 +75,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_usageWithNonExistentEntityId_4xx() {
+  void post_usageWithNonExistentEntityId_4xx() {
     assertResponse(
         () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
@@ -83,7 +83,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_usageInvalidEntityName_4xx() {
+  void post_usageInvalidEntityName_4xx() {
     String invalidEntityType = "invalid";
     assertResponse(
         () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
@@ -92,7 +92,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_usageWithNegativeCountName_4xx() {
+  void post_usageWithNegativeCountName_4xx() {
     DailyCount dailyCount = usageReport().withCount(-1); // Negative usage count
     assertResponse(
         () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
@@ -101,7 +101,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_usageWithoutDate_4xx() {
+  void post_usageWithoutDate_4xx() {
     DailyCount usageReport = usageReport().withDate(null); // Negative usage count
     assertResponse(
         () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
@@ -110,7 +110,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
+  void post_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
@@ -119,7 +119,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
 
   @Order(1) // Run this method first before other usage records are created
   @Test
-  public void post_validUsageForDatabaseAndTables_200_OK() throws HttpResponseException, ParseException {
+  void post_validUsageForDatabaseAndTables_200_OK() throws HttpResponseException, ParseException {
     // This test creates TABLE_COUNT of tables.
     // For these tables, publish usage data for DAYS_OF_USAGE number of days starting from today.
     // For 100 tables send usage report for last 30 days

@@ -106,8 +106,8 @@ public class UserResource {
     }
   }
 
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(User.class);
   static final String FIELDS = "profile,roles,teams,follows,owns";
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(User.class);
 
   @GET
   @Valid
@@ -434,6 +434,6 @@ public class UserResource {
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(dao.validateTeams(create.getTeams()))
-        .withRoles(dao.validateRoles(create.getRoles()));
+        .withRoles(dao.validateRolesByIds(create.getRoles()));
   }
 }

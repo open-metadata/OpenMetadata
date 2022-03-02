@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -63,26 +62,6 @@ public class TeamRepository extends EntityRepository<Team> {
     return entityReferences;
   }
 
-  public void validateEntityReferences(List<EntityReference> entityReferences, String entityType) throws IOException {
-    if (entityReferences != null) {
-      entityReferences.sort(EntityUtil.compareEntityReference);
-      for (EntityReference entityReference : entityReferences) {
-        EntityReference ref;
-        switch (entityType) {
-          case Entity.USER:
-            ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
-            break;
-          case Entity.ROLE:
-            ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
-            break;
-          default:
-            throw new IllegalArgumentException("Unsupported entity reference for validation");
-        }
-        entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
-      }
-    }
-  }
-
   @Override
   public Team setFields(Team team, Fields fields) throws IOException {
     if (!fields.contains("profile")) {
@@ -107,8 +86,8 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void prepare(Team team) throws IOException {
-    validateEntityReferences(team.getUsers(), Entity.USER);
-    validateEntityReferences(team.getDefaultRoles(), Entity.ROLE);
+    validateUsers(team.getUsers());
+    validateRoles(team.getDefaultRoles());
   }
 
   @Override
@@ -297,8 +276,8 @@ public class TeamRepository extends EntityRepository<Team> {
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
       List<EntityReference> origUsers = Optional.ofNullable(origTeam.getUsers()).orElse(Collections.emptyList());
       List<EntityReference> updatedUsers = Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList());
-      updateEntityRelationships(
-          "users", origTeam.getId(), updatedTeam.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers);
+      updateToRelationships(
+          "users", Entity.TEAM, origTeam.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers);
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) throws JsonProcessingException {
@@ -306,41 +285,14 @@ public class TeamRepository extends EntityRepository<Team> {
           Optional.ofNullable(origTeam.getDefaultRoles()).orElse(Collections.emptyList());
       List<EntityReference> updatedDefaultRoles =
           Optional.ofNullable(updatedTeam.getDefaultRoles()).orElse(Collections.emptyList());
-      updateEntityRelationships(
+      updateToRelationships(
           "defaultRoles",
+          Entity.TEAM,
           origTeam.getId(),
-          updatedTeam.getId(),
           Relationship.HAS,
           Entity.ROLE,
           origDefaultRoles,
           updatedDefaultRoles);
-    }
-
-    private void updateEntityRelationships(
-        String field,
-        UUID origId,
-        UUID updatedId,
-        Relationship relationshipType,
-        String toEntityType,
-        List<EntityReference> origRefs,
-        List<EntityReference> updatedRefs)
-        throws JsonProcessingException {
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
-      if (!recordListChange(field, origRefs, updatedRefs, added, deleted, entityReferenceMatch)) {
-        // No changes between original and updated.
-        return;
-      }
-      // Remove relationships from original
-      daoCollection
-          .relationshipDAO()
-          .deleteFrom(origId.toString(), Entity.TEAM, relationshipType.ordinal(), toEntityType);
-      // Add relationships from updated
-      for (EntityReference ref : updatedRefs) {
-        addRelationship(updatedId, ref.getId(), Entity.TEAM, toEntityType, relationshipType);
-      }
-      updatedRefs.sort(EntityUtil.compareEntityReference);
-      origRefs.sort(EntityUtil.compareEntityReference);
     }
   }
 }

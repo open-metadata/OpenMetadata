@@ -88,6 +88,7 @@ public class GlossaryResource {
   public static Glossary addHref(UriInfo uriInfo, Glossary glossary) {
     glossary.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, glossary.getId()));
     Entity.withHref(uriInfo, glossary.getOwner());
+    Entity.withHref(uriInfo, glossary.getReviewers());
     return glossary;
   }
 
@@ -110,7 +111,7 @@ public class GlossaryResource {
     }
   }
 
-  static final String FIELDS = "owner,tags";
+  static final String FIELDS = "owner,tags,reviewers";
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Glossary.class);
 
   @GET

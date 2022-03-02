@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.security;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Collections;
@@ -29,6 +31,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
@@ -45,9 +48,10 @@ public class DefaultAuthorizer implements Authorizer {
 
   private String principalDomain;
   private UserRepository userRepository;
+  private RoleRepository roleRepository;
 
   private PolicyEvaluator policyEvaluator;
-  private static final String fieldsParam = "roles,teams";
+  private static final String FIELDS_PARAM = "roles,teams";
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
@@ -58,6 +62,10 @@ public class DefaultAuthorizer implements Authorizer {
     LOG.debug("Admin users: {}", adminUsers);
     CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(collectionDAO);
+    // RoleRepository needs to be instantiated for Entity.DAO_MAP to populated.
+    // As we create default admin/bots we need to have RoleRepository available in DAO_MAP.
+    // This needs to be handled better in future releases.
+    this.roleRepository = new RoleRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
     this.policyEvaluator = PolicyEvaluator.getInstance();
@@ -65,7 +73,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddAdminUsers() {
     LOG.debug("Checking user entries for admin users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     for (String adminUser : adminUsers) {
       try {
         User user = userRepository.getByName(null, adminUser, fields);
@@ -91,7 +99,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     for (String botUser : botUsers) {
       try {
         User user = userRepository.getByName(null, botUser, fields);
@@ -141,13 +149,13 @@ public class DefaultAuthorizer implements Authorizer {
         return policyEvaluator.hasPermission(user, null, operation);
       }
 
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
-      if (owner == null) {
+      if (Entity.shouldHaveOwner(entityReference.getType()) && owner == null) {
         // Entity does not have an owner.
         return true;
       }
-      if (isOwnedByUser(user, owner)) {
+      if (Entity.shouldHaveOwner(entityReference.getType()) && isOwnedByUser(user, owner)) {
         // Entity is owned by the user.
         return true;
       }
@@ -171,7 +179,7 @@ public class DefaultAuthorizer implements Authorizer {
       if (entityReference == null) {
         return policyEvaluator.getAllowedOperations(user, null);
       }
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", "owner")));
+      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
       if (owner == null || isOwnedByUser(user, owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
@@ -204,7 +212,7 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isAdmin(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     try {
       User user = userRepository.getByName(null, userName, fields);
       if (user.getIsAdmin() == null) {
@@ -220,7 +228,7 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isBot(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     try {
       User user = userRepository.getByName(null, userName, fields);
       if (user.getIsBot() == null) {
@@ -240,7 +248,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     return userRepository.getByName(null, userName, fields);
   }
 

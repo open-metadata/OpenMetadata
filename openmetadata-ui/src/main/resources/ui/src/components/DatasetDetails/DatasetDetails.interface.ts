@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { EntityTags, LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityTags,
+  EntityThread,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   EntityReference,
   Table,
@@ -52,10 +60,15 @@ export interface DatasetDetailsProps {
   followers: Array<User>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
+  entityThread: EntityThread[];
   deleted?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;
+  isentityThreadLoading: boolean;
+  feedCount: number;
+  entityFieldThreadCount: EntityFieldThreadCount[];
+  createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
@@ -67,4 +80,5 @@ export interface DatasetDetailsProps {
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
+  postFeedHandler: (value: string, id: string) => void;
 }

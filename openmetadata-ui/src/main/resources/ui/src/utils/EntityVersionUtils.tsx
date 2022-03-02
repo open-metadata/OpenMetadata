@@ -14,12 +14,10 @@
 import classNames from 'classnames';
 import { diffArrays, diffWordsWithSpace } from 'diff';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import Markdown from 'markdown-to-jsx';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
-import ReactMarkdown, { PluggableList } from 'react-markdown';
 import { Link } from 'react-router-dom';
-import rehypeRaw from 'rehype-raw';
-import gfm from 'remark-gfm';
 import { DESCRIPTIONLENGTH, getTeamDetailsPath } from '../constants/constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
@@ -28,6 +26,7 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
+import { Paragraph, UnOrderedList } from './MarkdownUtils';
 import { isValidJSONString } from './StringsUtils';
 import { getEntityLink, getOwnerFromId } from './TableUtils';
 
@@ -38,46 +37,44 @@ const parseMarkdown = (
   isNewLine: boolean
 ) => {
   return (
-    <ReactMarkdown
-      children={content
-        .replaceAll(/&lt;/g, '<')
-        .replaceAll(/&gt;/g, '>')
-        .replaceAll('\\', '')}
-      components={{
-        h1: 'p',
-        h2: 'p',
-        h3: 'p',
-        h4: 'p',
-        h5: 'p',
-        h6: 'p',
-        p: ({ node, children, ...props }) => {
-          return (
-            <>
-              {isNewLine ? (
-                <p className={className} {...props}>
-                  {children}
-                </p>
-              ) : (
-                <span className={className} {...props}>
-                  {children}
-                </span>
-              )}
-            </>
-          );
+    <Markdown
+      options={{
+        overrides: {
+          h1: {
+            component: Paragraph,
+          },
+          h2: {
+            component: Paragraph,
+          },
+          h3: {
+            component: Paragraph,
+          },
+          h4: {
+            component: Paragraph,
+          },
+          h5: {
+            component: Paragraph,
+          },
+          h6: {
+            component: Paragraph,
+          },
+          ul: {
+            component: UnOrderedList,
+            props: {
+              className: `${className} tw-ml-3`,
+            },
+          },
+          p: {
+            component: Paragraph,
+            props: {
+              className: `${className}`,
+              isNewLine,
+            },
+          },
         },
-        ul: ({ node, children, ...props }) => {
-          const { ordered: _ordered, ...rest } = props;
-
-          return (
-            <ul className={className} style={{ marginLeft: '16px' }} {...rest}>
-              {children}
-            </ul>
-          );
-        },
-      }}
-      rehypePlugins={[[rehypeRaw, { allowDangerousHtml: false }]]}
-      remarkPlugins={[gfm] as unknown as PluggableList | undefined}
-    />
+      }}>
+      {content}
+    </Markdown>
   );
 };
 

@@ -12,8 +12,7 @@
  */
 
 import { findByText, render } from '@testing-library/react';
-import React from 'react';
-import { ReactNode } from 'react-markdown';
+import React, { ReactNode } from 'react';
 import MyDataPageComponent from './MyDataPage.component';
 
 jest.mock('../../components/MyData/MyData.component', () => {

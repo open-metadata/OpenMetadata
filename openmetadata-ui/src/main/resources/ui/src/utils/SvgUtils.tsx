@@ -13,6 +13,7 @@
 
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
+import IconAzure from '../assets/img/icon-azure.png';
 import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
@@ -94,6 +95,7 @@ import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
+import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlus from '../assets/svg/plus.svg';
@@ -134,6 +136,7 @@ export const Icons = {
   LOGO: 'logo',
   LOGO_SMALL: 'logo-small',
   WELCOME_POPPER: 'welcome-popper',
+  AZURE_ICON: 'azure-icon',
   GOOGLE_ICON: 'google-icon',
   OKTA_ICON: 'okta-icon',
   GITHUB_ICON: 'github-icon',
@@ -243,6 +246,7 @@ export const Icons = {
   CHEVRON_DOWN: 'icon-chevron-down',
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
+  PAPER_PLANE: 'icon-paper-plane',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -307,6 +311,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.GOOGLE_ICON:
       IconComponent = IconGoogle;
+
+      break;
+    case Icons.AZURE_ICON:
+      IconComponent = IconAzure;
 
       break;
     case Icons.OKTA_ICON:
@@ -701,6 +709,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ICON_UP:
       IconComponent = IconUp;
+
+      break;
+    case Icons.PAPER_PLANE:
+      IconComponent = IconPaperPlane;
 
       break;
 

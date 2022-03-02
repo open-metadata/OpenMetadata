@@ -13,7 +13,7 @@
           "description": "Data one which profile is taken.",
           "$ref": "../type/basic.json#/definitions/timestamp"
         },
-        "status": {
+        "testCaseStatus": {
           "description": "Status of Test Case run.",
           "javaType": "org.openmetadata.catalog.tests.type.TestCaseStatus",
           "type": "string",

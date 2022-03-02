@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isNil, isString } from 'lodash';
+import { isEmpty, isNil, isString, isUndefined } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import Avatar from '../components/common/avatar/Avatar';
@@ -104,7 +104,6 @@ export const getEntityOverview = (
           value: service,
           url: getServiceDetailsPath(
             service,
-            serviceType,
             ServiceCategory.DATABASE_SERVICES
           ),
           isLink: true,
@@ -195,7 +194,6 @@ export const getEntityOverview = (
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
-            serviceType,
             ServiceCategory.PIPELINE_SERVICES
           ),
           isLink: true,
@@ -238,7 +236,6 @@ export const getEntityOverview = (
           value: service?.name as string,
           url: getServiceDetailsPath(
             service?.name as string,
-            serviceType,
             ServiceCategory.DASHBOARD_SERVICES
           ),
           isLink: true,
@@ -470,4 +467,13 @@ export const getInfoElements = (data: ExtraInfo) => {
       ) : null}
     </>
   );
+};
+
+export const getEntityFeedLink: Function = (
+  type: string,
+  fqn: string
+): string | undefined => {
+  if (isUndefined(type) || isUndefined(fqn)) return undefined;
+
+  return `<#E/${type}/${fqn}>`;
 };

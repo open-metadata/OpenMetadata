@@ -12,7 +12,7 @@
  */
 
 export const ToastBg = {
-  success: 'tw-bg-sucess',
+  success: 'tw-bg-success',
   info: 'tw-bg-info',
   warning: 'tw-bg-warning',
   error: 'tw-bg-error',

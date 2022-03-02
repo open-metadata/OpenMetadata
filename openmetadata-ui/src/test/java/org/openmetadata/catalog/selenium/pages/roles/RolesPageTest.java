@@ -109,6 +109,7 @@ public class RolesPageTest {
     Events.sendKeys(webDriver, common.addDescriptionString(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.addDescriptionString(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
+    webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(roleName));
     String updatedDescription = webDriver.findElement(common.descriptionContainer()).getText();
     Assert.assertEquals(updatedDescription, description);
@@ -118,8 +119,7 @@ public class RolesPageTest {
   @Order(4)
   public void addRules() throws InterruptedException {
     openRolesPage();
-    String roleName = "Data Consumer";
-    Events.click(webDriver, common.containsText(roleName));
+    Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listOperation());
     Events.click(webDriver, rolesPage.selectOperation("UpdateDescription"));

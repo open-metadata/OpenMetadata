@@ -173,7 +173,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
 
     if (!scriptTxt.toString().isEmpty()) {
-      Script script = new Script(ScriptType.INLINE, "painless", scriptTxt.toString(), fieldAddParams);
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt.toString(), fieldAddParams);
       UpdateRequest updateRequest = new UpdateRequest(esIndexType.indexName, entityId.toString());
       updateRequest.script(script);
       return updateRequest;
@@ -392,7 +392,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             + "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } "
             + "else { ctx._source.put(k, params.get(k)) }}";
     Map<String, Object> doc = JsonUtils.getMap(index);
-    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
     updateRequest.scriptedUpsert(true);
   }
@@ -405,7 +405,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             + " { ctx._source.roles.addAll(params.roles) }"
             + "else { ctx._source.put(k, params.get(k)) }}";
     Map<String, Object> doc = JsonUtils.getMap(index);
-    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
     updateRequest.scriptedUpsert(true);
   }
@@ -418,14 +418,14 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             + " { ctx._source.owns.addAll(params.owns) }"
             + "else { ctx._source.put(k, params.get(k)) }}";
     Map<String, Object> doc = JsonUtils.getMap(index);
-    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, doc);
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
     updateRequest.scriptedUpsert(true);
   }
 
   private void softDeleteEntity(UpdateRequest updateRequest) {
     String scriptTxt = "ctx._source.deleted=true";
-    Script script = new Script(ScriptType.INLINE, "painless", scriptTxt, new HashMap<>());
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
     updateRequest.script(script);
   }
 
