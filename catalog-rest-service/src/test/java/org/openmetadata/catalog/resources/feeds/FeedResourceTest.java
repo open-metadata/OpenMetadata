@@ -21,15 +21,18 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -55,6 +58,7 @@ import org.openmetadata.catalog.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -267,6 +271,38 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void patch_thread_200() throws IOException {
+    // create a thread
+    CreateThread create = create().withMessage("message");
+    Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(thread);
+
+    // update message and resolved state
+    Thread updated = thread.withMessage("updated message").withResolved(true);
+
+    patchThreadAndCheck(updated, originalJson, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void patch_thread_not_allowed_fields() throws IOException {
+    // create a thread
+    CreateThread create = create().withMessage("message");
+    Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(thread);
+
+    // update the About of the thread
+    String originalAbout = thread.getAbout();
+    Thread updated = thread.withAbout("<#E/user>");
+
+    patchThread(updated.getId(), originalJson, updated, ADMIN_AUTH_HEADERS);
+    updated = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
+    // verify that the "About" is not changed
+    validateThread(updated, thread.getMessage(), thread.getCreatedBy(), originalAbout);
+  }
+
+  @Test
   void list_threadsWithPostsLimit() throws HttpResponseException {
     Thread thread = createAndCheck(create(), AUTH_HEADERS);
     // Add 10 posts and validate
@@ -401,5 +437,34 @@ public class FeedResourceTest extends CatalogApplicationTest {
     EntityLinkThreadCount threadCount =
         linkThreadCount.stream().filter(l -> l.getEntityLink().equals(entityLink)).findFirst().orElseThrow();
     return threadCount.getCount();
+  }
+
+  protected final Thread patchThreadAndCheck(Thread updated, String originalJson, Map<String, String> authHeaders)
+      throws IOException {
+
+    // Validate information returned in patch response has the updates
+    Thread returned = patchThread(updated.getId(), originalJson, updated, authHeaders);
+
+    compareEntities(updated, returned, authHeaders);
+
+    // GET the entity and Validate information returned
+    Thread getEntity = getThread(updated.getId(), authHeaders);
+    compareEntities(updated, getEntity, authHeaders);
+
+    return returned;
+  }
+
+  public final Thread patchThread(UUID id, String originalJson, Thread updated, Map<String, String> authHeaders)
+      throws JsonProcessingException, HttpResponseException {
+    String updatedThreadJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedThreadJson);
+    return TestUtils.patch(getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+  }
+
+  public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {
+    assertListNotNull(patched.getId(), patched.getHref(), patched.getAbout());
+    assertEquals(expected.getMessage(), patched.getMessage());
+    assertEquals(expected.getResolved(), patched.getResolved());
+    assertEquals(TestUtils.getPrincipal(authHeaders), patched.getUpdatedBy());
   }
 }

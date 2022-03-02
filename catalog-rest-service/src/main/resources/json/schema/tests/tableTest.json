@@ -9,6 +9,7 @@
     "tableTestCase": {
       "description": "Table Test Case.",
       "type": "object",
+      "javaType": "org.openmetadata.catalog.tests.TableTestCase",
       "properties": {
         "config": {
           "oneOf": [
@@ -23,7 +24,7 @@
             }
           ]
         },
-        "testType": {
+        "tableTestType": {
           "enum": [
             "tableRowCountToEqual",
             "tableRowCountToBeBetween",
@@ -49,11 +50,7 @@
       "description": "Description of the testcase.",
       "type": "string"
     },
-    "tableName": {
-      "description": "Table Name for which this test applies.",
-      "type": "string"
-    },
-    "tableTestCase": {
+    "testCase": {
       "$ref": "#/definitions/tableTestCase"
     },
     "executionFrequency": {
@@ -78,13 +75,8 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
-    },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
     }
   },
-  "required": ["name", "testCase", "tableName"],
+  "required": ["name", "testCase"],
   "additionalProperties": false
 }

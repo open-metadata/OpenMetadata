@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -23,13 +24,18 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.UriInfo;
 import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
+import org.openmetadata.catalog.resources.feeds.FeedResource;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
@@ -39,6 +45,8 @@ import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 
 public class FeedRepository {
   private final CollectionDAO dao;
@@ -228,6 +236,47 @@ public class FeedRepository {
       threads.sort(Comparator.comparing(Thread::getUpdatedAt, Comparator.reverseOrder()));
     }
     return limitPostsInThreads(threads, limitPosts);
+  }
+
+  @Transaction
+  public final PatchResponse<Thread> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
+      throws IOException, ParseException {
+    // Get all the fields in the original thread that can be updated during PATCH operation
+    Thread original = get(id.toString());
+
+    // Apply JSON patch to the original thread to get the updated thread
+    Thread updated = JsonUtils.applyPatch(original, patch, Thread.class);
+    // update the "updatedBy" and "updatedAt" fields
+    updated.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(user);
+
+    restorePatchAttributes(original, updated);
+
+    // Update the attributes
+    String change = patchUpdate(original, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    Thread updatedHref = FeedResource.addHref(uriInfo, updated);
+    return new PatchResponse<>(Status.OK, updatedHref, change);
+  }
+
+  private void restorePatchAttributes(Thread original, Thread updated) {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withId(original.getId()).withAbout(original.getAbout());
+  }
+
+  private boolean patchUpdate(Thread original, Thread updated) throws JsonProcessingException {
+    updated.setId(original.getId());
+
+    // store the updated thread
+    // if there is no change, there is no need to apply patch
+    if (fieldsChanged(original, updated)) {
+      dao.feedDAO().update(updated.getId().toString(), JsonUtils.pojoToJson(updated));
+      return true;
+    }
+    return false;
+  }
+
+  private boolean fieldsChanged(Thread original, Thread updated) {
+    // Patch supports only isResolved and message for now
+    return original.getResolved() != updated.getResolved() || !original.getMessage().equals(updated.getMessage());
   }
 
   private List<Thread> limitPostsInThreads(List<Thread> threads, int limitPosts) {

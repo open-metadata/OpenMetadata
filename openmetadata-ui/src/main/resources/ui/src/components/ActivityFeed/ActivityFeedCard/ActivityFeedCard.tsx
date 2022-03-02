@@ -23,6 +23,7 @@ import {
   getEntityField,
   getEntityFQN,
   getEntityType,
+  getFrontEndFormat,
   getReplyText,
 } from '../../../utils/FeedUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
@@ -117,7 +118,7 @@ const FeedBody: FC<FeedBodyProp> = ({ message, className }) => {
       <RichTextEditorPreviewer
         className="activity-feed-card-text"
         enableSeeMoreVariant={false}
-        markdown={message}
+        markdown={getFrontEndFormat(message)}
       />
     </div>
   );

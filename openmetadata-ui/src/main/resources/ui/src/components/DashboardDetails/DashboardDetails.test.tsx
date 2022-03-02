@@ -110,6 +110,10 @@ jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
 
+jest.mock('../FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),

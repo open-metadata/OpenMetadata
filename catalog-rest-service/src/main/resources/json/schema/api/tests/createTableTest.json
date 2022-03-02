@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tests/tableTest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTableTestRequest",
+  "description": "TableTest is a test definition to capture data quality tests against tables and columns.",
+  "type": "object",
+  "properties": {
+    "description": {
+      "description": "Description of the testcase.",
+      "type": "string"
+    },
+    "testCase": {
+      "$ref": "../../tests/tableTest.json#/definitions/tableTestCase"
+    },
+    "executionFrequency": {
+      "$ref": "../../tests/basic.json#/definitions/testCaseExecutionFrequency"
+    },
+    "result": {
+      "$ref": "../../tests/basic.json#/definitions/testCaseResult"
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    }
+  },
+  "required": ["testCase"],
+  "additionalProperties": false
+}

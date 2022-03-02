@@ -45,7 +45,9 @@ def create_delete_table(client: OpenMetadata):
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
-    db_ref = EntityReference(id=databases[0].id, name=databases[0].name.__root__, type="database")
+    db_ref = EntityReference(
+        id=databases[0].id, name=databases[0].name.__root__, type="database"
+    )
     table = CreateTableRequest(name="test1", columns=columns, database=db_ref)
     created_table = client.create_or_update(table)
     if table.name.__root__ == created_table.name.__root__:

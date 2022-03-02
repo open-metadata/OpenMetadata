@@ -36,6 +36,9 @@ public class JsonPatchUtils {
     if (path.contains(FIELD_OWNER)) {
       return MetadataOperation.UpdateOwner;
     }
+    if (path.startsWith("/users")) { // Ability to update users within a team.
+      return MetadataOperation.UpdateTeam;
+    }
     return null;
   }
 }

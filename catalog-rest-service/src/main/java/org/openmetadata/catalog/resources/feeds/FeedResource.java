@@ -13,25 +13,33 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -51,6 +59,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/feed")
@@ -61,7 +70,14 @@ import org.openmetadata.catalog.util.ResultList;
 public class FeedResource {
   // TODO add /v1/feed?user=userid
   public static final String COLLECTION_PATH = "/v1/feed/";
+  public static final List<String> ALLOWED_FIELDS = getAllowedFields();
+
   private final FeedRepository dao;
+
+  private static List<String> getAllowedFields() {
+    JsonPropertyOrder propertyOrder = Thread.class.getAnnotation(JsonPropertyOrder.class);
+    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
+  }
 
   public static List<Thread> addHref(UriInfo uriInfo, List<Thread> threads) {
     threads.forEach(t -> addHref(uriInfo, t));
@@ -146,6 +162,33 @@ public class FeedResource {
       })
   public Thread get(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
     return addHref(uriInfo, dao.get(id));
+  }
+
+  @PATCH
+  @Path("/{id}")
+  @Operation(
+      summary = "Update a thread by `id`.",
+      tags = "feeds",
+      description = "Update an existing thread using JsonPatch.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateThread(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException, ParseException {
+    PatchResponse<Thread> response =
+        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    return response.toResponse();
   }
 
   @GET

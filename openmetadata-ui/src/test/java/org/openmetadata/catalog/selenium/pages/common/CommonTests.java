@@ -105,17 +105,17 @@ public class CommonTests {
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
     Events.click(webDriver, common.addTagCategory());
-    wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(common.displayName())));
+    Thread.sleep(2000);
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.saveEditedService());
+    Events.click(webDriver, common.descriptionSaveButton());
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "Testing Tag");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.saveEditedService());
+    Events.click(webDriver, common.descriptionSaveButton());
     URL tagUrl = new URL(url + urlTag + tagCategoryDisplayName + "/");
     HttpURLConnection http = (HttpURLConnection) tagUrl.openConnection();
     http.setRequestMethod("HEAD");
@@ -133,7 +133,7 @@ public class CommonTests {
     wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(common.displayName())));
     Events.sendKeys(webDriver, common.displayName(), "Space Tag");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.saveEditedService());
+    Events.click(webDriver, common.descriptionSaveButton());
     webDriver.navigate().refresh();
     URL tagUrl = new URL(url + urlTag);
     HttpURLConnection http = (HttpURLConnection) tagUrl.openConnection();
@@ -219,7 +219,7 @@ public class CommonTests {
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, common.noServicesAddServiceButton());
+    Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "personal");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
@@ -325,6 +325,7 @@ public class CommonTests {
     openHomePage();
     Events.click(webDriver, common.selectOverview("tour"));
     for (int i = 0; i < 2; i++) {
+      Thread.sleep(waitTime);
       Events.click(webDriver, common.tourNavigationArrow("right-arrow"));
     }
     Events.sendKeys(webDriver, common.searchBar(), "dim_a"); // Search bar/dim
@@ -334,6 +335,7 @@ public class CommonTests {
   @Test
   @Order(15)
   public void tagFilterCountCheck() throws InterruptedException {
+    openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), tableName);
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
@@ -365,13 +367,13 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), "!");
     Events.sendEnter(webDriver, common.searchBar());
     Thread.sleep(2000);
-    String search1 = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+    String search1 = webDriver.findElement(common.noSearchResult()).getText();
     Assert.assertEquals(search1, "No matching data assets found for !");
     webDriver.navigate().back();
     Events.sendKeys(webDriver, common.searchBar(), "{");
     Events.sendEnter(webDriver, common.searchBar());
     try {
-      String search2 = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+      String search2 = webDriver.findElement(common.noSearchResult()).getText();
       Assert.assertEquals(search2, "No matching data assets found for {");
     } catch (NoSuchElementException exception) {
       LOG.info("Search results are not similar for no data found!");
@@ -385,6 +387,7 @@ public class CommonTests {
     Events.click(webDriver, common.selectOverview("dashboards"));
     Events.sendKeys(webDriver, common.searchBar(), "sales");
     Events.sendEnter(webDriver, common.searchBar());
+    Thread.sleep(2000);
     String resultsCount = webDriver.findElement(common.resultsCount()).getAttribute("innerHTML");
     Object matchesCount = webDriver.findElements(common.matchesStats()).size();
     Assert.assertEquals(matchesCount + " results", resultsCount);
@@ -392,17 +395,6 @@ public class CommonTests {
 
   @Test
   @Order(18)
-  public void sameNodesLineage() throws InterruptedException {
-    openHomePage();
-    Events.sendKeys(webDriver, common.searchBar(), "dim_product_variant");
-    Events.click(webDriver, common.searchSuggestion());
-    Thread.sleep(waitTime);
-    Events.click(webDriver, common.entityTabIndex(4));
-    Events.click(webDriver, common.editLineageButton());
-  }
-
-  @Test
-  @Order(19)
   public void searchNotShowingResultsCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("pipelines"));
@@ -414,7 +406,7 @@ public class CommonTests {
         LOG.info("Success");
       }
     } catch (TimeoutException exception) {
-      throw new TimeoutException("No search results found");
+      Assert.fail("No search results found");
     }
   }
 

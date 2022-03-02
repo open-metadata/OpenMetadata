@@ -87,9 +87,9 @@ public final class SecurityUtil {
   }
 
   /**
-   * Most REST API requests should yield in a single metadata operation. There are cases where the JSON patch request
-   * may yield multiple metadata operations. This helper function checks if user has permission to perform the given set
-   * of metadata operations.
+   * Most REST API requests should yield a single metadata operation. There are cases where the JSON patch request may
+   * yield multiple metadata operations. This helper function checks if user has permission to perform the given set of
+   * metadata operations that can be derived from JSON patch.
    */
   public static void checkAdminRoleOrPermissions(
       Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference, JsonPatch patch) {
@@ -101,6 +101,11 @@ public final class SecurityUtil {
     }
 
     List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
+
+    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
+    if (metadataOperations.isEmpty()) {
+      throw new AuthorizationException(noPermission(principal));
+    }
     for (MetadataOperation metadataOperation : metadataOperations) {
       if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
         throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
@@ -149,15 +154,5 @@ public final class SecurityUtil {
               headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
     }
     return target.request();
-  }
-
-  /**
-   * Returns true if authentication is enabled.
-   *
-   * @param securityContext security context
-   * @return true if jwt filter based authentication is enabled, false otherwise
-   */
-  public static boolean isSecurityEnabled(SecurityContext securityContext) {
-    return !securityContext.getAuthenticationScheme().equals(SecurityContext.BASIC_AUTH);
   }
 }

@@ -101,6 +101,10 @@ jest.mock(
   }
 );
 
+jest.mock('../../components/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+});
+
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
