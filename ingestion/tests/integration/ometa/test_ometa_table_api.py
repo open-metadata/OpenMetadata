@@ -24,6 +24,8 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -406,13 +408,11 @@ class OMetaTableTest(TestCase):
 
         table = self.metadata.create_or_update(data=self.create)
 
-        table_test = TableTest(
-            name="first_table_test",
+        table_test = CreateTableTestRequest(
             description="Testing something",
-            tableName="To remove",
             testCase=TableTestCase(
                 config=TableRowCountToEqual(value=100),
-                testType=TableTestType.tableRowCountToEqual,
+                tableTestType=TableTestType.tableRowCountToEqual,
             ),
         )
 
@@ -426,18 +426,16 @@ class OMetaTableTest(TestCase):
         test_case_result = TestCaseResult(
             result="some result",
             executionTime=datetime.now().timestamp(),
-            status=TestCaseStatus.Success,
+            testCaseStatus=TestCaseStatus.Success,
         )
 
-        table_test_with_res = TableTest(
-            name="first_table_test",
+        table_test_with_res = CreateTableTestRequest(
             description="Testing something",
-            tableName="To remove",
             testCase=TableTestCase(
                 config=TableRowCountToEqual(value=100),
-                testType=TableTestType.tableRowCountToEqual,
+                tableTestType=TableTestType.tableRowCountToEqual,
             ),
-            results=[test_case_result],
+            result=test_case_result,
         )
 
         table_with_test_and_res = self.metadata.add_table_test(
@@ -456,12 +454,11 @@ class OMetaTableTest(TestCase):
 
         table = self.metadata.create_or_update(data=self.create)
 
-        col_test = ColumnTest(
-            name="my column test",
+        col_test = CreateColumnTestRequest(
             columnName="id",
             testCase=ColumnTestCase(
                 config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
-                testType=ColumnTestType.columnValuesToBeBetween,
+                columnTestType=ColumnTestType.columnValuesToBeBetween,
             ),
         )
 
@@ -477,12 +474,11 @@ class OMetaTableTest(TestCase):
 
         # Column needs to exist in the table!
         with pytest.raises(APIError):
-            ko_test = ColumnTest(
-                name="Bad test",
+            ko_test = CreateColumnTestRequest(
                 columnName="random_column",
                 testCase=ColumnTestCase(
                     config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
-                    testType=ColumnTestType.columnValuesToBeBetween,
+                    columnTestType=ColumnTestType.columnValuesToBeBetween,
                 ),
             )
 
@@ -491,17 +487,16 @@ class OMetaTableTest(TestCase):
         col_test_res = TestCaseResult(
             result="some result",
             executionTime=datetime.now().timestamp(),
-            status=TestCaseStatus.Success,
+            testCaseStatus=TestCaseStatus.Success,
         )
 
-        col_test_with_res = ColumnTest(
-            name="my column test",
+        col_test_with_res = CreateColumnTestRequest(
             columnName="id",
             testCase=ColumnTestCase(
                 config=ColumnValuesToBeBetween(minValue=1, maxValue=3),
-                testType=ColumnTestType.columnValuesToBeBetween,
+                columnTestType=ColumnTestType.columnValuesToBeBetween,
             ),
-            results=[col_test_res],
+            result=col_test_res,
         )
 
         table_with_test_and_res = self.metadata.add_column_test(
