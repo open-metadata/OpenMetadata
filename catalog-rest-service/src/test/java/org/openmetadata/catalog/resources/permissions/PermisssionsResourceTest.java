@@ -93,6 +93,7 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
                 put(MetadataOperation.UpdateTags, Boolean.TRUE);
                 put(MetadataOperation.DecryptTokens, Boolean.TRUE);
                 put(MetadataOperation.UpdateTeam, Boolean.TRUE);
+                put(MetadataOperation.ViewMetadata, Boolean.TRUE);
               }
             }),
         Arguments.of(
@@ -107,6 +108,7 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
                 put(MetadataOperation.UpdateTags, Boolean.TRUE);
                 put(MetadataOperation.DecryptTokens, Boolean.FALSE);
                 put(MetadataOperation.UpdateTeam, Boolean.FALSE);
+                put(MetadataOperation.ViewMetadata, Boolean.TRUE); // User who is DataSteward is also a DataConsumer.
               }
             }),
         Arguments.of(
@@ -121,6 +123,7 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
                 put(MetadataOperation.UpdateTags, Boolean.FALSE);
                 put(MetadataOperation.DecryptTokens, Boolean.FALSE);
                 put(MetadataOperation.UpdateTeam, Boolean.FALSE);
+                put(MetadataOperation.ViewMetadata, Boolean.TRUE);
               }
             }));
   }

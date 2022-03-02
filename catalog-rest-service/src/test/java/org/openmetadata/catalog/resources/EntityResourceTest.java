@@ -92,6 +92,8 @@ import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServi
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -114,6 +116,8 @@ import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResource;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
@@ -133,6 +137,8 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
@@ -162,6 +168,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
+
+  public static String FINANCE_TEAM_USER_NAME = "finance-team-user";
+  public static User FINANCE_TEAM_USER;
+  public static final String FINANCE_TEAM_POLICY_NAME = "FinanceTeamAccessControlPolicy";
+  public static String FINANCE_TEAM_NAME = "finance-team";
+  public static Team FINANCE_TEAM;
 
   public static User TEST_USER;
   public static User USER1;
@@ -285,6 +297,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     ROLE1_REFERENCE = new RoleEntityInterface(ROLE1).getEntityReference();
 
+    setUpFinanceTeam();
+
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     CreateDatabaseService createDatabaseService =
@@ -397,6 +411,30 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
   }
 
+  /** Set up Finance team with one user and a team access control policy. */
+  private void setUpFinanceTeam() throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    FINANCE_TEAM =
+        teamResourceTest.createEntity(
+            teamResourceTest.createRequest(FINANCE_TEAM_NAME, FINANCE_TEAM_NAME, FINANCE_TEAM_NAME, null),
+            ADMIN_AUTH_HEADERS);
+
+    UserResourceTest userResourceTest = new UserResourceTest();
+    FINANCE_TEAM_USER =
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest(FINANCE_TEAM_USER_NAME, FINANCE_TEAM_USER_NAME, FINANCE_TEAM_USER_NAME, null)
+                .withTeams(List.of(FINANCE_TEAM.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    policyResourceTest.createEntity(
+        policyResourceTest
+            .createRequest(FINANCE_TEAM_POLICY_NAME, FINANCE_TEAM_POLICY_NAME, FINANCE_TEAM_POLICY_NAME, null)
+            .withPolicyType(PolicyType.AccessControl),
+        ADMIN_AUTH_HEADERS);
+  }
+
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
     Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
     return new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
@@ -476,24 +514,73 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   @Test
-  void get_entityWithAuthorizedViewMetadataOperation(TestInfo test) throws HttpResponseException {
+  void get_entityWithAuthorizedViewMetadataOperation(TestInfo test)
+      throws HttpResponseException, JsonProcessingException {
+    if (!this.getClass().getName().endsWith("TableResourceTest")) {
+      return;
+    }
+
+    // Create an entity for testing access to view metadata.
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
-
-    // TODO: A good test to cover this use case.
+    String originalEntity = JsonUtils.pojoToJson(entity);
+    entityInterface.setOwner(USER_OWNER1);
+    patchEntity(entityInterface.getId(), originalEntity, entityInterface.getEntity(), ADMIN_AUTH_HEADERS);
 
     // Disable DataConsumer ViewMetadata permission.
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    Policy dataConsumerPolicy =
+        policyResourceTest.getEntityByName(
+            "DataConsumerRoleAccessControlPolicy", PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+    List<Object> originalDataConsumerPolicyRules = dataConsumerPolicy.getRules();
+    String originalDataConsumerPolicy = JsonUtils.pojoToJson(dataConsumerPolicy);
+    dataConsumerPolicy.setRules(null);
+    policyResourceTest.patchEntity(
+        dataConsumerPolicy.getId(), originalDataConsumerPolicy, dataConsumerPolicy, ADMIN_AUTH_HEADERS);
 
-    // Create a new user FinanceUser with team FinanceTeam.
+    // Provide FinanceTeam access to ViewMetadata permission.
+    String fqnRegex =
+        entityInterface.getFullyQualifiedName().substring(0, entityInterface.getFullyQualifiedName().lastIndexOf("."))
+            + ".*"; // Build regex dynamically for test.
+    Rule rule =
+        new Rule() // User who is part of Finance team can ViewMetadata for given fqn regex.
+            .withName(FINANCE_TEAM_POLICY_NAME + "-ViewMetadata")
+            .withUserTeamAttr(FINANCE_TEAM_NAME)
+            .withAllow(true)
+            .withOperation(MetadataOperation.ViewMetadata)
+            .withEntityFqnRegexAttr(fqnRegex);
+    List<Object> rules = new ArrayList<>();
+    rules.add(rule);
 
-    // Provide FinanceTeam access to ViewMetadata permission
+    Policy financeTeamPolicy =
+        policyResourceTest.getEntityByName(FINANCE_TEAM_POLICY_NAME, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+    String originalFinanceTeamPolicy = JsonUtils.pojoToJson(financeTeamPolicy);
+    financeTeamPolicy.setRules(rules);
+    policyResourceTest.patchEntity(
+        financeTeamPolicy.getId(), originalFinanceTeamPolicy, financeTeamPolicy, ADMIN_AUTH_HEADERS);
 
-    // Ensure FinanceUser can read metadata
+    // Ensure Finance team user can read metadata.
+    getEntity(entityInterface.getId(), allFields, authHeaders(FINANCE_TEAM_USER_NAME));
+    getEntityByName(entityInterface.getFullyQualifiedName(), allFields, authHeaders(FINANCE_TEAM_USER_NAME));
 
-    // Ensure Test user that is not part of FinanceTeam cannot read metadata.
+    // Ensure Test user that is not part of Finance team cannot read metadata.
+    assertResponse(
+        () -> getEntity(entityInterface.getId(), allFields, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        noPermission(TEST_USER_NAME, "ViewMetadata"));
+    assertResponse(
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), allFields, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        noPermission(TEST_USER_NAME, "ViewMetadata"));
 
-    // Restore DataConsumer ViewMetadata permission.
+    // Restore DataConsumer ViewMetadata permission, so that it does not affect other tests.
+    dataConsumerPolicy =
+        policyResourceTest.getEntityByName(
+            "DataConsumerRoleAccessControlPolicy", PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+    originalDataConsumerPolicy = JsonUtils.pojoToJson(dataConsumerPolicy);
+    dataConsumerPolicy.setRules(originalDataConsumerPolicyRules);
+    policyResourceTest.patchEntity(
+        dataConsumerPolicy.getId(), originalDataConsumerPolicy, dataConsumerPolicy, ADMIN_AUTH_HEADERS);
   }
 
   @Test
