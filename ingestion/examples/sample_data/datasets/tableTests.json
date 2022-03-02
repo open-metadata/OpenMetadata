@@ -1,0 +1,100 @@
+[
+  {
+    "table": "bigquery_gcp.shopify.dim_staff",
+    "tableTests": [
+      {
+        "description": "Rows should always be 100 because of something",
+        "testCase": {
+          "config": {
+            "value": 120
+          },
+          "tableTestType": "tableRowCountToEqual"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+            "executionTime": 1646221199,
+            "testCaseStatus": "Failed",
+            "result": "Found 100.0 rows vs. the expected 120"
+        }
+      },
+      {
+        "description": "Rows should always be 100 because of something",
+        "testCase": {
+          "config": {
+            "value": 120
+          },
+          "tableTestType": "tableRowCountToEqual"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found 120.0 rows vs. the expected 120"
+        }
+      },
+      {
+        "description": "We expect certain columns",
+        "testCase": {
+          "config": {
+            "value": 5
+          },
+          "tableTestType": "tableColumnCountToEqual"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found 5.0 columns vs. the expected 5"
+        }
+      }
+    ],
+    "columnTests": [
+      {
+        "columnName": "user_id",
+        "description": "user_id should be positive",
+        "testCase": {
+          "config": {
+            "minValue": 0
+          },
+          "columnTestType": "columnValuesToBeBetween"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found min=1.0 vs. the expected min=0"
+        }
+      },
+      {
+        "columnName": "user_id",
+        "description": "user_id should be positive",
+        "testCase": {
+          "config": {
+            "minValue": 0
+          },
+          "columnTestType": "columnValuesToBeBetween"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found min=1.0 vs. the expected min=0"
+        }
+      },
+      {
+        "columnName": "email",
+        "description": "emails should be unique",
+        "testCase": {
+          "config": {},
+          "columnTestType": "columnValuesToBeUnique"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found uniqueCount=100.0 vs. valuesCount=100.0"
+        }
+      }
+    ]
+  }
+]
