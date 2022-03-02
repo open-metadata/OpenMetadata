@@ -17,7 +17,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,6 +52,10 @@ public final class Entity {
 
   // Entity class to entity repository map
   private static final Map<Class<?>, EntityRepository<?>> CLASS_ENTITY_REPOSITORY_MAP = new HashMap<>();
+
+  // Common field names
+  public static final String FIELD_OWNER = "owner";
+  public static final String FIELD_DESCRIPTION = "description";
 
   //
   // Services
@@ -139,6 +142,15 @@ public final class Entity {
     return dao.findEntityReferenceByName(fqn);
   }
 
+  public static EntityReference getEntityReferenceByName(@NonNull String entity, @NonNull String fqn, Include include)
+      throws IOException {
+    EntityDAO<?> dao = DAO_MAP.get(entity);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+    }
+    return dao.findEntityReferenceByName(fqn, include);
+  }
+
   public static <T> EntityReference getEntityReference(T entity) {
     String entityType = getEntityTypeFromObject(entity);
 
@@ -165,6 +177,11 @@ public final class Entity {
     }
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     return ref.withHref(href);
+  }
+
+  public static boolean shouldHaveOwner(@NonNull String entityType) {
+    // Team does not have an owner. (yet?)
+    return !entityType.equals(TEAM);
   }
 
   public static <T> EntityInterface<T> getEntityInterface(T entity) {
@@ -224,13 +241,22 @@ public final class Entity {
     return entityRepository;
   }
 
-  public static void deleteEntity(String updatedBy, String entity, UUID entityId, boolean recursive)
+  public static void deleteEntity(String updatedBy, String entityType, UUID entityId, boolean recursive)
       throws IOException, ParseException {
-    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entity);
+    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entityType);
     if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     dao.delete(updatedBy, entityId.toString(), recursive);
+  }
+
+  public static void restoreEntity(String updatedBy, String entityType, UUID entityId)
+      throws IOException, ParseException {
+    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entityType);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    dao.restoreEntity(updatedBy, entityType, entityId);
   }
 
   public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {
@@ -276,7 +302,7 @@ public final class Entity {
    */
   public static <T> List<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
-    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
+    return List.of(propertyOrder.value());
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */
@@ -285,7 +311,7 @@ public final class Entity {
 
     public static List<String> getEntityList(String name, String entitiesParam) {
       if (entitiesParam == null) {
-        return null;
+        return Collections.emptyList();
       }
       entitiesParam = entitiesParam.replace(" ", "");
       if (entitiesParam.equals("*")) {

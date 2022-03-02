@@ -12,8 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React from 'react';
-import { ReactNode } from 'react-markdown';
+import React, { ReactNode } from 'react';
 import { Button } from '../../buttons/Button/Button';
 type Props = {
   cancelText: string | ReactNode;

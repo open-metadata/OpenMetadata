@@ -71,6 +71,12 @@ const DashboardDetailsProps = {
   addLineageHandler: jest.fn(),
   removeLineageHandler: jest.fn(),
   entityLineageHandler: jest.fn(),
+  entityThread: [],
+  isentityThreadLoading: false,
+  postFeedHandler: jest.fn(),
+  feedCount: 0,
+  entityFieldThreadCount: [],
+  createThread: jest.fn(),
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {
@@ -102,6 +108,10 @@ jest.mock('../common/TabsPane/TabsPane', () => {
 
 jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
+});
+
+jest.mock('../FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({

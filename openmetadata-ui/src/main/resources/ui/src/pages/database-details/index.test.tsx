@@ -174,6 +174,10 @@ jest.mock('../../components/common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<div>TabsPane</div>);
 });
 
+jest.mock('../../components/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+});
+
 jest.mock('../../utils/TagsUtils', () => ({
   getTableTags: jest.fn().mockReturnValue([
     {

@@ -138,6 +138,16 @@
             </configuration>
           </execution>
           <execution>
+            <id>yarn run build-test</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>test</phase>
+            <configuration>
+              <arguments>run build-test</arguments>
+            </configuration>
+          </execution>
+          <execution>
             <id>yarn run build</id>
             <goals>
               <goal>yarn</goal>

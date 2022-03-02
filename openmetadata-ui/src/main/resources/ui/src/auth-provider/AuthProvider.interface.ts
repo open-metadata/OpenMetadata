@@ -22,7 +22,7 @@ export type UserProfile = {
   email: string;
   name: string;
   picture: string;
-  locale: string;
+  locale?: string;
 };
 
 export type OidcUser = {
@@ -30,3 +30,8 @@ export type OidcUser = {
   scope: string;
   profile: UserProfile;
 };
+
+export interface AuthenticatorRef {
+  invokeLogin: () => void;
+  invokeLogout: () => void;
+}

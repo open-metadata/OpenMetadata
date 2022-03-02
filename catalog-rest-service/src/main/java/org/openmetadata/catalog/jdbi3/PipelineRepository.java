@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
@@ -84,7 +85,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
     pipeline.setStartDate(pipeline.getStartDate());
     pipeline.setConcurrency(pipeline.getConcurrency());
-    pipeline.setOwner(fields.contains("owner") ? getOwner(pipeline) : null);
+    pipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(pipeline) : null);
     pipeline.setFollowers(fields.contains("followers") ? getFollowers(pipeline) : null);
     if (!fields.contains("tasks")) {
       pipeline.withTasks(null);

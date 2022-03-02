@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.security;
 
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import java.security.Principal;
@@ -33,7 +36,7 @@ public final class SecurityUtil {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx)) {
-      throw new AuthorizationException("Principal: " + principal + " is not admin");
+      throw new AuthorizationException(notAdmin(principal));
     }
   }
 
@@ -50,7 +53,7 @@ public final class SecurityUtil {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx) && !authorizer.isBot(authenticationCtx)) {
-      throw new AuthorizationException("Principal: " + principal + " is not admin");
+      throw new AuthorizationException(notAdmin(principal));
     }
   }
 
@@ -61,7 +64,7 @@ public final class SecurityUtil {
     if (!authorizer.isAdmin(authenticationCtx)
         && !authorizer.isBot(authenticationCtx)
         && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
-      throw new AuthorizationException("Principal: " + principal + " does not have permissions");
+      throw new AuthorizationException(noPermission(principal));
     }
   }
 
@@ -79,14 +82,14 @@ public final class SecurityUtil {
     }
 
     if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-      throw new AuthorizationException("Principal: " + principal + " does not have permission to " + metadataOperation);
+      throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
     }
   }
 
   /**
-   * Most REST API requests should yield in a single metadata operation. There are cases where the JSON patch request
-   * may yield multiple metadata operations. This helper function checks if user has permission to perform the given set
-   * of metadata operations.
+   * Most REST API requests should yield a single metadata operation. There are cases where the JSON patch request may
+   * yield multiple metadata operations. This helper function checks if user has permission to perform the given set of
+   * metadata operations that can be derived from JSON patch.
    */
   public static void checkAdminRoleOrPermissions(
       Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference, JsonPatch patch) {
@@ -98,10 +101,14 @@ public final class SecurityUtil {
     }
 
     List<MetadataOperation> metadataOperations = JsonPatchUtils.getMetadataOperations(patch);
+
+    // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
+    if (metadataOperations.isEmpty()) {
+      throw new AuthorizationException(noPermission(principal));
+    }
     for (MetadataOperation metadataOperation : metadataOperations) {
       if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-        throw new AuthorizationException(
-            "Principal: " + principal + " does not have permission to " + metadataOperation);
+        throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
       }
     }
   }
@@ -129,6 +136,15 @@ public final class SecurityUtil {
     return builder.build();
   }
 
+  public static String getPrincipalName(Map<String, String> authHeaders) {
+    // Get username from the email address
+    if (authHeaders == null) {
+      return null;
+    }
+    String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
+    return principal == null ? null : principal.split("@")[0];
+  }
+
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {
     if (headers != null) {
       return target
@@ -138,15 +154,5 @@ public final class SecurityUtil {
               headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
     }
     return target.request();
-  }
-
-  /**
-   * Returns true if authentication is enabled.
-   *
-   * @param securityContext security context
-   * @return true if jwt filter based authentication is enabled, false otherwise
-   */
-  public static boolean isSecurityEnabled(SecurityContext securityContext) {
-    return !securityContext.getAuthenticationScheme().equals(SecurityContext.BASIC_AUTH);
   }
 }

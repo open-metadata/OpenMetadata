@@ -69,6 +69,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
+    "atlas": {},
     "azuresql": {"pyodbc"},
     "bigquery": {
         "sqlalchemy-bigquery==1.2.2",
@@ -97,6 +98,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
+    "powerbi": {"python-power-bi==0.1.2"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
@@ -123,6 +125,7 @@ plugins: Dict[str, Set[str]] = {
     "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.2.0"},
     "databricks": {"sqlalchemy-databricks==0.1.0"},
     "singlestore": {"pymysql>=1.0.2"},
+    "azure-sso": {"msal~=1.17.0"},
 }
 dev = {
     "boto3==1.20.14",

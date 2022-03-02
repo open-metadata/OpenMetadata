@@ -49,9 +49,7 @@ def openmetadata_airflow_lineage_example():
                 "bigquery_gcp.shopify.raw_customer",
             ],
         },
-        outlets={
-            "tables": ["bigquery_gcp.shopify.fact_order"]
-        },
+        outlets={"tables": ["bigquery_gcp.shopify.fact_order"]},
     )
     def generate_data():
         """write your query to generate ETL"""

@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -96,7 +97,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public Chart setFields(Chart chart, Fields fields) throws IOException, ParseException {
     chart.setService(getService(chart));
-    chart.setOwner(fields.contains("owner") ? getOwner(chart) : null);
+    chart.setOwner(fields.contains(FIELD_OWNER) ? getOwner(chart) : null);
     chart.setFollowers(fields.contains("followers") ? getFollowers(chart) : null);
     chart.setTags(fields.contains("tags") ? getTags(chart.getFullyQualifiedName()) : null);
     return chart;

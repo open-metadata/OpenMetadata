@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
@@ -71,7 +72,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException, ParseException {
-    mlModel.setOwner(fields.contains("owner") ? getOwner(mlModel) : null);
+    mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains("followers") ? getFollowers(mlModel) : null);
     mlModel.setTags(fields.contains("tags") ? getTags(mlModel.getFullyQualifiedName()) : null);

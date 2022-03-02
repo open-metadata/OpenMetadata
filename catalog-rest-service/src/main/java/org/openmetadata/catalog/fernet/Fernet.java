@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.fernet;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.fernetKeyNotDefined;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.FERNET_KEY_NULL;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.isAlreadyTokenized;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.isNotTokenized;
 
@@ -34,10 +34,11 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 public class Fernet {
   private static Fernet instance;
   private String fernetKey;
-  public static String FERNET_PREFIX = "fernet:";
-  public static String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
-  private Validator<String> validator =
+  public static final String FERNET_PREFIX = "fernet:";
+  public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
+  private final Validator<String> validator =
       new StringValidator() {
+        @Override
         public TemporalAmount getTimeToLive() {
           return Duration.ofSeconds(Instant.MAX.getEpochSecond());
         }
@@ -79,7 +80,7 @@ public class Fernet {
     return this.fernetKey;
   }
 
-  public Boolean isKeyDefined() {
+  public boolean isKeyDefined() {
     return fernetKey != null;
   }
 
@@ -91,16 +92,16 @@ public class Fernet {
       Key key = new Key(fernetKey.split(",")[0]);
       return FERNET_PREFIX + Token.generate(key, secret).serialise();
     }
-    throw new IllegalArgumentException(fernetKeyNotDefined());
+    throw new IllegalArgumentException(FERNET_KEY_NULL);
   }
 
-  public static Boolean isTokenized(String tokenized) {
+  public static boolean isTokenized(String tokenized) {
     return tokenized.startsWith(FERNET_PREFIX);
   }
 
   public String decrypt(String tokenized) {
     if (!isKeyDefined()) {
-      throw new IllegalArgumentException(fernetKeyNotDefined());
+      throw new IllegalArgumentException(FERNET_KEY_NULL);
     }
     if (tokenized != null && tokenized.startsWith(FERNET_PREFIX)) {
       String str = tokenized.split(FERNET_PREFIX, 2)[1];

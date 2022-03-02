@@ -14,11 +14,17 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityCounts, FormatedTableData, SearchResponse } from 'Models';
+import {
+  EntityCounts,
+  EntityThread,
+  FormatedTableData,
+  SearchResponse,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
+import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -28,15 +34,19 @@ import {
   myDataSearchIndex,
 } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
-import { ChangeDescription } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
-import { getEntityCountByType } from '../../utils/EntityUtils';
+import {
+  getEntityCountByType,
+  getEntityFeedLink,
+} from '../../utils/EntityUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
+  const showToast = useToastContext();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [countServices, setCountServices] = useState<number>();
@@ -47,18 +57,10 @@ const MyDataPage = () => {
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
-  const [feedData, setFeedData] = useState<
-    Array<
-      FormatedTableData & {
-        entityType: string;
-        changeDescriptions: Array<
-          ChangeDescription & { updatedAt: number; updatedBy: string }
-        >;
-      }
-    >
-  >();
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
 
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
   };
@@ -129,26 +131,51 @@ const MyDataPage = () => {
   };
 
   const getFeedData = () => {
-    searchData(
-      '',
-      1,
-      20,
-      feedFilter !== FeedFilter.ALL
-        ? getMyDataFilters(
-            feedFilter === FeedFilter.OWNED
-              ? Ownership.OWNER
-              : Ownership.FOLLOWERS,
-            AppState.userDetails
-          )
-        : '',
-      'last_updated_timestamp',
-      '',
-      myDataSearchIndex
-    ).then((res: AxiosResponse) => {
-      if (res.data) {
-        setFeedData(formatDataResponse(res.data.hits.hits));
-      }
-    });
+    setIsFeedLoading(true);
+    getAllFeeds(getEntityFeedLink('user', AppState.userDetails.name))
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setEntityThread(data);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching user feeds',
+        });
+      })
+      .finally(() => {
+        setIsFeedLoading(false);
+      });
+  };
+
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
   };
 
   useEffect(() => {
@@ -179,12 +206,14 @@ const MyDataPage = () => {
           countServices={countServices}
           entityCounts={entityCounts}
           error={error}
-          feedData={feedData || []}
+          feedData={entityThread || []}
           feedFilter={feedFilter}
           feedFilterHandler={feedFilterHandler}
           followedData={followedData || []}
           ingestionCount={ingestionCount}
+          isFeedLoading={isFeedLoading}
           ownedData={ownedData || []}
+          postFeedHandler={postFeedHandler}
           searchResult={searchResult}
         />
       ) : (

@@ -95,3 +95,21 @@ export const getLoggedInUserPermissions: Function =
   (): Promise<AxiosResponse> => {
     return APIClient.get('/permissions');
   };
+
+export const getInitialUsers: Function = (): Promise<AxiosResponse> => {
+  return APIClient.get(
+    `/search/query?q=*&from=0&size=5&index=user_search_index`
+  );
+};
+export const getUserSuggestions: Function = (
+  term: string
+): Promise<AxiosResponse> => {
+  return APIClient.get(
+    `/search/suggest?q=${term}&index=user_search_index,team_search_index`
+  );
+};
+export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
+  return APIClient.get(
+    `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
+  );
+};

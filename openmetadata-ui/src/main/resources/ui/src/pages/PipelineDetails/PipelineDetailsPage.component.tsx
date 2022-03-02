@@ -16,7 +16,9 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import {
+  EntityFieldThreadCount,
   EntityTags,
+  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -25,6 +27,12 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import {
+  getAllFeeds,
+  getFeedCount,
+  postFeedById,
+  postThread,
+} from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
@@ -48,6 +56,7 @@ import {
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import {
   EntityReference,
   Pipeline,
@@ -62,7 +71,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import {
   defaultFields,
   getCurrentPipelineTab,
@@ -111,6 +120,14 @@ const PipelineDetailsPage = () => {
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
+
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isentityThreadLoading, setIsentityThreadLoading] =
+    useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -197,7 +214,6 @@ const PipelineDetailsPage = () => {
             url: service.name
               ? getServiceDetailsPath(
                   service.name,
-                  serviceType,
                   ServiceCategory.PIPELINE_SERVICES
                 )
               : '',
@@ -245,6 +261,23 @@ const PipelineDetailsPage = () => {
 
           break;
         }
+
+        break;
+      }
+      case TabSpecificField.ACTIVITY_FEED: {
+        setIsentityThreadLoading(true);
+        getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
+          .then((res: AxiosResponse) => {
+            const { data } = res.data;
+            setEntityThread(data);
+          })
+          .catch(() => {
+            showToast({
+              variant: 'error',
+              body: 'Error while fetching entity feeds',
+            });
+          })
+          .finally(() => setIsentityThreadLoading(false));
 
         break;
       }
@@ -420,6 +453,65 @@ const PipelineDetailsPage = () => {
     });
   };
 
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while posting feed',
+        });
+      });
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      }
+    );
+  };
+  const createThread = (data: CreateThread) => {
+    postThread(data)
+      .then((res: AxiosResponse) => {
+        setEntityThread((pre) => [...pre, res.data]);
+        showToast({
+          variant: 'success',
+          body: 'Thread is created successfully',
+        });
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while creating thread',
+        });
+      });
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
   useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -441,22 +533,28 @@ const PipelineDetailsPage = () => {
         <PipelineDetails
           activeTab={activeTab}
           addLineageHandler={addLineageHandler}
+          createThread={createThread}
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}
+          entityThread={entityThread}
+          feedCount={feedCount}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}
           pipelineDetails={pipelineDetails}
           pipelineTags={tags}
           pipelineUrl={pipelineUrl}
+          postFeedHandler={postFeedHandler}
           removeLineageHandler={removeLineageHandler}
           serviceType={serviceType}
           setActiveTabHandler={activeTabHandler}

@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.selenium.pages.dashboardService;
 
 import com.github.javafaker.Faker;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
 @Order(9)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -99,7 +101,7 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, common.descriptionLinkButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, dashboardServicePage.dashboardServiceUrl(), "localhost:8080");
+    Events.sendKeys(webDriver, dashboardServicePage.addDashboardServiceUrl(), "localhost:8080");
     Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
     Events.click(webDriver, common.nextButton());
@@ -120,15 +122,20 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(4)
-  public void checkConnectionConfigTab() throws InterruptedException {
+  public void checkConnectionConfigTab() throws InterruptedException, IOException {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
-    Events.sendKeys(webDriver, dashboardServicePage.dashboardServiceUrl(), "1");
+    Events.sendKeys(webDriver, dashboardServicePage.editDashboardServiceUrl(), "1");
     Events.sendKeys(webDriver, common.serviceUsername(), "1");
     Events.sendKeys(webDriver, common.servicePassword(), "1");
     Events.click(webDriver, common.saveConnectionConfig());
+    Thread.sleep(2000);
+    WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
+    if (errorText.isDisplayed()) {
+      Assert.fail("Error while updating service");
+    }
   }
 
   @Test

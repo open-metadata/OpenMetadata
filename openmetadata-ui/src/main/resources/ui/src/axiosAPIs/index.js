@@ -12,39 +12,20 @@
  */
 
 import axios from 'axios';
-import { CookieStorage } from 'cookie-storage';
 import { oidcTokenKey } from '../constants/constants';
-import { ClientErrors } from '../enums/axios.enum';
-import { userSignOut } from '../utils/AuthUtils';
-
-const cookieStorage = new CookieStorage();
 
 const axiosClient = axios.create({
   baseURL: '/api/v1',
 });
 
 axiosClient.interceptors.request.use(function (config) {
-  const token = cookieStorage.getItem(oidcTokenKey);
+  // const token = cookieStorage.getItem(oidcTokenKey);
+  const token = localStorage.getItem(oidcTokenKey);
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
 
   return config;
 });
-
-axiosClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response) {
-      const { status } = error.response;
-      if (status === ClientErrors.UNAUTHORIZED) {
-        userSignOut();
-      }
-    }
-
-    throw error;
-    // return Promise.reject(error);
-  }
-);
 
 export default axiosClient;

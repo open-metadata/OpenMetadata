@@ -19,7 +19,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 
-public class CollectionRegistryTest {
+class CollectionRegistryTest {
   @Test
   void testCollections() {
     CollectionRegistry.getInstance();

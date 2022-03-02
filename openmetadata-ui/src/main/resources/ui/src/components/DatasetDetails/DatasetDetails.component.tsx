@@ -32,7 +32,10 @@ import {
   getTableFQNFromColumnFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
+import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -88,6 +91,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isSampleDataLoading,
   isQueriesLoading,
   tableQueries,
+  entityThread,
+  isentityThreadLoading,
+  postFeedHandler,
+  feedCount,
+  entityFieldThreadCount,
+  createThread,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -100,6 +109,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     dayCount: 0,
     columnJoins: [],
   });
+
+  const [threadLink, setThreadLink] = useState<string>('');
 
   const setUsageDetails = (
     usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
@@ -143,6 +154,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
+      name: `Activity Feed (${feedCount})`,
+      icon: {
+        alt: 'activity_feed',
+        name: 'activity_feed',
+        title: 'Activity Feed',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Sample Data',
       icon: {
         alt: 'sample_data',
@@ -151,7 +173,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'sample-data-color',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
     {
       name: 'Queries',
@@ -162,7 +184,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: '',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Profiler',
@@ -173,7 +195,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-profilercolor',
       },
       isProtected: false,
-      position: 4,
+      position: 5,
     },
     {
       name: 'Lineage',
@@ -184,7 +206,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 5,
+      position: 6,
     },
     {
       name: 'DBT',
@@ -196,7 +218,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: false,
       isHidden: !dataModel?.sql,
-      position: 6,
+      position: 7,
     },
     {
       name: 'Manage',
@@ -209,7 +231,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 7,
+      position: 8,
     },
   ];
 
@@ -391,6 +413,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   };
 
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -442,6 +472,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div className="tw-col-span-3">
                   <Description
                     description={description}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      'description',
+                      entityFieldThreadCount
+                    )}
                     entityName={entityName}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
@@ -450,6 +484,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </div>
                 <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
@@ -466,17 +501,48 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       '.'
                     )}
                     columns={columns}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      'columns',
+                      entityFieldThreadCount
+                    )}
                     hasEditAccess={hasEditAccess()}
                     isReadOnly={deleted}
                     joins={tableJoinData.columnJoins as ColumnJoins[]}
                     owner={owner}
                     sampleData={sampleData}
+                    onThreadLinkSelect={onThreadLinkSelect}
                     onUpdate={onColumnsUpdate}
                   />
                 </div>
+
+                {threadLink ? (
+                  <ActivityThreadPanel
+                    createThread={createThread}
+                    open={Boolean(threadLink)}
+                    postFeedHandler={postFeedHandler}
+                    threadLink={threadLink}
+                    onCancel={onThreadPanelClose}
+                  />
+                ) : null}
               </div>
             )}
             {activeTab === 2 && (
+              <div
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                id="activityfeed">
+                <div />
+                <ActivityFeedList
+                  isEntityFeed
+                  withSidePanel
+                  className=""
+                  feedList={entityThread}
+                  isLoading={isentityThreadLoading}
+                  postFeedHandler={postFeedHandler}
+                />
+                <div />
+              </div>
+            )}
+            {activeTab === 3 && (
               <div id="sampleDataDetails">
                 <SampleDataTable
                   isLoading={isSampleDataLoading}
@@ -484,7 +550,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 3 && (
+            {activeTab === 4 && (
               <div>
                 <TableQueries
                   isLoading={isQueriesLoading}
@@ -492,7 +558,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 4 && (
+            {activeTab === 5 && (
               <div>
                 <TableProfiler
                   columns={columns.map((col) => ({
@@ -503,7 +569,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 5 && (
+            {activeTab === 6 && (
               <div
                 className={classNames(
                   location.pathname.includes(ROUTES.TOUR)
@@ -525,7 +591,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 6 && Boolean(dataModel?.sql) && (
+            {activeTab === 7 && Boolean(dataModel?.sql) && (
               <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
                 <SchemaEditor
                   className="tw-h-full"
@@ -534,7 +600,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 7 && !deleted && (
+            {activeTab === 8 && !deleted && (
               <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}
