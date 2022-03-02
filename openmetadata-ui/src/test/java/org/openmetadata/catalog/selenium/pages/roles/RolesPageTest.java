@@ -86,7 +86,7 @@ public class RolesPageTest {
     Thread.sleep(1000);
     try {
       wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
-    } catch(NoSuchElementException | TimeoutException e){
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Role not added");
     }
   }
@@ -125,7 +125,7 @@ public class RolesPageTest {
     try {
       webDriver.findElement(rolesPage.operation());
       webDriver.findElement(rolesPage.access());
-    } catch(NoSuchElementException | TimeoutException e){
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Rules not added");
     }
   }
@@ -163,10 +163,10 @@ public class RolesPageTest {
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    try{
+    try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "Name is required");
-    } catch(NoSuchElementException | TimeoutException e){
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Error message not displayed");
     }
   }

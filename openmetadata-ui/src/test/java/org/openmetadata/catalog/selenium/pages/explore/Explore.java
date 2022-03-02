@@ -190,22 +190,21 @@ class Explore {
     Events.click(webDriver, tableDetails.saveTag());
     webDriver.navigate().back();
     Events.click(webDriver, explorePage.explore());
-    try{
+    try {
       webDriver.findElement(explorePage.serviceText());
-    } catch(NoSuchElementException noSuchElementException){
+    } catch (NoSuchElementException noSuchElementException) {
       Assert.fail("Service Text Not displayed");
     }
-    try{
+    try {
       webDriver.findElement(explorePage.tierText());
-    } catch (NoSuchElementException noSuchElementException){
+    } catch (NoSuchElementException noSuchElementException) {
       Assert.fail("Tier Text Not displayed");
     }
-    try{
+    try {
       webDriver.findElement(explorePage.databaseText());
-    } catch (NoSuchElementException noSuchElementException){
+    } catch (NoSuchElementException noSuchElementException) {
       Assert.fail("Database Text Not displayed");
     }
-
   }
 
   @Test

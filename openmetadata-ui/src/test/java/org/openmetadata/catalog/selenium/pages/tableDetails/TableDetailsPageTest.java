@@ -159,7 +159,7 @@ public class TableDetailsPageTest {
     ((JavascriptExecutor) webDriver)
         .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(explorePage.addTag()));
     Events.click(webDriver, explorePage.addTag());
-    for(int i = 0; i < 2; i++){
+    for (int i = 0; i < 2; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
       Thread.sleep(waitTime);
