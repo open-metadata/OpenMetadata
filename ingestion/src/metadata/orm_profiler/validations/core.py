@@ -24,6 +24,9 @@ from functools import singledispatch
 
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.orm_profiler.utils import logger
+from metadata.orm_profiler.validations.column.column_values_not_in_set import (
+    column_values_not_in_set,
+)
 from metadata.orm_profiler.validations.column.column_values_to_be_between import (
     column_values_to_be_between,
 )
@@ -47,7 +50,7 @@ logger = logger()
 
 
 @singledispatch
-def validate(test_case, *args, **kwargs) -> TestCaseResult:
+def validate(test_case, **kwargs) -> TestCaseResult:
     """
     Default function to validate test cases.
 
@@ -67,3 +70,6 @@ validate.register(table_column_count_to_equal)
 validate.register(column_values_to_be_between)
 validate.register(column_values_to_be_unique)
 validate.register(column_values_to_be_not_null)
+
+# Column Session Tests
+validate.register(column_values_not_in_set)
