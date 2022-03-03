@@ -91,8 +91,8 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             from: feed.createdBy,
           };
           const postLength = feed.posts.length;
-          const replies = feed.postsCount;
-          const repliedUsers = feed.posts.map((f) => f.from).slice(0, 2);
+          const replies = feed.postsCount - 1;
+          const repliedUsers = feed.posts.map((f) => f.from).slice(1, 3);
           const lastPost = feed.posts[postLength - 1];
 
           return (
