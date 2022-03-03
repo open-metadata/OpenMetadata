@@ -194,6 +194,7 @@ export const AuthProvider = ({
   };
 
   const handleSuccessfulLogin = (user: OidcUser) => {
+    setLoading(true);
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -214,6 +215,9 @@ export const AuthProvider = ({
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
         }
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
