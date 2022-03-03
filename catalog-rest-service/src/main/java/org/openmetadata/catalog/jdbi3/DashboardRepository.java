@@ -16,15 +16,14 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -205,10 +204,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater)
       throws JsonProcessingException {
-    String dashboardId = updated.getId().toString();
-
     // Remove all charts associated with this dashboard
-    daoCollection.relationshipDAO().deleteFrom(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
+    deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
 
     // Add relationship from dashboard to chart
     if (updated.getCharts() != null) {
@@ -386,18 +383,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     private void updateCharts() throws JsonProcessingException {
-      String dashboardId = updated.getId().toString();
-
       // Remove all charts associated with this dashboard
-      daoCollection
-          .relationshipDAO()
-          .deleteFrom(dashboardId, Entity.DASHBOARD, Relationship.HAS.ordinal(), Entity.CHART);
+      deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
 
       // Add relationship from dashboard to chart
-      List<EntityReference> updatedCharts =
-          Optional.ofNullable(updated.getEntity().getCharts()).orElse(Collections.emptyList());
-      List<EntityReference> origCharts =
-          Optional.ofNullable(original.getEntity().getCharts()).orElse(Collections.emptyList());
+      List<EntityReference> updatedCharts = listOrEmpty(updated.getEntity().getCharts());
+      List<EntityReference> origCharts = listOrEmpty(original.getEntity().getCharts());
       for (EntityReference chart : updatedCharts) {
         addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
       }

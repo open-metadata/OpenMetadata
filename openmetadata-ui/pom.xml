@@ -15,6 +15,7 @@
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <testng.version>7.5</testng.version>
     <selenium.version>4.1.1</selenium.version>
+    <skipTests>false</skipTests>
   </properties>
 
   <dependencies>
@@ -142,8 +143,9 @@
             <goals>
               <goal>yarn</goal>
             </goals>
-            <phase>test</phase>
+            <phase>prepare-package</phase>
             <configuration>
+              <skip>${skipTests}</skip>
               <arguments>run build-test</arguments>
             </configuration>
           </execution>

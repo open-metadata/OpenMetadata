@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.services.pipeline;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,10 +26,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -78,7 +77,7 @@ public class PipelineServiceResource {
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(PipelineService.class);
 
   public static ResultList<PipelineService> addHref(UriInfo uriInfo, ResultList<PipelineService> services) {
-    Optional.ofNullable(services.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(services.getData()).forEach(i -> addHref(uriInfo, i));
     return services;
   }
 

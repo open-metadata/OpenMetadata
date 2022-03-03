@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.services.database;
 
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -85,7 +86,7 @@ public class DatabaseServiceResource {
   private final Fernet fernet;
 
   public static ResultList<DatabaseService> addHref(UriInfo uriInfo, ResultList<DatabaseService> dbServices) {
-    Optional.ofNullable(dbServices.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(dbServices.getData()).forEach(i -> addHref(uriInfo, i));
     return dbServices;
   }
 

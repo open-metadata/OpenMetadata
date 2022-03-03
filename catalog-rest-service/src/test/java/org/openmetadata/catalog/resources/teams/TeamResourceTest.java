@@ -26,6 +26,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -35,7 +36,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -279,7 +279,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Remove a user from the team using patch request
     String json = JsonUtils.pojoToJson(team);
     int removeUserIndex = new Random().nextInt(totalUsers);
-    EntityReference deletedUser = team.getUsers().get(removeUserIndex).withHref(null);
+    EntityReference deletedUser = team.getUsers().get(removeUserIndex);
     team.getUsers().remove(removeUserIndex);
     ChangeDescription change = getChangeDescription(team.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("users").withOldValue(Arrays.asList(deletedUser)));
@@ -288,7 +288,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Remove a default role from the team using patch request
     json = JsonUtils.pojoToJson(team);
     int removeDefaultRoleIndex = new Random().nextInt(roles.size());
-    EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex).withHref(null);
+    EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
     team.getDefaultRoles().remove(removeDefaultRoleIndex);
     change = getChangeDescription(team.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("defaultRoles").withOldValue(Arrays.asList(deletedRole)));
@@ -363,14 +363,14 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TestUtils.validateEntityReferences(team.getOwns());
 
     List<EntityReference> expectedUsers = new ArrayList<>();
-    for (UUID userId : Optional.ofNullable(createRequest.getUsers()).orElse(Collections.emptyList())) {
+    for (UUID userId : listOrEmpty(createRequest.getUsers())) {
       expectedUsers.add(new EntityReference().withId(userId).withType(Entity.USER));
     }
     expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
     TestUtils.assertEntityReferenceList(expectedUsers, team.getUsers());
 
     List<EntityReference> expectedDefaultRoles = new ArrayList<>();
-    for (UUID roleId : Optional.ofNullable(createRequest.getDefaultRoles()).orElse(Collections.emptyList())) {
+    for (UUID roleId : listOrEmpty(createRequest.getDefaultRoles())) {
       expectedDefaultRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
     }
     expectedDefaultRoles = expectedDefaultRoles.isEmpty() ? null : expectedDefaultRoles;
@@ -389,7 +389,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     super.validateDeletedEntity(create, teamBeforeDeletion, teamAfterDeletion, authHeaders);
 
     List<EntityReference> expectedOwnedEntities = new ArrayList<>();
-    for (EntityReference ref : Optional.ofNullable(teamBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
+    for (EntityReference ref : listOrEmpty(teamBeforeDeletion.getOwns())) {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
     TestUtils.assertEntityReferenceList(expectedOwnedEntities, teamAfterDeletion.getOwns());
@@ -404,14 +404,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(expected.getProfile(), updated.getProfile());
     TestUtils.validateEntityReferences(updated.getOwns());
 
-    List<EntityReference> expectedUsers = Optional.ofNullable(expected.getUsers()).orElse(Collections.emptyList());
-    List<EntityReference> actualUsers = Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList());
+    List<EntityReference> expectedUsers = listOrEmpty(expected.getUsers());
+    List<EntityReference> actualUsers = listOrEmpty(updated.getUsers());
     TestUtils.assertEntityReferenceList(expectedUsers, actualUsers);
 
-    List<EntityReference> expectedDefaultRoles =
-        Optional.ofNullable(expected.getDefaultRoles()).orElse(Collections.emptyList());
-    List<EntityReference> actualDefaultRoles =
-        Optional.ofNullable(updated.getDefaultRoles()).orElse(Collections.emptyList());
+    List<EntityReference> expectedDefaultRoles = listOrEmpty(expected.getDefaultRoles());
+    List<EntityReference> actualDefaultRoles = listOrEmpty(updated.getDefaultRoles());
     TestUtils.assertEntityReferenceList(expectedDefaultRoles, actualDefaultRoles);
   }
 

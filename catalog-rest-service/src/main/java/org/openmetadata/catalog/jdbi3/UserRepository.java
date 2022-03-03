@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -23,7 +24,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -68,10 +68,7 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void prepare(User user) throws IOException, ParseException {
     // Get roles assigned to the user.
-    Set<UUID> roleIds =
-        Optional.ofNullable(user.getRoles()).orElse(Collections.emptyList()).stream()
-            .map(EntityReference::getId)
-            .collect(Collectors.toSet());
+    Set<UUID> roleIds = listOrEmpty(user.getRoles()).stream().map(EntityReference::getId).collect(Collectors.toSet());
     // Get default role set up globally.
     daoCollection.roleDAO().getDefaultRolesIds().forEach(roleIdStr -> roleIds.add(UUID.fromString(roleIdStr)));
     // Get default roles from the teams that the user belongs to.
@@ -87,7 +84,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getTeamDefaultRoles(User user) throws IOException, ParseException {
-    List<EntityReference> teamsRef = Optional.ofNullable(user.getTeams()).orElse(Collections.emptyList());
+    List<EntityReference> teamsRef = listOrEmpty(user.getTeams());
     List<EntityReference> defaultRoles = new ArrayList<>();
     for (EntityReference teamRef : teamsRef) {
       Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")));
@@ -208,14 +205,14 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
-    roles = Optional.ofNullable(roles).orElse(Collections.emptyList());
+    roles = listOrEmpty(roles);
     for (EntityReference role : roles) {
       addRelationship(user.getId(), role.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
     }
   }
 
   private void assignTeams(User user, List<EntityReference> teams) {
-    teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
+    teams = listOrEmpty(teams);
     for (EntityReference team : teams) {
       addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
     }
@@ -361,13 +358,11 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateRoles(User origUser, User updatedUser) throws IOException {
       // Remove roles from original and add roles from updated
-      daoCollection
-          .relationshipDAO()
-          .deleteFrom(origUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.ROLE);
+      deleteFrom(origUser.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
       assignRoles(updatedUser, updatedUser.getRoles());
 
-      List<EntityReference> origRoles = Optional.ofNullable(origUser.getRoles()).orElse(Collections.emptyList());
-      List<EntityReference> updatedRoles = Optional.ofNullable(updatedUser.getRoles()).orElse(Collections.emptyList());
+      List<EntityReference> origRoles = listOrEmpty(origUser.getRoles());
+      List<EntityReference> updatedRoles = listOrEmpty(updatedUser.getRoles());
 
       origRoles.sort(EntityUtil.compareEntityReference);
       updatedRoles.sort(EntityUtil.compareEntityReference);
@@ -379,13 +374,11 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove teams from original and add teams from updated
-      daoCollection
-          .relationshipDAO()
-          .deleteTo(origUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
+      deleteTo(origUser.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
       assignTeams(updatedUser, updatedUser.getTeams());
 
-      List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());
-      List<EntityReference> updatedTeams = Optional.ofNullable(updatedUser.getTeams()).orElse(Collections.emptyList());
+      List<EntityReference> origTeams = listOrEmpty(origUser.getTeams());
+      List<EntityReference> updatedTeams = listOrEmpty(updatedUser.getTeams());
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);

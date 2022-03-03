@@ -17,20 +17,20 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.util.EntityUtil.stringMatch;
+import static org.openmetadata.catalog.util.EntityUtil.termReferenceMatch;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
-import org.openmetadata.catalog.resources.glossary.GlossaryResource;
 import org.openmetadata.catalog.resources.glossary.GlossaryTermResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -43,8 +43,10 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags,reviewers");
-  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "tags,reviewers");
+  private static final Fields UPDATE_FIELDS =
+      new Fields(GlossaryTermResource.ALLOWED_FIELDS, "tags,references,relatedTerms,reviewers,synonyms");
+  private static final Fields PATCH_FIELDS =
+      new Fields(GlossaryTermResource.ALLOWED_FIELDS, "tags,references,relatedTerms,reviewers,synonyms");
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -168,16 +170,22 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           Entity.GLOSSARY_TERM,
           Relationship.PARENT_OF);
     }
-    for (EntityReference relTerm : Optional.ofNullable(entity.getRelatedTerms()).orElse(Collections.emptyList())) {
+    for (EntityReference relTerm : listOrEmpty(entity.getRelatedTerms())) {
       // Make this bidirectional relationship
-      addBidirectionalRelationship(
-          entity.getId(), relTerm.getId(), Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, Relationship.RELATED_TO);
+      addRelationship(
+          entity.getId(), relTerm.getId(), Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, true);
     }
-    for (EntityReference reviewer : Optional.ofNullable(entity.getReviewers()).orElse(Collections.emptyList())) {
+    for (EntityReference reviewer : listOrEmpty(entity.getReviewers())) {
       addRelationship(reviewer.getId(), entity.getId(), Entity.USER, Entity.GLOSSARY_TERM, Relationship.REVIEWS);
     }
 
     applyTags(entity);
+  }
+
+  @Override
+  public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {
+    // Patch can't update Children, Glossary, or Parent
+    updated.withChildren(original.getChildren()).withGlossary(original.getGlossary()).withParent(original.getParent());
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
@@ -352,28 +360,58 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      updateStatus(original.getEntity(), updated.getEntity());
       updateSynonyms(original.getEntity(), updated.getEntity());
+      updateReferences(original.getEntity(), updated.getEntity());
+      updateRelatedTerms(original.getEntity(), updated.getEntity());
       updateReviewers(original.getEntity(), updated.getEntity());
     }
 
+    private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
+      // TODO Only list of allowed reviewers can change the status from DRAFT to APPROVED
+      recordChange("status", origTerm.getStatus(), updatedTerm.getStatus());
+    }
+
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
-      List<String> origSynonyms = Optional.ofNullable(origTerm.getSynonyms()).orElse(Collections.emptyList());
-      List<String> updatedSynonyms = Optional.ofNullable(updatedTerm.getSynonyms()).orElse(Collections.emptyList());
+      List<String> origSynonyms = listOrEmpty(origTerm.getSynonyms());
+      List<String> updatedSynonyms = listOrEmpty(updatedTerm.getSynonyms());
 
       List<String> added = new ArrayList<>();
       List<String> deleted = new ArrayList<>();
       recordListChange("synonyms", origSynonyms, updatedSynonyms, added, deleted, stringMatch);
     }
 
+    private void updateReferences(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
+      List<TermReference> origReferences = listOrEmpty(origTerm.getReferences());
+      List<TermReference> updatedReferences = listOrEmpty(updatedTerm.getReferences());
+
+      List<TermReference> added = new ArrayList<>();
+      List<TermReference> deleted = new ArrayList<>();
+      recordListChange("references", origReferences, updatedReferences, added, deleted, termReferenceMatch);
+    }
+
+    private void updateRelatedTerms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
+      List<EntityReference> origRelated = listOrEmpty(origTerm.getRelatedTerms());
+      List<EntityReference> updatedRelated = listOrEmpty(updatedTerm.getRelatedTerms());
+      updateToRelationships(
+          "relatedTerms",
+          Entity.GLOSSARY_TERM,
+          origTerm.getId(),
+          Relationship.RELATED_TO,
+          Entity.GLOSSARY_TERM,
+          origRelated,
+          updatedRelated,
+          true);
+    }
+
     private void updateReviewers(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
-      List<EntityReference> origUsers = Optional.ofNullable(origTerm.getReviewers()).orElse(Collections.emptyList());
-      List<EntityReference> updatedUsers =
-          Optional.ofNullable(updatedTerm.getReviewers()).orElse(Collections.emptyList());
+      List<EntityReference> origReviewers = listOrEmpty(origTerm.getReviewers());
+      List<EntityReference> updatedReviewers = listOrEmpty(updatedTerm.getReviewers());
       updateFromRelationships(
           "reviewers",
           Entity.USER,
-          origUsers,
-          updatedUsers,
+          origReviewers,
+          updatedReviewers,
           Relationship.REVIEWS,
           Entity.GLOSSARY_TERM,
           origTerm.getId());

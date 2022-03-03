@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
@@ -23,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
@@ -163,7 +164,7 @@ public final class Entity {
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
-    Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(ref -> withHref(uriInfo, ref));
+    listOrEmpty(list).forEach(ref -> withHref(uriInfo, ref));
   }
 
   public static EntityReference withHref(UriInfo uriInfo, EntityReference ref) {
