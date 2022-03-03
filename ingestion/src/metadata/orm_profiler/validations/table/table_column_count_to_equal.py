@@ -19,9 +19,6 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
     TableColumnCountToEqual,
 )
-from metadata.generated.schema.tests.table.tableRowCountToEqual import (
-    TableRowCountToEqual,
-)
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -31,6 +28,7 @@ def table_column_count_to_equal(
     test_case: TableColumnCountToEqual,
     table_profile: TableProfile,
     execution_date: datetime,
+    **__,
 ) -> TestCaseResult:
     """
     Validate row count metric

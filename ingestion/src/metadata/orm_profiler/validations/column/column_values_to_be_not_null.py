@@ -20,9 +20,6 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeNotNull import (
     ColumnValuesToBeNotNull,
 )
-from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
-    ColumnValuesToBeUnique,
-)
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -32,6 +29,7 @@ def column_values_to_be_not_null(
     _: ColumnValuesToBeNotNull,
     col_profile: ColumnProfile,
     execution_date: datetime,
+    **__,
 ) -> TestCaseResult:
     """
     Validate Column Values metric

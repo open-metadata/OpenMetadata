@@ -19,9 +19,6 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
     TableRowCountToBeBetween,
 )
-from metadata.generated.schema.tests.table.tableRowCountToEqual import (
-    TableRowCountToEqual,
-)
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -31,6 +28,7 @@ def table_row_count_to_be_between(
     test_case: TableRowCountToBeBetween,
     table_profile: TableProfile,
     execution_date: datetime,
+    **__,
 ) -> TestCaseResult:
     """
     Validate row count metric
