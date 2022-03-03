@@ -102,7 +102,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const AppWithAuth = getAuthenticator(childComponentType, userManager);
 
-    // return <Fragment>{children}</Fragment>;
     return (
       <Fragment>
         {!loading ? (
