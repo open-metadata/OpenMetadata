@@ -70,6 +70,7 @@ def column_values_not_in_set(
         set_count_res = res.get(col.name)[Metrics.COUNT_IN_SET.name]
 
     except Exception as err:  # pylint: disable=broad-except
+        session.rollback()
         msg = f"Error computing ColumnValuesToBeNotInSet for {col_profile.name} - {err}"
         logger.error(msg)
         return TestCaseResult(
