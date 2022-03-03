@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
@@ -140,15 +140,24 @@ const Description = ({
                 {descriptionThread.count}{' '}
               </p>
             ) : (
-              <p
-                className="link-text  tw-ml-2"
-                onClick={() =>
-                  onThreadLinkSelect?.(
-                    getEntityFeedLink(entityType, entityFqn, 'description')
-                  )
-                }>
-                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />+
-              </p>
+              <Fragment>
+                {description?.trim() ? (
+                  <p
+                    className="link-text  tw-ml-2"
+                    onClick={() =>
+                      onThreadLinkSelect?.(
+                        getEntityFeedLink(entityType, entityFqn, 'description')
+                      )
+                    }>
+                    <SVGIcons
+                      alt="comments"
+                      icon={Icons.COMMENT}
+                      width="20px"
+                    />
+                    +
+                  </p>
+                ) : null}
+              </Fragment>
             )}
           </div>
         ) : null}

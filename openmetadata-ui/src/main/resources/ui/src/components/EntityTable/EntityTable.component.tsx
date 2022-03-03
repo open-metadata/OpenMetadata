@@ -473,7 +473,8 @@ const EntityTable = ({
                                 onThreadLinkSelect,
                                 EntityType.TABLE,
                                 entityFqn,
-                                `columns/${cell.row.cells[0].value}/tags`
+                                `columns/${cell.row.cells[0].value}/tags`,
+                                Boolean(cell.value.length)
                               )}
                             </div>
                           )}
@@ -494,7 +495,7 @@ const EntityTable = ({
                                 ) : (
                                   <span className="tw-no-description">
                                     No description added{' '}
-                                    {isNil(
+                                    {!isNil(
                                       getFieldThreadElement(
                                         cell.row.cells[0].value,
                                         'description',
@@ -550,7 +551,8 @@ const EntityTable = ({
                                     onThreadLinkSelect,
                                     EntityType.TABLE,
                                     entityFqn,
-                                    `columns/${cell.row.cells[0].value}/description`
+                                    `columns/${cell.row.cells[0].value}/description`,
+                                    Boolean(cell.value)
                                   )}
                                 </Fragment>
                               ) : null}

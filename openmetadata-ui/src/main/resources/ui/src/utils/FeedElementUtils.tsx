@@ -26,7 +26,8 @@ export const getFieldThreadElement = (
   onThreadLinkSelect?: (value: string) => void,
   entityType?: string,
   entityFqn?: string,
-  entityField?: string
+  entityField?: string,
+  flag = true
 ) => {
   let threadValue: EntityFieldThreads = {} as EntityFieldThreads;
 
@@ -50,7 +51,7 @@ export const getFieldThreadElement = (
     </p>
   ) : (
     <Fragment>
-      {entityType && entityFqn && entityField ? (
+      {entityType && entityFqn && entityField && flag ? (
         <p
           className="tw-text-right link-text "
           onClick={(e) => {

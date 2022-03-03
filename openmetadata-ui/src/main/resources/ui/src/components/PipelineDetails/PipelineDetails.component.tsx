@@ -425,7 +425,7 @@ const PipelineDetails = ({
                                       />
                                     ) : (
                                       <span className="tw-no-description">
-                                        No description added
+                                        No description added{' '}
                                         {!isNil(
                                           getFieldThreadElement(
                                             task.name,
@@ -483,7 +483,8 @@ const PipelineDetails = ({
                                         onThreadLinkSelect,
                                         EntityType.PIPELINE,
                                         pipelineFQN,
-                                        `tasks/${task.name}/description`
+                                        `tasks/${task.name}/description`,
+                                        Boolean(task.description)
                                       )}
                                     </Fragment>
                                   )}
