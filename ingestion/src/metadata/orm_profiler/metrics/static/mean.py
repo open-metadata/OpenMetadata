@@ -66,7 +66,7 @@ class Mean(StaticMetric):
         if is_concatenable(self.col.type):
             return ConcatAvgFn(self.col)
 
-        logger.warning(
-            f"Don't know how to process type {self.col.type} when computing AVG"
+        logger.debug(
+            f"Don't know how to process type {self.col.type} when computing MEAN"
         )
         return None
