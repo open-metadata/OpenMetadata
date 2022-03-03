@@ -58,11 +58,15 @@ def metadata(debug: bool, log_level: str) -> None:
     if debug:
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("metadata").setLevel(logging.DEBUG)
+        logging.getLogger("ORM Profiler Workflow").setLevel(logging.DEBUG)
+        logging.getLogger("Profiler").setLevel(logging.DEBUG)
     elif log_level:
         logging.getLogger().setLevel(log_level)
     else:
         logging.getLogger().setLevel(logging.WARNING)
         logging.getLogger("metadata").setLevel(logging.INFO)
+        logging.getLogger("ORM Profiler Workflow").setLevel(logging.INFO)
+        logging.getLogger("Profiler").setLevel(logging.INFO)
 
 
 @metadata.command()

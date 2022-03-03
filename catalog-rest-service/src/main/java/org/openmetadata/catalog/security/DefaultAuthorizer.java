@@ -240,6 +240,22 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
+  @Override
+  public boolean isOwner(AuthenticationContext ctx, EntityReference owner) {
+    validateAuthenticationContext(ctx);
+    String userName = SecurityUtil.getUserName(ctx);
+    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
+    try {
+      User user = userRepository.getByName(null, userName, fields);
+      if (owner == null) {
+        return false;
+      }
+      return isOwnedByUser(user, owner);
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
+      return false;
+    }
+  }
+
   private void validateAuthenticationContext(AuthenticationContext ctx) {
     if (ctx == null || ctx.getPrincipal() == null) {
       throw new AuthenticationException("No principal in AuthenticationContext");

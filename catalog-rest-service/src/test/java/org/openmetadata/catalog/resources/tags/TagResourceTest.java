@@ -24,6 +24,7 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -31,7 +32,6 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -478,7 +478,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   private void validate(TagCategory category) {
     assertNotNull(category.getName());
     assertEquals(URI.create(BASE_URL + "/" + category.getName()), category.getHref());
-    for (Tag tag : Optional.ofNullable(category.getChildren()).orElse(Collections.emptyList())) {
+    for (Tag tag : listOrEmpty(category.getChildren())) {
       validateHRef(category.getHref().toString(), tag);
     }
   }
@@ -506,7 +506,7 @@ public class TagResourceTest extends CatalogApplicationTest {
     assertNotNull(actual.getName(), actual.getFullyQualifiedName());
     String href = parentURI + "/" + actual.getName();
     assertEquals(URI.create(href), actual.getHref());
-    for (Tag child : Optional.ofNullable(actual.getChildren()).orElse(Collections.emptyList())) {
+    for (Tag child : listOrEmpty(actual.getChildren())) {
       validateHRef(actual.getHref().toString(), child);
     }
   }
