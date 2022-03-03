@@ -350,3 +350,7 @@ class Profiler(Generic[MetricType]):
         except ValidationError as err:
             logger.error(f"Cannot transform profiler results to TableProfile {err}")
             raise err
+
+    @property
+    def column_results(self):
+        return self._column_results
