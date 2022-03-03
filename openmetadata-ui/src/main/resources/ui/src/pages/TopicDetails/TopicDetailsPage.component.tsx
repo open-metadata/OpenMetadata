@@ -434,6 +434,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           topicDetails={topicDetails}
+          topicFQN={topicFQN}
           topicTags={tags}
           unfollowTopicHandler={unfollowTopic}
           users={AppState.users}

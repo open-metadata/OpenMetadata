@@ -599,6 +599,7 @@ const DashboardDetailsPage = () => {
           charts={charts}
           createThread={createThread}
           dashboardDetails={dashboardDetails}
+          dashboardFQN={dashboardFQN}
           dashboardTags={tags}
           dashboardUrl={dashboardUrl}
           deleted={deleted}

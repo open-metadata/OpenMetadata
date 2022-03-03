@@ -971,7 +971,9 @@ const ServicePage: FunctionComponent = () => {
                   'description',
                   entityFieldThreadCount
                 )}
+                entityFqn={serviceFQN}
                 entityName={serviceFQN}
+                entityType={serviceCategory.slice(0, -1)}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}

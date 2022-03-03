@@ -17,6 +17,7 @@ import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { User } from '../../generated/entity/teams/user';
@@ -83,6 +84,7 @@ const PipelineDetails = ({
   feedCount,
   entityFieldThreadCount,
   createThread,
+  pipelineFQN,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -345,7 +347,9 @@ const PipelineDetails = ({
                           'description',
                           entityFieldThreadCount
                         )}
+                        entityFqn={pipelineFQN}
                         entityName={entityName}
+                        entityType={EntityType.PIPELINE}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
                         isReadOnly={deleted}

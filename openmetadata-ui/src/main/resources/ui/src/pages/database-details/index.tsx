@@ -495,7 +495,9 @@ const DatabaseDetails: FunctionComponent = () => {
                   'description',
                   entityFieldThreadCount
                 )}
+                entityFqn={databaseFQN}
                 entityName={databaseName}
+                entityType={EntityType.DATABASE}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}

@@ -488,7 +488,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       'description',
                       entityFieldThreadCount
                     )}
+                    entityFqn={datasetFQN}
                     entityName={entityName}
+                    entityType={EntityType.TABLE}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
                     isReadOnly={deleted}

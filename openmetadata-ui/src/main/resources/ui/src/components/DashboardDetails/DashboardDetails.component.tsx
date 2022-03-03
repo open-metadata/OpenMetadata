@@ -17,6 +17,7 @@ import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { User } from '../../generated/entity/teams/user';
@@ -86,6 +87,7 @@ const DashboardDetails = ({
   feedCount,
   entityFieldThreadCount,
   createThread,
+  dashboardFQN,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -400,7 +402,9 @@ const DashboardDetails = ({
                           'description',
                           entityFieldThreadCount
                         )}
+                        entityFqn={dashboardFQN}
                         entityName={entityName}
+                        entityType={EntityType.DASHBOARD}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
                         isReadOnly={deleted}

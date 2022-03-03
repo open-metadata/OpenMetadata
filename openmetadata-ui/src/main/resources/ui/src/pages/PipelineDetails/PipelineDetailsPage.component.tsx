@@ -558,6 +558,7 @@ const PipelineDetailsPage = () => {
           loadNodeHandler={loadNodeHandler}
           owner={owner}
           pipelineDetails={pipelineDetails}
+          pipelineFQN={pipelineFQN}
           pipelineTags={tags}
           pipelineUrl={pipelineUrl}
           postFeedHandler={postFeedHandler}

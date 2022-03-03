@@ -14,6 +14,7 @@
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -65,6 +66,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   feedCount,
   entityFieldThreadCount,
   createThread,
+  topicFQN,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -343,7 +345,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         'description',
                         entityFieldThreadCount
                       )}
+                      entityFqn={topicFQN}
                       entityName={entityName}
+                      entityType={EntityType.TOPIC}
                       hasEditAccess={hasEditAccess()}
                       isEdit={isEdit}
                       isReadOnly={deleted}

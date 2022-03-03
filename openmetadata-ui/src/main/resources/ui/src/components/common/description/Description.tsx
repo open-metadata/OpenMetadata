@@ -18,6 +18,7 @@ import React from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
@@ -32,6 +33,8 @@ type Props = {
   description: string;
   isEdit?: boolean;
   isReadOnly?: boolean;
+  entityType?: string;
+  entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
@@ -56,6 +59,8 @@ const Description = ({
   entityFieldThreads,
   onThreadLinkSelect,
   onEntityFieldSelect,
+  entityType,
+  entityFqn,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
 
@@ -134,7 +139,17 @@ const Description = ({
                 <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
                 {descriptionThread.count}{' '}
               </p>
-            ) : null}
+            ) : (
+              <p
+                className="link-text tw-text-base tw-ml-2"
+                onClick={() =>
+                  onThreadLinkSelect?.(
+                    getEntityFeedLink(entityType, entityFqn, 'description')
+                  )
+                }>
+                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />+
+              </p>
+            )}
           </div>
         ) : null}
       </div>
