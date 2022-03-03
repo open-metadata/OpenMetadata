@@ -47,7 +47,7 @@
     },
     "entityId": {
       "description": "Entity Id of the entity that the thread belongs to.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "addressedTo": {
       "description": "User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
