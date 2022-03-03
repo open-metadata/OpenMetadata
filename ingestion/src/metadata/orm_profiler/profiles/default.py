@@ -14,6 +14,7 @@ Default simple profiler to use
 """
 from typing import List, Optional
 
+from metadata.orm_profiler.metrics.core import add_props
 from sqlalchemy.orm.session import Session
 
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -36,6 +37,7 @@ class DefaultProfiler(Profiler):
         _metrics = [
             # Table Metrics
             Metrics.ROW_COUNT.value,
+            add_props(table=table)(Metrics.COLUMN_COUNT.value),
             # Column Metrics
             Metrics.MEAN.value,
             Metrics.COUNT.value,
