@@ -503,28 +503,6 @@ const PipelineDetails = ({
                       </div>
                     )}
                   </div>
-                  {threadLink ? (
-                    <ActivityThreadPanel
-                      createThread={createThread}
-                      open={Boolean(threadLink)}
-                      postFeedHandler={postFeedHandler}
-                      threadLink={threadLink}
-                      onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
-                  {selectedField ? (
-                    <RequestDescriptionModal
-                      createThread={createThread}
-                      defaultValue={getDefaultValue(owner as EntityReference)}
-                      header="Request description"
-                      threadLink={getEntityFeedLink(
-                        EntityType.PIPELINE,
-                        pipelineFQN,
-                        selectedField
-                      )}
-                      onCancel={closeRequestModal}
-                    />
-                  ) : null}
                 </>
               )}
               {activeTab === 2 && (
@@ -583,6 +561,28 @@ const PipelineDetails = ({
           onSave={onTaskUpdate}
         />
       )}
+      {threadLink ? (
+        <ActivityThreadPanel
+          createThread={createThread}
+          open={Boolean(threadLink)}
+          postFeedHandler={postFeedHandler}
+          threadLink={threadLink}
+          onCancel={onThreadPanelClose}
+        />
+      ) : null}
+      {selectedField ? (
+        <RequestDescriptionModal
+          createThread={createThread}
+          defaultValue={getDefaultValue(owner as EntityReference)}
+          header="Request description"
+          threadLink={getEntityFeedLink(
+            EntityType.PIPELINE,
+            pipelineFQN,
+            selectedField
+          )}
+          onCancel={closeRequestModal}
+        />
+      ) : null}
     </>
   );
 };

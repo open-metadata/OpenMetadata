@@ -378,28 +378,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
                   <SchemaEditor value={schemaText} />
                 </div>
-                {threadLink ? (
-                  <ActivityThreadPanel
-                    createThread={createThread}
-                    open={Boolean(threadLink)}
-                    postFeedHandler={postFeedHandler}
-                    threadLink={threadLink}
-                    onCancel={onThreadPanelClose}
-                  />
-                ) : null}
-                {selectedField ? (
-                  <RequestDescriptionModal
-                    createThread={createThread}
-                    defaultValue={getDefaultValue(owner as EntityReference)}
-                    header="Request description"
-                    threadLink={getEntityFeedLink(
-                      EntityType.TOPIC,
-                      topicFQN,
-                      selectedField
-                    )}
-                    onCancel={closeRequestModal}
-                  />
-                ) : null}
               </>
             )}
             {activeTab === 2 && (
@@ -435,6 +413,28 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               </div>
             )}
           </div>
+          {threadLink ? (
+            <ActivityThreadPanel
+              createThread={createThread}
+              open={Boolean(threadLink)}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              onCancel={onThreadPanelClose}
+            />
+          ) : null}
+          {selectedField ? (
+            <RequestDescriptionModal
+              createThread={createThread}
+              defaultValue={getDefaultValue(owner as EntityReference)}
+              header="Request description"
+              threadLink={getEntityFeedLink(
+                EntityType.TOPIC,
+                topicFQN,
+                selectedField
+              )}
+              onCancel={closeRequestModal}
+            />
+          ) : null}
         </div>
       </div>
     </PageContainer>

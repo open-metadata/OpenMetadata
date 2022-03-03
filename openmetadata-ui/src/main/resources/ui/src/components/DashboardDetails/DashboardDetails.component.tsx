@@ -584,28 +584,6 @@ const DashboardDetails = ({
                       </tbody>
                     </table>
                   </div>
-                  {threadLink ? (
-                    <ActivityThreadPanel
-                      createThread={createThread}
-                      open={Boolean(threadLink)}
-                      postFeedHandler={postFeedHandler}
-                      threadLink={threadLink}
-                      onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
-                  {selectedField ? (
-                    <RequestDescriptionModal
-                      createThread={createThread}
-                      defaultValue={getDefaultValue(owner as EntityReference)}
-                      header="Request description"
-                      threadLink={getEntityFeedLink(
-                        EntityType.DASHBOARD,
-                        dashboardFQN,
-                        selectedField
-                      )}
-                      onCancel={closeRequestModal}
-                    />
-                  ) : null}
                 </>
               )}
               {activeTab === 2 && (
@@ -664,6 +642,28 @@ const DashboardDetails = ({
           onSave={onChartUpdate}
         />
       )}
+      {threadLink ? (
+        <ActivityThreadPanel
+          createThread={createThread}
+          open={Boolean(threadLink)}
+          postFeedHandler={postFeedHandler}
+          threadLink={threadLink}
+          onCancel={onThreadPanelClose}
+        />
+      ) : null}
+      {selectedField ? (
+        <RequestDescriptionModal
+          createThread={createThread}
+          defaultValue={getDefaultValue(owner as EntityReference)}
+          header="Request description"
+          threadLink={getEntityFeedLink(
+            EntityType.DASHBOARD,
+            dashboardFQN,
+            selectedField
+          )}
+          onCancel={closeRequestModal}
+        />
+      ) : null}
     </>
   );
 };
