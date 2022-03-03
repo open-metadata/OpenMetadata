@@ -224,6 +224,7 @@ class RedshiftConfig(SQLConnectionConfig):
     where_clause: Optional[str] = None
     duration: int = 1
     service_type = DatabaseServiceType.Redshift.value
+    query = 'select * from "{}"."{}"'
 
     def get_identifier(self, schema: str, table: str) -> str:
         """

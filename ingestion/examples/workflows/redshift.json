@@ -9,7 +9,8 @@
       "service_name": "aws_redshift",
       "table_filter_pattern": {
         "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
-      }
+      },
+      "query":"select * from \"{}\".\"{}\" Limit 50"
     }
   },
   "sink": {
