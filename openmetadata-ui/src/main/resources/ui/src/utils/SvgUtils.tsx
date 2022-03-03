@@ -38,6 +38,7 @@ import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
+import IconDescription from '../assets/svg/description.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
@@ -251,6 +252,7 @@ export const Icons = {
   PAPER_PLANE: 'icon-paper-plane',
   PAPER_PLANE_PRIMARY: 'icon-paper-plane-primary',
   COMMENT: 'icon-comment',
+  DESCRIPTION: 'icon-description',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -725,6 +727,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.COMMENT:
       IconComponent = IconComments;
+
+      break;
+    case Icons.DESCRIPTION:
+      IconComponent = IconDescription;
 
       break;
 

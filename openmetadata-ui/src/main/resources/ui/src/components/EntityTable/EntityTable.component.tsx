@@ -32,7 +32,7 @@ import {
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
   getDataTypeString,
@@ -541,7 +541,11 @@ const EntityTable = ({
                                           `columns/${cell.row.cells[0].value}/description`
                                         );
                                       }}>
-                                      Request Description
+                                      <SVGIcons
+                                        alt="description"
+                                        icon={Icons.DESCRIPTION}
+                                        width="16px"
+                                      />
                                     </button>
                                   ) : null}
                                 </Fragment>

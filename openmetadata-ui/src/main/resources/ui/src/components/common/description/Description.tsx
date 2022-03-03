@@ -134,7 +134,11 @@ const Description = ({
                 className="focus:tw-outline-none tw-ml-2"
                 data-testid="request-description"
                 onClick={() => onEntityFieldSelect?.('description')}>
-                Request Description
+                <SVGIcons
+                  alt="description"
+                  icon={Icons.DESCRIPTION}
+                  width="16px"
+                />
               </button>
             ) : null}
           </div>
