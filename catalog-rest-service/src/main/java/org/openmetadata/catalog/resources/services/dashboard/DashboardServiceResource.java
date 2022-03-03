@@ -314,7 +314,7 @@ public class DashboardServiceResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException, ParseException {
     DashboardService service = getService(update, securityContext);
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(service));
     PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service, true);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
