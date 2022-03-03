@@ -22,7 +22,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
-from metadata.generated.schema.tests.column.columnValuesToBeNotNull import ColumnValuesToBeNotNull
+from metadata.generated.schema.tests.column.columnValuesToBeNotNull import (
+    ColumnValuesToBeNotNull,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
 )
@@ -328,9 +330,7 @@ def test_column_values_to_be_not_null():
     assert res_ok == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Success,
-        result=(
-                "Found nullCount=0.0. It should be 0."
-        ),
+        result=("Found nullCount=0.0. It should be 0."),
     )
 
     column_profile_ko = ColumnProfile(
@@ -346,9 +346,7 @@ def test_column_values_to_be_not_null():
     assert res_ko == TestCaseResult(
         executionTime=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Failed,
-        result=(
-                "Found nullCount=10.0. It should be 0."
-        ),
+        result=("Found nullCount=10.0. It should be 0."),
     )
 
     column_profile_aborted = ColumnProfile()
@@ -363,6 +361,6 @@ def test_column_values_to_be_not_null():
         executionTime=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result=(
-                "We expect `nullCount` to be informed on the profiler for ColumnValuesToBeNotNull."
+            "We expect `nullCount` to be informed on the profiler for ColumnValuesToBeNotNull."
         ),
     )

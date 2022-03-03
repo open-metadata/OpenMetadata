@@ -27,7 +27,9 @@ from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.column.column_values_to_be_between import (
     column_values_to_be_between,
 )
-from metadata.orm_profiler.validations.column.column_values_to_be_not_null import column_values_to_be_not_null
+from metadata.orm_profiler.validations.column.column_values_to_be_not_null import (
+    column_values_to_be_not_null,
+)
 from metadata.orm_profiler.validations.column.column_values_to_be_unique import (
     column_values_to_be_unique,
 )

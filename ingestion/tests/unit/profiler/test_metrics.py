@@ -465,3 +465,26 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.UNIQUE_RATIO.name] == 1.0
+
+    def test_count_in_set(self):
+        """
+        Check Count In Set metric
+        """
+
+        set_count = add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
+        res = (
+            Profiler(set_count, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 1.0
+
+        set_count = add_props(values=["John", "Jane"])(Metrics.COUNT_IN_SET.value)
+        res = (
+            Profiler(set_count, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 2.0
