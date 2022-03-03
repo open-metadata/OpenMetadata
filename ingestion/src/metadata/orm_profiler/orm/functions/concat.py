@@ -33,6 +33,7 @@ def _(element, compiler, **kw):
     return "CONCAT(%s)" % compiler.process(element.clauses, **kw)
 
 
+@compiles(ConcatFn, DatabaseServiceType.Redshift.value.lower())
 @compiles(ConcatFn, DatabaseServiceType.SQLite.value.lower())
 def _(element, compiler, **kw):
     """
