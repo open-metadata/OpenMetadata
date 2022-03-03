@@ -320,7 +320,7 @@ public class MessagingServiceResource {
       @Valid CreateMessagingService update)
       throws IOException, ParseException {
     MessagingService service = getService(update, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(service));
+    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(service));
     PutResponse<MessagingService> response = dao.createOrUpdate(uriInfo, service, true);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
