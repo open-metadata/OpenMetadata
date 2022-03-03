@@ -240,19 +240,19 @@ class DatabaseCommon(Database):
 
     def is_text(self, column_type: Type[types.TypeEngine]):
         for sql_type in _text_types:
-            if isinstance(column_type, sql_type):
+            if isinstance(column_type, type(sql_type)):
                 return True
         return False
 
     def is_number(self, column_type: Type[types.TypeEngine]):
         for sql_type in _numeric_types:
-            if isinstance(column_type, sql_type):
+            if isinstance(column_type, type(sql_type)):
                 return True
         return False
 
     def is_time(self, column_type: Type[types.TypeEngine]):
         for sql_type in _time_types:
-            if isinstance(column_type, sql_type):
+            if isinstance(column_type, type(sql_type)):
                 return True
         return False
 
