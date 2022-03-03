@@ -1,5 +1,6 @@
-apache-airflow==2.2.3
+apache-airflow==2.2.4
 apache-airflow-providers-ftp==2.0.1
 apache-airflow-providers-http==2.0.2
 apache-airflow-providers-imap==2.1.0
 apache-airflow-providers-sqlite==2.0.1
+wtforms>=3.0.0a1 # not directly required, pinned by Snyk to avoid a vulnerability
