@@ -16,7 +16,7 @@ import { Post } from 'Models';
 import { CreateThread } from '../generated/api/feed/createThread';
 import APIClient from './index';
 import { FeedFilter } from '../enums/mydata.enum';
-import { isUndefined } from "lodash";
+import { isUndefined } from 'lodash';
 
 export const getAllFeeds: Function = (
   entityLink?: string
