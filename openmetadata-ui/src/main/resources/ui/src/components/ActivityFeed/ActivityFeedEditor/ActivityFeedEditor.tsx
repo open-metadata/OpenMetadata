@@ -79,7 +79,6 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
             )}
             disabled={editorValue.length === 0}
             size="custom"
-            // theme={editorValue.length > 0 ? 'primary' : 'default'}
             variant="text"
             onClick={onSaveHandler}>
             <SVGIcons
