@@ -311,7 +311,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             'tags',
             entityFieldThreadCount
           )}
+          entityFqn={topicFQN}
           entityName={entityName}
+          entityType={EntityType.TOPIC}
           extraInfo={extraInfo}
           followHandler={followTopic}
           followers={followersCount}

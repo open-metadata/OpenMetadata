@@ -520,6 +520,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       'columns',
                       entityFieldThreadCount
                     )}
+                    entityFqn={datasetFQN}
                     hasEditAccess={hasEditAccess()}
                     isReadOnly={deleted}
                     joins={tableJoinData.columnJoins as ColumnJoins[]}

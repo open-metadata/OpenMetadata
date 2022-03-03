@@ -15,6 +15,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React from 'react';
 import { EntityReference } from '../generated/entity/teams/user';
+import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -22,7 +23,10 @@ export const getFieldThreadElement = (
   columnName: string,
   columnField: string,
   entityFieldThreads: EntityFieldThreads[],
-  onThreadLinkSelect?: (value: string) => void
+  onThreadLinkSelect?: (value: string) => void,
+  entityType?: string,
+  entityFqn?: string,
+  entityField?: string
 ) => {
   let threadValue: EntityFieldThreads = {} as EntityFieldThreads;
 
@@ -44,7 +48,19 @@ export const getFieldThreadElement = (
       <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
       {threadValue.count}
     </p>
-  ) : null;
+  ) : (
+    <p
+      className="tw-text-right link-text tw-text-base"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onThreadLinkSelect?.(
+          getEntityFeedLink(entityType, entityFqn, entityField)
+        );
+      }}>
+      <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />+
+    </p>
+  );
 };
 
 export const getDefaultValue = (owner: EntityReference) => {

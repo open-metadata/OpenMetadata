@@ -20,7 +20,7 @@ import { Operation } from '../../../generated/entity/policies/accessControl/rule
 import { User } from '../../../generated/entity/teams/user';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
-import { getInfoElements } from '../../../utils/EntityUtils';
+import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getFollowerDetail } from '../../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
@@ -46,6 +46,8 @@ type Props = {
   hasEditAccess?: boolean;
   followersList: Array<User>;
   entityName: string;
+  entityType?: string;
+  entityFqn?: string;
   version?: string;
   isVersionSelected?: boolean;
   entityFieldThreads?: EntityFieldThreads[];
@@ -75,6 +77,8 @@ const EntityPageInfo = ({
   versionHandler,
   entityFieldThreads,
   onThreadLinkSelect,
+  entityFqn,
+  entityType,
 }: Props) => {
   const tagThread = entityFieldThreads?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
@@ -412,7 +416,17 @@ const EntityPageInfo = ({
                 <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
                 {tagThread.count}
               </p>
-            ) : null}
+            ) : (
+              <p
+                className="link-text tw-text-base tw-ml-2"
+                onClick={() =>
+                  onThreadLinkSelect?.(
+                    getEntityFeedLink(entityType, entityFqn, 'tags')
+                  )
+                }>
+                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />+
+              </p>
+            )}
           </Fragment>
         )}
       </div>

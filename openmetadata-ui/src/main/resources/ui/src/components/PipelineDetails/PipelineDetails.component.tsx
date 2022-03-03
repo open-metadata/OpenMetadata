@@ -313,7 +313,9 @@ const PipelineDetails = ({
               'tags',
               entityFieldThreadCount
             )}
+            entityFqn={pipelineFQN}
             entityName={entityName}
+            entityType={EntityType.PIPELINE}
             extraInfo={extraInfo}
             followHandler={followPipeline}
             followers={followersCount}
@@ -440,7 +442,10 @@ const PipelineDetails = ({
                                           'tasks',
                                           entityFieldThreadCount
                                         ) as EntityFieldThreads[],
-                                        onThreadLinkSelect
+                                        onThreadLinkSelect,
+                                        EntityType.PIPELINE,
+                                        pipelineFQN,
+                                        `tasks/${task.name}/descrsiption`
                                       )}
                                     </Fragment>
                                   )}

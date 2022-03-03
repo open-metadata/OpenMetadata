@@ -18,6 +18,7 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
 import { getTableDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   Column,
   ColumnJoins,
@@ -54,6 +55,7 @@ type Props = {
   columnName: string;
   hasEditAccess: boolean;
   isReadOnly?: boolean;
+  entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   onUpdate?: (columns: Table['columns']) => void;
   onThreadLinkSelect?: (value: string) => void;
@@ -71,6 +73,7 @@ const EntityTable = ({
   isReadOnly = false,
   onThreadLinkSelect,
   onEntityFieldSelect,
+  entityFqn,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -467,7 +470,10 @@ const EntityTable = ({
                                 cell.row.cells[0].value,
                                 'tags',
                                 entityFieldThreads as EntityFieldThreads[],
-                                onThreadLinkSelect
+                                onThreadLinkSelect,
+                                EntityType.TABLE,
+                                entityFqn,
+                                `columns/${cell.row.cells[0].value}/tags`
                               )}
                             </div>
                           )}
@@ -541,7 +547,10 @@ const EntityTable = ({
                                     cell.row.cells[0].value,
                                     'description',
                                     entityFieldThreads as EntityFieldThreads[],
-                                    onThreadLinkSelect
+                                    onThreadLinkSelect,
+                                    EntityType.TABLE,
+                                    entityFqn,
+                                    `columns/${cell.row.cells[0].value}/description`
                                   )}
                                 </Fragment>
                               ) : null}

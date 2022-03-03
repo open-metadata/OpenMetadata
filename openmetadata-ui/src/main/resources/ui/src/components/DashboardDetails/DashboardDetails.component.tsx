@@ -367,7 +367,9 @@ const DashboardDetails = ({
               'tags',
               entityFieldThreadCount
             )}
+            entityFqn={dashboardFQN}
             entityName={entityName}
+            entityType={EntityType.DASHBOARD}
             extraInfo={extraInfo}
             followHandler={followDashboard}
             followers={followersCount}

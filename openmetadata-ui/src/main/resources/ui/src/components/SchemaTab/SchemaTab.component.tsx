@@ -30,6 +30,7 @@ type Props = {
   columnName: string;
   hasEditAccess?: boolean;
   isReadOnly?: boolean;
+  entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
@@ -47,6 +48,7 @@ const SchemaTab: FunctionComponent<Props> = ({
   onThreadLinkSelect,
   onEntityFieldSelect,
   isReadOnly = false,
+  entityFqn,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -72,6 +74,7 @@ const SchemaTab: FunctionComponent<Props> = ({
             <EntityTable
               columnName={columnName}
               entityFieldThreads={entityFieldThreads}
+              entityFqn={entityFqn}
               hasEditAccess={Boolean(hasEditAccess)}
               isReadOnly={isReadOnly}
               joins={joins}
