@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -27,10 +29,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -81,7 +81,7 @@ public class GlossaryResource {
   private final Authorizer authorizer;
 
   public static List<Glossary> addHref(UriInfo uriInfo, List<Glossary> glossaries) {
-    Optional.ofNullable(glossaries).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(glossaries).forEach(i -> addHref(uriInfo, i));
     return glossaries;
   }
 

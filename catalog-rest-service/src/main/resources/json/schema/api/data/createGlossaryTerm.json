@@ -32,17 +32,16 @@
         "$ref": "../../entity/data/glossaryTerm.json#/definitions/name"
       }
     },
-    "children": {
-      "description": "Other glossary terms that are children of this glossary term.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
-    },
     "relatedTerms": {
       "description": "Other glossary terms that are related to this glossary term.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "references": {
       "description": "Link to a reference from an external glossary.",
-      "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
+      }
     },
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",

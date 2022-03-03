@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -27,10 +29,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
@@ -163,7 +163,7 @@ public class UserResource {
     } else { // Forward paging or first page
       users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after, include);
     }
-    Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
+    listOrEmpty(users.getData()).forEach(u -> addHref(uriInfo, u));
     return users;
   }
 

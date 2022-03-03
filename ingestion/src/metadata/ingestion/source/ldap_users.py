@@ -82,12 +82,12 @@ class LdapUsersSource(Source[OMetaUserProfile]):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def next_record(self) -> Iterable[CreateUserRequest]:
+    def next_record(self) -> Iterable[OMetaUserProfile]:
         for user in self.users:
             user_metadata = CreateUserRequest(
-                email=user["attributes"]["mail"],
-                displayName=user["attributes"]["cn"],
-                name=user["attributes"]["givenName"],
+                email=user["attributes"]["mail"][0],
+                displayName=user["attributes"]["cn"][0],
+                name=user["attributes"]["givenName"][0],
             )
             self.status.scanned(user_metadata.name)
             yield OMetaUserProfile(user=user_metadata)

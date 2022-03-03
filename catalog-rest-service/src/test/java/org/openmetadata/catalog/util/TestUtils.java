@@ -19,14 +19,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonObject;
@@ -227,21 +226,21 @@ public final class TestUtils {
   }
 
   public static void validateEntityReferences(List<EntityReference> list) {
-    Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(TestUtils::validateEntityReference);
+    listOrEmpty(list).forEach(TestUtils::validateEntityReference);
   }
 
   public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList) throws HttpResponseException {
     if (expectedList == null) {
       return;
     }
-    actualList = Optional.ofNullable(actualList).orElse(Collections.emptyList());
+    actualList = listOrEmpty(actualList);
     // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
     // So add to the expectedList, the derived tags before validating the tags
     List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
     for (TagLabel expected : expectedList) {
       Tag tag = TagResourceTest.getTag(expected.getTagFQN(), ADMIN_AUTH_HEADERS);
       List<TagLabel> derived = new ArrayList<>();
-      for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
+      for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
         Tag associatedTag = TagResourceTest.getTag(fqn, ADMIN_AUTH_HEADERS);
         derived.add(
             new TagLabel()

@@ -36,6 +36,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -46,7 +47,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -684,7 +684,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     super.validateDeletedEntity(create, userBeforeDeletion, userAfterDeletion, authHeaders);
 
     List<EntityReference> expectedOwnedEntities = new ArrayList<>();
-    for (EntityReference ref : Optional.ofNullable(userBeforeDeletion.getOwns()).orElse(Collections.emptyList())) {
+    for (EntityReference ref : listOrEmpty(userBeforeDeletion.getOwns())) {
       expectedOwnedEntities.add(new EntityReference().withId(ref.getId()).withType(Entity.TABLE));
     }
 
@@ -703,7 +703,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(createRequest.getIsAdmin(), user.getIsAdmin());
 
     List<EntityReference> expectedRoles = new ArrayList<>();
-    for (UUID roleId : Optional.ofNullable(createRequest.getRoles()).orElse(Collections.emptyList())) {
+    for (UUID roleId : listOrEmpty(createRequest.getRoles())) {
       expectedRoles.add(new EntityReference().withId(roleId).withType(Entity.ROLE));
     }
     if (expectedRoles.isEmpty()) {
@@ -714,7 +714,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     }
 
     List<EntityReference> expectedTeams = new ArrayList<>();
-    for (UUID teamId : Optional.ofNullable(createRequest.getTeams()).orElse(Collections.emptyList())) {
+    for (UUID teamId : listOrEmpty(createRequest.getTeams())) {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
     TestUtils.assertEntityReferenceList(expectedTeams, user.getTeams());
@@ -743,8 +743,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   private void compareEntityReferenceLists(List<EntityReference> expected, List<EntityReference> updated) {
-    List<EntityReference> expectedList = Optional.ofNullable(expected).orElse(Collections.emptyList());
-    List<EntityReference> updatedList = new ArrayList<>(Optional.ofNullable(updated).orElse(Collections.emptyList()));
+    List<EntityReference> expectedList = listOrEmpty(expected);
+    List<EntityReference> updatedList = new ArrayList<>(listOrEmpty(updated));
 
     updatedList.forEach(TestUtils::validateEntityReference);
     expectedList.sort(EntityUtil.compareEntityReference);
