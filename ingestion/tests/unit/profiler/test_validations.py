@@ -25,6 +25,7 @@ from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
 )
+from metadata.generated.schema.tests.table.tableColumnCountToEqual import TableColumnCountToEqual
 from metadata.generated.schema.tests.table.tableRowCountToBeBetween import TableRowCountToBeBetween
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
@@ -129,6 +130,55 @@ def test_table_row_count_to_be_between():
         executionTime=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result="rowCount should not be None for TableRowCountToBeBetween",
+    )
+
+
+def test_table_column_count_to_equal():
+    """
+    Check TableRowCountToEqual
+    """
+    table_profile = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        columnCount=5,
+    )
+
+    res_ok = validate(
+        TableColumnCountToEqual(value=5),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result="Found 5.0 columns vs. the expected 5",
+    )
+
+    res_ko = validate(
+        TableColumnCountToEqual(value=20),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Found 5.0 columns vs. the expected 20",
+    )
+
+    table_profile_aborted = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+    )
+
+    res_aborted = validate(
+        TableColumnCountToEqual(value=5),
+        table_profile=table_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result="columnCount should not be None for TableColumnCountToEqual",
     )
 
 
