@@ -146,8 +146,10 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, topicDetails.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Object updatedCount = webDriver.findElements(topicDetails.breadCrumbTags());
+    Thread.sleep(2000);
+    Object updatedCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
     } else {
@@ -175,6 +177,7 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
+    Thread.sleep(2000);
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");

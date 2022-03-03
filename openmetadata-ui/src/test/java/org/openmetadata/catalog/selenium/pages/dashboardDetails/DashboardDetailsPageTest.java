@@ -174,8 +174,8 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
-    String checkDescription = webDriver.findElement(dashboardDetails.dashboardDescriptionBox()).getText();
+    Thread.sleep(2000);
+    String checkDescription = webDriver.findElement(dashboardDetails.descriptionBox()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {

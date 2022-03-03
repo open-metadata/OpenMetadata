@@ -211,7 +211,7 @@ class Explore {
   @Order(7)
   void checkLastUpdatedSort() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    String sendKeys = "Description Added";
+    String sendKeys = "Updated Description";
     openExplorePage();
     // Adding description to check last updated sort
     Events.click(webDriver, explorePage.selectTable());
@@ -219,9 +219,11 @@ class Explore {
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
+    Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());
     Events.click(webDriver, explorePage.lastWeekSortDesc());
     Events.click(webDriver, explorePage.lastWeekSortAesc());
+    Thread.sleep(2000);
     WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
     Assert.assertEquals(sendKeys, descriptionCheck.getText());
   }
