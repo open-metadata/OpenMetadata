@@ -409,7 +409,7 @@ const EntityPageInfo = ({
               <p
                 className="tw-text-right link-text tw-ml-1 tw-text-base"
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-                <SVGIcons alt="comments" icon={Icons.COMMENT} width="18px" />{' '}
+                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
                 {tagThread.count}
               </p>
             ) : null}

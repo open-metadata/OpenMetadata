@@ -41,7 +41,7 @@ export const getFieldThreadElement = (
         e.stopPropagation();
         onThreadLinkSelect?.(threadValue.entityLink);
       }}>
-      <SVGIcons alt="comments" icon={Icons.COMMENT} width="18px" />{' '}
+      <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
       {threadValue.count}
     </p>
   ) : null;

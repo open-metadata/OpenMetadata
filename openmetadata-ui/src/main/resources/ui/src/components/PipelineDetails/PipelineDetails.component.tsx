@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { EntityFieldThreads, EntityTags } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
@@ -406,37 +406,39 @@ const PipelineDetails = ({
                                         No description added
                                       </span>
                                     )}
-                                    {getFieldThreadElement(
-                                      task.name,
-                                      'description',
-                                      getEntityFieldThreadCounts(
-                                        'tasks',
-                                        entityFieldThreadCount
-                                      ) as EntityFieldThreads[],
-                                      onThreadLinkSelect
-                                    )}
                                   </div>
                                   {!deleted && (
-                                    <NonAdminAction
-                                      html={getHtmlForNonAdminAction(
-                                        Boolean(owner)
+                                    <Fragment>
+                                      <NonAdminAction
+                                        html={getHtmlForNonAdminAction(
+                                          Boolean(owner)
+                                        )}
+                                        isOwner={hasEditAccess()}
+                                        permission={Operation.UpdateDescription}
+                                        position="top">
+                                        <button
+                                          className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                          onClick={() =>
+                                            handleUpdateTask(task, index)
+                                          }>
+                                          <SVGIcons
+                                            alt="edit"
+                                            icon="icon-edit"
+                                            title="Edit"
+                                            width="10px"
+                                          />
+                                        </button>
+                                      </NonAdminAction>
+                                      {getFieldThreadElement(
+                                        task.name,
+                                        'description',
+                                        getEntityFieldThreadCounts(
+                                          'tasks',
+                                          entityFieldThreadCount
+                                        ) as EntityFieldThreads[],
+                                        onThreadLinkSelect
                                       )}
-                                      isOwner={hasEditAccess()}
-                                      permission={Operation.UpdateDescription}
-                                      position="top">
-                                      <button
-                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        onClick={() =>
-                                          handleUpdateTask(task, index)
-                                        }>
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="10px"
-                                        />
-                                      </button>
-                                    </NonAdminAction>
+                                    </Fragment>
                                   )}
                                 </div>
                               </td>

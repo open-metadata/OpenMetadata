@@ -91,16 +91,6 @@ const Description = ({
                 ) : null}
               </span>
             )}
-            {!isUndefined(descriptionThread) ? (
-              <p
-                className="tw-text-right link-text tw-text-base"
-                onClick={() =>
-                  onThreadLinkSelect?.(descriptionThread.entityLink)
-                }>
-                <SVGIcons alt="comments" icon={Icons.COMMENT} width="18px" />{' '}
-                {descriptionThread.count}{' '}
-              </p>
-            ) : null}
           </div>
           {isEdit && (
             <ModalWithMarkdownEditor
@@ -115,7 +105,7 @@ const Description = ({
         {!isReadOnly ? (
           <div
             className={classNames(
-              'tw-w-5 tw-min-w-max',
+              'tw-w-5 tw-min-w-max tw-flex',
               description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
             )}>
             <NonAdminAction
@@ -135,6 +125,16 @@ const Description = ({
                 />
               </button>
             </NonAdminAction>
+            {!isUndefined(descriptionThread) ? (
+              <p
+                className="link-text tw-text-base tw-ml-2"
+                onClick={() =>
+                  onThreadLinkSelect?.(descriptionThread.entityLink)
+                }>
+                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
+                {descriptionThread.count}{' '}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

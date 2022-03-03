@@ -509,12 +509,6 @@ const EntityTable = ({
                                     ) : null}
                                   </span>
                                 )}
-                                {getFieldThreadElement(
-                                  cell.row.cells[0].value,
-                                  'description',
-                                  entityFieldThreads as EntityFieldThreads[],
-                                  onThreadLinkSelect
-                                )}
                               </div>
                               {!isReadOnly ? (
                                 <Fragment>
@@ -543,6 +537,12 @@ const EntityTable = ({
                                       />
                                     </button>
                                   </NonAdminAction>
+                                  {getFieldThreadElement(
+                                    cell.row.cells[0].value,
+                                    'description',
+                                    entityFieldThreads as EntityFieldThreads[],
+                                    onThreadLinkSelect
+                                  )}
                                 </Fragment>
                               ) : null}
                             </div>
