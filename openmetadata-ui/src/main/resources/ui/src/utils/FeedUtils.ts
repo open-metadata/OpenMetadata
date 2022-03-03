@@ -79,11 +79,15 @@ export const HTMLToMarkdown = new TurndownService({
     },
   });
 
-export const getReplyText = (count: number) => {
+export const getReplyText = (
+  count: number,
+  singular?: string,
+  plural?: string
+) => {
   if (count === 0) return 'Reply in thread';
-  if (count === 1) return `${count} Reply`;
+  if (count === 1) return `${count} ${singular ? singular : 'Reply'}`;
 
-  return `${count} older replies`;
+  return `${count} ${plural ? plural : 'older replies'}`;
 };
 
 export const getEntityFieldThreadCounts = (

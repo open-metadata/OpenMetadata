@@ -28,6 +28,7 @@ import { CreateThread } from '../../../generated/api/feed/createThread';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
+  getReplyText,
 } from '../../../utils/FeedUtils';
 import ActivityFeedCard, {
   FeedFooter,
@@ -184,7 +185,8 @@ const ActivityThread: FC<ActivityThreadProp> = ({
         {repliesLength > 0 ? (
           <Fragment>
             <div className="tw-mb-3 tw-flex">
-              <span className="tw-flex-auto tw-self-center">
+              <span>{getReplyText(repliesLength, 'reply', 'replies')}</span>
+              <span className="tw-flex-auto tw-self-center tw-ml-1.5">
                 <hr />
               </span>
             </div>
