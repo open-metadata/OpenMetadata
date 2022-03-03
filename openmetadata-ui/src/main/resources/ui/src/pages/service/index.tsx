@@ -57,6 +57,7 @@ import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
+import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import Tags from '../../components/tags/tags';
 import {
@@ -90,6 +91,7 @@ import {
   isEven,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
+import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import {
   getCurrentServiceTab,
@@ -145,6 +147,14 @@ const ServicePage: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -978,6 +988,7 @@ const ServicePage: FunctionComponent = () => {
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
                 onDescriptionUpdate={onDescriptionUpdate}
+                onEntityFieldSelect={onEntityFieldSelect}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
             </div>
@@ -1135,6 +1146,21 @@ const ServicePage: FunctionComponent = () => {
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
                 onCancel={onThreadPanelClose}
+              />
+            ) : null}
+            {selectedField ? (
+              <RequestDescriptionModal
+                createThread={createThread}
+                defaultValue={getDefaultValue(
+                  serviceDetails?.owner as EntityReference
+                )}
+                header="Request description"
+                threadLink={getEntityFeedLink(
+                  serviceCategory.slice(0, -1),
+                  serviceFQN,
+                  selectedField
+                )}
+                onCancel={closeRequestModal}
               />
             ) : null}
           </div>

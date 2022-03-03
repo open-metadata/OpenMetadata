@@ -48,6 +48,7 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
+import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import Tags from '../../components/tags/tags';
 import {
   getDatabaseDetailsPath,
@@ -62,6 +63,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
+import { EntityReference } from '../../generated/entity/teams/user';
 import useToastContext from '../../hooks/useToastContext';
 import {
   getEntityMissingError,
@@ -73,6 +75,7 @@ import {
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
+import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
@@ -114,6 +117,7 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [selectedField, setSelectedField] = useState<string>('');
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -207,6 +211,13 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const onThreadPanelClose = () => {
     setThreadLink('');
+  };
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
   };
 
   const getEntityFeedCount = () => {
@@ -502,6 +513,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
                 onDescriptionUpdate={onDescriptionUpdate}
+                onEntityFieldSelect={onEntityFieldSelect}
                 onThreadLinkSelect={onThreadLinkSelect}
               />
             </div>
@@ -683,6 +695,21 @@ const DatabaseDetails: FunctionComponent = () => {
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
                 onCancel={onThreadPanelClose}
+              />
+            ) : null}
+            {selectedField ? (
+              <RequestDescriptionModal
+                createThread={createThread}
+                defaultValue={getDefaultValue(
+                  database?.owner as EntityReference
+                )}
+                header="Request description"
+                threadLink={getEntityFeedLink(
+                  EntityType.DATABASE,
+                  databaseFQN,
+                  selectedField
+                )}
+                onCancel={closeRequestModal}
               />
             ) : null}
           </div>
