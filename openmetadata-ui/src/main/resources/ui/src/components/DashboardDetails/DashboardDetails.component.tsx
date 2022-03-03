@@ -20,7 +20,7 @@ import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -29,6 +29,8 @@ import {
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
@@ -44,6 +46,7 @@ import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
@@ -104,6 +107,14 @@ const DashboardDetails = ({
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -414,6 +425,7 @@ const DashboardDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
+                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -579,6 +591,19 @@ const DashboardDetails = ({
                       postFeedHandler={postFeedHandler}
                       threadLink={threadLink}
                       onCancel={onThreadPanelClose}
+                    />
+                  ) : null}
+                  {selectedField ? (
+                    <RequestDescriptionModal
+                      createThread={createThread}
+                      defaultValue={getDefaultValue(owner as EntityReference)}
+                      header="Request description"
+                      threadLink={getEntityFeedLink(
+                        EntityType.DASHBOARD,
+                        dashboardFQN,
+                        selectedField
+                      )}
+                      onCancel={closeRequestModal}
                     />
                   ) : null}
                 </>

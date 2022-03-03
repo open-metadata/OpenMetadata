@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isNil } from 'lodash';
 import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -20,7 +21,7 @@ import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -29,7 +30,11 @@ import {
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
-import { getFieldThreadElement } from '../../utils/FeedElementUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import {
+  getDefaultValue,
+  getFieldThreadElement,
+} from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
@@ -44,6 +49,7 @@ import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
@@ -96,6 +102,15 @@ const PipelineDetails = ({
   }>();
 
   const [threadLink, setThreadLink] = useState<string>('');
+
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
 
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
@@ -359,6 +374,7 @@ const PipelineDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
+                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -410,6 +426,28 @@ const PipelineDetails = ({
                                     ) : (
                                       <span className="tw-no-description">
                                         No description added
+                                        {!isNil(
+                                          getFieldThreadElement(
+                                            task.name,
+                                            'description',
+                                            getEntityFieldThreadCounts(
+                                              'tasks',
+                                              entityFieldThreadCount
+                                            ) as EntityFieldThreads[],
+                                            onThreadLinkSelect
+                                          )
+                                        ) && onEntityFieldSelect ? (
+                                          <button
+                                            className="focus:tw-outline-none tw-underline"
+                                            data-testid="request-description"
+                                            onClick={() =>
+                                              onEntityFieldSelect?.(
+                                                `tasks/${task.name}/description`
+                                              )
+                                            }>
+                                            request description
+                                          </button>
+                                        ) : null}
                                       </span>
                                     )}
                                   </div>
@@ -471,6 +509,19 @@ const PipelineDetails = ({
                       postFeedHandler={postFeedHandler}
                       threadLink={threadLink}
                       onCancel={onThreadPanelClose}
+                    />
+                  ) : null}
+                  {selectedField ? (
+                    <RequestDescriptionModal
+                      createThread={createThread}
+                      defaultValue={getDefaultValue(owner as EntityReference)}
+                      header="Request description"
+                      threadLink={getEntityFeedLink(
+                        EntityType.PIPELINE,
+                        pipelineFQN,
+                        selectedField
+                      )}
+                      onCancel={closeRequestModal}
                     />
                   ) : null}
                 </>

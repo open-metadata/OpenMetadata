@@ -13,7 +13,7 @@
 
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { EntityReference } from '../generated/entity/teams/user';
 import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
@@ -49,17 +49,21 @@ export const getFieldThreadElement = (
       {threadValue.count}
     </p>
   ) : (
-    <p
-      className="tw-text-right link-text "
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onThreadLinkSelect?.(
-          getEntityFeedLink(entityType, entityFqn, entityField)
-        );
-      }}>
-      <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />+
-    </p>
+    <Fragment>
+      {entityType && entityFqn && entityField ? (
+        <p
+          className="tw-text-right link-text "
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onThreadLinkSelect?.(
+              getEntityFeedLink(entityType, entityFqn, entityField)
+            );
+          }}>
+          <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />+
+        </p>
+      ) : null}
+    </Fragment>
   );
 };
 

@@ -16,10 +16,12 @@ import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
@@ -30,6 +32,7 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
+import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
 
@@ -73,6 +76,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
+
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -357,6 +369,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       onCancel={onCancel}
                       onDescriptionEdit={onDescriptionEdit}
                       onDescriptionUpdate={onDescriptionUpdate}
+                      onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                     />
                   </div>
@@ -372,6 +385,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     postFeedHandler={postFeedHandler}
                     threadLink={threadLink}
                     onCancel={onThreadPanelClose}
+                  />
+                ) : null}
+                {selectedField ? (
+                  <RequestDescriptionModal
+                    createThread={createThread}
+                    defaultValue={getDefaultValue(owner as EntityReference)}
+                    header="Request description"
+                    threadLink={getEntityFeedLink(
+                      EntityType.TOPIC,
+                      topicFQN,
+                      selectedField
+                    )}
+                    onCancel={closeRequestModal}
                   />
                 ) : null}
               </>
