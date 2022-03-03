@@ -36,6 +36,6 @@ class LikeCount(StaticMetric):
     def fn(self):
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Like Count requires an expression to be set: Metrics.LIKE_COUNT(col, expression=...)"
+                "Like Count requires an expression to be set: add_props(expression=...)(Metrics.LIKE_COUNT)"
             )
         return func.count(self.col.like(self.expression))
