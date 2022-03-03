@@ -218,7 +218,11 @@ class DatabaseCommon(Database):
     def __init__(self, config: SQLConnectionConfig):
         self.config = config
         self.connection_string = self.config.get_connection_url()
-        self.engine = create_engine(self.connection_string, **self.config.options)
+        self.engine = create_engine(
+            self.connection_string,
+            **self.config.options,
+            connect_args=self.config.connect_args,
+        )
         self.connection = self.engine.raw_connection()
         self.inspector = inspect(self.engine)
 
