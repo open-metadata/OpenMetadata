@@ -132,7 +132,7 @@ const Description = ({
             </NonAdminAction>
             {!isUndefined(descriptionThread) ? (
               <p
-                className="link-text tw-text-base tw-ml-2"
+                className="link-text  tw-ml-2"
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
                 }>
@@ -141,7 +141,7 @@ const Description = ({
               </p>
             ) : (
               <p
-                className="link-text tw-text-base tw-ml-2"
+                className="link-text  tw-ml-2"
                 onClick={() =>
                   onThreadLinkSelect?.(
                     getEntityFeedLink(entityType, entityFqn, 'description')

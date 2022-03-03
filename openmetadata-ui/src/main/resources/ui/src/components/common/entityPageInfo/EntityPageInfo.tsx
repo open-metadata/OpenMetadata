@@ -411,14 +411,14 @@ const EntityPageInfo = ({
             </NonAdminAction>
             {!isUndefined(tagThread) ? (
               <p
-                className="tw-text-right link-text tw-ml-1 tw-text-base"
+                className="tw-text-right link-text tw-ml-1 "
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
                 <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
                 {tagThread.count}
               </p>
             ) : (
               <p
-                className="link-text tw-text-base tw-ml-2"
+                className="link-text  tw-ml-2"
                 onClick={() =>
                   onThreadLinkSelect?.(
                     getEntityFeedLink(entityType, entityFqn, 'tags')

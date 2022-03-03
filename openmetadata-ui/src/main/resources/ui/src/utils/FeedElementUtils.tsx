@@ -39,7 +39,7 @@ export const getFieldThreadElement = (
 
   return !isEmpty(threadValue) ? (
     <p
-      className="tw-text-right link-text tw-text-base"
+      className="tw-text-right link-text "
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -50,7 +50,7 @@ export const getFieldThreadElement = (
     </p>
   ) : (
     <p
-      className="tw-text-right link-text tw-text-base"
+      className="tw-text-right link-text "
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
