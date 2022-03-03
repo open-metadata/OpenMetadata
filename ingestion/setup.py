@@ -183,7 +183,11 @@ setup(
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(
-                *[requirements for plugin, requirements in plugins.items()]
+                *[
+                    requirements
+                    for plugin, requirements in plugins.items()
+                    if plugin != "db2"
+                ]
             )
         ),
     },
