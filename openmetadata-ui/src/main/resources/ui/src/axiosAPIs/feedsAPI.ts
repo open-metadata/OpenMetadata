@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Post } from 'Models';
 import { CreateThread } from '../generated/api/feed/createThread';
 import APIClient from './index';
+import { FeedFilter } from '../enums/mydata.enum';
 
 export const getAllFeeds: Function = (
   entityLink?: string
@@ -24,6 +25,26 @@ export const getAllFeeds: Function = (
       entityLink: entityLink,
     },
   });
+};
+
+export const getFeedsWithFilter: Function = (
+  userId?: string,
+  filterType?: FeedFilter
+): Promise<AxiosResponse> => {
+  let config = {};
+  if (typeof userId != 'undefined' && userId) {
+    // if filter type is ALL, then skip the config
+    if (filterType != FeedFilter.ALL) {
+      config = {
+        params: {
+          userId,
+          filterType,
+        },
+      };
+    }
+  }
+
+  return APIClient.get(`/feed`, config);
 };
 
 export const getFeedCount: Function = (

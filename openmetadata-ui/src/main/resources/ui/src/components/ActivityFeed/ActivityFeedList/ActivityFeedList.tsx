@@ -23,7 +23,6 @@ import React, {
 } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import Onboarding from '../../onboarding/Onboarding';
 import ActivityFeedCard, {
   FeedFooter,
 } from '../ActivityFeedCard/ActivityFeedCard';
@@ -61,9 +60,11 @@ export const FeedListSeparator: FC<FeedListSeparatorProp> = ({
     <div className={className}>
       <div className="tw-flex tw-justify-center">
         <hr className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0" />
-        <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
-          {relativeDay}
-        </span>
+        {relativeDay ? (
+          <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
+            {relativeDay}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -254,7 +255,13 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </Fragment>
       ) : (
-        <Onboarding />
+        <Fragment>
+          <FeedListSeparator
+            className="tw-relative tw-mt-1 tw-mb-3.5 tw-pb-5"
+            relativeDay=""
+          />
+          <>No conversations found. Try changing the filter.</>
+        </Fragment>
       )}
     </div>
   );
