@@ -40,13 +40,17 @@ import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
+import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 
@@ -68,6 +72,12 @@ public final class TestUtils {
   public static final DatabaseConnection DATABASE_CONNECTION;
   public static URI DASHBOARD_URL;
   public static URI PIPELINE_URL;
+
+  public static String FINANCE_TEAM_USER_NAME = "finance-team-user";
+  public static User FINANCE_TEAM_USER;
+  public static final String FINANCE_TEAM_POLICY_NAME = "FinanceTeamAccessControlPolicy";
+  public static String FINANCE_TEAM_NAME = "finance-team";
+  public static Team FINANCE_TEAM;
 
   public enum UpdateType {
     CREATED, // Not updated instead entity was created
@@ -286,6 +296,30 @@ public final class TestUtils {
     } else if (updateType == UpdateType.MAJOR_UPDATE) {
       assertEquals(EntityUtil.nextMajorVersion(previousVersion), newVersion); // Major version change
     }
+  }
+
+  /** Set up Finance team with one user and a team access control policy. */
+  public static void setUpFinanceTeam() throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    FINANCE_TEAM =
+        teamResourceTest.createEntity(
+            teamResourceTest.createRequest(FINANCE_TEAM_NAME, FINANCE_TEAM_NAME, FINANCE_TEAM_NAME, null),
+            ADMIN_AUTH_HEADERS);
+
+    UserResourceTest userResourceTest = new UserResourceTest();
+    FINANCE_TEAM_USER =
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest(FINANCE_TEAM_USER_NAME, FINANCE_TEAM_USER_NAME, FINANCE_TEAM_USER_NAME, null)
+                .withTeams(List.of(FINANCE_TEAM.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    policyResourceTest.createEntity(
+        policyResourceTest
+            .createRequest(FINANCE_TEAM_POLICY_NAME, FINANCE_TEAM_POLICY_NAME, FINANCE_TEAM_POLICY_NAME, null)
+            .withPolicyType(PolicyType.AccessControl),
+        ADMIN_AUTH_HEADERS);
   }
 
   public static void assertEntityReferenceList(List<EntityReference> expected, List<EntityReference> actual) {

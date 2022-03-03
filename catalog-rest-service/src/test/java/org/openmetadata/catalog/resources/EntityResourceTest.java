@@ -128,6 +128,7 @@ import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.security.Permissions;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
@@ -138,7 +139,6 @@ import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
@@ -168,12 +168,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
-
-  public static String FINANCE_TEAM_USER_NAME = "finance-team-user";
-  public static User FINANCE_TEAM_USER;
-  public static final String FINANCE_TEAM_POLICY_NAME = "FinanceTeamAccessControlPolicy";
-  public static String FINANCE_TEAM_NAME = "finance-team";
-  public static Team FINANCE_TEAM;
 
   public static User TEST_USER;
   public static User USER1;
@@ -297,7 +291,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     ROLE1_REFERENCE = new RoleEntityInterface(ROLE1).getEntityReference();
 
-    setUpFinanceTeam();
+    TestUtils.setUpFinanceTeam();
 
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
@@ -411,30 +405,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
   }
 
-  /** Set up Finance team with one user and a team access control policy. */
-  private void setUpFinanceTeam() throws HttpResponseException {
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    FINANCE_TEAM =
-        teamResourceTest.createEntity(
-            teamResourceTest.createRequest(FINANCE_TEAM_NAME, FINANCE_TEAM_NAME, FINANCE_TEAM_NAME, null),
-            ADMIN_AUTH_HEADERS);
-
-    UserResourceTest userResourceTest = new UserResourceTest();
-    FINANCE_TEAM_USER =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest(FINANCE_TEAM_USER_NAME, FINANCE_TEAM_USER_NAME, FINANCE_TEAM_USER_NAME, null)
-                .withTeams(List.of(FINANCE_TEAM.getId())),
-            ADMIN_AUTH_HEADERS);
-
-    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
-    policyResourceTest.createEntity(
-        policyResourceTest
-            .createRequest(FINANCE_TEAM_POLICY_NAME, FINANCE_TEAM_POLICY_NAME, FINANCE_TEAM_POLICY_NAME, null)
-            .withPolicyType(PolicyType.AccessControl),
-        ADMIN_AUTH_HEADERS);
-  }
-
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
     Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
     return new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
@@ -544,8 +514,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             + ".*"; // Build regex dynamically for test.
     Rule rule =
         new Rule() // User who is part of Finance team can ViewMetadata for given fqn regex.
-            .withName(FINANCE_TEAM_POLICY_NAME + "-ViewMetadata")
-            .withUserTeamAttr(FINANCE_TEAM_NAME)
+            .withName(TestUtils.FINANCE_TEAM_POLICY_NAME + "-ViewMetadata")
+            .withUserTeamAttr(TestUtils.FINANCE_TEAM_NAME)
             .withAllow(true)
             .withOperation(MetadataOperation.ViewMetadata)
             .withEntityFqnRegexAttr(fqnRegex);
@@ -553,23 +523,42 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     rules.add(rule);
 
     Policy financeTeamPolicy =
-        policyResourceTest.getEntityByName(FINANCE_TEAM_POLICY_NAME, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
+        policyResourceTest.getEntityByName(
+            TestUtils.FINANCE_TEAM_POLICY_NAME, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
     String originalFinanceTeamPolicy = JsonUtils.pojoToJson(financeTeamPolicy);
     financeTeamPolicy.setRules(rules);
     policyResourceTest.patchEntity(
         financeTeamPolicy.getId(), originalFinanceTeamPolicy, financeTeamPolicy, ADMIN_AUTH_HEADERS);
 
     // Ensure Finance team user can read metadata.
-    getEntity(entityInterface.getId(), allFields, authHeaders(FINANCE_TEAM_USER_NAME));
-    getEntityByName(entityInterface.getFullyQualifiedName(), allFields, authHeaders(FINANCE_TEAM_USER_NAME));
+    WebTarget target =
+        getResource("permissions")
+            .queryParam("entityType", Entity.TABLE)
+            .queryParam("entityId", entityInterface.getId());
+    Permissions permissions = TestUtils.get(target, Permissions.class, authHeaders(TestUtils.FINANCE_TEAM_USER_NAME));
+    assertTrue(permissions.getMetadataOperations().get(MetadataOperation.ViewMetadata));
+    getEntity(entityInterface.getId(), allFields, authHeaders(TestUtils.FINANCE_TEAM_USER_NAME));
+    getEntityByName(entityInterface.getFullyQualifiedName(), allFields, authHeaders(TestUtils.FINANCE_TEAM_USER_NAME));
+    getVersion(entityInterface.getId(), entityInterface.getVersion(), authHeaders(TestUtils.FINANCE_TEAM_USER_NAME));
+    getVersionList(entityInterface.getId(), authHeaders(TestUtils.FINANCE_TEAM_USER_NAME));
 
     // Ensure Test user that is not part of Finance team cannot read metadata.
+    permissions = TestUtils.get(target, Permissions.class, TEST_AUTH_HEADERS);
+    assertFalse(permissions.getMetadataOperations().get(MetadataOperation.ViewMetadata));
     assertResponse(
         () -> getEntity(entityInterface.getId(), allFields, TEST_AUTH_HEADERS),
         FORBIDDEN,
         noPermission(TEST_USER_NAME, "ViewMetadata"));
     assertResponse(
         () -> getEntityByName(entityInterface.getFullyQualifiedName(), allFields, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        noPermission(TEST_USER_NAME, "ViewMetadata"));
+    assertResponse(
+        () -> getVersion(entityInterface.getId(), entityInterface.getVersion(), TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        noPermission(TEST_USER_NAME, "ViewMetadata"));
+    assertResponse(
+        () -> getVersionList(entityInterface.getId(), TEST_AUTH_HEADERS),
         FORBIDDEN,
         noPermission(TEST_USER_NAME, "ViewMetadata"));
 

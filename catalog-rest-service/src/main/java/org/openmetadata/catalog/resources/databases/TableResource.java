@@ -279,6 +279,12 @@ public class TableResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "table Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
+    Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS, Include.ALL);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer,
+        securityContext,
+        new TableRepository.TableEntityInterface(table).getEntityReference(),
+        MetadataOperation.ViewMetadata);
     return dao.listVersions(id);
   }
 
@@ -307,6 +313,12 @@ public class TableResource {
           @PathParam("version")
           String version)
       throws IOException, ParseException {
+    Table table = dao.get(uriInfo, id, Fields.EMPTY_FIELDS, Include.ALL);
+    SecurityUtil.checkAdminRoleOrPermissions(
+        authorizer,
+        securityContext,
+        new TableRepository.TableEntityInterface(table).getEntityReference(),
+        MetadataOperation.ViewMetadata);
     return dao.getVersion(id, version);
   }
 
