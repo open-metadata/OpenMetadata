@@ -135,7 +135,7 @@ public class SearchResource {
       sortOrder = SortOrder.ASC;
     }
     // add deleted flag
-    query += " AND deleted:" + deleted;
+    // query += " AND deleted:" + deleted;
     switch (index) {
       case "topic_search_index":
         searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
@@ -155,7 +155,7 @@ public class SearchResource {
       case "team_search_index":
         searchSourceBuilder = buildTeamSearchBuilder(query, from, size);
         break;
-      case "glossary_term_search_index":
+      case "glossary_search_index":
         searchSourceBuilder = buildGlossaryTermSearchBuilder(query, from, size);
         break;
       default:
@@ -347,7 +347,7 @@ public class SearchResource {
 
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("description").lenient(true);
+        QueryBuilders.queryStringQuery(query).field("name", 5.0f).field("display_name", 3.0f).lenient(true);
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field("name");
     highlightGlossaryName.highlighterType("unified");
@@ -358,12 +358,7 @@ public class SearchResource {
     hb.field(highlightGlossaryName);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder
-        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-        .highlighter(hb);
 
-    return searchSourceBuilder;
+    return searchBuilder(queryBuilder, hb, from, size);
   }
 }

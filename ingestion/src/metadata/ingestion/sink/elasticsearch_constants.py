@@ -496,6 +496,9 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "glossary_id": {
             "type": "keyword"
         },
+        "deleted": {
+            "type": "boolean"
+        },
         "status": {
             "type": "keyword"
         },
