@@ -586,6 +586,7 @@ const DashboardDetails = ({
                     isEntityFeed
                     withSidePanel
                     className=""
+                    entityName={entityName}
                     feedList={entityThread}
                     isLoading={isentityThreadLoading}
                     postFeedHandler={postFeedHandler}

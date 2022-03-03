@@ -653,6 +653,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       isEntityFeed
                       withSidePanel
                       className=""
+                      entityName={databaseName}
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
                       postFeedHandler={postFeedHandler}

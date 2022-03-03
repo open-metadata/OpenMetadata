@@ -1067,6 +1067,7 @@ const ServicePage: FunctionComponent = () => {
                       isEntityFeed
                       withSidePanel
                       className=""
+                      entityName={serviceFQN}
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
                       postFeedHandler={postFeedHandler}

@@ -473,6 +473,7 @@ const PipelineDetails = ({
                     isEntityFeed
                     withSidePanel
                     className=""
+                    entityName={entityName}
                     feedList={entityThread}
                     isLoading={isentityThreadLoading}
                     postFeedHandler={postFeedHandler}

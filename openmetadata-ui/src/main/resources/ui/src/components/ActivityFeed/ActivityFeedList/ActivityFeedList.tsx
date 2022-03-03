@@ -23,17 +23,18 @@ import React, {
 } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import Onboarding from '../../onboarding/Onboarding';
 import ActivityFeedCard, {
   FeedFooter,
 } from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
+import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
 
 interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: EntityThread[];
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
+  entityName?: string;
   postFeedHandler?: (value: string, id: string) => void;
 }
 interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
@@ -164,6 +165,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   withSidePanel = false,
   isEntityFeed = false,
   postFeedHandler,
+  entityName,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
@@ -254,7 +256,9 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </Fragment>
       ) : (
-        <Onboarding />
+        <Fragment>
+          {entityName ? <NoFeedPlaceholder entityName={entityName} /> : null}
+        </Fragment>
       )}
     </div>
   );
