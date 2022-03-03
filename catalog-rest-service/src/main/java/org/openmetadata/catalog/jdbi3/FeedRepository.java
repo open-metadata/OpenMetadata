@@ -80,7 +80,7 @@ public class FeedRepository {
     EntityReference owner = helper(aboutRef).getOwnerOrNull();
 
     // Add entity id to thread
-    thread.withEntityId(aboutRef.getId().toString());
+    thread.withEntityId(aboutRef.getId());
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
