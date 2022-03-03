@@ -16,7 +16,9 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.table.tableColumnCountToEqual import TableColumnCountToEqual
+from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
+    TableColumnCountToEqual,
+)
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
@@ -52,7 +54,9 @@ def table_column_count_to_equal(
         if table_profile.columnCount == test_case.value
         else TestCaseStatus.Failed
     )
-    result = f"Found {table_profile.columnCount} columns vs. the expected {test_case.value}"
+    result = (
+        f"Found {table_profile.columnCount} columns vs. the expected {test_case.value}"
+    )
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result

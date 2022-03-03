@@ -16,7 +16,9 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.table.tableRowCountToBeBetween import TableRowCountToBeBetween
+from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
+    TableRowCountToBeBetween,
+)
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
