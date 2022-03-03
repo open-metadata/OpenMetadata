@@ -32,7 +32,7 @@ import {
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
   getDataTypeString,
@@ -487,7 +487,26 @@ const EntityTable = ({
                                   />
                                 ) : (
                                   <span className="tw-no-description">
-                                    No description added
+                                    No description added{' '}
+                                    {isNil(
+                                      getFieldThreadElement(
+                                        cell.row.cells[0].value,
+                                        'description',
+                                        entityFieldThreads as EntityFieldThreads[],
+                                        onThreadLinkSelect
+                                      )
+                                    ) ? (
+                                      <button
+                                        className="focus:tw-outline-none tw-underline"
+                                        data-testid="request-description"
+                                        onClick={() =>
+                                          onEntityFieldSelect?.(
+                                            `columns/${cell.row.cells[0].value}/description`
+                                          )
+                                        }>
+                                        request description
+                                      </button>
+                                    ) : null}
                                   </span>
                                 )}
                                 {getFieldThreadElement(
@@ -524,30 +543,6 @@ const EntityTable = ({
                                       />
                                     </button>
                                   </NonAdminAction>
-                                  {!cell.value &&
-                                  isNil(
-                                    getFieldThreadElement(
-                                      cell.row.cells[0].value,
-                                      'description',
-                                      entityFieldThreads as EntityFieldThreads[],
-                                      onThreadLinkSelect
-                                    )
-                                  ) ? (
-                                    <button
-                                      className="focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
-                                      data-testid="request-description"
-                                      onClick={() => {
-                                        onEntityFieldSelect?.(
-                                          `columns/${cell.row.cells[0].value}/description`
-                                        );
-                                      }}>
-                                      <SVGIcons
-                                        alt="description"
-                                        icon={Icons.DESCRIPTION}
-                                        width="16px"
-                                      />
-                                    </button>
-                                  ) : null}
                                 </Fragment>
                               ) : null}
                             </div>

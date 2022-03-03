@@ -80,7 +80,15 @@ const Description = ({
               />
             ) : (
               <span className="tw-no-description tw-p-2">
-                No description added
+                No description added{' '}
+                {isUndefined(descriptionThread) && onEntityFieldSelect ? (
+                  <button
+                    className="focus:tw-outline-none tw-underline"
+                    data-testid="request-description"
+                    onClick={() => onEntityFieldSelect?.('description')}>
+                    request description
+                  </button>
+                ) : null}
               </span>
             )}
             {!isUndefined(descriptionThread) ? (
@@ -127,20 +135,6 @@ const Description = ({
                 />
               </button>
             </NonAdminAction>
-            {!description?.trim() &&
-            isUndefined(descriptionThread) &&
-            onEntityFieldSelect ? (
-              <button
-                className="focus:tw-outline-none tw-ml-2"
-                data-testid="request-description"
-                onClick={() => onEntityFieldSelect?.('description')}>
-                <SVGIcons
-                  alt="description"
-                  icon={Icons.DESCRIPTION}
-                  width="16px"
-                />
-              </button>
-            ) : null}
           </div>
         ) : null}
       </div>
