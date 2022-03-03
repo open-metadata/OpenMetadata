@@ -15,21 +15,28 @@ package org.openmetadata.catalog.resources.permissions;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
 import lombok.NonNull;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.Permissions;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityReference;
+
+import java.io.IOException;
+import java.util.UUID;
 
 @Path("/v1/permissions")
 @Api(value = "Get permissions")
@@ -53,7 +60,19 @@ public class PermissionsResource {
             description = "Permissions for logged in user",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Permissions.class)))
       })
-  public Permissions getPermissions(@Context SecurityContext securityContext) {
-    return new Permissions(authorizer.listPermissions(SecurityUtil.getAuthenticationContext(securityContext), null));
+  public Permissions getPermissions(
+          @Context SecurityContext securityContext,
+          @Parameter(
+                  description = "Type of the entity to be accessed",
+                  schema = @Schema(type = "string", example = Entity.TABLE))
+              @QueryParam("entityType") String entityType,
+          @Parameter(
+                  description = "Id of the entity to be accessed",
+                  schema = @Schema(type = "string", example = "5a4f1d92-0549-4c3e-8921-a782b78b52ca"))
+          @QueryParam("entityId") String entityId
+          ) throws IOException {
+    EntityReference entityReference = (entityType != null && entityId != null) ?
+            Entity.getEntityReferenceById(entityType, UUID.fromString(entityId)): null;
+    return new Permissions(authorizer.listPermissions(SecurityUtil.getAuthenticationContext(securityContext), entityReference));
   }
 }
