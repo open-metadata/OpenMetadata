@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.tags;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,10 +24,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.regex.Pattern;
 import javax.validation.Valid;
 import javax.ws.rs.GET;
@@ -473,7 +473,7 @@ public class TagResource {
   }
 
   private void addHref(URI parentHref, List<Tag> tags) {
-    for (Tag tag : Optional.ofNullable(tags).orElse(Collections.emptyList())) {
+    for (Tag tag : listOrEmpty(tags)) {
       addHref(parentHref, tag);
     }
   }

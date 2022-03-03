@@ -80,6 +80,7 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
@@ -105,6 +106,10 @@ import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
+import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
+import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
@@ -160,6 +165,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   public static User USER1;
   public static EntityReference USER_OWNER1;
+  public static User USER2;
+  public static EntityReference USER_OWNER2;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
   public static User USER_WITH_DATA_STEWARD_ROLE;
@@ -242,12 +249,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER1 = userResourceTest.createEntity(userResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType(Entity.USER);
+    USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
+
+    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    USER_OWNER2 = new UserEntityInterface(USER2).getEntityReference();
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     DATA_STEWARD_ROLE =
         roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_STEWARD_ROLE_REFERENCE = new EntityReference().withId(DATA_STEWARD_ROLE.getId()).withType(Entity.ROLE);
+    DATA_STEWARD_ROLE_REFERENCE = new RoleEntityInterface(DATA_STEWARD_ROLE).getEntityReference();
     USER_WITH_DATA_STEWARD_ROLE =
         userResourceTest.createEntity(
             userResourceTest
@@ -256,7 +266,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_ROLE =
         roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_ROLE_REFERENCE = new EntityReference().withId(DATA_CONSUMER_ROLE.getId()).withType(Entity.ROLE);
+    DATA_CONSUMER_ROLE_REFERENCE = new RoleEntityInterface(DATA_CONSUMER_ROLE).getEntityReference();
     USER_WITH_DATA_CONSUMER_ROLE =
         userResourceTest.createEntity(
             userResourceTest
@@ -266,10 +276,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType(Entity.TEAM);
+    TEAM_OWNER1 = new TeamEntityInterface(TEAM1).getEntityReference();
 
     ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    ROLE1_REFERENCE = new EntityReference().withId(ROLE1.getId()).withType("role");
+    ROLE1_REFERENCE = new RoleEntityInterface(ROLE1).getEntityReference();
 
     // Create snowflake database service
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
@@ -280,11 +290,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
     DatabaseService databaseService =
         new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    SNOWFLAKE_REFERENCE =
-        new EntityReference()
-            .withName(databaseService.getName())
-            .withId(databaseService.getId())
-            .withType(Entity.DATABASE_SERVICE);
+    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
@@ -339,14 +345,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     CreateStorageService createService =
         new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
     StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    AWS_STORAGE_SERVICE_REFERENCE =
-        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
+    AWS_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
 
     // Create GCP storage service, GCS
     createService.withName("gs").withServiceType(StorageServiceType.GCS);
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    GCP_STORAGE_SERVICE_REFERENCE =
-        new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
+    GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
 
     USER_ADDRESS_TAG_LABEL = getTagLabel("User.Address");
     USER_BANK_ACCOUNT_TAG_LABEL = getTagLabel("User.BankAccount");
@@ -1149,7 +1153,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
-    entityInterface.setOwner(TEAM_OWNER1); // Get rid of href and name in the response for owner
 
     //
     // Replace description, add tags tier, owner
@@ -1182,8 +1185,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
-
-    entityInterface.setOwner(USER_OWNER1); // Get rid of href and name in the response for owner
 
     //
     // Remove description, tier, owner
@@ -1960,6 +1961,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     for (String expected : expectedList) {
       String actual = actualList.stream().filter(a -> EntityUtil.stringMatch.test(a, expected)).findAny().orElse(null);
       assertNotNull(actual, "Expected string " + expected + " not found");
+    }
+  }
+
+  protected void assertTermReferences(List<TermReference> expectedList, List<TermReference> actualList) {
+    for (TermReference expected : expectedList) {
+      TermReference actual =
+          actualList.stream().filter(a -> EntityUtil.termReferenceMatch.test(a, expected)).findAny().orElse(null);
+      assertNotNull(actual, "Expected termReference " + expected + " not found");
     }
   }
 
