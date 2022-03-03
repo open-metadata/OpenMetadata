@@ -61,7 +61,7 @@ export const FeedListSeparator: FC<FeedListSeparatorProp> = ({
     <div className={className}>
       <div className="tw-flex tw-justify-center">
         <hr className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0" />
-        <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-main tw-rounded tw-z-10 tw-text-grey-body tw-font-medium">
+        <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-grey-muted tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium">
           {relativeDay}
         </span>
       </div>
