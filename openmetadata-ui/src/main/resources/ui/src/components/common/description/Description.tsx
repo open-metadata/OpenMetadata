@@ -141,7 +141,7 @@ const Description = ({
               </p>
             ) : (
               <Fragment>
-                {description?.trim() ? (
+                {description?.trim() && onThreadLinkSelect ? (
                   <p
                     className="link-text  tw-ml-2"
                     onClick={() =>
