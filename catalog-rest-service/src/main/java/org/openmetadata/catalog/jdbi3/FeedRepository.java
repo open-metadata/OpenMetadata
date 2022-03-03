@@ -197,7 +197,7 @@ public class FeedRepository {
       EntityLink entityLink = EntityLink.parse(link);
       EntityReference reference = EntityUtil.validateEntityLink(entityLink);
       if (reference.getType().equals(Entity.USER)) {
-        List<String> threadIds = new ArrayList<>(getUserThreadIds(reference.getId().toString(), FilterType.OWNER));
+        List<String> threadIds = getThreadIdsByOwner(reference.getId().toString());
         result = dao.feedDAO().listCountByThreads(threadIds, isResolved);
       } else {
         result =
@@ -227,7 +227,8 @@ public class FeedRepository {
   }
 
   @Transaction
-  public List<Thread> listThreads(String link, int limitPosts, String userId, String filterType) throws IOException {
+  public List<Thread> listThreads(String link, int limitPosts, String userId, FilterType filterType)
+      throws IOException {
     List<Thread> threads = new ArrayList<>();
     if (link == null && userId == null) {
       // No filters are enabled. Listing all the threads
@@ -243,7 +244,7 @@ public class FeedRepository {
 
         // For a user entityLink get created or replied relationships to the thread
         if (reference.getType().equals(Entity.USER)) {
-          threadIds.addAll(getUserThreadIds(reference.getId().toString(), FilterType.OWNER));
+          threadIds.addAll(getThreadIdsByOwner(reference.getId().toString()));
         } else {
           // Only data assets are added as about
           result =
@@ -258,16 +259,14 @@ public class FeedRepository {
       }
 
       if (userId != null) {
-        // if filterType is null, use a default filter (OWNER)
-        FilterType filter = FilterType.OWNER;
-        if (filterType != null) {
-          try {
-            filter = FilterType.valueOf(filterType);
-          } catch (IllegalArgumentException ex) {
-            LOG.error("Unsupported Filter type passed as the query param.", ex);
-          }
+        List<String> userThreadIds;
+        if (filterType == FilterType.FOLLOWS) {
+          userThreadIds = getThreadIdsByFollows(userId);
+        } else if (filterType == FilterType.MENTIONS) {
+          userThreadIds = getThreadIdsByMentions(userId);
+        } else {
+          userThreadIds = getThreadIdsByOwner(userId);
         }
-        List<String> userThreadIds = getUserThreadIds(userId, filter);
 
         // if both link and user filters are enabled, the filters should be applied as "AND"
         if (!threadIds.isEmpty()) {
@@ -349,62 +348,45 @@ public class FeedRepository {
     return threads;
   }
 
-  private List<String> getUserThreadIds(String userId, FilterType filter) throws IOException {
+  private List<String> getThreadIdsByOwner(String userId) throws IOException {
     List<String> threadIds = new ArrayList<>();
-    switch (filter) {
-      case OWNER:
-        // add threads on user or team owned entities
-        List<String> teamIds =
-            dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM, false);
-        if (teamIds.isEmpty()) {
-          teamIds = List.of(StringUtils.EMPTY);
-        }
-        threadIds.addAll(dao.feedDAO().listUserThreadsFromER(userId, teamIds, Relationship.OWNS.ordinal()));
-
-        // add threads created by or replied to by the user
-        threadIds.addAll(
-            dao.relationshipDAO()
-                .findTo(
-                    userId,
-                    Entity.USER,
-                    Relationship.CREATED.ordinal(),
-                    Entity.THREAD,
-                    toBoolean(Include.NON_DELETED)));
-        threadIds.addAll(
-            dao.relationshipDAO()
-                .findTo(
-                    userId,
-                    Entity.USER,
-                    Relationship.REPLIED_TO.ordinal(),
-                    Entity.THREAD,
-                    toBoolean(Include.NON_DELETED)));
-        break;
-      case MENTIONS:
-        // user mention or team mentions
-        // find all the teams that the user belongs to
-        // and look for mentions in field relationship dao
-        List<EntityReference> teams =
-            EntityUtil.populateEntityReferences(
-                dao.relationshipDAO()
-                    .findFromEntity(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM, false));
-        List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
-        if (teamNames.isEmpty()) {
-          teamNames = List.of(StringUtils.EMPTY);
-        }
-        User user = dao.userDAO().findEntityById(UUID.fromString(userId));
-
-        // Get all the thread ids where the user or team was mentioned
-        threadIds.addAll(
-            dao.feedDAO()
-                .listUserThreadsFromFR(user.getName(), teamNames, Entity.THREAD, Relationship.MENTIONED_IN.ordinal()));
-        break;
-      case FOLLOWS:
-        threadIds.addAll(
-            dao.feedDAO().listUserThreadsFromER(userId, List.of(StringUtils.EMPTY), Relationship.FOLLOWS.ordinal()));
-        break;
-      default:
-        break;
+    // add threads on user or team owned entities
+    List<String> teamIds =
+        dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM, false);
+    if (teamIds.isEmpty()) {
+      teamIds = List.of(StringUtils.EMPTY);
     }
+    threadIds.addAll(dao.feedDAO().listUserThreadsFromER(userId, teamIds, Relationship.OWNS.ordinal()));
+
+    // add threads created by or replied to by the user
+    threadIds.addAll(
+        dao.relationshipDAO()
+            .findTo(
+                userId, Entity.USER, Relationship.CREATED.ordinal(), Entity.THREAD, toBoolean(Include.NON_DELETED)));
+    threadIds.addAll(
+        dao.relationshipDAO()
+            .findTo(
+                userId, Entity.USER, Relationship.REPLIED_TO.ordinal(), Entity.THREAD, toBoolean(Include.NON_DELETED)));
     return threadIds;
+  }
+
+  private List<String> getThreadIdsByMentions(String userId) throws IOException {
+    List<EntityReference> teams =
+        EntityUtil.populateEntityReferences(
+            dao.relationshipDAO().findFromEntity(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM, false));
+    List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+    if (teamNames.isEmpty()) {
+      teamNames = List.of(StringUtils.EMPTY);
+    }
+    User user = dao.userDAO().findEntityById(UUID.fromString(userId));
+
+    // Return all the thread ids where the user or team was mentioned
+    return new ArrayList<>(
+        dao.feedDAO()
+            .listUserThreadsFromFR(user.getName(), teamNames, Entity.THREAD, Relationship.MENTIONED_IN.ordinal()));
+  }
+
+  private List<String> getThreadIdsByFollows(String userId) throws IOException {
+    return dao.feedDAO().listUserThreadsFromER(userId, List.of(StringUtils.EMPTY), Relationship.FOLLOWS.ordinal());
   }
 }

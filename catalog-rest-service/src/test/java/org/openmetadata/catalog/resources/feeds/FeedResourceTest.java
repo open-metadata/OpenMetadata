@@ -31,6 +31,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -375,7 +376,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // THREAD is created with TABLE entity in BeforeAll
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getData().size();
     int user2ThreadCount =
-        listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER, AUTH_HEADERS).getData().size();
+        listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS).getData().size();
     String ownerId = TABLE.getOwner().getId().toString();
 
     // create another thread on an entity with a different owner
@@ -388,20 +389,20 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertNotNull(ownerId2);
     assertNotEquals(ownerId, ownerId2);
 
-    ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER, AUTH_HEADERS);
+    ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS);
     assertEquals(totalThreadCount, threads.getData().size());
 
     // This should return 0 since the table is owned by a team
     // and for the filter we are passing team id instead of user id
-    threads = listThreadsWithFilter(ownerId2, FilterType.OWNER, AUTH_HEADERS);
+    threads = listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), AUTH_HEADERS);
     assertEquals(0, threads.getData().size());
 
     // Now, test the filter with user who is part of the team
-    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER, AUTH_HEADERS);
+    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS);
     assertEquals(user2ThreadCount + 1, threads.getData().size());
 
     // Test if no user id  filter returns all threads
-    threads = listThreadsWithFilter(null, FilterType.OWNER, AUTH_HEADERS);
+    threads = listThreadsWithFilter(null, FilterType.OWNER.toString(), AUTH_HEADERS);
     assertEquals(totalThreadCount + 1, threads.getData().size());
   }
 
@@ -424,8 +425,16 @@ public class FeedResourceTest extends CatalogApplicationTest {
             ADMIN_AUTH_HEADERS);
     addPostAndCheck(thread, post, ADMIN_AUTH_HEADERS);
 
-    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS, AUTH_HEADERS);
+    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS.toString(), AUTH_HEADERS);
     assertEquals(2, threads.getData().size());
+  }
+
+  @Test
+  void list_threadsWithInvalidFilter() {
+    assertResponse(
+        () -> listThreadsWithFilter(USER.getId().toString(), "Invalid", AUTH_HEADERS),
+        BAD_REQUEST,
+        String.format("query param filterType must be one of %s", Arrays.toString(FilterType.values())));
   }
 
   @Test
@@ -508,7 +517,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
-  public static ThreadList listThreadsWithFilter(String userId, FilterType filterType, Map<String, String> authHeaders)
+  public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
     target = userId != null ? target.queryParam("userId", userId) : target;

@@ -16,6 +16,7 @@ import { Post } from 'Models';
 import { CreateThread } from '../generated/api/feed/createThread';
 import APIClient from './index';
 import { FeedFilter } from '../enums/mydata.enum';
+import { isUndefined } from "lodash";
 
 export const getAllFeeds: Function = (
   entityLink?: string
@@ -32,9 +33,9 @@ export const getFeedsWithFilter: Function = (
   filterType?: FeedFilter
 ): Promise<AxiosResponse> => {
   let config = {};
-  if (typeof userId != 'undefined' && userId) {
+  if (!isUndefined(userId)) {
     // if filter type is ALL, then skip the config
-    if (filterType != FeedFilter.ALL) {
+    if (filterType !== FeedFilter.ALL) {
       config = {
         params: {
           userId,

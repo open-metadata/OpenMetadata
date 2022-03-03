@@ -55,6 +55,7 @@ import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
+import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Post;
@@ -151,9 +152,9 @@ public class FeedResource {
       @Parameter(
               description =
                   "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
-              schema = @Schema(type = "string"))
+              schema = @Schema(implementation = FilterType.class))
           @QueryParam("filterType")
-          String filterType)
+          FilterType filterType)
       throws IOException {
     return new ThreadList(addHref(uriInfo, dao.listThreads(entityLink, limitPosts, userId, filterType)));
   }
