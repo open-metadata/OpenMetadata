@@ -17,7 +17,8 @@ export enum Ownership {
 }
 
 export enum FeedFilter {
-  ALL = 'all',
-  OWNED = 'owner',
-  FOLLOWING = 'followers',
+  ALL = 'ALL',
+  OWNER = 'OWNER',
+  FOLLOWS = 'FOLLOWS',
+  MENTIONS = 'MENTIONS',
 }

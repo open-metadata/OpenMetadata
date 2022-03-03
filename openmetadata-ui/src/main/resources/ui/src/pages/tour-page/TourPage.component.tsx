@@ -39,6 +39,7 @@ import {
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
+import { FeedFilter } from '../../enums/mydata.enum';
 
 const mockData = {
   data: { hits: { hits: [] } },
@@ -127,7 +128,7 @@ const TourPage = () => {
             }}
             error=""
             feedData={mockFeedData as unknown as MyDataProps['feedData']}
-            feedFilter="all"
+            feedFilter={FeedFilter.ALL}
             feedFilterHandler={() => {
               setMyDataSearchResult(mockData);
             }}

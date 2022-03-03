@@ -118,6 +118,12 @@ public final class MessageParser {
     }
 
     public static EntityLink parse(String link) {
+      // Entity links also have support for fallback texts with "|"
+      // example: <#E/user/user1|[@User One](http://localhost:8585/user/user1)>
+      // Extract the entity link alone if the string has a fallback text
+      if (link.contains("|")) {
+        link = link.substring(0, link.indexOf("|")) + ">";
+      }
       Matcher matcher = ENTITY_LINK_PATTERN.matcher(link);
       EntityLink entityLink = null;
       while (matcher.find()) {
@@ -201,9 +207,7 @@ public final class MessageParser {
     List<EntityLink> links = new ArrayList<>();
     Matcher matcher = ENTITY_LINK_PATTERN.matcher(message);
     while (matcher.find()) {
-      EntityLink link =
-          new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6), matcher.group(8));
-      links.add(link);
+      links.add(EntityLink.parse(matcher.group()));
     }
     return links;
   }
