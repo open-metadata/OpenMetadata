@@ -50,23 +50,21 @@ public final class ChangeEventParser {
       ChangeDescription changeDescription, Object entity, ChangeEvent changeEvent) {
     // Store a map of entityLink -> message
     Map<EntityLink, String> messages;
-    Double previousVersion = changeDescription.getPreviousVersion();
-    Double currentVersion = changeEvent.getCurrentVersion();
 
     List<FieldChange> fieldsUpdated = changeDescription.getFieldsUpdated();
-    messages = getFormattedMessages(entity, fieldsUpdated, CHANGE_TYPE.UPDATE, previousVersion, currentVersion);
+    messages = getFormattedMessages(entity, fieldsUpdated, CHANGE_TYPE.UPDATE);
 
     // fieldsAdded and fieldsDeleted need special handling since
     // there is a possibility to merge them as one update message.
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     List<FieldChange> fieldsDeleted = changeDescription.getFieldsDeleted();
-    messages.putAll(getFormattedMessages(entity, fieldsAdded, fieldsDeleted, previousVersion, currentVersion));
+    messages.putAll(getFormattedMessages(entity, fieldsAdded, fieldsDeleted));
 
     return messages;
   }
 
   private static Map<EntityLink, String> getFormattedMessages(
-      Object entity, List<FieldChange> fields, CHANGE_TYPE changeType, Double previousVersion, Double currentVersion) {
+      Object entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
     Map<EntityLink, String> messages = new HashMap<>();
 
     for (var field : fields) {
@@ -76,9 +74,7 @@ public final class ChangeEventParser {
       String newFieldValue = getFieldValue(field.getNewValue());
       String oldFieldValue = getFieldValue(field.getOldValue());
       EntityLink link = getEntityLink(fieldName, entity);
-      String message =
-          getFormattedMessage(
-              link, changeType, fieldName, oldFieldValue, newFieldValue, previousVersion, currentVersion);
+      String message = getFormattedMessage(link, changeType, fieldName, oldFieldValue, newFieldValue);
 
       messages.put(link, message);
     }
@@ -130,11 +126,7 @@ public final class ChangeEventParser {
    * @return A map of entity link -> formatted message.
    */
   private static Map<EntityLink, String> getFormattedMessages(
-      Object entity,
-      List<FieldChange> addedFields,
-      List<FieldChange> deletedFields,
-      Double previousVersion,
-      Double currentVersion) {
+      Object entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
     // Major schema version changes such as renaming a column from colA to colB
     // will be recorded as "Removed column colA" and "Added column colB"
     // This method will try to detect such changes and combine those events into one update.
@@ -144,9 +136,9 @@ public final class ChangeEventParser {
     // if there is only added fields or only deleted fields, we cannot merge
     if (addedFields.isEmpty() || deletedFields.isEmpty()) {
       if (!addedFields.isEmpty()) {
-        messages = getFormattedMessages(entity, addedFields, CHANGE_TYPE.ADD, previousVersion, currentVersion);
+        messages = getFormattedMessages(entity, addedFields, CHANGE_TYPE.ADD);
       } else if (!deletedFields.isEmpty()) {
-        messages = getFormattedMessages(entity, deletedFields, CHANGE_TYPE.DELETE, previousVersion, currentVersion);
+        messages = getFormattedMessages(entity, deletedFields, CHANGE_TYPE.DELETE);
       }
       return messages;
     }
@@ -159,26 +151,18 @@ public final class ChangeEventParser {
         // convert the added field and deleted field into one update message
         String message =
             getFormattedMessage(
-                link,
-                CHANGE_TYPE.UPDATE,
-                fieldName,
-                field.getOldValue(),
-                addedField.get().getNewValue(),
-                previousVersion,
-                currentVersion);
+                link, CHANGE_TYPE.UPDATE, fieldName, field.getOldValue(), addedField.get().getNewValue());
         messages.put(link, message);
         // Remove the field from addedFields list to avoid double processing
         addedFields = addedFields.stream().filter(f -> !f.equals(addedField.get())).collect(Collectors.toList());
       } else {
         // process the deleted field
-        messages.putAll(
-            getFormattedMessages(
-                entity, Collections.singletonList(field), CHANGE_TYPE.DELETE, previousVersion, currentVersion));
+        messages.putAll(getFormattedMessages(entity, Collections.singletonList(field), CHANGE_TYPE.DELETE));
       }
     }
     // process the remaining added fields
     if (!addedFields.isEmpty()) {
-      messages.putAll(getFormattedMessages(entity, addedFields, CHANGE_TYPE.ADD, previousVersion, currentVersion));
+      messages.putAll(getFormattedMessages(entity, addedFields, CHANGE_TYPE.ADD));
     }
     return messages;
   }
@@ -206,13 +190,7 @@ public final class ChangeEventParser {
   }
 
   private static String getFormattedMessage(
-      EntityLink link,
-      CHANGE_TYPE changeType,
-      String fieldName,
-      Object oldFieldValue,
-      Object newFieldValue,
-      Double previousVersion,
-      Double currentVersion) {
+      EntityLink link, CHANGE_TYPE changeType, String fieldName, Object oldFieldValue, Object newFieldValue) {
     String arrayFieldName = link.getArrayFieldName();
     String arrayFieldValue = link.getArrayFieldValue();
 
@@ -226,25 +204,16 @@ public final class ChangeEventParser {
 
     switch (changeType) {
       case ADD:
-        message = String.format("Added %s: `%s`", updatedField, getFieldValue(newFieldValue));
+        message = String.format("Added **%s**: `%s`", updatedField, getFieldValue(newFieldValue));
         break;
       case UPDATE:
         message = getUpdateMessage(updatedField, oldFieldValue, newFieldValue);
         break;
       case DELETE:
-        message = String.format("Deleted %s", updatedField);
+        message = String.format("Deleted **%s**", updatedField);
         break;
       default:
         break;
-    }
-    if (message != null) {
-      // Double subtraction gives strange results which cannot be relied upon.
-      // That is why using "> 0.9D" comparison instead of "== 1.0D"
-      double versionDiff = currentVersion - previousVersion;
-      String updateType = versionDiff > 0.9D ? "MAJOR" : "MINOR";
-      message =
-          String.format(
-              "%s <br/><br/> **Change Type:** *%s (%s -> %s)*", message, updateType, previousVersion, currentVersion);
     }
     return message;
   }
@@ -252,7 +221,7 @@ public final class ChangeEventParser {
   private static String getPlainTextUpdateMessage(String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(oldValue, newValue);
-    return String.format("Updated %s : `%s`", updatedField, diff);
+    return String.format("Updated **%s** : %s", updatedField, diff);
   }
 
   private static String getObjectUpdateMessage(String updatedField, JsonObject oldJson, JsonObject newJson) {
@@ -262,7 +231,7 @@ public final class ChangeEventParser {
     for (var key : keys) {
       if (!newJson.get(key).equals(oldJson.get(key))) {
         labels.add(
-            String.format("%s: `%s`", key, getPlaintextDiff(oldJson.get(key).toString(), newJson.get(key).toString())));
+            String.format("%s: %s", key, getPlaintextDiff(oldJson.get(key).toString(), newJson.get(key).toString())));
       }
     }
     String updates = String.join(" <br/> ", labels);
@@ -270,12 +239,12 @@ public final class ChangeEventParser {
     if (newJson.containsKey("name")) {
       updatedField = String.format("%s.%s", updatedField, newJson.getString("name"));
     }
-    return String.format("Updated %s : <br/> %s", updatedField, updates);
+    return String.format("Updated **%s** : <br/> %s", updatedField, updates);
   }
 
   private static String getUpdateMessage(String updatedField, Object oldValue, Object newValue) {
     if (oldValue == null || oldValue.toString().isEmpty()) {
-      return String.format("Updated %s to `%s`", updatedField, getFieldValue(newValue));
+      return String.format("Updated **%s** to %s", updatedField, getFieldValue(newValue));
     } else if (updatedField.contains("tags") || updatedField.contains("owner")) {
       return getPlainTextUpdateMessage(updatedField, getFieldValue(oldValue), getFieldValue(newValue));
     }

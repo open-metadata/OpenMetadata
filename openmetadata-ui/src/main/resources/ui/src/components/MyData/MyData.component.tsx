@@ -171,7 +171,7 @@ const MyData: React.FC<MyDataProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {feedData?.length > 0 ? (
+          {feedData?.length > 0 || feedFilter !== FeedFilter.ALL ? (
             <Fragment>
               {getFilterDropDown()}
               <ActivityFeedList

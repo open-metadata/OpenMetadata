@@ -30,7 +30,7 @@ export interface MyDataProps {
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
   feedData: EntityThread[];
-  feedFilter: string;
+  feedFilter: FeedFilter;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;

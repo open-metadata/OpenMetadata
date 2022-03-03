@@ -24,7 +24,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
-import { getAllFeeds, postFeedById } from '../../axiosAPIs/feedsAPI';
+import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -37,10 +37,7 @@ import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
-import {
-  getEntityCountByType,
-  getEntityFeedLink,
-} from '../../utils/EntityUtils';
+import { getEntityCountByType } from '../../utils/EntityUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 
@@ -130,9 +127,10 @@ const MyDataPage = () => {
     );
   };
 
-  const getFeedData = () => {
+  const getFeedData = (feedFilter: FeedFilter) => {
     setIsFeedLoading(true);
-    getAllFeeds(getEntityFeedLink('user', AppState.userDetails.name))
+    const currentUserId = AppState.userDetails?.id;
+    getFeedsWithFilter(currentUserId, feedFilter)
       .then((res: AxiosResponse) => {
         const { data } = res.data;
         setEntityThread(data);
@@ -140,7 +138,7 @@ const MyDataPage = () => {
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Error while fetching user feeds',
+          body: 'Error while fetching the Activity Feed',
         });
       })
       .finally(() => {
@@ -183,7 +181,7 @@ const MyDataPage = () => {
   }, []);
 
   useEffect(() => {
-    getFeedData();
+    getFeedData(feedFilter);
   }, [feedFilter]);
 
   useEffect(() => {

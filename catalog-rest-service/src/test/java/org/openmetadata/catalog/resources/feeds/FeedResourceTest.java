@@ -16,11 +16,14 @@ package org.openmetadata.catalog.resources.feeds;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -28,6 +31,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -48,15 +52,20 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
 import org.openmetadata.catalog.api.feed.ThreadCount;
+import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.feeds.FeedResource.PostList;
 import org.openmetadata.catalog.resources.feeds.FeedResource.ThreadList;
+import org.openmetadata.catalog.resources.teams.TeamResourceTest;
+import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -65,13 +74,16 @@ import org.openmetadata.catalog.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FeedResourceTest extends CatalogApplicationTest {
   public static Table TABLE;
+  public static Table TABLE2;
   public static String TABLE_LINK;
   public static String TABLE_COLUMN_LINK;
   public static String TABLE_DESCRIPTION_LINK;
   public static List<Column> COLUMNS;
   public static User USER;
+  public static User USER2;
   public static String USER_LINK;
   public static Team TEAM;
+  public static Team TEAM2;
   public static String TEAM_LINK;
   public static Thread THREAD;
   public static Map<String, String> AUTH_HEADERS;
@@ -80,8 +92,27 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
     TableResourceTest tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
+
+    UserResourceTest userResourceTest = new UserResourceTest();
+    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
+
     CreateTable createTable = tableResourceTest.createRequest(test);
+    createTable.withOwner(TableResourceTest.USER_OWNER1);
     TABLE = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam =
+        teamResourceTest
+            .createRequest(test, 2)
+            .withDisplayName("Team2")
+            .withDescription("Team2 description")
+            .withUsers(List.of(USER2.getId()));
+    TEAM2 = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
+    EntityReference TEAM2_REF = new EntityReference().withId(TEAM2.getId()).withType(Entity.TEAM);
+    CreateTable createTable2 = tableResourceTest.createRequest(test);
+    createTable2.withName("table2").withOwner(TEAM2_REF);
+    TABLE2 = tableResourceTest.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
+
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E/table/%s>", TABLE.getFullyQualifiedName());
     TABLE_COLUMN_LINK = String.format("<#E/table/%s/columns/c1/description>", TABLE.getFullyQualifiedName());
@@ -341,6 +372,72 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void list_threadsWithOwnerFilter() throws HttpResponseException {
+    // THREAD is created with TABLE entity in BeforeAll
+    int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getData().size();
+    int user2ThreadCount =
+        listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS).getData().size();
+    String ownerId = TABLE.getOwner().getId().toString();
+
+    // create another thread on an entity with a different owner
+    String ownerId2 = TABLE2.getOwner().getId().toString();
+    createAndCheck(
+        create().withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
+        ADMIN_AUTH_HEADERS);
+
+    assertNotNull(ownerId);
+    assertNotNull(ownerId2);
+    assertNotEquals(ownerId, ownerId2);
+
+    ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS);
+    assertEquals(totalThreadCount, threads.getData().size());
+
+    // This should return 0 since the table is owned by a team
+    // and for the filter we are passing team id instead of user id
+    threads = listThreadsWithFilter(ownerId2, FilterType.OWNER.toString(), AUTH_HEADERS);
+    assertEquals(0, threads.getData().size());
+
+    // Now, test the filter with user who is part of the team
+    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS);
+    assertEquals(user2ThreadCount + 1, threads.getData().size());
+
+    // Test if no user id  filter returns all threads
+    threads = listThreadsWithFilter(null, FilterType.OWNER.toString(), AUTH_HEADERS);
+    assertEquals(totalThreadCount + 1, threads.getData().size());
+  }
+
+  @Test
+  void list_threadsWithMentionsFilter() throws HttpResponseException {
+    // Create a thread with user mention
+    createAndCheck(
+        create()
+            .withMessage(String.format("Message mentions %s", USER_LINK))
+            .withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
+        ADMIN_AUTH_HEADERS);
+
+    // Create a thread that has user mention in a post
+    Post post = createPost(String.format("message mentions %s", USER_LINK));
+    Thread thread =
+        createAndCheck(
+            create()
+                .withMessage("Thread Message")
+                .withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+    addPostAndCheck(thread, post, ADMIN_AUTH_HEADERS);
+
+    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS.toString(), AUTH_HEADERS);
+    assertEquals(2, threads.getData().size());
+  }
+
+  @Test
+  void list_threadsWithInvalidFilter() {
+    assertResponse(
+        () -> listThreadsWithFilter(USER.getId().toString(), "Invalid", AUTH_HEADERS),
+        BAD_REQUEST,
+        String.format("query param filterType must be one of %s", Arrays.toString(FilterType.values())));
+  }
+
+  @Test
   void get_listPosts_404() {
     assertResponse(
         () -> listPosts(NON_EXISTENT_ENTITY.toString(), AUTH_HEADERS),
@@ -417,6 +514,14 @@ public class FeedResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("feed");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = limitPosts != null ? target.queryParam("limitPosts", limitPosts) : target;
+    return TestUtils.get(target, ThreadList.class, authHeaders);
+  }
+
+  public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("feed");
+    target = userId != null ? target.queryParam("userId", userId) : target;
+    target = filterType != null ? target.queryParam("filterType", filterType) : target;
     return TestUtils.get(target, ThreadList.class, authHeaders);
   }
 
