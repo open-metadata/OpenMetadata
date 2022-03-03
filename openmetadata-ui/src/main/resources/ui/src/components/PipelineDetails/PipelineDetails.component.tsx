@@ -445,7 +445,7 @@ const PipelineDetails = ({
                                         onThreadLinkSelect,
                                         EntityType.PIPELINE,
                                         pipelineFQN,
-                                        `tasks/${task.name}/descrsiption`
+                                        `tasks/${task.name}/description`
                                       )}
                                     </Fragment>
                                   )}
