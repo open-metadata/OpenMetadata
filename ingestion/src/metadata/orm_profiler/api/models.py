@@ -15,32 +15,25 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional
+from typing import Optional
 
-from pydantic import BaseModel
-
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import Table, TableProfile
-from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.profiles.models import ProfilerDef
-from metadata.orm_profiler.validations.models import TestDef
+from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 
-class WorkflowResult(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class ProfilerProcessorConfig(BaseModel):
+class ProfilerProcessorConfig(ConfigModel):
     """
     Defines how we read the processor information
     from the workflow JSON definition
     """
 
     profiler: Optional[ProfilerDef] = None
-    tests: Optional[TestDef] = None
+    test_suite: Optional[TestSuite] = None
 
 
-class ProfileAndTests(BaseModel):
+class ProfilerResponse(ConfigModel):
     """
     ORM Profiler processor response.
 
@@ -50,4 +43,4 @@ class ProfileAndTests(BaseModel):
 
     table: Table
     profile: TableProfile
-    tests: Optional[TestDef] = None
+    record_tests: Optional[TestDef] = None

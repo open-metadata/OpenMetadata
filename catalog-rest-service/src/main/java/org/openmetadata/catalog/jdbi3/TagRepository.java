@@ -13,14 +13,14 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -201,7 +201,7 @@ public class TagRepository {
     LOG.info("Added tag {}", tag.getFullyQualifiedName());
 
     // Then add the children
-    for (Tag children : Optional.ofNullable(tags).orElse(Collections.emptyList())) {
+    for (Tag children : listOrEmpty(tags)) {
       children.setChildren(null); // No children allowed for the leaf tag
       children.setFullyQualifiedName(children.getFullyQualifiedName() + "." + children.getName());
       LOG.info("Added tag {}", children.getFullyQualifiedName());
@@ -229,7 +229,7 @@ public class TagRepository {
 
     // Get tags under the given tag
     List<Tag> tagList = new ArrayList<>();
-    for (String json : Optional.ofNullable(tagJsons).orElse(Collections.emptyList())) {
+    for (String json : listOrEmpty(tagJsons)) {
       Tag childTag = setFields(JsonUtils.readValue(json, Tag.class), fields);
       tagList.add(populateChildrenTags(childTag, fields));
     }

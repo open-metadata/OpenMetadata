@@ -5855,6 +5855,66 @@
           "query": "select email from dim_staff",
           "duration": 0.294
         }
+      ],
+      "tableProfile": [
+        {
+          "profileDate": "2021-10-16",
+          "columnCount": 5,
+          "rowCount": 100,
+          "columnProfile": [
+            {
+              "name": "user_id",
+              "uniqueCount": 100.0,
+              "uniqueProportion": 1.0,
+              "nullCount": 0.0,
+              "nullProportion": 0.0,
+              "sum": 5050,
+              "min": 1,
+              "max": 100,
+              "mean": 50.5,
+              "stddev": 28.86607004772212
+            },
+            {
+              "name": "shop_id",
+              "uniqueCount": 100.0,
+              "uniqueProportion": 1.0,
+              "nullCount": 0.0,
+              "nullProportion": 0.0,
+              "sum": 5050,
+              "min": 1,
+              "max": 100,
+              "mean": 50.5,
+              "stddev": 28.86607004772212
+            },
+            {
+              "name": "first_name",
+              "uniqueCount": 79.0,
+              "uniqueProportion": 0.79,
+              "nullCount": 1,
+              "nullProportion": 0.01,
+              "minLength": 5,
+              "maxLength": 19
+            },
+            {
+              "name": "last_name",
+              "uniqueCount": 100.0,
+              "uniqueProportion": 1.0,
+              "nullCount": 0,
+              "nullProportion": 0.0,
+              "minLength": 7,
+              "maxLength": 15
+            },
+            {
+              "name": "email",
+              "uniqueCount": 100.0,
+              "uniqueProportion": 1.0,
+              "nullCount": 0,
+              "nullProportion": 0.0,
+              "minLength": 12,
+              "maxLength": 30
+            }
+          ]
+        }
       ]
     },
     {

@@ -8,111 +8,199 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Test that we can safely convert to validation
-and check results
-"""
-import operator as op
 
-import pytest
+"""
+Test Table and Column Tests' validate implementations.
 
-from metadata.orm_profiler.validations.core import (
-    Validation,
-    ValidationConversionException,
+Each test should validate the Success, Failure and Aborted statuses
+"""
+
+from datetime import datetime
+
+from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
+    ColumnValuesToBeBetween,
 )
-from metadata.orm_profiler.validations.grammar import ExpVisitor, parse
+from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
+    ColumnValuesToBeUnique,
+)
+from metadata.generated.schema.tests.table.tableRowCountToEqual import (
+    TableRowCountToEqual,
+)
+from metadata.orm_profiler.validations.core import validate
 
-visitor = ExpVisitor()
+EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 
 
-def test_model_conversion():
+def test_table_row_count_to_equal():
     """
-    Check that we can properly convert to a Validation model
+    Check TableRowCountToEqual
     """
-    raw_validation = parse("count == 100", visitor)[0]
-    model = Validation.create(raw_validation)
+    table_profile = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        rowCount=100,
+    )
 
-    assert model.metric == "valuesCount"
-    assert model.operator == op.eq
-    assert model.value == 100
+    res_ok = validate(
+        TableRowCountToEqual(value=100),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result="Found 100.0 rows vs. the expected 100",
+    )
 
-    raw_validation = parse("min > something", visitor)[0]
-    model = Validation.create(raw_validation)
+    res_ko = validate(
+        TableRowCountToEqual(value=50),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
 
-    assert model.metric == "min"
-    assert model.operator == op.gt
-    assert model.value == "something"
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Found 100.0 rows vs. the expected 50",
+    )
 
-    raw_validation = parse("null_ratio < 0.2", visitor)[0]
-    model = Validation.create(raw_validation)
+    table_profile_aborted = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+    )
 
-    assert model.metric == "nullProportion"
-    assert model.operator == op.lt
-    assert model.value == 0.2
+    res_aborted = validate(
+        TableRowCountToEqual(value=100),
+        table_profile=table_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
 
-    # This validation does not make sense, but we are just checking cases
-    raw_validation = parse("null_ratio >= 5.4", visitor)[0]
-    model = Validation.create(raw_validation)
-
-    assert model.metric == "nullProportion"
-    assert model.operator == op.ge
-    assert model.value == 5.4
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result="rowCount should not be None for TableRowCountToEqual",
+    )
 
 
-def test_model_conversion_exceptions():
+def test_column_values_to_be_between():
     """
-    Check that we cannot pass malformed data
+    Check ColumnValuesToBeBetween
     """
 
-    # No info at all
-    with pytest.raises(ValidationConversionException):
-        Validation.create({})
+    column_profile = ColumnProfile(
+        min=1,
+        max=3,
+    )
 
-    # Invalid metric, cannot be found in Registry
-    with pytest.raises(ValidationConversionException):
-        Validation.create({"metric": "not a valid metric"})
+    res_ok = validate(
+        ColumnValuesToBeBetween(
+            minValue=0,
+            maxValue=3,
+        ),
+        col_profile=column_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result="Found min=1.0, max=3.0 vs. the expected min=0, max=3.",
+    )
 
-    # Missing Operation key
-    with pytest.raises(ValidationConversionException):
-        Validation.create({"metric": "min"})
+    res_ko = validate(
+        ColumnValuesToBeBetween(
+            minValue=0,
+            maxValue=2,
+        ),
+        col_profile=column_profile,
+        execution_date=EXECUTION_DATE,
+    )
 
-    # Invalid Operation value
-    with pytest.raises(ValidationConversionException):
-        Validation.create({"metric": "min", "operation": "invalid operation"})
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Found min=1.0, max=3.0 vs. the expected min=0, max=2.",
+    )
 
-    # Missing value key
-    with pytest.raises(ValidationConversionException):
-        Validation.create({"metric": "min", "operation": "=="})
+    column_profile_aborted = ColumnProfile(
+        min=1,
+    )
 
-    # Empty value
-    with pytest.raises(ValidationConversionException):
-        Validation.create({"metric": "min", "operation": "==", "value": ""})
+    res_aborted = validate(
+        ColumnValuesToBeBetween(
+            minValue=0,
+            maxValue=3,
+        ),
+        col_profile=column_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result=(
+            "We expect `min` & `max` to be informed on the profiler for ColumnValuesToBeBetween"
+            + " but got min=1.0, max=None."
+        ),
+    )
 
 
-def test_validate():
+def test_column_values_to_be_unique():
     """
-    Make sure that we are properly flagging validation results
+    Check ColumnValuesToBeUnique
     """
-    results = {"valuesCount": 100}
 
-    raw_validation = parse("count == 100", visitor)[0]
-    validation = Validation.create(raw_validation)
+    column_profile = ColumnProfile(
+        valuesCount=10,
+        uniqueCount=10,
+    )
 
-    assert validation.validate(results).valid
+    res_ok = validate(
+        ColumnValuesToBeUnique(),
+        col_profile=column_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result=(
+            "Found valuesCount=10.0 vs. uniqueCount=10.0."
+            + " Both counts should be equal for column values to be unique."
+        ),
+    )
 
-    raw_validation = parse("count != 100", visitor)[0]
-    validation = Validation.create(raw_validation)
+    column_profile_ko = ColumnProfile(
+        valuesCount=10,
+        uniqueCount=5,
+    )
 
-    assert not validation.validate(results).valid
+    res_ko = validate(
+        ColumnValuesToBeUnique(),
+        col_profile=column_profile_ko,
+        execution_date=EXECUTION_DATE,
+    )
 
-    results = {"nullProportion": 0.2}
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result=(
+            "Found valuesCount=10.0 vs. uniqueCount=5.0."
+            + " Both counts should be equal for column values to be unique."
+        ),
+    )
 
-    raw_validation = parse("Null_Ratio < 0.3", visitor)[0]
-    validation = Validation.create(raw_validation)
+    column_profile_aborted = ColumnProfile()
 
-    assert validation.validate(results).valid
+    res_aborted = validate(
+        ColumnValuesToBeUnique(),
+        col_profile=column_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
 
-    raw_validation = parse("Null_Ratio >= 0.3", visitor)[0]
-    validation = Validation.create(raw_validation)
-
-    assert not validation.validate(results).valid
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result=(
+            "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
+            + " but got valuesCount=None, uniqueCount=None."
+        ),
+    )

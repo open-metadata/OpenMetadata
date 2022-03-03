@@ -10,137 +10,48 @@
 #  limitations under the License.
 
 """
-Core Validation definitions
+Core Validation definitions.
+
+In this module we define how to check specific test case
+behavior based on the computed metrics of the profiler.
+
+These functions should not raise an error, but rather
+mark the test as Failure/Aborted and pass a proper
+result string. The ORM Processor will be the one in charge
+of logging these issues.
 """
-import operator as op
-from typing import Any, Callable, Dict, Union
+from functools import singledispatch
 
-from pydantic import ValidationError
-
-from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.orm_profiler.utils import logger
+from metadata.orm_profiler.validations.column.column_values_to_be_between import (
+    column_values_to_be_between,
+)
+from metadata.orm_profiler.validations.column.column_values_to_be_unique import (
+    column_values_to_be_unique,
+)
+from metadata.orm_profiler.validations.table.table_row_count_to_equal import (
+    table_row_count_to_equal,
+)
 
 logger = logger()
 
 
-class ValidationConversionException(Exception):
+@singledispatch
+def validate(test_case, *args, **kwargs) -> TestCaseResult:
     """
-    Issue converting parser results to our Metrics and Validations
+    Default function to validate test cases.
+
+    Note that the first argument should be a positional argument.
     """
+    raise NotImplementedError(
+        f"Missing test case validation implementation for {type(test_case)}."
+    )
 
 
-class MissingMetricException(Exception):
-    """
-    The required Metric is not available in the profiler results
-    """
+# Table Tests
+validate.register(table_row_count_to_equal)
 
-
-_OPERATOR_MAP = {
-    "<": op.lt,
-    ">": op.gt,
-    "==": op.eq,
-    "!=": op.ne,
-    "<=": op.le,
-    ">=": op.ge,
-}
-
-
-class Validation:
-    """
-    Base class for Validation definition.
-
-    This data will be extracted from the TestDef expression.
-
-    We will map here the results from parsing with
-    the grammar.
-    """
-
-    def __init__(self, metric: str, operator: Callable, value: Union[float, int, str]):
-        self.metric = metric
-        self.operator = operator
-        self.value = value
-        self.valid = None
-        self.computed_metric = None
-
-    @classmethod
-    def create(cls, raw_validation: Dict[str, str]) -> "Validation":
-        """
-        Given the results of the grammar parser, convert
-        them to a Validation class with the assigned Metric,
-        the right operator and the casted value.
-        """
-
-        raw_metric = raw_validation.get("metric")
-        if not raw_metric:
-            raise ValidationConversionException(
-                f"Missing metric information in {raw_validation}."
-            )
-
-        metric = Metrics.get(raw_metric.upper())
-        if not metric:
-            logger.error("Error trying to get Metric from Registry.")
-            raise ValidationConversionException(
-                f"Cannot find metric from {raw_validation} in the Registry."
-            )
-
-        metric_name = metric.name()
-
-        operator = _OPERATOR_MAP.get(raw_validation.get("operation"))
-        if not operator:
-            logger.error("Invalid Operator when converting to validation.")
-            raise ValidationConversionException(
-                f"Cannot find operator from {raw_validation}."
-            )
-
-        raw_value = raw_validation.get("value")
-        if not raw_value:
-            logger.error("Missing or Empty value")
-            raise ValidationConversionException(
-                f"Missing or empty value in {raw_validation}."
-            )
-
-        if raw_value.isdigit():
-            value = int(raw_value)  # Check if int
-        else:
-            try:
-                value = float(raw_value)  # Otherwise, might be float
-            except ValueError:
-                value = raw_value  # If not, leave as string
-
-        try:
-            validation = cls(metric=metric_name, operator=operator, value=value)
-        except ValidationError as err:
-            logger.error(
-                "Error trying to convert a RAW validation to a Validation model"
-            )
-            raise err
-
-        return validation
-
-    def validate(self, results: Dict[str, Any]) -> "Validation":
-        """
-        Given a Validation and the profiler results,
-        compare their data.
-
-        We will call this function for each validation
-        that we received.
-
-        Each time we will return a Validation object
-        with a properly informed `valid` field,
-        containing the result of the validation.
-        """
-        self.computed_metric = results.get(self.metric)
-
-        if not self.computed_metric:
-            raise MissingMetricException(
-                f"The required metric {self.metric} is not available"
-                + f" in the profiler results: {results}."
-            )
-
-        is_valid = self.operator(
-            self.computed_metric, self.value  # Order matters. Real value vs. expected
-        )
-
-        self.valid = is_valid  # Either True / False
-
-        return self  # return self for convenience
+# Column Tests
+validate.register(column_values_to_be_between)
+validate.register(column_values_to_be_unique)

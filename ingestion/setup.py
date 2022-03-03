@@ -45,7 +45,6 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "parsimonious==0.8.1",
     "sqllineage==1.3.3",
 }
 
@@ -184,7 +183,11 @@ setup(
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(
-                *[requirements for plugin, requirements in plugins.items()]
+                *[
+                    requirements
+                    for plugin, requirements in plugins.items()
+                    if plugin != "db2"
+                ]
             )
         ),
     },

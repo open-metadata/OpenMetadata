@@ -187,7 +187,7 @@ class Profiler(Generic[MetricType]):
 
         This should only execute column metrics.
         """
-        logger.info("Running SQL Profiler...")
+        logger.debug("Running SQL Profiler...")
 
         col_metrics = self.get_col_metrics(self.static_metrics)
 
@@ -242,7 +242,7 @@ class Profiler(Generic[MetricType]):
         Data should be saved under self.results
         """
 
-        logger.info("Running post Profiler...")
+        logger.debug("Running post Profiler...")
 
         current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:

@@ -66,9 +66,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Transaction
   public void deleteLocation(String databaseId) {
-    daoCollection
-        .relationshipDAO()
-        .deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
+    deleteFrom(UUID.fromString(databaseId), Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
   }
 
   @Override
@@ -178,9 +176,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     daoCollection.databaseDAO().findEntityById(databaseId);
     daoCollection.locationDAO().findEntityById(locationId);
     // A database has only one location.
-    daoCollection
-        .relationshipDAO()
-        .deleteFrom(databaseId.toString(), Entity.DATABASE, Relationship.HAS.ordinal(), Entity.LOCATION);
+    deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
     addRelationship(databaseId, locationId, Entity.DATABASE, Entity.LOCATION, Relationship.HAS);
     return CREATED;
   }

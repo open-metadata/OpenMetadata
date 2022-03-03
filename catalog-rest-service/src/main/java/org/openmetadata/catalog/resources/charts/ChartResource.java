@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.charts;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,9 +28,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -78,7 +78,7 @@ public class ChartResource {
   private final Authorizer authorizer;
 
   public static ResultList<Chart> addHref(UriInfo uriInfo, ResultList<Chart> charts) {
-    Optional.ofNullable(charts.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(charts.getData()).forEach(i -> addHref(uriInfo, i));
     return charts;
   }
 

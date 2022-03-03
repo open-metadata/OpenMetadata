@@ -18,14 +18,11 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
-import { CookieStorage } from 'cookie-storage';
 import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { isDev } from '../utils/EnvironmentUtils';
-
-const cookieStorage = new CookieStorage();
 
 export let msalInstance: IPublicClientApplication;
 
@@ -52,7 +49,8 @@ export const getUserManagerConfig = (
       ? callbackUrl
       : `${window.location.origin}/callback`,
     scope: 'openid email profile',
-    userStore: new WebStorageStateStore({ store: cookieStorage }),
+    // userStore: new WebStorageStateStore({ store: cookieStorage }),
+    userStore: new WebStorageStateStore({ store: localStorage }),
   };
 };
 
@@ -82,8 +80,14 @@ export const getAuthConfig = (
       break;
     case AuthTypes.GOOGLE:
       {
+        // config = {
+        //   clientId,
+        //   provider,
+        // };
         config = {
+          authority,
           clientId,
+          callbackUrl,
           provider,
         };
       }

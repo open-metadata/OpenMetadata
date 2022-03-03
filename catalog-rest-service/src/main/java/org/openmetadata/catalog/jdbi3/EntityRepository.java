@@ -22,6 +22,7 @@ import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -661,12 +662,7 @@ public abstract class EntityRepository<T> {
     return new EntityHelper(entity);
   }
 
-  /**
-   * Decorator class for Entity.
-   *
-   * @see Entity#helper(Object) to create a handler from an Entity
-   * @see Entity#r(EntityReference) to create a handler from an EntityReference
-   */
+  /** Decorator class for Entity. */
   public class EntityHelper {
     private final Include isDeleted;
     protected final EntityInterface<T> entityInterface;
@@ -858,15 +854,20 @@ public abstract class EntityRepository<T> {
   }
 
   public int addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
-    return daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, false);
   }
 
-  public int addBidirectionalRelationship(
-      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
-    if (fromId.compareTo(toId) < 0) {
-      return daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  public int addRelationship(
+      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, boolean bidirectional) {
+    UUID from = fromId;
+    UUID to = toId;
+    if (bidirectional && fromId.compareTo(toId) > 0) {
+      // For bidirectional relationship, instead of adding two row fromId -> toId and toId -> fromId, just add one
+      // row where fromId is alphabetically less than toId
+      from = toId;
+      to = fromId;
     }
-    return daoCollection.relationshipDAO().insert(toId, fromId, toEntity, fromEntity, relationship.ordinal());
+    return daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal());
   }
 
   public void setOwner(UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
@@ -879,6 +880,7 @@ public abstract class EntityRepository<T> {
 
   public List<String> findBoth(
       UUID entity1, String entityType1, Relationship relationship, String entity2, Boolean deleted) {
+    // Find bidirectional relationship
     List<String> ids = new ArrayList<>();
     ids.addAll(findFrom(entity1, entityType1, relationship, entity2, deleted));
     ids.addAll(findTo(entity1, entityType1, relationship, entity2, deleted));
@@ -886,17 +888,30 @@ public abstract class EntityRepository<T> {
   }
 
   public List<String> findFrom(
-      UUID toId, String toEntity, Relationship relationship, String fromEntity, Boolean deleted) {
-    return daoCollection
-        .relationshipDAO()
-        .findFrom(toId.toString(), toEntity, relationship.ordinal(), fromEntity, deleted);
+      UUID toId, String toEntityType, Relationship relationship, String fromEntityType, Boolean deleted) {
+    List<String> ret =
+        daoCollection
+            .relationshipDAO()
+            .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType, deleted);
+    return ret;
   }
 
   public List<String> findTo(
-      UUID fromId, String fromEntity, Relationship relationship, String toEntity, Boolean deleted) {
-    return daoCollection
-        .relationshipDAO()
-        .findTo(fromId.toString(), fromEntity, relationship.ordinal(), toEntity, deleted);
+      UUID fromId, String fromEntityType, Relationship relationship, String toEntityType, Boolean deleted) {
+    List<String> ret =
+        daoCollection
+            .relationshipDAO()
+            .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType, deleted);
+    return ret;
+  }
+
+  public void deleteTo(UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    daoCollection.relationshipDAO().deleteTo(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
+  }
+
+  public void deleteFrom(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+    // Remove relationships from original
+    daoCollection.relationshipDAO().deleteFrom(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
   }
 
   public void validateUsers(List<EntityReference> entityReferences) throws IOException {
@@ -1043,7 +1058,7 @@ public abstract class EntityRepository<T> {
     protected final void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
         throws IOException {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      origTags = Optional.ofNullable(origTags).orElse(Collections.emptyList());
+      origTags = listOrEmpty(origTags);
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
@@ -1135,8 +1150,8 @@ public abstract class EntityRepository<T> {
         List<K> deletedItems,
         BiPredicate<K, K> typeMatch)
         throws JsonProcessingException {
-      origList = Optional.ofNullable(origList).orElse(Collections.emptyList());
-      updatedList = Optional.ofNullable(updatedList).orElse(Collections.emptyList());
+      origList = listOrEmpty(origList);
+      updatedList = listOrEmpty(updatedList);
       for (K stored : origList) {
         // If an entry in the original list is not in updated list, then it is deleted during update
         K u = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
@@ -1166,6 +1181,8 @@ public abstract class EntityRepository<T> {
     /**
      * Remove `fromEntityType:fromId` -- `relationType` ---> `toEntityType:origToRefs` Add `fromEntityType:fromId` --
      * `relationType` ---> `toEntityType:updatedToRefs` and record it as change for entity field `field`.
+     *
+     * <p>When `bidirectional` is set to true, relationship from both side are replaced
      */
     public final void updateToRelationships(
         String field,
@@ -1174,7 +1191,8 @@ public abstract class EntityRepository<T> {
         Relationship relationshipType,
         String toEntityType,
         List<EntityReference> origToRefs,
-        List<EntityReference> updatedToRefs)
+        List<EntityReference> updatedToRefs,
+        boolean bidirectional)
         throws JsonProcessingException {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
@@ -1183,12 +1201,13 @@ public abstract class EntityRepository<T> {
         return;
       }
       // Remove relationships from original
-      daoCollection
-          .relationshipDAO()
-          .deleteFrom(fromId.toString(), fromEntityType, relationshipType.ordinal(), toEntityType);
+      deleteFrom(fromId, fromEntityType, relationshipType, toEntityType);
+      if (bidirectional) {
+        deleteTo(fromId, fromEntityType, relationshipType, toEntityType);
+      }
       // Add relationships from updated
       for (EntityReference ref : updatedToRefs) {
-        addRelationship(fromId, ref.getId(), fromEntityType, toEntityType, relationshipType);
+        addRelationship(fromId, ref.getId(), fromEntityType, toEntityType, relationshipType, bidirectional);
       }
       updatedToRefs.sort(EntityUtil.compareEntityReference);
       origToRefs.sort(EntityUtil.compareEntityReference);
@@ -1215,9 +1234,8 @@ public abstract class EntityRepository<T> {
         return;
       }
       // Remove relationships from original
-      daoCollection
-          .relationshipDAO()
-          .deleteTo(toId.toString(), fromEntityType, relationshipType.ordinal(), toEntityType);
+      deleteTo(toId, toEntityType, relationshipType, fromEntityType);
+
       // Add relationships from updated
       for (EntityReference ref : updatedFromRefs) {
         addRelationship(ref.getId(), toId, fromEntityType, toEntityType, relationshipType);

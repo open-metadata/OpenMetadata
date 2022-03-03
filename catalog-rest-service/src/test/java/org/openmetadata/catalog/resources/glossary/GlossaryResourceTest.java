@@ -75,9 +75,16 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER1)));
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
-    // Remove a reviewer in PATCH request
+    // Add another reviewer USER2 in PATCH request
     origJson = JsonUtils.pojoToJson(glossary);
-    glossary.withReviewers(null);
+    glossary.withReviewers(List.of(USER_OWNER1, USER_OWNER2));
+    change = getChangeDescription(glossary.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER2)));
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove a reviewer USER1 in PATCH request
+    origJson = JsonUtils.pojoToJson(glossary);
+    glossary.withReviewers(List.of(USER_OWNER2));
     change = getChangeDescription(glossary.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER_OWNER1)));
     patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);

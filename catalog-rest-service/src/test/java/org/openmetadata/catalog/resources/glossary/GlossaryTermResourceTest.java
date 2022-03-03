@@ -29,6 +29,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,8 +46,10 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
+import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.GlossaryTerm.Status;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -187,20 +190,44 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Add reviewer USER1 in PATCH request
+    // Add reviewer USER1, synonym1, reference1 in PATCH request
     String origJson = JsonUtils.pojoToJson(term);
-    term.withReviewers(List.of(USER_OWNER1)).withSynonyms(List.of("synonym1"));
+    TermReference reference1 = new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
+    term.withReviewers(List.of(USER_OWNER1)).withSynonyms(List.of("synonym1")).withReferences(List.of(reference1));
     ChangeDescription change = getChangeDescription(term.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER1)));
     change.getFieldsAdded().add(new FieldChange().withName("synonyms").withNewValue(List.of("synonym1")));
+    change.getFieldsAdded().add(new FieldChange().withName("references").withNewValue(List.of(reference1)));
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
-    // Remove a reviewer in PATCH request
+    // Add reviewer USER2, synonym2, reference2 in PATCH request
     origJson = JsonUtils.pojoToJson(term);
-    term.withReviewers(null).withSynonyms(null);
+    TermReference reference2 = new TermReference().withName("reference2").withEndpoint(URI.create("http://reference2"));
+    term.withReviewers(List.of(USER_OWNER1, USER_OWNER2))
+        .withSynonyms(List.of("synonym1", "synonym2"))
+        .withReferences(List.of(reference1, reference2));
+    change = getChangeDescription(term.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER2)));
+    change.getFieldsAdded().add(new FieldChange().withName("synonyms").withNewValue(List.of("synonym2")));
+    change.getFieldsAdded().add(new FieldChange().withName("references").withNewValue(List.of(reference2)));
+    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Remove a reviewer USER1, synonym1, reference1 in PATCH request
+    origJson = JsonUtils.pojoToJson(term);
+    term.withReviewers(List.of(USER_OWNER2)).withSynonyms(List.of("synonym2")).withReferences(List.of(reference2));
     change = getChangeDescription(term.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER_OWNER1)));
     change.getFieldsDeleted().add(new FieldChange().withName("synonyms").withOldValue(List.of("synonym1")));
+    change.getFieldsDeleted().add(new FieldChange().withName("references").withOldValue(List.of(reference1)));
+    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // Change GlossaryTerm status from DRAFT to Approved
+    origJson = JsonUtils.pojoToJson(term);
+    term.withStatus(Status.APPROVED);
+    change = getChangeDescription(term.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("status").withOldValue(Status.DRAFT).withNewValue(Status.APPROVED));
     patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
@@ -317,6 +344,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       List<String> expectedRefs = (List<String>) expected;
       List<String> actualRefs = JsonUtils.readObjects(actual.toString(), String.class);
       assertStrings(expectedRefs, actualRefs);
+    } else if (fieldName.equals("references")) {
+      @SuppressWarnings("unchecked")
+      List<TermReference> expectedRefs = (List<TermReference>) expected;
+      List<TermReference> actualRefs = JsonUtils.readObjects(actual.toString(), TermReference.class);
+      assertTermReferences(expectedRefs, actualRefs);
+    } else if (fieldName.equals("status")) {
+      @SuppressWarnings("unchecked")
+      Status expectedStatus = (Status) expected;
+      Status actualStatus = Status.fromValue(actual.toString());
+      assertEquals(expectedStatus, actualStatus);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

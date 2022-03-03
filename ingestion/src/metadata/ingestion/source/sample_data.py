@@ -28,6 +28,8 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -36,12 +38,16 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.columnTest import ColumnTestCase
+from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -168,6 +174,11 @@ class SampleTableMetadataGenerator:
 
 
 class SampleDataSource(Source[Entity]):
+    """
+    Loads JSON data and prepares the required
+    python objects to be sent to the Sink.
+    """
+
     def __init__(
         self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig, ctx
     ):
@@ -268,6 +279,9 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
         self.user_entity = {}
+        self.table_tests = json.load(
+            open(self.config.sample_data_folder + "/datasets/tableTests.json", "r")
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -283,6 +297,7 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_locations()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
+        yield from self.ingest_table_tests()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
         yield from self.ingest_dashboards()
@@ -482,6 +497,41 @@ class SampleDataSource(Source[Entity]):
 
                 yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
         except Exception as err:
+            logger.error(err)
+
+    def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
+        """
+        Iterate over all tables and fetch
+        the sample test data. For each table test and column
+        test, prepare all TestCaseResults
+        """
+        try:
+            for test_def in self.table_tests:
+                table_name = test_def["table"]
+
+                for table_test in test_def["tableTests"]:
+                    create_table_test = CreateTableTestRequest(
+                        description=table_test.get("description"),
+                        testCase=TableTestCase.parse_obj(table_test["testCase"]),
+                        executionFrequency=table_test["executionFrequency"],
+                        result=TestCaseResult.parse_obj(table_test["result"]),
+                    )
+                    yield OMetaTableTest(
+                        table_name=table_name, table_test=create_table_test
+                    )
+
+                for col_test in test_def["columnTests"]:
+                    create_column_test = CreateColumnTestRequest(
+                        description=col_test.get("description"),
+                        columnName=col_test["columnName"],
+                        testCase=ColumnTestCase.parse_obj(col_test["testCase"]),
+                        executionFrequency=col_test["executionFrequency"],
+                        result=TestCaseResult.parse_obj(col_test["result"]),
+                    )
+                    yield OMetaTableTest(
+                        table_name=table_name, column_test=create_column_test
+                    )
+        except Exception as err:  # pylint: disable=broad-except
             logger.error(err)
 
     def close(self):

@@ -4,8 +4,10 @@ Mixin class containing Table specific methods
 To be used by OpenMetadata class
 """
 import logging
-from typing import List
+from typing import List, Union
 
+from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     DataModel,
@@ -15,6 +17,8 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
+from metadata.generated.schema.tests.columnTest import ColumnTest
+from metadata.generated.schema.tests.tableTest import TableTest
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import REST
 
@@ -131,3 +135,45 @@ class OMetaTableMixin:
             data=table_join_request.json(),
         )
         logger.debug("published frequently joined with %s", resp)
+
+    def _add_tests(
+        self,
+        table: Table,
+        test: Union[CreateTableTestRequest, CreateColumnTestRequest],
+        path: str,
+    ) -> Table:
+        """
+        Internal function to add test data
+
+        :param table: Table instance
+        :param test: TableTest or ColumnTest to add
+        :param path: tableTest or columnTest str
+        :return: Updated Table instance
+        """
+        resp = self.client.put(
+            f"{self.get_suffix(Table)}/{table.id.__root__}/{path}", data=test.json()
+        )
+
+        return Table(**resp)
+
+    def add_table_test(self, table: Table, table_test: CreateTableTestRequest) -> Table:
+        """
+        For a given table, PUT new TableTest definitions and results
+
+        :param table: Table instance
+        :param table_test: table test data
+        :return: Updates Table instance
+        """
+
+        return self._add_tests(table=table, test=table_test, path="tableTest")
+
+    def add_column_test(self, table: Table, col_test: CreateColumnTestRequest) -> Table:
+        """
+        For a given table, PUT new TableTest definitions and results
+
+        :param table: Table instance
+        :param col_test: column test data
+        :return: Updates Table instance
+        """
+
+        return self._add_tests(table=table, test=col_test, path="columnTest")
