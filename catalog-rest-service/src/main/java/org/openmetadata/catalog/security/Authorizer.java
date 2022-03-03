@@ -42,4 +42,6 @@ public interface Authorizer {
   boolean isAdmin(AuthenticationContext ctx);
 
   boolean isBot(AuthenticationContext ctx);
+
+  boolean isOwner(AuthenticationContext ctx, EntityReference entityReference);
 }

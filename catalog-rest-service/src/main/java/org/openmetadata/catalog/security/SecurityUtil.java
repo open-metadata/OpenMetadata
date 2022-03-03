@@ -57,6 +57,17 @@ public final class SecurityUtil {
     }
   }
 
+  public static void checkAdminOrBotOrOwner(
+      Authorizer authorizer, SecurityContext securityContext, EntityReference ownerReference) {
+    Principal principal = securityContext.getUserPrincipal();
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
+    if (!authorizer.isAdmin(authenticationCtx)
+        && !authorizer.isBot(authenticationCtx)
+        && !authorizer.isOwner(authenticationCtx, ownerReference)) {
+      throw new AuthorizationException(noPermission(principal));
+    }
+  }
+
   public static void checkAdminRoleOrPermissions(
       Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference) {
     Principal principal = securityContext.getUserPrincipal();
