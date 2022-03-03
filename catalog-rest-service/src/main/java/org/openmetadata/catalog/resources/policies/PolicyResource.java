@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.policies;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -28,10 +29,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -84,7 +83,7 @@ public class PolicyResource {
   private final Authorizer authorizer;
 
   public static ResultList<Policy> addHref(UriInfo uriInfo, ResultList<Policy> policies) {
-    Optional.ofNullable(policies.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(policies.getData()).forEach(i -> addHref(uriInfo, i));
     return policies;
   }
 

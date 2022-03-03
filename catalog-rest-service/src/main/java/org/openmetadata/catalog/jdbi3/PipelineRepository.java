@@ -17,18 +17,17 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -404,8 +403,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // The API will only take care of marking tasks as added/updated/deleted based on the original
       // and incoming changes.
 
-      List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
-      List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
+      List<Task> updatedTasks = listOrEmpty(updatedPipeline.getTasks());
+      List<Task> origTasks = listOrEmpty(origPipeline.getTasks());
 
       List<Task> added = new ArrayList<>();
       List<Task> deleted = new ArrayList<>();

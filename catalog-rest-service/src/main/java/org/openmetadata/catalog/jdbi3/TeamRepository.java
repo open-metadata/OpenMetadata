@@ -14,14 +14,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -107,10 +106,10 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeRelationships(Team team) {
-    for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
+    for (EntityReference user : listOrEmpty(team.getUsers())) {
       addRelationship(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS);
     }
-    for (EntityReference defaultRole : Optional.ofNullable(team.getDefaultRoles()).orElse(Collections.emptyList())) {
+    for (EntityReference defaultRole : listOrEmpty(team.getDefaultRoles())) {
       addRelationship(team.getId(), defaultRole.getId(), Entity.TEAM, Entity.ROLE, Relationship.HAS);
     }
   }
@@ -274,17 +273,15 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
-      List<EntityReference> origUsers = Optional.ofNullable(origTeam.getUsers()).orElse(Collections.emptyList());
-      List<EntityReference> updatedUsers = Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList());
+      List<EntityReference> origUsers = listOrEmpty(origTeam.getUsers());
+      List<EntityReference> updatedUsers = listOrEmpty(updatedTeam.getUsers());
       updateToRelationships(
-          "users", Entity.TEAM, origTeam.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers);
+          "users", Entity.TEAM, origTeam.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers, false);
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) throws JsonProcessingException {
-      List<EntityReference> origDefaultRoles =
-          Optional.ofNullable(origTeam.getDefaultRoles()).orElse(Collections.emptyList());
-      List<EntityReference> updatedDefaultRoles =
-          Optional.ofNullable(updatedTeam.getDefaultRoles()).orElse(Collections.emptyList());
+      List<EntityReference> origDefaultRoles = listOrEmpty(origTeam.getDefaultRoles());
+      List<EntityReference> updatedDefaultRoles = listOrEmpty(updatedTeam.getDefaultRoles());
       updateToRelationships(
           "defaultRoles",
           Entity.TEAM,
@@ -292,7 +289,8 @@ public class TeamRepository extends EntityRepository<Team> {
           Relationship.HAS,
           Entity.ROLE,
           origDefaultRoles,
-          updatedDefaultRoles);
+          updatedDefaultRoles,
+          false);
     }
   }
 }

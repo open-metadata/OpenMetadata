@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -27,10 +29,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -83,7 +83,7 @@ public class GlossaryTermResource {
   private final Authorizer authorizer;
 
   public static List<GlossaryTerm> addHref(UriInfo uriInfo, List<GlossaryTerm> terms) {
-    Optional.ofNullable(terms).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(terms).forEach(i -> addHref(uriInfo, i));
     return terms;
   }
 
@@ -117,7 +117,7 @@ public class GlossaryTermResource {
   }
 
   static final String FIELDS = "children,relatedTerms,reviewers,tags";
-  protected static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
 
   @GET
   @Valid

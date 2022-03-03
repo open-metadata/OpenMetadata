@@ -473,13 +473,6 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
 
-    // Delete all the entity relationship fromID --- relation --> to any entity
-    @SqlUpdate(
-        "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-            + "AND relation = :relation")
-    int deleteFrom(
-        @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
-
     // Delete all the entity relationship toId <-- relation --  entity of type fromEntity
     @SqlUpdate(
         "DELETE from entity_relationship WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
