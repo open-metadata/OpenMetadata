@@ -80,7 +80,10 @@
     },
     "references": {
       "description": "Link to a reference from an external glossary.",
-      "$ref": "#/definitions/termReference"
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
+      }
     },
     "version": {
       "description": "Metadata version of the entity.",

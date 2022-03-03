@@ -18,14 +18,13 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -102,7 +101,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public void storeRelationships(Glossary glossary) {
     setOwner(glossary, glossary.getOwner());
     applyTags(glossary);
-    for (EntityReference reviewer : Optional.ofNullable(glossary.getReviewers()).orElse(Collections.emptyList())) {
+    for (EntityReference reviewer : listOrEmpty(glossary.getReviewers())) {
       addRelationship(reviewer.getId(), glossary.getId(), Entity.USER, Entity.GLOSSARY, Relationship.REVIEWS);
     }
   }
@@ -120,7 +119,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   private List<EntityReference> getReviewers(Glossary entity) throws IOException {
     List<String> ids =
         findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
-    System.out.println("XXX reviewers for " + entity.getId() + " " + ids);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
@@ -281,10 +279,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
 
     private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) throws JsonProcessingException {
-      List<EntityReference> origUsers =
-          Optional.ofNullable(origGlossary.getReviewers()).orElse(Collections.emptyList());
-      List<EntityReference> updatedUsers =
-          Optional.ofNullable(updatedGlossary.getReviewers()).orElse(Collections.emptyList());
+      List<EntityReference> origUsers = listOrEmpty(origGlossary.getReviewers());
+      List<EntityReference> updatedUsers = listOrEmpty(updatedGlossary.getReviewers());
       updateFromRelationships(
           "reviewers",
           Entity.USER,

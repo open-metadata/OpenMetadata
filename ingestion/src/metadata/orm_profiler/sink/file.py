@@ -18,7 +18,7 @@ from pathlib import Path
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.orm_profiler.api.models import ProfileAndTests
+from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -54,7 +54,7 @@ class FileSink(Sink[Entity]):
         config = FileSinkConfig.parse_obj(config_dict)
         return cls(ctx, config)
 
-    def write_record(self, record: ProfileAndTests) -> None:
+    def write_record(self, record: ProfilerResponse) -> None:
 
         if self.wrote_something:
             self.file.write("\n")
@@ -62,25 +62,9 @@ class FileSink(Sink[Entity]):
         self.file.write(f"Profile for: {record.table.fullyQualifiedName}\n")
         self.file.write(f"{record.profile.json()}\n")
 
-        if record.tests:
+        if record.record_tests:
             self.file.write(f"\nTest results:\n")
-
-            for test in record.tests.table_tests:
-                self.file.write(f"\tTable Tests results:\n")
-                for validation in test.expression:
-                    self.file.write(
-                        f"\t\t{test.name}: {validation.valid}, (Real) {validation.computed_metric}"
-                        + f" <{validation.operator.__name__}> {validation.value} (expected)\n"
-                    )
-
-            for col_test in record.tests.column_tests:
-                self.file.write(f"\tColumn Tests results:\n")
-                for column in col_test.columns:
-                    for validation in column.expression:
-                        self.file.write(
-                            f"\t\t[{column.column}] - {column.name}: {validation.valid}, (Real) {validation.computed_metric}"
-                            + f" <{validation.operator.__name__}> {validation.value} (expected)\n"
-                        )
+            self.file.write(f"{record.record_tests.json()}\n")
 
         self.wrote_something = True
         self.report.records_written(record.table.fullyQualifiedName)

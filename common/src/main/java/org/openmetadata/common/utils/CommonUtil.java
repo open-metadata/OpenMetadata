@@ -25,9 +25,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -151,5 +153,9 @@ public final class CommonUtil {
     } catch (Exception e) {
       throw new RuntimeException("Failed to calculate " + HMAC_SHA256_ALGORITHM, e);
     }
+  }
+
+  public static <T> List<T> listOrEmpty(List<T> list) {
+    return Optional.ofNullable(list).orElse(Collections.emptyList());
   }
 }

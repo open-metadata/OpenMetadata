@@ -20,24 +20,6 @@ from pydantic import BaseModel, validator
 from metadata.orm_profiler.metrics.registry import Metrics
 
 
-class TimeMetricDef(BaseModel):
-    """
-    Model representing the input of a time metric
-    """
-
-    name: str  # metric name
-    window: int  # time delta in days to apply
-
-
-class CustomMetricDef(BaseModel):
-    """
-    Model representing the input of a time metric
-    """
-
-    name: str  # metric name
-    sql: str  # custom SQL query to run
-
-
 class ProfilerDef(BaseModel):
     """
     Incoming profiler definition from the
@@ -46,8 +28,9 @@ class ProfilerDef(BaseModel):
 
     name: str  # Profiler name
     metrics: List[str]  # names of currently supported Static and Composed metrics
-    time_metrics: List[TimeMetricDef] = None
-    custom_metrics: List[CustomMetricDef] = None
+    # TBD:
+    # time_metrics: List[TimeMetricDef] = None
+    # custom_metrics: List[CustomMetricDef] = None
     # rule_metrics: ...
 
     @validator("metrics", each_item=True)

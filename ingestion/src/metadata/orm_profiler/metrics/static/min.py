@@ -15,6 +15,7 @@ Min Metric definition
 from sqlalchemy import func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.registry import is_quantifiable
 
 
 class Min(StaticMetric):
@@ -30,4 +31,6 @@ class Min(StaticMetric):
 
     @_label
     def fn(self):
+        if not is_quantifiable(self.col.type):
+            return None
         return func.min(self.col)

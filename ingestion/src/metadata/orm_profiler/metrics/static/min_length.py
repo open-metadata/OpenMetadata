@@ -63,7 +63,7 @@ class MinLength(StaticMetric):
         if is_concatenable(self.col.type):
             return MinLengthFn(self.col)
 
-        logger.warning(
+        logger.debug(
             f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
         )
         return None

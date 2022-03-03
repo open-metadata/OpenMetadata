@@ -21,6 +21,7 @@ import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -38,7 +39,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -221,7 +221,7 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
-    daoCollection.relationshipDAO().deleteFrom(tableId.toString(), TABLE, Relationship.HAS.ordinal(), LOCATION);
+    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
     addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
     setFields(table, Fields.EMPTY_FIELDS);
     return table.withLocation(location);
@@ -409,7 +409,7 @@ public class TableRepository extends EntityRepository<Table> {
       table.setDescription(dataModel.getDescription());
     }
     // Carry forward the column description from the model to table columns, if empty
-    for (Column modelColumn : Optional.ofNullable(dataModel.getColumns()).orElse(Collections.emptyList())) {
+    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
       Column stored =
           table.getColumns().stream()
               .filter(c -> EntityUtil.columnNameMatch.test(c, modelColumn))
@@ -429,7 +429,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public void deleteLocation(String tableId) {
-    daoCollection.relationshipDAO().deleteFrom(tableId, TABLE, Relationship.HAS.ordinal(), LOCATION);
+    deleteFrom(UUID.fromString(tableId), TABLE, Relationship.HAS, LOCATION);
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
@@ -579,7 +579,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : Optional.ofNullable(columns).orElse(Collections.emptyList())) {
+    for (Column c : listOrEmpty(columns)) {
       c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
       getColumnTags(setTags, c.getChildren());
     }
@@ -809,7 +809,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   private void getColumnTests(boolean setTests, Table table) throws IOException {
     List<Column> columns = table.getColumns();
-    for (Column c : Optional.ofNullable(columns).orElse(Collections.emptyList())) {
+    for (Column c : listOrEmpty(columns)) {
       c.setColumnTests(setTests ? getColumnTests(table, c.getName()) : null);
     }
   }
@@ -980,10 +980,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) throws JsonProcessingException {
-      List<TableConstraint> origConstraints =
-          Optional.ofNullable(origTable.getTableConstraints()).orElse(Collections.emptyList());
-      List<TableConstraint> updatedConstraints =
-          Optional.ofNullable(updatedTable.getTableConstraints()).orElse(Collections.emptyList());
+      List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
+      List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
 
       origConstraints.sort(EntityUtil.compareTableConstraint);
       origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);

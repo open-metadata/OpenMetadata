@@ -15,6 +15,7 @@ package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Include.DELETED;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -127,6 +129,9 @@ public final class EntityUtil {
 
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
+
+  public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
+      (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
   private EntityUtil() {}
 
@@ -276,7 +281,7 @@ public final class EntityUtil {
 
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
   public static void applyTags(TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) {
-    for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
+    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {
         // Invalid TagLabel
@@ -292,7 +297,7 @@ public final class EntityUtil {
 
   public static List<TagLabel> getDerivedTags(TagDAO tagDAO, TagLabel tagLabel, Tag tag) throws IOException {
     List<TagLabel> derivedTags = new ArrayList<>();
-    for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
+    for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
       String json = tagDAO.findTag(fqn);
       if (json == null) {
         // Invalid TagLabel
@@ -507,7 +512,8 @@ public final class EntityUtil {
         escapeReservedChars(column.getChildren());
       } else if (object instanceof TableConstraint) {
         TableConstraint constraint = (TableConstraint) object;
-        constraint.setColumns(constraint.getColumns().stream().map(s -> replaceDot(s)).collect(Collectors.toList()));
+        constraint.setColumns(
+            constraint.getColumns().stream().map(EntityUtil::replaceDot).collect(Collectors.toList()));
       } else if (object instanceof Task) {
         Task task = (Task) object;
         task.setDisplayName(task.getDisplayName() != null ? task.getDisplayName() : task.getName());

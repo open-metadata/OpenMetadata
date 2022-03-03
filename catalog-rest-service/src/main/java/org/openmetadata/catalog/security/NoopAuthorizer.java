@@ -71,6 +71,11 @@ public class NoopAuthorizer implements Authorizer {
     return true;
   }
 
+  @Override
+  public boolean isOwner(AuthenticationContext ctx, EntityReference entityReference) {
+    return true;
+  }
+
   private void addAnonymousUser() {
     EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     String username = "anonymous";

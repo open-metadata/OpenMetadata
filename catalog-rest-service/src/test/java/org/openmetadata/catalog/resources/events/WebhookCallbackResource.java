@@ -1,12 +1,11 @@
 package org.openmetadata.catalog.resources.events;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.ws.rs.Consumes;
@@ -128,7 +127,7 @@ public class WebhookCallbackResource {
   }
 
   public List<ChangeEvent> getEntityCallbackEvents(EventType eventType, String entity) {
-    return Optional.ofNullable(entityCallbackMap.get(eventType + ":" + entity)).orElse(Collections.emptyList());
+    return listOrEmpty(entityCallbackMap.get(eventType + ":" + entity));
   }
 
   public EventDetails getEventDetails(String endpoint) {

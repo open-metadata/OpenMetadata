@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.operations;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -28,10 +29,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -87,7 +86,7 @@ public class AirflowPipelineResource {
   private CatalogApplicationConfig config;
 
   public static ResultList<AirflowPipeline> addHref(UriInfo uriInfo, ResultList<AirflowPipeline> ingestions) {
-    Optional.ofNullable(ingestions.getData()).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    listOrEmpty(ingestions.getData()).forEach(i -> addHref(uriInfo, i));
     return ingestions;
   }
 
@@ -465,7 +464,7 @@ public class AirflowPipelineResource {
   }
 
   public void addStatus(List<AirflowPipeline> airflowPipelines) {
-    Optional.ofNullable(airflowPipelines).orElse(Collections.emptyList()).forEach(this::addStatus);
+    listOrEmpty(airflowPipelines).forEach(this::addStatus);
   }
 
   private AirflowPipeline addStatus(AirflowPipeline airflowPipeline) {

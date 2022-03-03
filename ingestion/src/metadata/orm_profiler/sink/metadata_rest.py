@@ -12,11 +12,15 @@
 """
 OpenMetadata REST Sink implementation for the ORM Profiler results
 """
+import traceback
+
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -56,7 +60,31 @@ class MetadataRestSink(Sink[Entity]):
         return self.status
 
     def close(self) -> None:
-        pass
+        self.metadata.close()
 
-    def write_record(self, record: Entity) -> None:
-        pass
+    def write_record(self, record: ProfilerResponse) -> None:
+        try:
+            self.metadata.ingest_table_profile_data(
+                table=record.table, table_profile=[record.profile]
+            )
+
+            if record.record_tests:
+                for table_test in record.record_tests.table_tests:
+                    self.metadata.add_table_test(
+                        table=record.table, table_test=table_test
+                    )
+
+                for col_test in record.record_tests.column_tests:
+                    self.metadata.add_column_test(table=record.table, col_test=col_test)
+
+            logger.info(
+                f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName}"
+            )
+            self.status.records_written(f"Table: {record.table.fullyQualifiedName}")
+
+        except APIError as err:
+            logger.error(
+                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName} - {err}"
+            )
+            logger.debug(traceback.print_exc())
+            self.status.failure(f"Table: {record.table.fullyQualifiedName}")

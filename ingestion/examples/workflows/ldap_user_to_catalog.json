@@ -8,10 +8,8 @@
     }
   },
   "sink": {
-    "type": "ldap-rest-users",
-    "config": {
-      "api_end_point": "http://localhost:8585/api"
-    }
+    "type": "metadata-rest",
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",
