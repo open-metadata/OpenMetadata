@@ -125,7 +125,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object tagCount = webDriver.findElements(common.breadCrumbTags()).size();
+    Object tagCount = webDriver.findElements(dashboardDetails.breadCrumbTags()).size();
     Assert.assertEquals(tagCount, 3);
   }
 
@@ -144,7 +144,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object updatedCount = webDriver.findElements(common.breadCrumbTags()).size();
+    Object updatedCount = webDriver.findElements(dashboardDetails.breadCrumbTags()).size();
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
     } else {
@@ -175,7 +175,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    String checkDescription = dashboardDetails.getDescriptionBox().getText();
+    String checkDescription = webDriver.findElement(dashboardDetails.dashboardDescriptionBox()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -201,7 +201,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object tagCount = webDriver.findElements(common.breadCrumbTags()).size() - 1;
+    Object tagCount = webDriver.findElements(dashboardDetails.chartTags()).size();
     Assert.assertEquals(tagCount, 3);
   }
 
@@ -220,7 +220,7 @@ public class DashboardDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size() - 1;
+    Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size();
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
     } else {

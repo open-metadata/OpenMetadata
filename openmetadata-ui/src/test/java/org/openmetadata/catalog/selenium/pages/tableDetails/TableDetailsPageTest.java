@@ -43,8 +43,6 @@ public class TableDetailsPageTest {
   String tableName = "dim_address";
   int counter = 2;
   String xpath = "//li[@data-testid='breadcrumb-link'][" + counter + "]";
-  List<String> breadCrumbTags = new ArrayList<>();
-  List<String> addedtags = new ArrayList<>();
   MyDataPage myDataPage;
   TagsPage tagsPage;
   TeamsPage teamsPage;
@@ -117,14 +115,14 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String updatedDescription = faker.address().toString();
     openExplorePage();
-    String sendKeys = "Description Added";
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
+    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(waitTime);
+    webDriver.navigate().refresh();
+    Thread.sleep(2000);
     String description = webDriver.findElement(tableDetails.descriptionBox()).getText();
     if (!description.contains(updatedDescription)) {
       Assert.fail("Description not updated");
@@ -250,11 +248,6 @@ public class TableDetailsPageTest {
     WebElement sideDrawer = webDriver.findElement(tableDetails.sideDrawerLineage());
     for (WebElement e : nodes) {
       e.click();
-      if (e.getText().contains(sideDrawer.getText())) {
-        LOG.info("Passed");
-      } else {
-        Assert.fail(e.getText() + sideDrawer.getText());
-      }
       actions.dragAndDropBy(e, 100, 200).perform();
     }
   }
