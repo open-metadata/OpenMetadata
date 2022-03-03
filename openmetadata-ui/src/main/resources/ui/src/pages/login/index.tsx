@@ -34,7 +34,7 @@ const SigninPage = () => {
 
   const getSignInButton = (): JSX.Element => {
     let btnComponent: JSX.Element;
-    switch (authConfig.provider) {
+    switch (authConfig?.provider) {
       case AuthTypes.GOOGLE: {
         btnComponent = (
           <LoginButton
