@@ -27,6 +27,7 @@ import {
   updatePolicy,
   updateRole,
 } from '../../axiosAPIs/rolesAPI';
+import { patchTeamDetail } from '../../axiosAPIs/teamsAPI';
 import { getUserCounts } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
@@ -47,11 +48,13 @@ import {
   Rule,
 } from '../../generated/entity/policies/accessControl/rule';
 import { Role } from '../../generated/entity/teams/role';
+import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { getActiveCatClass, isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import AddUsersModal from '../teams/AddUsersModal';
 import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
 import { Policy } from './policy.interface';
@@ -89,6 +92,9 @@ const RolesPage = () => {
   const [userCounts, setUserCounts] = useState<number>(0);
 
   const [defaultRole, setDefaultRole] = useState<Role>();
+
+  const [teamList, setTeamList] = useState<Array<Team>>([]);
+  const [isAddingTeams, setIsAddingTeams] = useState<boolean>(false);
 
   const onNewDataChange = (data: Role, forceSet = false) => {
     if (errorData || forceSet) {
@@ -159,7 +165,7 @@ const RolesPage = () => {
 
   const fetchRoles = () => {
     setIsLoading(true);
-    getRoles(['policy', 'users'])
+    getRoles(['policy', 'users', 'teams'])
       .then((res: AxiosResponse) => {
         const { data } = res.data;
         setRoles(data);
@@ -206,7 +212,7 @@ const RolesPage = () => {
   const fetchCurrentRole = (name: string, update = false) => {
     if (currentRole?.name !== name || update) {
       setIsLoading(true);
-      getRoleByName(name, ['users', 'policy'])
+      getRoleByName(name, ['users', 'policy', 'teams'])
         .then((res: AxiosResponse) => {
           setCurrentRole(res.data);
           setRoles((pre) => {
@@ -257,6 +263,39 @@ const RolesPage = () => {
 
   const cancelSetDefaultRole = () => {
     setIsSettingDefaultRole(false);
+  };
+
+  const addTeams = (data: Team[]) => {
+    const currentRoleReference: EntityReference = {
+      id: currentRole?.id as string,
+      type: 'role',
+    };
+    const teamsPatchCall = data.map((team) => {
+      const updatedTeam = {
+        ...team,
+        defaultRoles: [
+          ...(team.defaultRoles as EntityReference[]),
+          currentRoleReference,
+        ],
+      };
+      const patch = compare(team, updatedTeam);
+
+      return patchTeamDetail(team.id, patch);
+    });
+    Promise.all(teamsPatchCall)
+      .then(() => {
+        setIsAddingTeams(false);
+        fetchCurrentRole(currentRole?.name as string, true);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while adding teams to the role',
+        });
+      })
+      .finally(() => {
+        setIsAddingTeams(false);
+      });
   };
 
   const onSetDefaultRole = () => {
@@ -401,9 +440,20 @@ const RolesPage = () => {
               2,
               currentTab
             )}`}
-            data-testid="users"
+            data-testid="teams"
             onClick={() => {
               setCurrentTab(2);
+            }}>
+            Teams
+          </button>
+          <button
+            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+              3,
+              currentTab
+            )}`}
+            data-testid="users"
+            onClick={() => {
+              setCurrentTab(3);
             }}>
             Users
           </button>
@@ -576,6 +626,59 @@ const RolesPage = () => {
     );
   };
 
+  const getRoleTeams = (teams: Array<EntityReference>) => {
+    const AddTeamButton = () => (
+      <div className="tw-flex tw-justify-end tw-mr-1">
+        <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+          <Button
+            className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+              'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+            })}
+            data-testid="add-teams-button"
+            size="small"
+            theme="primary"
+            variant="contained"
+            onClick={() => setIsAddingTeams(true)}>
+            Add teams
+          </Button>
+        </NonAdminAction>
+      </div>
+    );
+    if (!teams.length) {
+      return (
+        <div className="tw-text-center tw-py-5">
+          <AddTeamButton />
+          <p className="tw-text-base">No Teams Added.</p>
+        </div>
+      );
+    }
+
+    return (
+      <Fragment>
+        <div className="tw-flex tw-justify-between">
+          <p>
+            {currentRole?.displayName ?? currentRole?.name} role is assigned to
+            all users who are part of following teams.
+          </p>
+          <AddTeamButton />
+        </div>
+        <div
+          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+          data-testid="teams-card">
+          {teams.map((team, i) => {
+            const teamData = {
+              description: team.displayName || team.name || '',
+              name: team.name as string,
+              id: team.id,
+            };
+
+            return <UserCard isIconVisible item={teamData} key={i} />;
+          })}
+        </div>
+      </Fragment>
+    );
+  };
+
   const fetchUserCounts = () => {
     getUserCounts()
       .then((res: AxiosResponse) => {
@@ -589,10 +692,22 @@ const RolesPage = () => {
       });
   };
 
+  const getUniqueTeamList = () => {
+    const currentRoleTeams = currentRole?.teams ?? [];
+
+    return teamList.filter(
+      (team) => !currentRoleTeams.some((cTeam) => cTeam.id === team.id)
+    );
+  };
+
   useEffect(() => {
     fetchRoles();
     fetchUserCounts();
   }, []);
+
+  useEffect(() => {
+    setTeamList(AppState.userTeams as Team[]);
+  }, [AppState.userTeams]);
 
   useEffect(() => {
     if (currentRole) {
@@ -690,6 +805,9 @@ const RolesPage = () => {
                       </Fragment>
                     ) : null}
                     {currentTab === 2
+                      ? getRoleTeams(currentRole?.teams ?? [])
+                      : null}
+                    {currentTab === 3
                       ? getRoleUsers(currentRole?.users ?? [])
                       : null}
                   </>
@@ -790,6 +908,17 @@ const RolesPage = () => {
                     header={`Set ${currentRole?.name} as default role`}
                     onCancel={cancelSetDefaultRole}
                     onConfirm={onSetDefaultRole}
+                  />
+                )}
+                {isAddingTeams && (
+                  <AddUsersModal
+                    header={`Adding teams to ${
+                      currentRole?.displayName ?? currentRole?.name
+                    } role`}
+                    list={getUniqueTeamList() as EntityReference[]}
+                    searchPlaceHolder="Search for teams..."
+                    onCancel={() => setIsAddingTeams(false)}
+                    onSave={(data) => addTeams(data as Team[])}
                   />
                 )}
               </div>

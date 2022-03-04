@@ -26,7 +26,7 @@ const getAllUsersList = (arrQueryFields = ''): void => {
 };
 
 const getAllTeams = (): void => {
-  getTeams().then((res: AxiosResponse) => {
+  getTeams('defaultRoles').then((res: AxiosResponse) => {
     AppState.updateUserTeam(res.data.data);
   });
 };

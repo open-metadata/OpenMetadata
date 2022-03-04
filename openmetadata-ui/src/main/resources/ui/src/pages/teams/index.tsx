@@ -361,7 +361,21 @@ const TeamsPage = () => {
       );
     }
 
-    return null;
+    return (
+      <div
+        className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+        data-testid="teams-card">
+        {currentTeam?.defaultRoles?.map((role, i) => {
+          const roleData = {
+            description: role.displayName || role.name || '',
+            name: role.name as string,
+            id: role.id,
+          };
+
+          return <UserCard isIconVisible item={roleData} key={i} />;
+        })}
+      </div>
+    );
   };
 
   const fetchLeftPanel = () => {
