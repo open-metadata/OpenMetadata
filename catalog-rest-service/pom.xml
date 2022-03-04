@@ -169,7 +169,6 @@
     <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-json-jackson</artifactId>
-      <version>${jersey-media-json-jackson.version}</version>
       <exclusions>
         <!-- excluded as these are conflicting with dropwizard jersey-jackson dependencies -->
         <exclusion>
@@ -229,7 +228,6 @@
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
-      <version>${jersey-client.version}</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
