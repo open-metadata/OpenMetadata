@@ -72,8 +72,7 @@ public class ChangeEventHandler implements EventHandler {
 
         // Add a new thread to the entity for every change event
         // for the event to appear in activity feeds
-        // Skip creating threads for user or team related changes for now
-        if (!Entity.USER.equals(changeEvent.getEntityType()) && !Entity.TEAM.equals(changeEvent.getEntityType())) {
+        if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
           List<Thread> threads = getThreads(responseContext);
           if (threads != null) {
             for (var thread : threads) {
