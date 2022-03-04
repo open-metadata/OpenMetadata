@@ -47,8 +47,8 @@ export const getFieldThreadElement = (
         onThreadLinkSelect?.(threadValue.entityLink);
       }}>
       <span className="tw-flex">
-        <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-        {threadValue.count}
+        <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+        <span className="tw-ml-1">{threadValue.count}</span>
       </span>
     </p>
   ) : (

@@ -414,8 +414,8 @@ const EntityPageInfo = ({
                 className="link-text tw-ml-1 tw-w-8 tw-h-8 tw-flex-none"
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
                 <span className="tw-flex">
-                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                  {tagThread.count}
+                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+                  <span className="tw-ml-1">{tagThread.count}</span>
                 </span>
               </p>
             ) : (

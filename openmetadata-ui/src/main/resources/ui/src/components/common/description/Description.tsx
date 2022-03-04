@@ -138,7 +138,7 @@ const Description = ({
                 }>
                 <span className="tw-flex">
                   <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                  {descriptionThread.count}{' '}
+                  <span className="tw-ml-1"> {descriptionThread.count}</span>
                 </span>
               </p>
             ) : (

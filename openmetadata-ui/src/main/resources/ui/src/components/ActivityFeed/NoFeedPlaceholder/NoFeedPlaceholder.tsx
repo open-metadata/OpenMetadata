@@ -30,10 +30,9 @@ const NoFeedPlaceholder: FC<NoFeedPlaceholderProp> = ({
       <span>{`There is no activity on the "${entityName}" yet. Start a conversation by clicking
       on the `}</span>
       <span>
-        <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+        <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
       </span>
-      <span>{` to collaborate with other users. You can tag other users
-      with "@" and data assets with "#".`}</span>
+      <span>{` to collaborate with other users.`}</span>
 
       <div>
         <img
