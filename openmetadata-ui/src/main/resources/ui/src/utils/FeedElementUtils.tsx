@@ -53,7 +53,7 @@ export const getFieldThreadElement = (
     <Fragment>
       {entityType && entityFqn && entityField && flag ? (
         <p
-          className="tw-text-right link-text "
+          className="link-text tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();

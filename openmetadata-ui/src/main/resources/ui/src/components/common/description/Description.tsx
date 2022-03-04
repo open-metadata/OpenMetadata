@@ -88,7 +88,7 @@ const Description = ({
                 No description added{' '}
                 {isUndefined(descriptionThread) && onEntityFieldSelect ? (
                   <button
-                    className="focus:tw-outline-none tw-underline"
+                    className="focus:tw-outline-none tw-px-2 tw-py-0 tw-border tw-border-main tw-text-grey-body tw-rounded hover:tw-border-primary"
                     data-testid="request-description"
                     onClick={() => onEntityFieldSelect?.('description')}>
                     request description
@@ -132,7 +132,7 @@ const Description = ({
             </NonAdminAction>
             {!isUndefined(descriptionThread) ? (
               <p
-                className="link-text  tw-ml-2"
+                className="link-text tw-ml-2"
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
                 }>
@@ -143,7 +143,7 @@ const Description = ({
               <Fragment>
                 {description?.trim() && onThreadLinkSelect ? (
                   <p
-                    className="link-text  tw-ml-2"
+                    className="link-text tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100"
                     onClick={() =>
                       onThreadLinkSelect?.(
                         getEntityFeedLink(entityType, entityFqn, 'description')

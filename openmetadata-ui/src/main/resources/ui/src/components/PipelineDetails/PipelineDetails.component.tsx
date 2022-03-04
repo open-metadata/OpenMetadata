@@ -438,7 +438,7 @@ const PipelineDetails = ({
                                           )
                                         ) && onEntityFieldSelect ? (
                                           <button
-                                            className="focus:tw-outline-none tw-underline"
+                                            className="focus:tw-outline-none tw-px-2 tw-py-0 tw-border tw-border-main tw-text-grey-body tw-rounded hover:tw-border-primary"
                                             data-testid="request-description"
                                             onClick={() =>
                                               onEntityFieldSelect?.(

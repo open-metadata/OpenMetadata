@@ -84,7 +84,7 @@ export const getReplyText = (
   singular?: string,
   plural?: string
 ) => {
-  if (count === 0) return 'Reply in thread';
+  if (count === 0) return 'Reply in conversation';
   if (count === 1) return `${count} ${singular ? singular : 'older reply'}`;
 
   return `${count} ${plural ? plural : 'older replies'}`;

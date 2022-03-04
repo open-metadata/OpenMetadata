@@ -418,7 +418,7 @@ const EntityPageInfo = ({
               </p>
             ) : (
               <p
-                className="link-text  tw-ml-2"
+                className="link-text tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100"
                 onClick={() =>
                   onThreadLinkSelect?.(
                     getEntityFeedLink(entityType, entityFqn, 'tags')

@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React, { FC, HTMLAttributes } from 'react';
 import EditorImg from '../../../assets/img/feedEditor.png';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface NoFeedPlaceholderProp extends HTMLAttributes<HTMLDivElement> {
   entityName: string;
@@ -26,9 +27,14 @@ const NoFeedPlaceholder: FC<NoFeedPlaceholderProp> = ({
   return (
     <div
       className={classNames('tw-mt-10 tw-text-base tw-font-medium', className)}>
-      {`There is no activity on the "${entityName}" yet. Start a conversation by clicking
-      on the chat icon to collaborate with other users. You can tag other users
-      with "@" and data assets with "#".`}
+      <span>{`There is no activity on the "${entityName}" yet. Start a conversation by clicking
+      on the `}</span>
+      <span>
+        <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+      </span>
+      <span>{` to collaborate with other users. You can tag other users
+      with "@" and data assets with "#".`}</span>
+
       <div>
         <img
           alt="editor-image"

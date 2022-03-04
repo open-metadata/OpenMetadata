@@ -74,7 +74,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
           trigger="mouseenter">
           <Button
             className={classNames(
-              'tw-py-0.5 tw-px-1 tw-rounde tw-bg-none',
+              'tw-py-0.5 tw-px-1 tw-rounded tw-bg-none',
               buttonClass
             )}
             disabled={editorValue.length === 0}
