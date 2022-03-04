@@ -211,7 +211,9 @@ class Profiler(Generic[MetricType]):
         if not table_metrics:
             return
 
-        query = self.session.query(*[metric().fn() for metric in table_metrics]).select_from(self.table)
+        query = self.session.query(
+            *[metric().fn() for metric in table_metrics]
+        ).select_from(self.table)
 
         row = query.first()
         if row:
@@ -305,7 +307,9 @@ class Profiler(Generic[MetricType]):
 
             # Skip not supported types
             if col.type.__class__ in NOT_COMPUTE:
-                logger.debug(f"Skipping profile computation for {col.name}. Unsupported type {col.type.__class__}")
+                logger.debug(
+                    f"Skipping profile computation for {col.name}. Unsupported type {col.type.__class__}"
+                )
                 continue
 
             # Init column results dict

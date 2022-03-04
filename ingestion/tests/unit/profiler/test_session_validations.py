@@ -23,7 +23,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
     ColumnValuesToBeNotInSet,
 )
-from metadata.generated.schema.tests.column.columnValuesToMatchRegex import ColumnValuesToMatchRegex
+from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
+    ColumnValuesToMatchRegex,
+)
 from metadata.orm_profiler.engines import create_and_bind_session
 from metadata.orm_profiler.validations.core import validate
 
@@ -172,6 +174,6 @@ class MetricsTest(TestCase):
             executionTime=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Aborted,
             result=(
-                    "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
+                "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
             ),
         )

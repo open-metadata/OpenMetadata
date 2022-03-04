@@ -21,7 +21,9 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesToMatchRegex import ColumnValuesToMatchRegex
+from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
+    ColumnValuesToMatchRegex,
+)
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiles.core import Profiler
@@ -50,9 +52,7 @@ def column_values_to_match_regex(
     like_count = add_props(expression=test_case.regex)(Metrics.LIKE_COUNT.value)
 
     if not col_profile.valuesCount:
-        msg = (
-                "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
-        )
+        msg = "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
         logger.error(msg)
         return TestCaseResult(
             executionTime=execution_date.timestamp(),
@@ -88,7 +88,11 @@ def column_values_to_match_regex(
             result=msg,
         )
 
-    status = TestCaseStatus.Success if col_profile.valuesCount == like_count_res else TestCaseStatus.Failed
+    status = (
+        TestCaseStatus.Success
+        if col_profile.valuesCount == like_count_res
+        else TestCaseStatus.Failed
+    )
     result = f"Found likeCount={like_count_res} & valuesCount={col_profile.valuesCount}. They should be equal."
 
     return TestCaseResult(

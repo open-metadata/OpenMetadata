@@ -239,8 +239,8 @@ class MetricsTest(TestCase):
         like = add_props(expression="Jo%")(Metrics.LIKE_COUNT.value)
         res = (
             Profiler(like, session=self.session, table=User, use_cols=[User.name])
-                .execute()
-                ._column_results
+            .execute()
+            ._column_results
         )
 
         assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 1
@@ -270,8 +270,8 @@ class MetricsTest(TestCase):
         ilike = add_props(expression="ja%")(Metrics.ILIKE_COUNT.value)
         res = (
             Profiler(ilike, session=self.session, table=User, use_cols=[User.name])
-                .execute()
-                ._column_results
+            .execute()
+            ._column_results
         )
 
         assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 1

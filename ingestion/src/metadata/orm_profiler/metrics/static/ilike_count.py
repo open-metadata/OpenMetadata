@@ -12,7 +12,7 @@
 """
 ILIKE Count Metric definition
 """
-from sqlalchemy import func, case
+from sqlalchemy import case, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
