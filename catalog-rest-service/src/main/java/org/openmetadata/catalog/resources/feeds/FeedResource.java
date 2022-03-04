@@ -51,6 +51,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
@@ -260,12 +261,16 @@ public class FeedResource {
         @ApiResponse(
             responseCode = "200",
             description = "The post",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Post.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePost.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response addPost(
-      @Context SecurityContext securityContext, @Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post)
+      @Context SecurityContext securityContext,
+      @Context UriInfo uriInfo,
+      @PathParam("id") String id,
+      @Valid CreatePost createPost)
       throws IOException {
+    Post post = getPost(createPost);
     Thread thread = addHref(uriInfo, dao.addPostToThread(id, post, securityContext.getUserPrincipal().getName()));
     return Response.created(thread.getHref()).entity(thread).build();
   }
@@ -319,5 +324,13 @@ public class FeedResource {
         .withAddressedTo(create.getAddressedTo())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  private Post getPost(CreatePost create) {
+    return new Post()
+        .withId(UUID.randomUUID())
+        .withMessage(create.getMessage())
+        .withFrom(create.getFrom())
+        .withPostTs(System.currentTimeMillis());
   }
 }
