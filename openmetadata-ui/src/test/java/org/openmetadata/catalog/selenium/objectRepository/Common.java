@@ -54,7 +54,7 @@ public class Common {
   By tagCount = By.xpath("//div[@data-testid='tag-conatiner']/div/div");
   By errorMessage = By.cssSelector("[data-testid='error-message']");
   By matchesInDescription = By.xpath("(//div[@data-testid='matches-stats'][1])/span[3]");
-  By tagCountSearch = By.xpath("(//div[@data-testid='description-text'][1])/div/p/span");
+  By tagCountSearch = By.xpath("(//div[@data-testid='description-text'][1])/div/span/span[@class='text-highlighter']");
   By tagFilterCount = By.xpath("//div[@data-testid='filter-containers-2']/div");
   By noSearchResult = By.cssSelector("[data-testid='no-search-results']");
   By resultsCount = By.xpath("//div[@data-testid='search-container']/div");
@@ -62,12 +62,13 @@ public class Common {
   By editLineageButton = By.cssSelector("[data-testid='edit-lineage']");
   By whatsNewModalChangeLogs = By.cssSelector("[data-testid='WhatsNewModalChangeLogs']");
   By tableCount = By.xpath("(//span[@data-testid='filter-count'])[1]");
-  By removeAssociatedTag = By.xpath("//span[@data-testid=\"remove\"]");
+  By removeAssociatedTag = By.xpath("//span[@data-testid='remove']");
   By breadCrumb = By.xpath("//li[@data-testid='breadcrumb-link']");
-  By descriptionContainer = By.xpath("//div[@data-testid='description']/div/p");
-  By manage = By.xpath("//button[@data-testid='tab'][contains(text(),'Manage')]");
+  By descriptionContainer = By.xpath("(//div[@data-testid='description']/div/span)[1]");
+  By manage = By.cssSelector("[id='manage']");
   By selectTier1 = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
   By difference = By.xpath("//span[@class='diff-added']");
+  By differenceRemoved = By.xpath("//span[@class='diff-removed']");
   By searchBox = By.xpath("//input[@data-testid=\"searchBox\"]");
   By follow = By.cssSelector("button[data-testid='follow-button']");
   By users = By.xpath("//div[@data-testid='dropdown-list']//div[2]//button[2]");
@@ -78,9 +79,12 @@ public class Common {
   By version = By.xpath("//button[@data-testid=\"version-button\"]");
   By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
   By topics = By.xpath("(//button[@data-testid='tab'])[2]");
-  By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
-  By addTag = By.xpath("//div[@data-testid='tag-conatiner']");
-  By breadCrumbTag = By.xpath("(//span[@data-testid='tags'])[1]");
+  By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[1]");
+  By addTag = By.xpath("(//div[@data-testid='tag-conatiner'])[1]");
+  By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])");
+  By tagsAdded = By.cssSelector("span[class='tw-no-underline hover:tw-no-underline tw-px-1']");
+  By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
+  By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p]");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
@@ -152,5 +156,9 @@ public class Common {
 
   public List<WebElement> breadCrumb() {
     return webDriver.findElements(breadCrumb);
+  }
+
+  public By selectTableLink(int index) {
+    return By.xpath("(//button[@data-testid='table-link'])[" + index + "]");
   }
 }
