@@ -32,7 +32,6 @@ import org.apache.commons.lang.StringUtils;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 
@@ -46,8 +45,7 @@ public final class ChangeEventParser {
     DELETE
   }
 
-  public static Map<EntityLink, String> getFormattedMessages(
-      ChangeDescription changeDescription, Object entity, ChangeEvent changeEvent) {
+  public static Map<EntityLink, String> getFormattedMessages(ChangeDescription changeDescription, Object entity) {
     // Store a map of entityLink -> message
     Map<EntityLink, String> messages;
 
@@ -82,7 +80,7 @@ public final class ChangeEventParser {
   }
 
   private static String getFieldValue(Object fieldValue) {
-    if (fieldValue != null) {
+    if (fieldValue != null && !fieldValue.toString().isEmpty()) {
       try {
         // Check if field value is a json string
         JsonValue json = JsonUtils.readJson(fieldValue.toString());

@@ -41,7 +41,11 @@ class SQLAlchemyHelper:
         """
         Create a SQLAlchemy connection to Database
         """
-        engine = create_engine(self.config.get_connection_url())
+        engine = create_engine(
+            self.config.get_connection_url(),
+            **self.config.options,
+            connect_args=self.config.connect_args
+        )
         conn = engine.connect()
         return conn
 

@@ -33,7 +33,6 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
@@ -57,16 +56,14 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
   @Test
   void testFormattedMessages() throws JsonProcessingException {
     ChangeDescription changeDescription = new ChangeDescription();
-    ChangeEvent changeEvent = new ChangeEvent();
     // Simulate updating tags of an entity from tag1 -> tag2
     FieldChange addTag = new FieldChange();
     addTag.withName("tags").withNewValue("tag2");
     FieldChange deleteTag = new FieldChange();
     deleteTag.withName("tags").withOldValue("tag1");
     changeDescription.withFieldsAdded(List.of(addTag)).withFieldsDeleted(List.of(deleteTag)).withPreviousVersion(1.0);
-    changeEvent.withChangeDescription(changeDescription).withPreviousVersion(1.0).withCurrentVersion(1.1);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     TagLabel tag1 = new TagLabel();
@@ -78,8 +75,7 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
     addTag.withNewValue(JsonUtils.pojoToJson(List.of(tag2)));
     deleteTag.withOldValue(JsonUtils.pojoToJson(List.of(tag1)));
 
-    Map<EntityLink, String> jsonMessages =
-        ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    Map<EntityLink, String> jsonMessages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, jsonMessages.size());
 
     // The entity links and values of both the messages should be the same
@@ -89,7 +85,6 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
   @Test
   void testEntityReferenceFormat() throws JsonProcessingException {
     ChangeDescription changeDescription = new ChangeDescription();
-    ChangeEvent changeEvent = new ChangeEvent();
     // Simulate adding owner to a table
     EntityReference entityReference = new EntityReference();
     entityReference.withId(UUID.randomUUID()).withName("user1").withDisplayName("User One");
@@ -97,9 +92,8 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
     addOwner.withName("owner").withNewValue(JsonUtils.pojoToJson(entityReference));
 
     changeDescription.withFieldsAdded(List.of(addOwner)).withPreviousVersion(1.0);
-    changeEvent.withChangeDescription(changeDescription).withPreviousVersion(1.0).withCurrentVersion(1.1);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals("Added **owner**: `User One`", messages.values().iterator().next());
@@ -108,15 +102,13 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
   @Test
   void testUpdateOfString() {
     ChangeDescription changeDescription = new ChangeDescription();
-    ChangeEvent changeEvent = new ChangeEvent();
     // Simulate a change of description in table
     FieldChange updateDescription = new FieldChange();
     updateDescription.withName("description").withNewValue("new description").withOldValue("old description");
 
     changeDescription.withFieldsUpdated(List.of(updateDescription)).withPreviousVersion(1.0);
-    changeEvent.withChangeDescription(changeDescription).withPreviousVersion(0.1).withCurrentVersion(1.1);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -135,11 +127,8 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
         .withFieldsDeleted(List.of(deleteDescription))
         .withPreviousVersion(1.0);
 
-    changeEvent.withChangeDescription(changeDescription).withPreviousVersion(0.1).withCurrentVersion(1.1);
-
     // now test if both the type of updates give the same message
-    Map<EntityLink, String> updatedMessages =
-        ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    Map<EntityLink, String> updatedMessages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, updatedMessages.size());
 
     assertEquals(messages.keySet().iterator().next(), updatedMessages.keySet().iterator().next());
@@ -149,7 +138,6 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
   @Test
   void testMajorSchemaChange() {
     ChangeDescription changeDescription = new ChangeDescription();
-    ChangeEvent changeEvent = new ChangeEvent();
     // Simulate a change of column name in table
     FieldChange addColumn = new FieldChange();
     addColumn
@@ -167,9 +155,8 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
         .withFieldsAdded(List.of(addColumn))
         .withFieldsDeleted(List.of(deleteColumn))
         .withPreviousVersion(1.3);
-    changeEvent.withChangeDescription(changeDescription).withPreviousVersion(0.1).withCurrentVersion(2.3);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -186,9 +173,8 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
         .withFieldsAdded(List.of(addColumn))
         .withFieldsDeleted(List.of(deleteColumn))
         .withPreviousVersion(1.3);
-    changeEvent.withChangeDescription(changeDescription).withPreviousVersion(0.1).withCurrentVersion(2.3);
 
-    messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -205,9 +191,8 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
         .withFieldsAdded(List.of(addColumn))
         .withFieldsDeleted(List.of(deleteColumn))
         .withPreviousVersion(1.4);
-    changeEvent.withChangeDescription(changeDescription).withPreviousVersion(0.1).withCurrentVersion(2.4);
 
-    messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE, changeEvent);
+    messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
