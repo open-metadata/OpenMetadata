@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { toLower } from 'lodash';
 import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
 import Searchbar from '../../components/common/searchbar/Searchbar';
@@ -18,13 +19,20 @@ import { EntityReference as UserTeams } from '../../generated/entity/teams/user'
 import UserCard from './UserCard';
 
 type Props = {
+  searchPlaceHolder?: string;
   header: string;
   list: Array<UserTeams>;
   onCancel: () => void;
   onSave: (data: Array<UserTeams>) => void;
 };
 
-const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
+const AddUsersModal = ({
+  header,
+  list,
+  onCancel,
+  onSave,
+  searchPlaceHolder,
+}: Props) => {
   const [selectedUsers, setSelectedusers] = useState<Array<string>>([]);
   const [searchText, setSearchText] = useState('');
 
@@ -45,13 +53,14 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
     return list
       .filter((user) => {
         return (
-          user.description?.includes(searchText) ||
-          user?.name?.includes(searchText)
+          toLower(user.description)?.includes(toLower(searchText)) ||
+          toLower(user.displayName)?.includes(toLower(searchText)) ||
+          toLower(user?.name)?.includes(toLower(searchText))
         );
       })
       .map((user, index) => {
         const User = {
-          description: user.description || '',
+          description: user.displayName || user.description || '',
           name: user.name || '',
           id: user.id,
         };
@@ -91,7 +100,9 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
         </div>
         <div className="tw-modal-body">
           <Searchbar
-            placeholder="Search for user..."
+            placeholder={
+              searchPlaceHolder ? searchPlaceHolder : 'Search for user...'
+            }
             searchValue={searchText}
             typingInterval={1500}
             onSearch={handleSearchAction}
