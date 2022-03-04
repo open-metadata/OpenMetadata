@@ -102,7 +102,7 @@ plugins: Dict[str, Set[str]] = {
     "presto": {"pyhive~=0.6.3"},
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
-    "redash": {"redash-toolbelt==0.1.4"},
+    "redash": {"redash-toolbelt==0.1.9"},
     "redshift": {"sqlalchemy-redshift==0.8.9", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {
         "sqlalchemy-redshift==0.8.9",
