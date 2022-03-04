@@ -98,3 +98,9 @@ export const updateUser = (
 ): Promise<AxiosResponse> => {
   return APIClient.put('/users', data);
 };
+
+export const getUserCounts = () => {
+  return APIClient.get(
+    '/search/query?q=*&from=0&size=0&index=user_search_index'
+  );
+};

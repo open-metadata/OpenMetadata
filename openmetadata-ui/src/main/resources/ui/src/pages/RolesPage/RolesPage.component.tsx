@@ -27,6 +27,7 @@ import {
   updatePolicy,
   updateRole,
 } from '../../axiosAPIs/rolesAPI';
+import { getUserCounts } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -82,6 +83,12 @@ const RolesPage = () => {
     rule: Rule | undefined;
     state: boolean;
   }>({ rule: undefined, state: false });
+
+  const [isSettingDefaultRole, setIsSettingDefaultRole] =
+    useState<boolean>(false);
+  const [userCounts, setUserCounts] = useState<number>(0);
+
+  const [defaultRole, setDefaultRole] = useState<Role>();
 
   const onNewDataChange = (data: Role, forceSet = false) => {
     if (errorData || forceSet) {
@@ -156,6 +163,7 @@ const RolesPage = () => {
       .then((res: AxiosResponse) => {
         const { data } = res.data;
         setRoles(data);
+        setDefaultRole(data.find((role: Role) => role.default));
         setCurrentRole(data[0]);
         AppState.updateUserRole(data);
       })
@@ -201,6 +209,15 @@ const RolesPage = () => {
       getRoleByName(name, ['users', 'policy'])
         .then((res: AxiosResponse) => {
           setCurrentRole(res.data);
+          setRoles((pre) => {
+            return pre.map((role) => {
+              if (role.id === res.data.id) {
+                return { ...res.data };
+              } else {
+                return role;
+              }
+            });
+          });
           if (roles.length <= 0) {
             fetchRoles();
           }
@@ -231,6 +248,42 @@ const RolesPage = () => {
       setIsEditable(false);
     } else {
       setIsEditable(false);
+    }
+  };
+
+  const startSetDefaultRole = () => {
+    setIsSettingDefaultRole(true);
+  };
+
+  const cancelSetDefaultRole = () => {
+    setIsSettingDefaultRole(false);
+  };
+
+  const onSetDefaultRole = () => {
+    if (isSettingDefaultRole) {
+      const updatedRole = { ...currentRole, default: true };
+      const jsonPatch = compare(currentRole as Role, updatedRole);
+      updateRole(currentRole?.id as string, jsonPatch)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentRole(res.data.name, true);
+            setRoles((pre) => {
+              return pre.map((role) => ({
+                ...role,
+                default: false,
+              }));
+            });
+          }
+        })
+        .catch(() => {
+          showToast({
+            variant: 'error',
+            body: 'Error while setting role as default.',
+          });
+        })
+        .finally(() => {
+          cancelSetDefaultRole();
+        });
     }
   };
 
@@ -314,6 +367,18 @@ const RolesPage = () => {
       });
   };
 
+  const getDefaultBadge = (className?: string) => {
+    return (
+      <span
+        className={classNames(
+          'tw-border tw-border-grey-muted tw-rounded tw-px-1 tw-font-normal',
+          className
+        )}>
+        Default
+      </span>
+    );
+  };
+
   const getTabs = () => {
     return (
       <div className="tw-mb-3 ">
@@ -347,7 +412,7 @@ const RolesPage = () => {
     );
   };
 
-  const fetchLeftPanel = () => {
+  const fetchLeftPanel = (roles: Array<Role>) => {
     return (
       <>
         <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
@@ -386,8 +451,9 @@ const RolesPage = () => {
               <p
                 className="tag-category label-category tw-self-center tw-truncate tw-w-52"
                 title={role.displayName}>
-                {role.displayName}
+                <span>{role.displayName}</span>{' '}
               </p>
+              {role.default ? getDefaultBadge() : null}
             </div>
           ))}
       </>
@@ -510,8 +576,22 @@ const RolesPage = () => {
     );
   };
 
+  const fetchUserCounts = () => {
+    getUserCounts()
+      .then((res: AxiosResponse) => {
+        setUserCounts(res.data.hits.total.value);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while getting users count.',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchRoles();
+    fetchUserCounts();
   }, []);
 
   useEffect(() => {
@@ -526,7 +606,7 @@ const RolesPage = () => {
         <ErrorPlaceHolder />
       ) : (
         <PageContainerV1 className="tw-py-4">
-          <PageLayout leftPanel={fetchLeftPanel()}>
+          <PageLayout leftPanel={fetchLeftPanel(roles)}>
             {isLoading ? (
               <Loader />
             ) : (
@@ -540,25 +620,51 @@ const RolesPage = () => {
                         className="tw-heading tw-text-link tw-text-base"
                         data-testid="header-title">
                         {currentRole?.displayName}
+                        {currentRole?.default
+                          ? getDefaultBadge('tw-ml-2')
+                          : null}
                       </div>
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <Button
-                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                          })}
-                          data-testid="add-new-rule-button"
-                          size="small"
-                          theme="primary"
-                          variant="contained"
-                          onClick={() => {
-                            setErrorData(undefined);
-                            setIsAddingRule(true);
-                          }}>
-                          Add new rule
-                        </Button>
-                      </NonAdminAction>
+                      <div className="tw-flex">
+                        {!currentRole?.default ? (
+                          <NonAdminAction
+                            position="bottom"
+                            title={TITLE_FOR_NON_ADMIN_ACTION}>
+                            <Button
+                              className={classNames(
+                                'tw-h-8 tw-rounded tw-mb-3 tw-mr-2',
+                                {
+                                  'tw-opacity-40':
+                                    !isAdminUser && !isAuthDisabled,
+                                }
+                              )}
+                              data-testid="set-as-default-button"
+                              size="small"
+                              theme="primary"
+                              variant="contained"
+                              onClick={startSetDefaultRole}>
+                              Set as default
+                            </Button>
+                          </NonAdminAction>
+                        ) : null}
+                        <NonAdminAction
+                          position="bottom"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <Button
+                            className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                              'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                            })}
+                            data-testid="add-new-rule-button"
+                            size="small"
+                            theme="primary"
+                            variant="contained"
+                            onClick={() => {
+                              setErrorData(undefined);
+                              setIsAddingRule(true);
+                            }}>
+                            Add new rule
+                          </Button>
+                        </NonAdminAction>
+                      </div>
                     </div>
                     <div
                       className="tw-mb-3 tw--ml-5"
@@ -661,6 +767,29 @@ const RolesPage = () => {
                     onConfirm={() => {
                       deleteRule(deletingRule.rule as Rule);
                     }}
+                  />
+                )}
+
+                {isSettingDefaultRole && (
+                  <ConfirmationModal
+                    bodyText={
+                      <Fragment>
+                        {userCounts} users will be assigned{' '}
+                        <span className="tw-font-medium">
+                          {currentRole?.displayName ?? currentRole?.name}
+                        </span>{' '}
+                        role and unassigned{' '}
+                        <span className="tw-font-medium">
+                          {defaultRole?.displayName ?? defaultRole?.name}
+                        </span>{' '}
+                        role.`
+                      </Fragment>
+                    }
+                    cancelText="Cancel"
+                    confirmText="Confirm"
+                    header={`Set ${currentRole?.name} as default role`}
+                    onCancel={cancelSetDefaultRole}
+                    onConfirm={onSetDefaultRole}
                   />
                 )}
               </div>
