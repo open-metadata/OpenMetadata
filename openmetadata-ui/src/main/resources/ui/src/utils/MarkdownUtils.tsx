@@ -15,8 +15,11 @@ import React, { FC, HTMLAttributes } from 'react';
 
 export const Paragraph: FC<
   HTMLAttributes<HTMLParagraphElement> & { isNewLine: boolean }
-> = ({ children, isNewLine = true, ...props }) =>
-  isNewLine ? <p {...props}>{children}</p> : <span {...props}>{children}</span>;
+> = ({ children, ...props }) => <p {...props}>{children}</p>;
+
+export const Span: FC<
+  HTMLAttributes<HTMLSpanElement> & { isNewLine: boolean }
+> = ({ children, ...props }) => <span {...props}>{children}</span>;
 
 export const UnOrderedList: FC<HTMLAttributes<HTMLUListElement>> = ({
   children,

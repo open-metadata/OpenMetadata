@@ -141,6 +141,14 @@ const DashboardDetailsPage = () => {
       });
     }
   };
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      }
+    );
+  };
 
   useEffect(() => {
     if (dashboardDetailsTabs[activeTab - 1].path !== tab) {
@@ -347,6 +355,7 @@ const DashboardDetailsPage = () => {
         setCurrentVersion(version);
         setDashboardDetails(res.data);
         setDescription(description);
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const errMsg =
@@ -401,6 +410,7 @@ const DashboardDetailsPage = () => {
         setTier(getTierTags(res.data.tags));
         setCurrentVersion(res.data.version);
         setTags(getTagsWithoutTier(res.data.tags));
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const errMsg =
@@ -422,6 +432,7 @@ const DashboardDetailsPage = () => {
           setCurrentVersion(res.data.version);
           setOwner(res.data.owner);
           setTier(getTierTags(res.data.tags));
+          getEntityFeedCount();
           resolve();
         })
         .catch((err: AxiosError) => {
@@ -540,27 +551,20 @@ const DashboardDetailsPage = () => {
       });
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN)).then(
-      (res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-        setEntityFieldThreadCount(res.data.counts);
-      }
-    );
-  };
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res: AxiosResponse) => {
         setEntityThread((pre) => [...pre, res.data]);
+        getEntityFeedCount();
         showToast({
           variant: 'success',
-          body: 'Thread is created successfully',
+          body: 'Conversation created successfully',
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Error while creating thread',
+          body: 'Error while creating the conversation',
         });
       });
   };
@@ -595,6 +599,7 @@ const DashboardDetailsPage = () => {
           charts={charts}
           createThread={createThread}
           dashboardDetails={dashboardDetails}
+          dashboardFQN={dashboardFQN}
           dashboardTags={tags}
           dashboardUrl={dashboardUrl}
           deleted={deleted}

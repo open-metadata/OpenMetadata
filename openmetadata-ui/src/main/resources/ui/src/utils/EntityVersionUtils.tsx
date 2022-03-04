@@ -26,7 +26,7 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
-import { Paragraph, UnOrderedList } from './MarkdownUtils';
+import { Paragraph, Span, UnOrderedList } from './MarkdownUtils';
 import { isValidJSONString } from './StringsUtils';
 import { getEntityLink, getOwnerFromId } from './TableUtils';
 
@@ -34,7 +34,7 @@ import { getEntityLink, getOwnerFromId } from './TableUtils';
 const parseMarkdown = (
   content: string,
   className: string,
-  isNewLine: boolean
+  _isNewLine: boolean
 ) => {
   return (
     <Markdown
@@ -68,7 +68,12 @@ const parseMarkdown = (
             component: Paragraph,
             props: {
               className: `${className}`,
-              isNewLine,
+            },
+          },
+          span: {
+            component: Span,
+            props: {
+              className: `${className}`,
             },
           },
         },

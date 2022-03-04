@@ -13,13 +13,15 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isNil } from 'lodash';
 import { EntityFieldThreads, EntityTags } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -28,9 +30,13 @@ import {
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
-import { getFieldThreadElement } from '../../utils/FeedElementUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import {
+  getDefaultValue,
+  getFieldThreadElement,
+} from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -43,6 +49,7 @@ import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
@@ -83,6 +90,7 @@ const PipelineDetails = ({
   feedCount,
   entityFieldThreadCount,
   createThread,
+  pipelineFQN,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -94,6 +102,15 @@ const PipelineDetails = ({
   }>();
 
   const [threadLink, setThreadLink] = useState<string>('');
+
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
 
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
@@ -311,7 +328,9 @@ const PipelineDetails = ({
               'tags',
               entityFieldThreadCount
             )}
+            entityFqn={pipelineFQN}
             entityName={entityName}
+            entityType={EntityType.PIPELINE}
             extraInfo={extraInfo}
             followHandler={followPipeline}
             followers={followersCount}
@@ -345,7 +364,9 @@ const PipelineDetails = ({
                           'description',
                           entityFieldThreadCount
                         )}
+                        entityFqn={pipelineFQN}
                         entityName={entityName}
+                        entityType={EntityType.PIPELINE}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
                         isReadOnly={deleted}
@@ -353,6 +374,7 @@ const PipelineDetails = ({
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
+                        onEntityFieldSelect={onEntityFieldSelect}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </div>
@@ -403,40 +425,74 @@ const PipelineDetails = ({
                                       />
                                     ) : (
                                       <span className="tw-no-description">
-                                        No description added
+                                        No description added{' '}
                                       </span>
-                                    )}
-                                    {getFieldThreadElement(
-                                      task.name,
-                                      'description',
-                                      getEntityFieldThreadCounts(
-                                        'tasks',
-                                        entityFieldThreadCount
-                                      ) as EntityFieldThreads[],
-                                      onThreadLinkSelect
                                     )}
                                   </div>
                                   {!deleted && (
-                                    <NonAdminAction
-                                      html={getHtmlForNonAdminAction(
-                                        Boolean(owner)
+                                    <Fragment>
+                                      <NonAdminAction
+                                        html={getHtmlForNonAdminAction(
+                                          Boolean(owner)
+                                        )}
+                                        isOwner={hasEditAccess()}
+                                        permission={Operation.UpdateDescription}
+                                        position="top">
+                                        <button
+                                          className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                          onClick={() =>
+                                            handleUpdateTask(task, index)
+                                          }>
+                                          <SVGIcons
+                                            alt="edit"
+                                            icon="icon-edit"
+                                            title="Edit"
+                                            width="10px"
+                                          />
+                                        </button>
+                                      </NonAdminAction>
+                                      {!isNil(
+                                        getFieldThreadElement(
+                                          task.name,
+                                          'description',
+                                          getEntityFieldThreadCounts(
+                                            'tasks',
+                                            entityFieldThreadCount
+                                          ) as EntityFieldThreads[],
+                                          onThreadLinkSelect
+                                        )
+                                      ) &&
+                                      onEntityFieldSelect &&
+                                      !task.description ? (
+                                        <button
+                                          className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
+                                          data-testid="request-description"
+                                          onClick={() =>
+                                            onEntityFieldSelect?.(
+                                              `tasks/${task.name}/description`
+                                            )
+                                          }>
+                                          <SVGIcons
+                                            alt="request-description"
+                                            icon={Icons.REQUEST}
+                                            width="20px"
+                                          />
+                                        </button>
+                                      ) : null}
+                                      {getFieldThreadElement(
+                                        task.name,
+                                        'description',
+                                        getEntityFieldThreadCounts(
+                                          'tasks',
+                                          entityFieldThreadCount
+                                        ) as EntityFieldThreads[],
+                                        onThreadLinkSelect,
+                                        EntityType.PIPELINE,
+                                        pipelineFQN,
+                                        `tasks/${task.name}/description`,
+                                        Boolean(task.description)
                                       )}
-                                      isOwner={hasEditAccess()}
-                                      permission={Operation.UpdateDescription}
-                                      position="top">
-                                      <button
-                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        onClick={() =>
-                                          handleUpdateTask(task, index)
-                                        }>
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="10px"
-                                        />
-                                      </button>
-                                    </NonAdminAction>
+                                    </Fragment>
                                   )}
                                 </div>
                               </td>
@@ -453,15 +509,6 @@ const PipelineDetails = ({
                       </div>
                     )}
                   </div>
-                  {threadLink ? (
-                    <ActivityThreadPanel
-                      createThread={createThread}
-                      open={Boolean(threadLink)}
-                      postFeedHandler={postFeedHandler}
-                      threadLink={threadLink}
-                      onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
                 </>
               )}
               {activeTab === 2 && (
@@ -473,6 +520,7 @@ const PipelineDetails = ({
                     isEntityFeed
                     withSidePanel
                     className=""
+                    entityName={entityName}
                     feedList={entityThread}
                     isLoading={isentityThreadLoading}
                     postFeedHandler={postFeedHandler}
@@ -519,6 +567,28 @@ const PipelineDetails = ({
           onSave={onTaskUpdate}
         />
       )}
+      {threadLink ? (
+        <ActivityThreadPanel
+          createThread={createThread}
+          open={Boolean(threadLink)}
+          postFeedHandler={postFeedHandler}
+          threadLink={threadLink}
+          onCancel={onThreadPanelClose}
+        />
+      ) : null}
+      {selectedField ? (
+        <RequestDescriptionModal
+          createThread={createThread}
+          defaultValue={getDefaultValue(owner as EntityReference)}
+          header="Request description"
+          threadLink={getEntityFeedLink(
+            EntityType.PIPELINE,
+            pipelineFQN,
+            selectedField
+          )}
+          onCancel={closeRequestModal}
+        />
+      ) : null}
     </>
   );
 };

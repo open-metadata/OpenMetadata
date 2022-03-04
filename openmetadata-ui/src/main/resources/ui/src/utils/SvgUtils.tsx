@@ -18,6 +18,7 @@ import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
+import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -25,6 +26,7 @@ import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
+import IconComments from '../assets/svg/comment.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
@@ -95,6 +97,7 @@ import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
+import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
@@ -102,6 +105,7 @@ import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
 import IconSchemaColor from '../assets/svg/schema-color.svg';
@@ -238,6 +242,7 @@ export const Icons = {
   CONTROLMINUS: 'icon-control-minus',
   EDITLINEAGECOLOR: 'icon-edit-lineage-color',
   EDITLINEAGE: 'icon-edit-lineage',
+  REQUEST: 'icon-request',
   CHECKBOX_PRIMARY: 'icon-checkbox-primary',
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
@@ -247,6 +252,9 @@ export const Icons = {
   ICON_UP: 'icon-up',
   ICON_DOWN: 'icon-down',
   PAPER_PLANE: 'icon-paper-plane',
+  PAPER_PLANE_PRIMARY: 'icon-paper-plane-primary',
+  COMMENT: 'icon-comment',
+  COMMENT_PLUS: 'icon-comment-plus',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -695,6 +703,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAnnouncement;
 
       break;
+    case Icons.REQUEST:
+      IconComponent = IconRequest;
+
+      break;
     case Icons.ANNOUNCEMENT_WHITE:
       IconComponent = IconAnnouncementWhite;
 
@@ -713,6 +725,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.PAPER_PLANE:
       IconComponent = IconPaperPlane;
+
+      break;
+    case Icons.PAPER_PLANE_PRIMARY:
+      IconComponent = IconPaperPlanePrimary;
+
+      break;
+    case Icons.COMMENT:
+      IconComponent = IconComments;
+
+      break;
+    case Icons.COMMENT_PLUS:
+      IconComponent = IconCommentPlus;
 
       break;
 
