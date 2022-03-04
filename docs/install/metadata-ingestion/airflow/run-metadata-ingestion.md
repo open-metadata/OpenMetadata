@@ -1,10 +1,8 @@
 ---
-description: >-
-  We highly recommend using Airflow or similar schedulers to run Metadata
-  Connectors.
+description: Below is the sample code example you can refer to integrate with Airflow
 ---
 
-# Airflow
+# Run Metadata Ingestion
 
 ## Airflow Example for Sample Data
 
@@ -90,4 +88,4 @@ def metadata_ingestion_workflow():
     workflow.stop
 ```
 
-Create a Workflow instance and pass a sample-data configuration which will read metadata from JSON files and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](../connectors/).
+Create a Workflow instance and pass a sample-data configuration which will read metadata from Json files and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](../connectors/).

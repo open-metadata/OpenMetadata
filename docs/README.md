@@ -2,7 +2,7 @@
 
 OpenMetadata is an open standard with a centralized metadata store and ingestion framework supporting [connectors](install/metadata-ingestion/connectors/) for a wide range of services. The metadata ingestion framework enables you to customize or add support for any service. REST APIs enable you to integrate OpenMetadata with existing tool chains. Using the OpenMetadata user interface (UI), data consumers can discover the right data to use in decision making and data producers can assess usage and consumer experience in order to plan improvements and prioritize bug fixes.
 
-OpenMetadata enables metadata management end-to-end, giving you the ability to unlock the value of data assets in the common use cases of data discovery and governance, but also in emerging use cases related to data quality, observability, and people collaboration.
+OpenMetadata enables metadata management end-to-end, giving you the ability to unlock the value of data assets in the common use cases of data discovery and governance, but also in emerging use cases related to data quality, observability, and people collaboration..
 
 {% embed url="https://youtu.be/3xaHf3A2PgU" %}
 
@@ -19,7 +19,7 @@ OpenMetadata provides connectors that enable you to perform metadata ingestion f
 | [Athena](openmetadata/connectors/athena.md)                 | [MLflow](connectors/mlflow.md)                  | [Redshift](openmetadata/connectors/redshift.md)             | [Tableau](openmetadata/connectors/tableau.md)                 |
 | [BigQuery](openmetadata/connectors/bigquery.md)             | [MSSQL](openmetadata/connectors/mssql.md)       | [Redshift Usage](openmetadata/connectors/redshift-usage.md) | [Trino](openmetadata/connectors/trino.md)                     |
 | [BigQuery Usage](openmetadata/connectors/bigquery-usage.md) | [MySQL](openmetadata/connectors/mysql.md)       |                                                             | [Vertica](openmetadata/connectors/vertica.md)                 |
-| [DBT](broken-reference)                                     |                                                 |                                                             |                                                               |
+| [DBT](broken-reference/)                                    |                                                 |                                                             |                                                               |
 | [Elasticsearch](openmetadata/connectors/elastic-search.md)  |                                                 |                                                             |                                                               |
 | [Glue Catalog](connectors/glue-catalog.md)                  |                                                 |                                                             |                                                               |
 | [Hive](openmetadata/connectors/hive.md)                     |                                                 |                                                             |                                                               |
