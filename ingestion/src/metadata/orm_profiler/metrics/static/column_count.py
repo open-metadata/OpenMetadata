@@ -10,32 +10,38 @@
 #  limitations under the License.
 
 """
-Like Count Metric definition
+Table Column Count Metric definition
 """
-from sqlalchemy import func
+from sqlalchemy import func, inspect, literal
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
-class LikeCount(StaticMetric):
+class ColumnCount(StaticMetric):
     """
-    LIKE_COUNT Metric
+    COLUMN_COUNT Metric
 
-    Given a column, and an expression, return the number of
-    rows that match it
+    Count all columns on a table
     """
 
     @classmethod
     def name(cls):
-        return "likeCount"
+        return "columnCount"
+
+    @classmethod
+    def is_col_metric(cls) -> bool:
+        """
+        Mark the class as a Table Metric
+        """
+        return False
 
     def metric_type(self):
         return int
 
     @_label
     def fn(self):
-        if not hasattr(self, "expression"):
+        if not hasattr(self, "table"):
             raise AttributeError(
-                "Like Count requires an expression to be set: add_props(expression=...)(Metrics.LIKE_COUNT)"
+                "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
             )
-        return func.count(self.col.like(self.expression))
+        return literal(len(inspect(self.table).c))

@@ -28,6 +28,7 @@ def table_row_count_to_equal(
     test_case: TableRowCountToEqual,
     table_profile: TableProfile,
     execution_date: datetime,
+    **__,
 ) -> TestCaseResult:
     """
     Validate row count metric
