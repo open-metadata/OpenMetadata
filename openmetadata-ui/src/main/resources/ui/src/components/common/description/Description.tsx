@@ -145,7 +145,7 @@ const Description = ({
               <Fragment>
                 {description?.trim() && onThreadLinkSelect ? (
                   <p
-                    className="link-text tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+                    className="link-text tw-flex-none tw-ml-2"
                     onClick={() =>
                       onThreadLinkSelect?.(
                         getEntityFeedLink(entityType, entityFqn, 'description')
