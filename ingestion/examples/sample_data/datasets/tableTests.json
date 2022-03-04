@@ -266,6 +266,44 @@
           "testCaseStatus": "Success",
           "result": "Found min=1.0 vs. the expected min=0"
         }
+      },
+      {
+        "columnName": "last_name",
+        "description": "We have reserved last names",
+        "testCase": {
+          "config": {
+            "forbiddenValues": [
+              "forbidden",
+              "random"
+            ]
+          },
+          "columnTestType": "columnValuesToBeNotInSet"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found countInSet=0"
+        }
+      },
+      {
+        "columnName": "last_name",
+        "description": "We have reserved last names",
+        "testCase": {
+          "config": {
+            "forbiddenValues": [
+              "forbidden",
+              "random"
+            ]
+          },
+          "columnTestType": "columnValuesToBeNotInSet"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found countInSet=0"
+        }
       }
     ]
   }
