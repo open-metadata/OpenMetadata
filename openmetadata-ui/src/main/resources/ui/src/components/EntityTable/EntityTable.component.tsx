@@ -34,7 +34,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
 import { getThreadValue } from '../../utils/FeedUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
   getDataTypeString,
@@ -496,24 +496,6 @@ const EntityTable = ({
                                 ) : (
                                   <span className="tw-no-description">
                                     No description added{' '}
-                                    {isNil(
-                                      getThreadValue(
-                                        cell.row.cells[0].value,
-                                        'description',
-                                        entityFieldThreads as EntityFieldThreads[]
-                                      )
-                                    ) ? (
-                                      <button
-                                        className="focus:tw-outline-none tw-px-2 tw-py-0 tw-border tw-border-main tw-text-grey-body tw-rounded hover:tw-border-primary"
-                                        data-testid="request-description"
-                                        onClick={() =>
-                                          onEntityFieldSelect?.(
-                                            `columns/${cell.row.cells[0].value}/description`
-                                          )
-                                        }>
-                                        request description
-                                      </button>
-                                    ) : null}
                                   </span>
                                 )}
                               </div>
@@ -544,6 +526,28 @@ const EntityTable = ({
                                       />
                                     </button>
                                   </NonAdminAction>
+                                  {isNil(
+                                    getThreadValue(
+                                      cell.row.cells[0].value,
+                                      'description',
+                                      entityFieldThreads as EntityFieldThreads[]
+                                    )
+                                  ) && !cell.value ? (
+                                    <button
+                                      className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100"
+                                      data-testid="request-description"
+                                      onClick={() =>
+                                        onEntityFieldSelect?.(
+                                          `columns/${cell.row.cells[0].value}/description`
+                                        )
+                                      }>
+                                      <SVGIcons
+                                        alt="request-description"
+                                        icon={Icons.REQUEST}
+                                        width="20px"
+                                      />
+                                    </button>
+                                  ) : null}
                                   {getFieldThreadElement(
                                     cell.row.cells[0].value,
                                     'description',

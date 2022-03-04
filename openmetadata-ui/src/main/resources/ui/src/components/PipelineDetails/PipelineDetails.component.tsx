@@ -36,7 +36,7 @@ import {
   getFieldThreadElement,
 } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -426,28 +426,6 @@ const PipelineDetails = ({
                                     ) : (
                                       <span className="tw-no-description">
                                         No description added{' '}
-                                        {!isNil(
-                                          getFieldThreadElement(
-                                            task.name,
-                                            'description',
-                                            getEntityFieldThreadCounts(
-                                              'tasks',
-                                              entityFieldThreadCount
-                                            ) as EntityFieldThreads[],
-                                            onThreadLinkSelect
-                                          )
-                                        ) && onEntityFieldSelect ? (
-                                          <button
-                                            className="focus:tw-outline-none tw-px-2 tw-py-0 tw-border tw-border-main tw-text-grey-body tw-rounded hover:tw-border-primary"
-                                            data-testid="request-description"
-                                            onClick={() =>
-                                              onEntityFieldSelect?.(
-                                                `tasks/${task.name}/description`
-                                              )
-                                            }>
-                                            request description
-                                          </button>
-                                        ) : null}
                                       </span>
                                     )}
                                   </div>
@@ -473,6 +451,34 @@ const PipelineDetails = ({
                                           />
                                         </button>
                                       </NonAdminAction>
+                                      {!isNil(
+                                        getFieldThreadElement(
+                                          task.name,
+                                          'description',
+                                          getEntityFieldThreadCounts(
+                                            'tasks',
+                                            entityFieldThreadCount
+                                          ) as EntityFieldThreads[],
+                                          onThreadLinkSelect
+                                        )
+                                      ) &&
+                                      onEntityFieldSelect &&
+                                      !task.description ? (
+                                        <button
+                                          className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
+                                          data-testid="request-description"
+                                          onClick={() =>
+                                            onEntityFieldSelect?.(
+                                              `tasks/${task.name}/description`
+                                            )
+                                          }>
+                                          <SVGIcons
+                                            alt="request-description"
+                                            icon={Icons.REQUEST}
+                                            width="20px"
+                                          />
+                                        </button>
+                                      ) : null}
                                       {getFieldThreadElement(
                                         task.name,
                                         'description',

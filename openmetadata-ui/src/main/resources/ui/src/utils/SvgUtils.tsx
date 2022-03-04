@@ -105,6 +105,7 @@ import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
 import IconSchemaColor from '../assets/svg/schema-color.svg';
@@ -241,6 +242,7 @@ export const Icons = {
   CONTROLMINUS: 'icon-control-minus',
   EDITLINEAGECOLOR: 'icon-edit-lineage-color',
   EDITLINEAGE: 'icon-edit-lineage',
+  REQUEST: 'icon-request',
   CHECKBOX_PRIMARY: 'icon-checkbox-primary',
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
@@ -699,6 +701,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ANNOUNCEMENT:
       IconComponent = IconAnnouncement;
+
+      break;
+    case Icons.REQUEST:
+      IconComponent = IconRequest;
 
       break;
     case Icons.ANNOUNCEMENT_WHITE:
