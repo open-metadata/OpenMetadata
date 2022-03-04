@@ -49,7 +49,7 @@ def column_values_not_in_set(
     :return: TestCaseResult with status and results
     """
 
-    set_count = add_props(values=test_case.values)(Metrics.COUNT_IN_SET.value)
+    set_count = add_props(values=test_case.forbiddenValues)(Metrics.COUNT_IN_SET.value)
 
     try:
         col = next(
