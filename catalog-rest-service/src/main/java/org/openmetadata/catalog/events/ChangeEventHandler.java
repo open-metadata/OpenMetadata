@@ -72,10 +72,15 @@ public class ChangeEventHandler implements EventHandler {
 
         // Add a new thread to the entity for every change event
         // for the event to appear in activity feeds
-        List<Thread> threads = getThreads(responseContext, changeEvent);
-        if (threads != null) {
-          for (var thread : threads) {
-            feedDao.create(thread);
+        if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
+          List<Thread> threads = getThreads(responseContext);
+          if (threads != null) {
+            for (var thread : threads) {
+              // Don't create a thread if there is no message
+              if (!thread.getMessage().isEmpty()) {
+                feedDao.create(thread);
+              }
+            }
           }
         }
       }
@@ -171,7 +176,7 @@ public class ChangeEventHandler implements EventHandler {
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
-  private List<Thread> getThreads(ContainerResponseContext responseContext, ChangeEvent changeEvent) {
+  private List<Thread> getThreads(ContainerResponseContext responseContext) {
     Object entity = responseContext.getEntity();
     if (entity == null) {
       return null; // Response has no entity to produce change event from
@@ -184,14 +189,14 @@ public class ChangeEventHandler implements EventHandler {
       return null;
     }
 
-    return getThreads(entity, entityInterface.getChangeDescription(), changeEvent);
+    return getThreads(entity, entityInterface.getChangeDescription());
   }
 
-  private List<Thread> getThreads(Object entity, ChangeDescription changeDescription, ChangeEvent changeEvent) {
+  private List<Thread> getThreads(Object entity, ChangeDescription changeDescription) {
     List<Thread> threads = new ArrayList<>();
     var entityInterface = Entity.getEntityInterface(entity);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, entity, changeEvent);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, entity);
 
     // Create an automated thread
     for (var link : messages.keySet()) {
