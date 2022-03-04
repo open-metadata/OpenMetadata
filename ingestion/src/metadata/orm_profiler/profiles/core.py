@@ -187,7 +187,7 @@ class Profiler(Generic[MetricType]):
 
         This should only execute column metrics.
         """
-        logger.debug("Running SQL Profiler...")
+        logger.debug(f"Running SQL Profiler for {col.name}")
 
         col_metrics = self.get_col_metrics(self.static_metrics)
 
@@ -208,8 +208,15 @@ class Profiler(Generic[MetricType]):
             metric for metric in self.static_metrics if not metric.is_col_metric()
         ]
 
-        for metric in table_metrics:
-            row = self.session.query(metric().fn()).select_from(self.table).first()
+        if not table_metrics:
+            return
+
+        query = self.session.query(
+            *[metric().fn() for metric in table_metrics]
+        ).select_from(self.table)
+
+        row = query.first()
+        if row:
             self._table_results.update(dict(row))
 
     def sql_col_query_run(self, col: Column) -> None:
@@ -218,6 +225,7 @@ class Profiler(Generic[MetricType]):
         """
 
         for metric in self.get_col_metrics(self.query_metrics):
+            logger.debug(f"Running query metric {metric.name()} for {col.name}")
             try:
                 metric_query = metric(col).query(session=self.session)
 
@@ -259,6 +267,7 @@ class Profiler(Generic[MetricType]):
 
         for metric in self.get_col_metrics(self.composed_metrics):
             # Composed metrics require the results as an argument
+            logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
             self._column_results[col.name][metric.name()] = metric(col).fn(
                 current_col_results
@@ -290,12 +299,17 @@ class Profiler(Generic[MetricType]):
         Run the whole profiling
         """
 
+        logger.debug(f"Running profiler for {self.table.__tablename__}")
+
         self.execute_table()
 
         for col in self.columns:
 
             # Skip not supported types
             if col.type.__class__ in NOT_COMPUTE:
+                logger.debug(
+                    f"Skipping profile computation for {col.name}. Unsupported type {col.type.__class__}"
+                )
                 continue
 
             # Init column results dict

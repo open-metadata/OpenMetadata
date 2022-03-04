@@ -229,12 +229,21 @@ class MetricsTest(TestCase):
         # that the metrics runs correctly rather than the implementation logic.
         like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
         res = (
-            Profiler(like, session=self.session, table=User, use_cols=[User.age])
+            Profiler(like, session=self.session, table=User, use_cols=[User.name])
             .execute()
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.LIKE_COUNT.name] == 2
+        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 2
+
+        like = add_props(expression="Jo%")(Metrics.LIKE_COUNT.value)
+        res = (
+            Profiler(like, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 1
 
         # Running safely
         # with pytest.raises(AttributeError):
@@ -249,14 +258,23 @@ class MetricsTest(TestCase):
         """
         Check ILIKE count: case-insensitive LIKE
         """
-        ilike = add_props(expression="J%")(Metrics.ILIKE_COUNT.value)
+        ilike = add_props(expression="j%")(Metrics.ILIKE_COUNT.value)
         res = (
-            Profiler(ilike, session=self.session, table=User, use_cols=[User.age])
+            Profiler(ilike, session=self.session, table=User, use_cols=[User.name])
             .execute()
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.ILIKE_COUNT.name] == 2
+        assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 2
+
+        ilike = add_props(expression="ja%")(Metrics.ILIKE_COUNT.value)
+        res = (
+            Profiler(ilike, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 1
 
         # Running safely
         # with pytest.raises(AttributeError):

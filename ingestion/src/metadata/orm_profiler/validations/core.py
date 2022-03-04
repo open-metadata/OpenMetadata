@@ -36,6 +36,9 @@ from metadata.orm_profiler.validations.column.column_values_to_be_not_null impor
 from metadata.orm_profiler.validations.column.column_values_to_be_unique import (
     column_values_to_be_unique,
 )
+from metadata.orm_profiler.validations.column.column_values_to_match_regex import (
+    column_values_to_match_regex,
+)
 from metadata.orm_profiler.validations.table.table_column_count_to_equal import (
     table_column_count_to_equal,
 )
@@ -73,3 +76,4 @@ validate.register(column_values_to_be_not_null)
 
 # Column Session Tests
 validate.register(column_values_not_in_set)
+validate.register(column_values_to_match_regex)

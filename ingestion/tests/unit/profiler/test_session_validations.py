@@ -23,6 +23,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
     ColumnValuesToBeNotInSet,
 )
+from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
+    ColumnValuesToMatchRegex,
+)
 from metadata.orm_profiler.engines import create_and_bind_session
 from metadata.orm_profiler.validations.core import validate
 
@@ -122,5 +125,55 @@ class MetricsTest(TestCase):
             result=(
                 "Error computing ColumnValuesToBeNotInSet for random - Cannot find"
                 + " the configured column random for ColumnValuesToBeNotInSet"
+            ),
+        )
+
+    def test_column_values_to_match_regex(self):
+        """
+        Check that the metric runs and the results are correctly validated
+        """
+        column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
+
+        res_ok = validate(
+            ColumnValuesToMatchRegex(regex="J%"),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Success,
+            result="Found likeCount=2 & valuesCount=2.0. They should be equal.",
+        )
+
+        res_ko = validate(
+            ColumnValuesToMatchRegex(regex="Jo%"),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_ko == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Failed,
+            result="Found likeCount=1 & valuesCount=2.0. They should be equal.",
+        )
+
+        res_aborted = validate(
+            ColumnValuesToMatchRegex(regex="J%"),
+            col_profile=ColumnProfile(name="name"),
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_aborted == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Aborted,
+            result=(
+                "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
             ),
         )

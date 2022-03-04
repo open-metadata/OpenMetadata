@@ -12,7 +12,7 @@
 """
 ILIKE Count Metric definition
 """
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
@@ -38,4 +38,4 @@ class ILikeCount(StaticMetric):
             raise AttributeError(
                 "ILike Count requires an expression to be set: add_props(expression=...)(Metrics.ILIKE_COUNT)"
             )
-        return func.count(self.col.ilike(self.expression))
+        return func.sum(case([(self.col.ilike(self.expression), 1)], else_=0))
