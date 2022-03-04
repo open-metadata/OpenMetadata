@@ -48,7 +48,6 @@ public class DefaultAuthorizer implements Authorizer {
 
   private String principalDomain;
   private UserRepository userRepository;
-  private RoleRepository roleRepository;
 
   private PolicyEvaluator policyEvaluator;
   private static final String FIELDS_PARAM = "roles,teams";
@@ -65,7 +64,7 @@ public class DefaultAuthorizer implements Authorizer {
     // RoleRepository needs to be instantiated for Entity.DAO_MAP to populated.
     // As we create default admin/bots we need to have RoleRepository available in DAO_MAP.
     // This needs to be handled better in future releases.
-    this.roleRepository = new RoleRepository(collectionDAO);
+    RoleRepository roleRepository = new RoleRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
     this.policyEvaluator = PolicyEvaluator.getInstance();
