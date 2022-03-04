@@ -22,6 +22,10 @@ export interface Team {
    */
   changeDescription?: ChangeDescription;
   /**
+   * Roles to be assigned to all users that are part of this team.
+   */
+  defaultRoles?: EntityReference[];
+  /**
    * When `true` indicates the entity has been soft deleted.
    */
   deleted?: boolean;
@@ -108,7 +112,7 @@ export interface FieldChange {
 }
 
 /**
- * List of entities owned by the team.
+ * Roles to be assigned to all users that are part of this team.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
