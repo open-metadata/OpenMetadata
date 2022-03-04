@@ -21,6 +21,10 @@ export interface Role {
    */
   changeDescription?: ChangeDescription;
   /**
+   * If `true`, this role is set as default and will be assigned to all users.
+   */
+  default?: boolean;
+  /**
    * When `true` indicates the entity has been soft deleted.
    */
   deleted?: boolean;
@@ -42,6 +46,10 @@ export interface Role {
    * Policy that is attached to this role.
    */
   policy?: EntityReference;
+  /**
+   * Teams that have this role assigned.
+   */
+  teams?: EntityReference[];
   /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
@@ -110,7 +118,7 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Users that have this role assigned.
+ * Teams that have this role assigned.
  */
 export interface EntityReference {
   /**

@@ -35,6 +35,10 @@ export interface Thread {
    */
   createdBy?: string;
   /**
+   * Entity Id of the entity that the thread belongs to.
+   */
+  entityId?: string;
+  /**
    * Link to the resource corresponding to this entity.
    */
   href?: string;
@@ -42,7 +46,15 @@ export interface Thread {
    * Unique identifier that identifies an entity instance.
    */
   id: string;
+  /**
+   * The main message of the thread in markdown format
+   */
+  message?: string;
   posts: Post[];
+  /**
+   * The total count of posts in the thread
+   */
+  postsCount?: number;
   /**
    * When `true` indicates the thread has been resolved
    */

@@ -29,6 +29,7 @@ def column_values_to_be_between(
     test_case: ColumnValuesToBeBetween,
     col_profile: ColumnProfile,
     execution_date: datetime,
+    **__,
 ) -> TestCaseResult:
     """
     Validate Column Values metric

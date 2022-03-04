@@ -59,4 +59,8 @@ public class TagsPage {
   public By headerItem(String item) {
     return By.cssSelector("[data-testid='appbar-item'][id='" + item + "']");
   }
+
+  public By addAssociatedTagIndex(int index) {
+    return By.xpath("(//span[@data-testid='tags'])[" + index + "]");
+  }
 }

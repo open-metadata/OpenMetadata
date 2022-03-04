@@ -173,12 +173,17 @@ class OrmProfilerProcessor(Processor[Table]):
         return table.fullyQualifiedName + col + test_type
 
     def run_table_test(
-        self, table: Table, test_case: TableTestCase, profiler_results: TableProfile
+        self,
+        table: Table,
+        orm_table,
+        test_case: TableTestCase,
+        profiler_results: TableProfile,
     ) -> Optional[TestCaseResult]:
         """
         Run & log the table test against the TableProfile.
 
         :param table: Table Entity being processed
+        :param orm_table: Declarative Meta
         :param test_case: Table Test Case to run
         :param profiler_results: Table profiler with informed metrics
         :return: TestCaseResult
@@ -196,6 +201,8 @@ class OrmProfilerProcessor(Processor[Table]):
             test_case.config,
             table_profile=profiler_results,
             execution_date=self.execution_date,
+            session=self.session,
+            table=orm_table,
         )
         self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
@@ -203,6 +210,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def run_column_test(
         self,
         table: Table,
+        orm_table,
         column: str,
         test_case: ColumnTestCase,
         profiler_results: TableProfile,
@@ -211,6 +219,7 @@ class OrmProfilerProcessor(Processor[Table]):
         Run & log the column test against the ColumnProfile
 
         :param table: Table Entity being processed
+        :param orm_table: Declarative Meta
         :param column: Column being tested
         :param test_case: Column Test Case to run
         :param profiler_results: Table profiler with informed metrics
@@ -248,20 +257,26 @@ class OrmProfilerProcessor(Processor[Table]):
 
         test_case_result: TestCaseResult = validate(
             test_case.config,
-            col_profiler_res,
+            col_profile=col_profiler_res,
             execution_date=self.execution_date,
+            session=self.session,
+            table=orm_table,
         )
         self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
 
     def validate_config_tests(
-        self, table: Table, profiler_results: TableProfile
+        self, table: Table, orm_table, profiler_results: TableProfile
     ) -> Optional[TestDef]:
         """
         Here we take care of new incoming tests in the workflow
         definition. Run them and prepare the new TestDef
         of the record, that will be sent to the sink to
         update the Table Entity.
+
+        :param table: OpenMetadata Table Entity being processed
+        :param orm_table: Declarative Meta
+        :param profiler_results: TableProfile with computed metrics
         """
 
         logger.info(f"Checking validations for {table.fullyQualifiedName}...")
@@ -285,6 +300,7 @@ class OrmProfilerProcessor(Processor[Table]):
         for table_test in my_record_tests.table_tests:
             test_case_result = self.run_table_test(
                 table=table,
+                orm_table=orm_table,
                 test_case=table_test.testCase,
                 profiler_results=profiler_results,
             )
@@ -294,6 +310,7 @@ class OrmProfilerProcessor(Processor[Table]):
         for column_test in my_record_tests.column_tests:
             test_case_result = self.run_column_test(
                 table=table,
+                orm_table=orm_table,
                 column=column_test.columnName,
                 test_case=column_test.testCase,
                 profiler_results=profiler_results,
@@ -306,6 +323,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def validate_entity_tests(
         self,
         table: Table,
+        orm_table,
         profiler_results: TableProfile,
         config_tests: Optional[TestDef],
     ) -> Optional[TestDef]:
@@ -319,6 +337,7 @@ class OrmProfilerProcessor(Processor[Table]):
         and trust the workflow input.
 
         :param table: OpenMetadata Table Entity being processed
+        :param orm_table: Declarative Meta
         :param profiler_results: TableProfile with computed metrics
         :param config_tests: Results of running the configuration tests
         """
@@ -356,6 +375,7 @@ class OrmProfilerProcessor(Processor[Table]):
         for table_test in table_tests:
             test_case_result = self.run_table_test(
                 table=table,
+                orm_table=orm_table,
                 test_case=table_test.testCase,
                 profiler_results=profiler_results,
             )
@@ -382,6 +402,7 @@ class OrmProfilerProcessor(Processor[Table]):
             if column_test:
                 test_case_result = self.run_column_test(
                     table=table,
+                    orm_table=orm_table,
                     column=column_test.columnName,
                     test_case=column_test.testCase,
                     profiler_results=profiler_results,
@@ -414,10 +435,12 @@ class OrmProfilerProcessor(Processor[Table]):
         # First, check if we have any tests directly configured in the workflow
         config_tests = None
         if self.config.test_suite:
-            config_tests = self.validate_config_tests(record, entity_profile)
+            config_tests = self.validate_config_tests(record, orm_table, entity_profile)
 
         # Then, Check if the entity has any tests
-        record_tests = self.validate_entity_tests(record, entity_profile, config_tests)
+        record_tests = self.validate_entity_tests(
+            record, orm_table, entity_profile, config_tests
+        )
 
         res = ProfilerResponse(
             table=record,

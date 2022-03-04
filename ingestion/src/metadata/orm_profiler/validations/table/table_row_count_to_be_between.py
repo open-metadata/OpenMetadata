@@ -10,40 +10,36 @@
 #  limitations under the License.
 
 """
-ColumnValuesToBeUnique validation implementation
+TableRowCountToBeBetween validation implementation
 """
-
 from datetime import datetime
 
-from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
-    ColumnValuesToBeUnique,
+from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
+    TableRowCountToBeBetween,
 )
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
 
 
-def column_values_to_be_unique(
-    _: ColumnValuesToBeUnique,
-    col_profile: ColumnProfile,
+def table_row_count_to_be_between(
+    test_case: TableRowCountToBeBetween,
+    table_profile: TableProfile,
     execution_date: datetime,
     **__,
 ) -> TestCaseResult:
     """
-    Validate Column Values metric
-    :param _: ColumnValuesToBeUnique. Just used to trigger singledispatch
-    :param col_profile: should contain count and distinct count metrics
+    Validate row count metric
+    :param test_case: TableRowCountToBeBetween
+    :param table_profile: should contain row count metric
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
     """
 
-    if col_profile.valuesCount is None or col_profile.uniqueCount is None:
-        msg = (
-            "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
-            + f" but got valuesCount={col_profile.valuesCount}, uniqueCount={col_profile.uniqueCount}."
-        )
+    if table_profile.rowCount is None:
+        msg = "rowCount should not be None for TableRowCountToBeBetween"
         logger.error(msg)
         return TestCaseResult(
             executionTime=execution_date.timestamp(),
@@ -53,13 +49,10 @@ def column_values_to_be_unique(
 
     status = (
         TestCaseStatus.Success
-        if col_profile.valuesCount == col_profile.uniqueCount
+        if test_case.minValue <= table_profile.rowCount <= test_case.maxValue
         else TestCaseStatus.Failed
     )
-    result = (
-        f"Found valuesCount={col_profile.valuesCount} vs. uniqueCount={col_profile.uniqueCount}."
-        + f" Both counts should be equal for column values to be unique."
-    )
+    result = f"Found {table_profile.rowCount} rows vs. the expected range [{test_case.minValue}, {test_case.maxValue}]."
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result

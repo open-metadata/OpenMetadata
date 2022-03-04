@@ -8,9 +8,7 @@
   "properties": {
     "values": {
       "description": "An Array of values.",
-      "items": {
-        "type": "object"
-      }
+      "type": "array"
     }
   },
   "required": ["values"],

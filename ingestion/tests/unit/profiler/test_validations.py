@@ -22,8 +22,17 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
+from metadata.generated.schema.tests.column.columnValuesToBeNotNull import (
+    ColumnValuesToBeNotNull,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
     ColumnValuesToBeUnique,
+)
+from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
+    TableColumnCountToEqual,
+)
+from metadata.generated.schema.tests.table.tableRowCountToBeBetween import (
+    TableRowCountToBeBetween,
 )
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
@@ -79,6 +88,104 @@ def test_table_row_count_to_equal():
         executionTime=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result="rowCount should not be None for TableRowCountToEqual",
+    )
+
+
+def test_table_row_count_to_be_between():
+    """
+    Check TableRowCountToEqual
+    """
+    table_profile = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        rowCount=100,
+    )
+
+    res_ok = validate(
+        TableRowCountToBeBetween(minValue=20, maxValue=120),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result="Found 100.0 rows vs. the expected range [20, 120].",
+    )
+
+    res_ko = validate(
+        TableRowCountToBeBetween(minValue=120, maxValue=200),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Found 100.0 rows vs. the expected range [120, 200].",
+    )
+
+    table_profile_aborted = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+    )
+
+    res_aborted = validate(
+        TableRowCountToBeBetween(minValue=120, maxValue=200),
+        table_profile=table_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result="rowCount should not be None for TableRowCountToBeBetween",
+    )
+
+
+def test_table_column_count_to_equal():
+    """
+    Check TableRowCountToEqual
+    """
+    table_profile = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+        columnCount=5,
+    )
+
+    res_ok = validate(
+        TableColumnCountToEqual(value=5),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result="Found 5.0 columns vs. the expected 5",
+    )
+
+    res_ko = validate(
+        TableColumnCountToEqual(value=20),
+        table_profile=table_profile,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Found 5.0 columns vs. the expected 20",
+    )
+
+    table_profile_aborted = TableProfile(
+        profileDate=EXECUTION_DATE.strftime("%Y-%m-%d"),
+    )
+
+    res_aborted = validate(
+        TableColumnCountToEqual(value=5),
+        table_profile=table_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result="columnCount should not be None for TableColumnCountToEqual",
     )
 
 
@@ -202,5 +309,58 @@ def test_column_values_to_be_unique():
         result=(
             "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
             + " but got valuesCount=None, uniqueCount=None."
+        ),
+    )
+
+
+def test_column_values_to_be_not_null():
+    """
+    Check ColumnValuesToBeNotNull
+    """
+
+    column_profile = ColumnProfile(
+        nullCount=0,
+    )
+
+    res_ok = validate(
+        ColumnValuesToBeNotNull(),
+        col_profile=column_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result=("Found nullCount=0.0. It should be 0."),
+    )
+
+    column_profile_ko = ColumnProfile(
+        nullCount=10,
+    )
+
+    res_ko = validate(
+        ColumnValuesToBeNotNull(),
+        col_profile=column_profile_ko,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result=("Found nullCount=10.0. It should be 0."),
+    )
+
+    column_profile_aborted = ColumnProfile()
+
+    res_aborted = validate(
+        ColumnValuesToBeNotNull(),
+        col_profile=column_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result=(
+            "We expect `nullCount` to be informed on the profiler for ColumnValuesToBeNotNull."
         ),
     )

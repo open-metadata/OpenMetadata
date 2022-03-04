@@ -26,11 +26,11 @@ public class ExplorePage {
   By pagination = By.xpath("//div[@data-testid=\"pagination-button\"]");
   By bigQueryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"BigQuery\"]");
   By serviceName = By.xpath("//div[@data-testid=\"checkbox-label\"]");
-  By countService = By.xpath("(//span[@data-testid=\"filter-count\"])");
+  By countService = By.xpath("//div[@data-testid='filter-containers-0']/div/span");
   By errorMessage = By.xpath("//p[@data-testid=\"no-search-results\"]");
   By glueCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Glue\"]");
-  By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[2]");
-  By addTag = By.xpath("//span[@data-testid=\"tags\"]");
+  By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[1]");
+  By addTag = By.xpath("//div[@data-testid='tag-conatiner']/div/span/span");
   By serviceText = By.xpath("//h6[contains(text(),'Service')]");
   By tierText = By.xpath("//h6[contains(text(),'Tier')]");
   By databaseText = By.xpath("//h6[contains(text(),'Database')]");

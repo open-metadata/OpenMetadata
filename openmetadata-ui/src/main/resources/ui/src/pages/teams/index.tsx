@@ -40,6 +40,7 @@ import {
   getTeamDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Team } from '../../generated/entity/teams/team';
 import {
   EntityReference,
@@ -56,7 +57,7 @@ import UserCard from './UserCard';
 const TeamsPage = () => {
   const { team } = useParams() as Record<string, string>;
   const history = useHistory();
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAuthDisabled, isAdminUser, userPermissions } = useAuth();
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [error, setError] = useState<string>('');
@@ -76,7 +77,7 @@ const TeamsPage = () => {
 
   const fetchTeams = () => {
     setIsLoading(true);
-    getTeams(['users', 'owns'])
+    getTeams(['users', 'owns', 'defaultRoles'])
       .then((res: AxiosResponse) => {
         if (!team) {
           setCurrentTeam(res.data.data[0]);
@@ -97,7 +98,7 @@ const TeamsPage = () => {
   const fetchCurrentTeam = (name: string, update = false) => {
     if (currentTeam?.name !== name || update) {
       setIsLoading(true);
-      getTeamByName(name, ['users', 'owns'])
+      getTeamByName(name, ['users', 'owns', 'defaultRoles'])
         .then((res: AxiosResponse) => {
           setCurrentTeam(res.data);
           if (teams.length <= 0) {
@@ -242,6 +243,19 @@ const TeamsPage = () => {
             Assets
             {getCountBadge(currentTeam?.owns?.length, '', currentTab === 2)}
           </button>
+          <button
+            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
+            data-testid="roles"
+            onClick={() => {
+              setCurrentTab(3);
+            }}>
+            Roles
+            {getCountBadge(
+              currentTeam?.defaultRoles?.length,
+              '',
+              currentTab === 3
+            )}
+          </button>
         </nav>
       </div>
     );
@@ -252,7 +266,9 @@ const TeamsPage = () => {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
           <p>There are no users added yet.</p>
-          {isAdminUser || isAuthDisabled ? (
+          {isAdminUser ||
+          isAuthDisabled ||
+          userPermissions[Operation.UpdateTeam] ? (
             <>
               <p>Would like to start adding some?</p>
               <Button
@@ -335,6 +351,19 @@ const TeamsPage = () => {
       </>
     );
   };
+
+  const getDefaultRoles = () => {
+    if ((currentTeam?.defaultRoles?.length as number) === 0) {
+      return (
+        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+          <p>There are no roles assigned yet.</p>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   const fetchLeftPanel = () => {
     return (
       <>
@@ -458,11 +487,17 @@ const TeamsPage = () => {
                         {currentTeam?.displayName ?? currentTeam?.name}
                       </div>
                       <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        html={
+                          <>You do not have permission to update the team.</>
+                        }
+                        permission={Operation.UpdateTeam}
+                        position="bottom">
                         <Button
                           className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                            'tw-opacity-40':
+                              !isAdminUser &&
+                              !isAuthDisabled &&
+                              !userPermissions[Operation.UpdateTeam],
                           })}
                           data-testid="add-new-user-button"
                           size="small"
@@ -494,6 +529,9 @@ const TeamsPage = () => {
                     {currentTab === 1 && getUserCards()}
 
                     {currentTab === 2 && getDatasetCards()}
+
+                    {currentTab === 3 && getDefaultRoles()}
+
                     {isAddingUsers && (
                       <AddUsersModal
                         header={`Adding new users to ${
@@ -508,7 +546,7 @@ const TeamsPage = () => {
                 ) : (
                   <ErrorPlaceHolder>
                     <p className="tw-text-lg tw-text-center">No Teams Added.</p>
-                    <p className="tw-text-lg tw-text-center">
+                    <div className="tw-text-lg tw-text-center">
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -521,7 +559,7 @@ const TeamsPage = () => {
                         </button>
                       </NonAdminAction>
                       {' to add new Team'}
-                    </p>
+                    </div>
                   </ErrorPlaceHolder>
                 )}
 

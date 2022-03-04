@@ -144,6 +144,7 @@ public class MyDataPageTest {
   @Test
   @Order(4)
   void checkExplore() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.explore());
@@ -153,38 +154,39 @@ public class MyDataPageTest {
       if (webDriver.findElement(explorePage.tables()).isDisplayed()) {
         LOG.info("Tables is displayed");
       }
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Tables not displayed");
     }
   }
 
   @Test
   @Order(5)
   void checkHeaders() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String url;
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.settings());
-    Events.click(webDriver, myDataPage.teams());
+    Events.click(webDriver, common.headerSettingsTeams());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/teams");
     try {
       if (teamsPage.heading().isDisplayed()) {
         LOG.info("Teams Heading is displayed");
       }
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Teams heading not displayed");
     }
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
-    Events.click(webDriver, myDataPage.users());
+    Events.click(webDriver, common.headerSettingsMenu("Users"));
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/user-list");
     try {
       if (userListPage.allUsers().isDisplayed()) {
         LOG.info("All users is displayed");
       }
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Users not displayed");
     }
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
@@ -195,20 +197,20 @@ public class MyDataPageTest {
       if (webDriver.findElement(tagsPage.addTagButton()).isDisplayed()) {
         LOG.info("Tag categories is displayed");
       }
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Tag categories not displayed");
     }
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
-    Events.click(webDriver, myDataPage.services());
+    Events.click(webDriver, common.headerSettingsMenu("Services"));
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/services");
     try {
-      if (webDriver.findElement(common.serviceName()).isDisplayed()) {
+      if (webDriver.findElement(myDataPage.serviceName()).isDisplayed()) {
         LOG.info("Database Service is displayed");
       }
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Database service not displayed");
     }
     webDriver.navigate().back();
   }
@@ -216,6 +218,7 @@ public class MyDataPageTest {
   @Test
   @Order(6)
   public void checkMyDataTab() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
@@ -233,14 +236,15 @@ public class MyDataPageTest {
         Assert.assertEquals(tableName.getText(), "dim_address");
         webDriver.findElement(By.linkText(table)).click();
       }
-    } catch (Exception e) {
-      e.printStackTrace();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Table not found");
     }
   }
 
   @Test
   @Order(7)
   void checkFollowingTab() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
@@ -253,13 +257,14 @@ public class MyDataPageTest {
       Events.click(webDriver, tableDetails.follow());
     }
     Events.click(webDriver, myDataPage.home());
-    String tableName = myDataPage.following().toString();
-    Assert.assertEquals(tableName, "Started Following " + table);
+    String tableName = webDriver.findElement(myDataPage.following()).getText();
+    Assert.assertEquals(tableName, "Started following " + table);
   }
 
   @Test
   @Order(8)
   void checkRecentlyViewed() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
     Events.click(webDriver, myDataPage.tableName());
@@ -272,6 +277,7 @@ public class MyDataPageTest {
   @Test
   @Order(8)
   public void checkRecentlySearched() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), searchCriteria);
@@ -282,14 +288,15 @@ public class MyDataPageTest {
       if (recentSearch.isDisplayed()) {
         Assert.assertEquals(recentSearch.getText(), searchCriteria);
       }
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Recently search does not have search criteria");
     }
   }
 
   @Test
   @Order(9)
-  public void checkRecentSearchWithSpaces() throws Exception {
+  public void checkRecentSearchWithSpaces() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), " ");
     Events.sendEnter(webDriver, myDataPage.searchBox());
@@ -299,7 +306,7 @@ public class MyDataPageTest {
       if (spaceSearch.isDisplayed()) {
         Assert.fail("Spaces are displayed in recent search terms");
       }
-    } catch (TimeoutException exception) {
+    } catch (NoSuchElementException exception) {
       LOG.info("Success");
     }
   }
@@ -307,6 +314,7 @@ public class MyDataPageTest {
   @Test
   @Order(10)
   public void checkHelp() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     ArrayList<String> tabs = new ArrayList<String>(webDriver.getWindowHandles());
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.help());

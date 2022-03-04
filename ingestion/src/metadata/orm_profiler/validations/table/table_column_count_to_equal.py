@@ -10,40 +10,36 @@
 #  limitations under the License.
 
 """
-ColumnValuesToBeUnique validation implementation
+TableColumnCountToEqual validation implementation
 """
-
 from datetime import datetime
 
-from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.generated.schema.entity.data.table import TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
-    ColumnValuesToBeUnique,
+from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
+    TableColumnCountToEqual,
 )
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
 
 
-def column_values_to_be_unique(
-    _: ColumnValuesToBeUnique,
-    col_profile: ColumnProfile,
+def table_column_count_to_equal(
+    test_case: TableColumnCountToEqual,
+    table_profile: TableProfile,
     execution_date: datetime,
     **__,
 ) -> TestCaseResult:
     """
-    Validate Column Values metric
-    :param _: ColumnValuesToBeUnique. Just used to trigger singledispatch
-    :param col_profile: should contain count and distinct count metrics
+    Validate row count metric
+    :param test_case: TableColumnCountToEqual
+    :param table_profile: should contain columnCount metric
     :param execution_date: Datetime when the tests ran
     :return: TestCaseResult with status and results
     """
 
-    if col_profile.valuesCount is None or col_profile.uniqueCount is None:
-        msg = (
-            "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
-            + f" but got valuesCount={col_profile.valuesCount}, uniqueCount={col_profile.uniqueCount}."
-        )
+    if table_profile.columnCount is None:
+        msg = "columnCount should not be None for TableColumnCountToEqual"
         logger.error(msg)
         return TestCaseResult(
             executionTime=execution_date.timestamp(),
@@ -53,12 +49,11 @@ def column_values_to_be_unique(
 
     status = (
         TestCaseStatus.Success
-        if col_profile.valuesCount == col_profile.uniqueCount
+        if table_profile.columnCount == test_case.value
         else TestCaseStatus.Failed
     )
     result = (
-        f"Found valuesCount={col_profile.valuesCount} vs. uniqueCount={col_profile.uniqueCount}."
-        + f" Both counts should be equal for column values to be unique."
+        f"Found {table_profile.columnCount} columns vs. the expected {test_case.value}"
     )
 
     return TestCaseResult(

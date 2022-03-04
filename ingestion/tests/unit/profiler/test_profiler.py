@@ -59,7 +59,7 @@ class ProfilerTest(TestCase):
         cls.session.add_all(data)
         cls.session.commit()
 
-    def test_simple_profiler(self):
+    def test_default_profiler(self):
         """
         Check our pre-cooked profiler
         """
@@ -69,6 +69,7 @@ class ProfilerTest(TestCase):
         profile = simple.get_profile()
 
         assert profile.rowCount == 2
+        assert profile.columnCount == 5
 
         age_profile = next(
             iter(

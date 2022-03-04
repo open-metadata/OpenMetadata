@@ -9,6 +9,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.*;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -18,8 +19,9 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @Slf4j
+@Order(9)
 class Explore {
-  WebDriver webDriver;
+  static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
@@ -57,18 +59,20 @@ class Explore {
   @Test
   @Order(1)
   void openExplorePage() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
     if (webDriver.findElement(explorePage.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
-      Assert.fail();
+      Assert.fail("Table count not displayed");
     }
   }
 
   @Test
   @Order(2)
   void checkTableCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     WebElement tabCount = webDriver.findElement(explorePage.tableCount());
     int tableCount = Integer.parseInt(tabCount.getText());
@@ -94,6 +98,7 @@ class Explore {
   @Test
   @Order(3)
   void checkTopicCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
@@ -120,6 +125,7 @@ class Explore {
   @Test
   @Order(4)
   void checkDashboardCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
@@ -146,6 +152,7 @@ class Explore {
   @Test
   @Order(5)
   void checkPipelineCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
@@ -172,6 +179,7 @@ class Explore {
   @Test
   @Order(6)
   void checkBasics() throws Exception {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     // Doing add tags first to get Tags checkbox in the left panel
     Events.click(webDriver, explorePage.selectTable());
@@ -182,29 +190,19 @@ class Explore {
     Events.click(webDriver, tableDetails.saveTag());
     webDriver.navigate().back();
     Events.click(webDriver, explorePage.explore());
-    WebElement serviceText = webDriver.findElement(explorePage.serviceText());
-    WebElement tierText = webDriver.findElement(explorePage.tierText());
-    WebElement tagText = webDriver.findElement(explorePage.tagText());
-    WebElement databaseText = webDriver.findElement(explorePage.databaseText());
-
-    if (serviceText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
+    try {
+      webDriver.findElement(explorePage.serviceText());
+    } catch (NoSuchElementException noSuchElementException) {
       Assert.fail("Service Text Not displayed");
     }
-    if (tierText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
+    try {
+      webDriver.findElement(explorePage.tierText());
+    } catch (NoSuchElementException noSuchElementException) {
       Assert.fail("Tier Text Not displayed");
     }
-    if (tagText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
-      Assert.fail("Tag Text Not displayed");
-    }
-    if (databaseText.isDisplayed()) {
-      LOG.info("Passed");
-    } else {
+    try {
+      webDriver.findElement(explorePage.databaseText());
+    } catch (NoSuchElementException noSuchElementException) {
       Assert.fail("Database Text Not displayed");
     }
   }
@@ -212,7 +210,8 @@ class Explore {
   @Test
   @Order(7)
   void checkLastUpdatedSort() throws InterruptedException {
-    String sendKeys = "Description Added";
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    String sendKeys = "Updated Description";
     openExplorePage();
     // Adding description to check last updated sort
     Events.click(webDriver, explorePage.selectTable());
@@ -220,9 +219,11 @@ class Explore {
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
+    Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());
     Events.click(webDriver, explorePage.lastWeekSortDesc());
     Events.click(webDriver, explorePage.lastWeekSortAesc());
+    Thread.sleep(2000);
     WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
     Assert.assertEquals(sendKeys, descriptionCheck.getText());
   }
@@ -230,10 +231,10 @@ class Explore {
   @Test
   @Order(8)
   void checkRandomTableCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.bigQueryCheckbox());
     Events.click(webDriver, explorePage.shopifyCheckbox());
-    Events.click(webDriver, explorePage.tagSpecialCategoryCheckbox());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
     List<WebElement> selectedCheckbox = explorePage.selectedCheckbox();
     List<Integer> count = new ArrayList<>();
@@ -251,6 +252,7 @@ class Explore {
   @Test
   @Order(9)
   public void checkRandomTopicCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -271,6 +273,7 @@ class Explore {
   @Test
   @Order(10)
   void checkRandomDashboardCount() {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -291,6 +294,7 @@ class Explore {
   @Test
   @Order(11)
   void checkRandomPipelineCount() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     Events.click(webDriver, explorePage.tierTier3Checkbox());
@@ -311,6 +315,7 @@ class Explore {
   @Test
   @Order(12)
   void checkSearchBarInvalidValue() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), searchCriteria);
@@ -318,8 +323,8 @@ class Explore {
     try {
       WebElement errorMessage = webDriver.findElement(explorePage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "No matching data assets found for " + searchCriteria);
-    } catch (Exception e) {
-      Assert.fail();
+    } catch (NoSuchElementException e) {
+      Assert.fail("Element not found");
     }
   }
 

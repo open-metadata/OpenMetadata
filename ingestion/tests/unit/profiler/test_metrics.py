@@ -128,7 +128,7 @@ class MetricsTest(TestCase):
         res = profiler.execute()._column_results
         assert res.get(User.nickname.name).get(Metrics.NULL_RATIO.name) == 0.5
 
-    def test_table_count(self):
+    def test_table_row_count(self):
         """
         Check Table Metric run
         """
@@ -136,6 +136,15 @@ class MetricsTest(TestCase):
         profiler = Profiler(table_count, session=self.session, table=User)
         res = profiler.execute()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 2
+
+    def test_table_column_count(self):
+        """
+        Check Column Count metric
+        """
+        col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
+        profiler = Profiler(col_count, session=self.session, table=User)
+        res = profiler.execute()._table_results
+        assert res.get(Metrics.COLUMN_COUNT.name) == 6
 
     def test_avg(self):
         """
@@ -456,3 +465,26 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.UNIQUE_RATIO.name] == 1.0
+
+    def test_count_in_set(self):
+        """
+        Check Count In Set metric
+        """
+
+        set_count = add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
+        res = (
+            Profiler(set_count, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 1.0
+
+        set_count = add_props(values=["John", "Jane"])(Metrics.COUNT_IN_SET.value)
+        res = (
+            Profiler(set_count, session=self.session, table=User, use_cols=[User.name])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 2.0
