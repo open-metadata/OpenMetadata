@@ -69,4 +69,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push' }}
-        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean install
+        run: mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} clean verify --batch-mode
+      - name: Publish Test Report
+        uses: scacap/action-surefire-report@v1
