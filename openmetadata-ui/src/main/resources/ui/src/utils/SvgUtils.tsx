@@ -18,6 +18,7 @@ import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
+import IconCommentPlus from '../assets/svg/add-chat01.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -251,6 +252,7 @@ export const Icons = {
   PAPER_PLANE: 'icon-paper-plane',
   PAPER_PLANE_PRIMARY: 'icon-paper-plane-primary',
   COMMENT: 'icon-comment',
+  COMMENT_PLUS: 'icon-comment-plus',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -725,6 +727,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.COMMENT:
       IconComponent = IconComments;
+
+      break;
+    case Icons.COMMENT_PLUS:
+      IconComponent = IconCommentPlus;
 
       break;
 

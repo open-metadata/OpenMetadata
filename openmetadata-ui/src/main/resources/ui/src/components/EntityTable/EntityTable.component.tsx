@@ -33,6 +33,7 @@ import {
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
+import { getThreadValue } from '../../utils/FeedUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
@@ -495,12 +496,11 @@ const EntityTable = ({
                                 ) : (
                                   <span className="tw-no-description">
                                     No description added{' '}
-                                    {!isNil(
-                                      getFieldThreadElement(
+                                    {isNil(
+                                      getThreadValue(
                                         cell.row.cells[0].value,
                                         'description',
-                                        entityFieldThreads as EntityFieldThreads[],
-                                        onThreadLinkSelect
+                                        entityFieldThreads as EntityFieldThreads[]
                                       )
                                     ) ? (
                                       <button

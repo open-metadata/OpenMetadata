@@ -114,6 +114,23 @@ export const getThreadField = (value: string, separator = '/') => {
   return value.split(separator).slice(-2);
 };
 
+export const getThreadValue = (
+  columnName: string,
+  columnField: string,
+  entityFieldThreads: EntityFieldThreads[]
+) => {
+  let threadValue;
+
+  entityFieldThreads?.forEach((thread) => {
+    const threadField = getThreadField(thread.entityField);
+    if (threadField[0] === columnName && threadField[1] === columnField) {
+      threadValue = thread;
+    }
+  });
+
+  return threadValue;
+};
+
 export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];

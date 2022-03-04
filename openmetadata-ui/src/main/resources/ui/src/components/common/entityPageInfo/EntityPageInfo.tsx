@@ -411,20 +411,26 @@ const EntityPageInfo = ({
             </NonAdminAction>
             {!isUndefined(tagThread) ? (
               <p
-                className="tw-text-right link-text tw-ml-1 "
+                className="link-text tw-ml-1 tw-w-8 tw-h-8 tw-flex-none"
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                {tagThread.count}
+                <span className="tw-flex">
+                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
+                  {tagThread.count}
+                </span>
               </p>
             ) : (
               <p
-                className="link-text tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100"
+                className="link-text tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
                 onClick={() =>
                   onThreadLinkSelect?.(
                     getEntityFeedLink(entityType, entityFqn, 'tags')
                   )
                 }>
-                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />+
+                <SVGIcons
+                  alt="comments"
+                  icon={Icons.COMMENT_PLUS}
+                  width="20px"
+                />
               </p>
             )}
           </Fragment>
