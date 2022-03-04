@@ -27,4 +27,4 @@ export const entityUrlMap = {
 };
 
 export const EditorPlaceHolder = `Use @mention to tag a user or a team.
-Use #mention to tag a dataset.`;
+Use #mention to tag a data asset.`;
