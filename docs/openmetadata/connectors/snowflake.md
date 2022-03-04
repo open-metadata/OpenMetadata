@@ -296,15 +296,15 @@ Edit the value for `source.config.warehouse` with the name of the Snowflake ware
 "warehouse": "DEMO",
 ```
 
-#### database (optional)
+#### database
 
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
-
-To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
+Specify a single database to ingest metadata from. Provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.&#x20;
 
 ```json
 "database": "SNOWFLAKE_SAMPLE_DATA"
 ```
+
+If you want to ingest metadata from multiple Snowflake databases, you will need to create an ingestion workflow for each database. This limitation will be fixed in a near-term release of OpenMetadata. See [this issue](https://github.com/open-metadata/OpenMetadata/issues/3118) for details.
 
 ### 5. Enable/disable the data profiler
 
