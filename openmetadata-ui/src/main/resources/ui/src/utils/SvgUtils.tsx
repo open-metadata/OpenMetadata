@@ -18,7 +18,7 @@ import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
-import IconCommentPlus from '../assets/svg/add-chat01.svg';
+import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
