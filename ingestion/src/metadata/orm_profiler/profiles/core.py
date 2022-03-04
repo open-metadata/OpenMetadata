@@ -341,7 +341,8 @@ class Profiler(Generic[MetricType]):
             # Let's filter those out.
             computed_profiles = [
                 ColumnProfile(**self.column_results.get(col.name))
-                for col in self.columns if self.column_results.get(col.name)
+                for col in self.columns
+                if self.column_results.get(col.name)
             ]
 
             profile = TableProfile(
