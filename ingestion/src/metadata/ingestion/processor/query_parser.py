@@ -82,7 +82,7 @@ class QueryParserProcessor(Processor):
             start_date = record.analysis_date
             if isinstance(record.analysis_date, str):
                 start_date = datetime.datetime.strptime(
-                    record.analysis_date, "%Y-%m-%d %H:%M:%S"
+                    str(record.analysis_date), "%Y-%m-%d %H:%M:%S"
                 ).date()
             parser = Parser(record.sql)
             columns_dict = {} if parser.columns_dict is None else parser.columns_dict
