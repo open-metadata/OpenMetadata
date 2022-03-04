@@ -14,11 +14,14 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
@@ -445,6 +448,55 @@ public class FeedResourceTest extends CatalogApplicationTest {
         entityNotFound("Thread", NON_EXISTENT_ENTITY));
   }
 
+  @Test
+  void delete_post_404() {
+    // Test with an invalid thread id
+    assertResponse(
+        () -> deletePost(NON_EXISTENT_ENTITY, NON_EXISTENT_ENTITY, AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
+
+    // Test with an invalid post id
+    assertResponse(
+        () -> deletePost(THREAD.getId(), NON_EXISTENT_ENTITY, AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Post", NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  void delete_post_200() throws HttpResponseException {
+    // Create a thread and add a post
+    Thread thread = createAndCheck(create(), AUTH_HEADERS);
+    Post post = createPost(null);
+    thread = addPostAndCheck(thread, post, AUTH_HEADERS);
+    assertEquals(1, thread.getPosts().size());
+
+    // delete the post
+    post = thread.getPosts().get(0);
+    Post deletedPost = deletePost(thread.getId(), post.getId(), AUTH_HEADERS);
+    assertEquals(post.getId(), deletedPost.getId());
+
+    // Check if get posts API returns the post
+    PostList postList = listPosts(thread.getId().toString(), AUTH_HEADERS);
+    assertTrue(postList.getData().isEmpty());
+  }
+
+  @Test
+  void delete_post_unauthorized_403() throws HttpResponseException {
+    // Create a thread and add a post
+    Thread thread = createAndCheck(create(), ADMIN_AUTH_HEADERS);
+    Post post = createPost(null);
+    thread = addPostAndCheck(thread, post, ADMIN_AUTH_HEADERS);
+    assertEquals(1, thread.getPosts().size());
+
+    // delete the post using a user other than the author
+    // Here post author is USER, and we try to delete as admin user
+    post = thread.getPosts().get(0);
+    UUID threadId = thread.getId();
+    UUID postId = post.getId();
+    assertResponse(() -> deletePost(threadId, postId, ADMIN_AUTH_HEADERS), FORBIDDEN, noPermission(ADMIN_USER_NAME));
+  }
+
   public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Validate returned thread from POST
@@ -492,6 +544,11 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   public static Thread addPost(UUID threadId, Post post, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(getResource("feed/" + threadId + "/posts"), post, Thread.class, authHeaders);
+  }
+
+  public static Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.delete(getResource("feed/" + threadId + "/posts/" + postId), Post.class, authHeaders);
   }
 
   public static CreateThread create() {

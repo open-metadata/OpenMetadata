@@ -37,6 +37,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
@@ -262,9 +263,34 @@ public class FeedResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Post.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response addPost(@Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post) throws IOException {
-    Thread thread = addHref(uriInfo, dao.addPostToThread(id, post));
+  public Response addPost(
+      @Context SecurityContext securityContext, @Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post)
+      throws IOException {
+    Thread thread = addHref(uriInfo, dao.addPostToThread(id, post, securityContext.getUserPrincipal().getName()));
     return Response.created(thread.getHref()).entity(thread).build();
+  }
+
+  @DELETE
+  @Path("/{threadId}/posts/{postId}")
+  @Operation(
+      summary = "Delete a post from its thread",
+      tags = "feeds",
+      description = "Delete a post from an existing thread.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "post with {postId} is not found"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deletePost(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ThreadId of the post to be deleted", schema = @Schema(type = "string"))
+          @PathParam("threadId")
+          String threadId,
+      @Parameter(description = "PostId of the post to be deleted", schema = @Schema(type = "string"))
+          @PathParam("postId")
+          String postId)
+      throws IOException {
+    return dao.deletePost(threadId, postId, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
   @GET

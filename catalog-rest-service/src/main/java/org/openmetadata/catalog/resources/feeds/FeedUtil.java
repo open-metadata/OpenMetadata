@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
+import java.util.UUID;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.type.Post;
 
@@ -22,6 +23,7 @@ public final class FeedUtil {
 
   public static void addPost(Thread thread, Post post) {
     // Add new post to the thread
+    post.withId(UUID.randomUUID());
     post.setPostTs(System.currentTimeMillis());
     thread.getPosts().add(post);
     thread.withPostsCount(thread.getPosts().size());
