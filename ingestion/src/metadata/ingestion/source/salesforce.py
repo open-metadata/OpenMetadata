@@ -92,20 +92,19 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
         return cls(config, metadata_config, ctx)
 
     def column_type(self, column_type: str):
-        if column_type in ["ID", "PHONE", "CURRENCY"]:
-            type = "INT"
-        elif column_type in [
+        if column_type in {"ID", "PHONE", "CURRENCY"}:
+            return "INT"
+        if column_type in {
             "REFERENCE",
             "PICKLIST",
             "TEXTAREA",
             "ADDRESS",
             "URL",
             "EMAIL",
-        ]:
-            type = "VARCHAR"
-        else:
-            type = column_type
-        return type
+        }:
+            return "VARCHAR"
+
+        return column_type
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         yield from self.salesforce_client()
