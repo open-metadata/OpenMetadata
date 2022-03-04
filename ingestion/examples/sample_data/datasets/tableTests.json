@@ -46,6 +46,38 @@
           "testCaseStatus": "Success",
           "result": "Found 5.0 columns vs. the expected 5"
         }
+      },
+      {
+        "description": "Rows should always be 100 because of something",
+        "testCase": {
+          "config": {
+            "minValue": 100,
+            "maxValue": 200
+          },
+          "tableTestType": "tableRowCountToBeBetween"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found 120.0 rows vs. the expected range [100, 200]"
+        }
+      },
+      {
+        "description": "Rows should always be 100 because of something",
+        "testCase": {
+          "config": {
+            "minValue": 100,
+            "maxValue": 200
+          },
+          "tableTestType": "tableRowCountToBeBetween"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found 120.0 rows vs. the expected range [100, 200]"
+        }
       }
     ],
     "columnTests": [
@@ -90,9 +122,187 @@
         },
         "executionFrequency": "Daily",
         "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found uniqueCount=100.0 vs. valuesCount=100.0"
+        }
+      },
+      {
+        "columnName": "email",
+        "description": "emails should be unique",
+        "testCase": {
+          "config": {},
+          "columnTestType": "columnValuesToBeUnique"
+        },
+        "executionFrequency": "Daily",
+        "result": {
           "executionTime": 1646221199,
           "testCaseStatus": "Success",
           "result": "Found uniqueCount=100.0 vs. valuesCount=100.0"
+        }
+      },
+      {
+        "columnName": "user_id",
+        "description": "user_id should be not null",
+        "testCase": {
+          "config": {},
+          "columnTestType": "columnValuesToBeNotNull"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found nullCount=0"
+        }
+      },
+      {
+        "columnName": "user_id",
+        "description": "user_id should be not null",
+        "testCase": {
+          "config": {},
+          "columnTestType": "columnValuesToBeNotNull"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found nullCount=0"
+        }
+      },
+      {
+        "columnName": "last_name",
+        "description": "last_name should match a regex",
+        "testCase": {
+          "config": {
+            "regex": "%something%"
+          },
+          "columnTestType": "columnValuesToMatchRegex"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Failed",
+          "result": "Found likeCount=0. Nothing matches %something%"
+        }
+      },
+      {
+        "columnName": "last_name",
+        "description": "last_name should match a regex",
+        "testCase": {
+          "config": {
+            "regex": "%something%"
+          },
+          "columnTestType": "columnValuesToMatchRegex"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Failed",
+          "result": "Found likeCount=0. Nothing matches %something%"
+        }
+      },
+      {
+        "columnName": "first_name",
+        "description": "Some description...",
+        "testCase": {
+          "config": {
+            "missingCountValue": 10
+          },
+          "columnTestType": "columnValuesMissingCountToBeEqual"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Failed",
+          "result": "Found nullCount=0.0 vs. the expected nullCount=10"
+        }
+      },
+      {
+        "columnName": "first_name",
+        "description": "Some description...",
+        "testCase": {
+          "config": {
+            "missingCountValue": 10
+          },
+          "columnTestType": "columnValuesMissingCountToBeEqual"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Failed",
+          "result": "Found nullCount=0.0 vs. the expected nullCount=10"
+        }
+      },
+      {
+        "columnName": "email",
+        "description": "email should have a fixed length",
+        "testCase": {
+          "config": {
+            "minValue": 6,
+            "maxValue": 30
+          },
+          "columnTestType": "columnValuesToBeBetween"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found min=1.0 vs. the expected min=0"
+        }
+      },
+      {
+        "columnName": "email",
+        "description": "email should have a fixed length",
+        "testCase": {
+          "config": {
+            "minValue": 6,
+            "maxValue": 30
+          },
+          "columnTestType": "columnValuesToBeBetween"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found min=1.0 vs. the expected min=0"
+        }
+      },
+      {
+        "columnName": "last_name",
+        "description": "We have reserved last names",
+        "testCase": {
+          "config": {
+            "forbiddenValues": [
+              "forbidden",
+              "random"
+            ]
+          },
+          "columnTestType": "columnValuesToBeNotInSet"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646220190,
+          "testCaseStatus": "Success",
+          "result": "Found countInSet=0"
+        }
+      },
+      {
+        "columnName": "last_name",
+        "description": "We have reserved last names",
+        "testCase": {
+          "config": {
+            "forbiddenValues": [
+              "forbidden",
+              "random"
+            ]
+          },
+          "columnTestType": "columnValuesToBeNotInSet"
+        },
+        "executionFrequency": "Daily",
+        "result": {
+          "executionTime": 1646221199,
+          "testCaseStatus": "Success",
+          "result": "Found countInSet=0"
         }
       }
     ]

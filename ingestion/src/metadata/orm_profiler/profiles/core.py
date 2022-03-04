@@ -335,14 +335,21 @@ class Profiler(Generic[MetricType]):
         We need to transform it to TableProfile
         """
         try:
+
+            # There are columns that we might have skipped from
+            # computing metrics, if the type is not supported.
+            # Let's filter those out.
+            computed_profiles = [
+                ColumnProfile(**self.column_results.get(col.name))
+                for col in self.columns
+                if self.column_results.get(col.name)
+            ]
+
             profile = TableProfile(
                 profileDate=self.profile_date.strftime("%Y-%m-%d"),
-                columnCount=self._table_results.get("columnCount"),  # TODO IMPLEMENT
+                columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                columnProfile=[
-                    ColumnProfile(**self._column_results.get(col.name))
-                    for col in self.columns
-                ],
+                columnProfile=computed_profiles,
             )
 
             return profile

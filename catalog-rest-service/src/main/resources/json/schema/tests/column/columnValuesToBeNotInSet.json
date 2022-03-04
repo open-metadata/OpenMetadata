@@ -6,11 +6,14 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeNotInSet",
   "properties": {
-    "values": {
+    "forbiddenValues": {
       "description": "An Array of values.",
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": ["string", "number"]
+      }
     }
   },
-  "required": ["values"],
+  "required": ["forbiddenValues"],
   "additionalProperties": false
 }

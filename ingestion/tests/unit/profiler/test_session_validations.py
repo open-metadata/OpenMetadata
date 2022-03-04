@@ -81,7 +81,7 @@ class MetricsTest(TestCase):
         column_profile = ColumnProfile(name="name")  # column name
 
         res_ok = validate(
-            ColumnValuesToBeNotInSet(values=["random", "forbidden"]),
+            ColumnValuesToBeNotInSet(forbiddenValues=["random", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
             session=self.session,
@@ -95,7 +95,7 @@ class MetricsTest(TestCase):
         )
 
         res_ko = validate(
-            ColumnValuesToBeNotInSet(values=["John", "forbidden"]),
+            ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
             session=self.session,
@@ -109,7 +109,7 @@ class MetricsTest(TestCase):
         )
 
         res_aborted = validate(
-            ColumnValuesToBeNotInSet(values=["John", "forbidden"]),
+            ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=ColumnProfile(name="random"),
             execution_date=EXECUTION_DATE,
             session=self.session,
