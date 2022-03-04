@@ -58,7 +58,13 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
 
     def __init__(self, config: SupersetConfig):
         self.config = config
-        client_config = ClientConfig(base_url=config.url, api_version="api/v1")
+        client_config = ClientConfig(
+            base_url=config.url,
+            api_version="api/v1",
+            auth_token=lambda: ("no_token", 0),
+            auth_header="Authorization",
+            allow_redirects=True,
+        )
         self.client = REST(client_config)
         super().__init__()
 
@@ -69,7 +75,8 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     def auth_token(self) -> str:
         login_request = self._login_request()
         login_response = self.client.post("/security/login", login_request)
-        return login_response["access_token"]
+        self.generated_auth_token = login_response["access_token"]
+        self.expiry = 0
 
     def _login_request(self) -> str:
         auth_request = {
@@ -79,6 +86,10 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
             "provider": self.config.provider,
         }
         return json.dumps(auth_request)
+
+    def get_access_token(self):
+        self.auth_token()
+        return (self.generated_auth_token, self.expiry)
 
 
 class SupersetAPIClient:
@@ -95,7 +106,7 @@ class SupersetAPIClient:
         client_config = ClientConfig(
             base_url=config.url,
             api_version="api/v1",
-            auth_token=f"{self._auth_provider.auth_token()}",
+            auth_token=lambda: self._auth_provider.get_access_token(),
             auth_header="Authorization",
             allow_redirects=True,
         )
