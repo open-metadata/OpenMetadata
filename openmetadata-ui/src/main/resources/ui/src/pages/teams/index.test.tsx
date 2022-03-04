@@ -213,16 +213,18 @@ describe('Test Teams page', () => {
     expect(await findByTestId(container, 'add-user-modal')).toBeInTheDocument();
   });
 
-  it('Should have 2 tabs in the page', async () => {
+  it('Should have 3 tabs in the page', async () => {
     const { container } = render(<TeamsPage />);
 
     const tabs = await findByTestId(container, 'tabs');
     const user = await findByTestId(container, 'users');
     const asstes = await findByTestId(container, 'assets');
+    const roles = await findByTestId(container, 'roles');
 
-    expect(tabs.childElementCount).toBe(2);
+    expect(tabs.childElementCount).toBe(3);
     expect(user).toBeInTheDocument();
     expect(asstes).toBeInTheDocument();
+    expect(roles).toBeInTheDocument();
   });
 
   it('Description should be in document', async () => {

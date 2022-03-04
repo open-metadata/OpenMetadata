@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import UserCard from './UserCard';
@@ -72,10 +72,6 @@ describe('Test userCard component', () => {
     const remove = await findByTestId(container, 'remove');
 
     expect(remove).toBeInTheDocument();
-
-    fireEvent.click(remove);
-
-    expect(mockRemove).toBeCalled();
   });
 
   it('If dataset is provided, it should display accordingly', async () => {
