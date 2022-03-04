@@ -94,7 +94,14 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
     def column_type(self, column_type: str):
         if column_type in ["ID", "PHONE", "CURRENCY"]:
             type = "INT"
-        elif column_type in ["REFERENCE", "PICKLIST", "TEXTAREA", "ADDRESS", "URL"]:
+        elif column_type in [
+            "REFERENCE",
+            "PICKLIST",
+            "TEXTAREA",
+            "ADDRESS",
+            "URL",
+            "EMAIL",
+        ]:
             type = "VARCHAR"
         else:
             type = column_type
@@ -143,9 +150,10 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
                     Column(
                         name=column["name"],
                         description=column["label"],
-                        columnDataType=self.column_type(column["type"].upper()),
-                        columnConstraint=col_constraint,
+                        dataType=self.column_type(column["type"].upper()),
+                        constraint=col_constraint,
                         ordinalPosition=row_order,
+                        dataLength=column["length"],
                     )
                 )
                 row_order += 1
