@@ -10,23 +10,23 @@
 #  limitations under the License.
 
 """
-ColumnValuesToBeUnique validation implementation
+ColumnValuesToBeNotNull validation implementation
 """
 
 from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesToBeUnique import (
-    ColumnValuesToBeUnique,
+from metadata.generated.schema.tests.column.columnValuesToBeNotNull import (
+    ColumnValuesToBeNotNull,
 )
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
 
 
-def column_values_to_be_unique(
-    _: ColumnValuesToBeUnique,
+def column_values_to_be_not_null(
+    _: ColumnValuesToBeNotNull,
     col_profile: ColumnProfile,
     execution_date: datetime,
     **__,
@@ -39,11 +39,8 @@ def column_values_to_be_unique(
     :return: TestCaseResult with status and results
     """
 
-    if col_profile.valuesCount is None or col_profile.uniqueCount is None:
-        msg = (
-            "We expect `valuesCount` & `uniqueCount` to be informed on the profiler for ColumnValuesToBeUnique"
-            + f" but got valuesCount={col_profile.valuesCount}, uniqueCount={col_profile.uniqueCount}."
-        )
+    if col_profile.nullCount is None:
+        msg = "We expect `nullCount` to be informed on the profiler for ColumnValuesToBeNotNull."
         logger.error(msg)
         return TestCaseResult(
             executionTime=execution_date.timestamp(),
@@ -52,14 +49,9 @@ def column_values_to_be_unique(
         )
 
     status = (
-        TestCaseStatus.Success
-        if col_profile.valuesCount == col_profile.uniqueCount
-        else TestCaseStatus.Failed
+        TestCaseStatus.Success if col_profile.nullCount == 0 else TestCaseStatus.Failed
     )
-    result = (
-        f"Found valuesCount={col_profile.valuesCount} vs. uniqueCount={col_profile.uniqueCount}."
-        + f" Both counts should be equal for column values to be unique."
-    )
+    result = f"Found nullCount={col_profile.nullCount}. It should be 0."
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result

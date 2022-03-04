@@ -16,6 +16,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm.session import Session
 
+from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiles.core import Profiler
 
@@ -36,6 +37,7 @@ class DefaultProfiler(Profiler):
         _metrics = [
             # Table Metrics
             Metrics.ROW_COUNT.value,
+            add_props(table=table)(Metrics.COLUMN_COUNT.value),
             # Column Metrics
             Metrics.MEAN.value,
             Metrics.COUNT.value,

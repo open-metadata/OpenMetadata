@@ -52,7 +52,8 @@ export const getFilters = (
 };
 
 export const filterList = [
-  { name: 'All Activity', value: 'all' },
-  { name: 'My Data', value: 'owner' },
-  { name: 'Following', value: 'followers' },
+  { name: 'All Activity', value: 'ALL' },
+  { name: 'My Data', value: 'OWNER' },
+  { name: 'Mentions', value: 'MENTIONS' },
+  { name: 'Following', value: 'FOLLOWS' },
 ];

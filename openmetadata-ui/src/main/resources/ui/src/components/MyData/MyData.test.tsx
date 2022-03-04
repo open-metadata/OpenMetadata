@@ -25,6 +25,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { User } from '../../generated/entity/teams/user';
 import { formatDataResponse } from '../../utils/APIUtils';
 import MyDataPage from './MyData.component';
+import { FeedFilter } from '../../enums/mydata.enum';
 
 const mockData = {
   data: {
@@ -307,7 +308,7 @@ describe('Test MyData page', () => {
         }}
         error=""
         feedData={formatDataResponse(mockData.data.hits.hits)}
-        feedFilter=""
+        feedFilter={FeedFilter.ALL}
         feedFilterHandler={feedFilterHandler}
         fetchData={fetchData}
         followedData={formatDataResponse(mockData.data.hits.hits)}

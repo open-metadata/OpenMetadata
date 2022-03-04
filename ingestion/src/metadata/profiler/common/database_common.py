@@ -218,7 +218,11 @@ class DatabaseCommon(Database):
     def __init__(self, config: SQLConnectionConfig):
         self.config = config
         self.connection_string = self.config.get_connection_url()
-        self.engine = create_engine(self.connection_string, **self.config.options)
+        self.engine = create_engine(
+            self.connection_string,
+            **self.config.options,
+            connect_args=self.config.connect_args,
+        )
         self.connection = self.engine.raw_connection()
         self.inspector = inspect(self.engine)
 
@@ -236,19 +240,19 @@ class DatabaseCommon(Database):
 
     def is_text(self, column_type: Type[types.TypeEngine]):
         for sql_type in _text_types:
-            if isinstance(column_type, sql_type):
+            if isinstance(column_type, type(sql_type)):
                 return True
         return False
 
     def is_number(self, column_type: Type[types.TypeEngine]):
         for sql_type in _numeric_types:
-            if isinstance(column_type, sql_type):
+            if isinstance(column_type, type(sql_type)):
                 return True
         return False
 
     def is_time(self, column_type: Type[types.TypeEngine]):
         for sql_type in _time_types:
-            if isinstance(column_type, sql_type):
+            if isinstance(column_type, type(sql_type)):
                 return True
         return False
 

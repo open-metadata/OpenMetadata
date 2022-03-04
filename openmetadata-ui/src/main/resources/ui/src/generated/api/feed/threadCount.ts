@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,14 +12,24 @@
  *  limitations under the License.
  */
 
-export enum Ownership {
-  OWNER = 'owner',
-  FOLLOWERS = 'followers',
+/**
+ * This schema defines the type for reporting the count of threads related to an entity.
+ */
+export interface ThreadCount {
+  counts: EntityLinkThreadCount[];
+  /**
+   * Total count of all the threads.
+   */
+  totalCount: number;
 }
 
-export enum FeedFilter {
-  ALL = 'ALL',
-  OWNER = 'OWNER',
-  FOLLOWS = 'FOLLOWS',
-  MENTIONS = 'MENTIONS',
+/**
+ * Type used to return thread count per entity link.
+ */
+export interface EntityLinkThreadCount {
+  /**
+   * Count of threads for the given entity link.
+   */
+  count: number;
+  entityLink: string;
 }

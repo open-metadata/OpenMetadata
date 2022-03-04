@@ -530,6 +530,25 @@ public interface CollectionDAO {
     List<List<String>> listCountByThreads(
         @BindList("threadIds") List<String> threadIds, @Bind("isResolved") boolean isResolved);
 
+    @SqlQuery(
+        "SELECT id FROM thread_entity WHERE entityId in ("
+            + "SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation)")
+    List<String> listUserThreadsFromER(
+        @Bind("userId") String userId, @BindList("teamIds") List<String> teamIds, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT id FROM thread_entity WHERE id in ("
+            + "SELECT toFQN FROM field_relationship WHERE "
+            + "((fromType='user' AND fromFQN= :userName) OR "
+            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType = :toType AND relation = :relation)")
+    List<String> listUserThreadsFromFR(
+        @Bind("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("toType") String toType,
+        @Bind("relation") int relation);
+
     class CountFieldMapper implements RowMapper<List<String>> {
       @Override
       public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {

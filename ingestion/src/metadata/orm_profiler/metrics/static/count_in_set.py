@@ -10,32 +10,43 @@
 #  limitations under the License.
 
 """
-Like Count Metric definition
+CountInSet Metric definition
 """
-from sqlalchemy import func
+
+from sqlalchemy import case, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.utils import logger
+
+logger = logger()
 
 
-class LikeCount(StaticMetric):
+class CountInSet(StaticMetric):
     """
-    LIKE_COUNT Metric
+    COUNT_IN_SET Metric
 
-    Given a column, and an expression, return the number of
-    rows that match it
+    Given a column, return the count of values in a given set.
     """
 
     @classmethod
     def name(cls):
-        return "likeCount"
+        return "countInSet"
 
     def metric_type(self):
         return int
 
     @_label
     def fn(self):
-        if not hasattr(self, "expression"):
+        if not hasattr(self, "values"):
             raise AttributeError(
-                "Like Count requires an expression to be set: add_props(expression=...)(Metrics.LIKE_COUNT)"
+                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
             )
-        return func.count(self.col.like(self.expression))
+
+        try:
+            set_values = set(self.values)
+            return func.sum(case([(self.col.in_(set_values), 1)], else_=0))
+
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(f"Error trying to run countInSet for {self.col} - {err}")
+            print(err)
+            return None

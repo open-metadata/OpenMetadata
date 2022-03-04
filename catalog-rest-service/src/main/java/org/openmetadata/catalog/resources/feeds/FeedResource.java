@@ -55,6 +55,7 @@ import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
+import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Post;
@@ -68,7 +69,6 @@ import org.openmetadata.catalog.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "feeds")
 public class FeedResource {
-  // TODO add /v1/feed?user=userid
   public static final String COLLECTION_PATH = "/v1/feed/";
   public static final List<String> ALLOWED_FIELDS = getAllowedFields();
 
@@ -142,9 +142,21 @@ public class FeedResource {
               description = "Filter threads by entity link",
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
-          String entityLink)
+          String entityLink,
+      @Parameter(
+              description =
+                  "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'",
+              schema = @Schema(type = "string"))
+          @QueryParam("userId")
+          String userId,
+      @Parameter(
+              description =
+                  "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
+              schema = @Schema(implementation = FilterType.class))
+          @QueryParam("filterType")
+          FilterType filterType)
       throws IOException {
-    return new ThreadList(addHref(uriInfo, dao.listThreads(entityLink, limitPosts)));
+    return new ThreadList(addHref(uriInfo, dao.listThreads(entityLink, limitPosts, userId, filterType)));
   }
 
   @GET
