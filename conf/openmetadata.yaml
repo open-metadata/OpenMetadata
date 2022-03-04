@@ -120,7 +120,7 @@ authorizerConfiguration:
   adminPrincipals:
     - ${AUTHORIZER_ADMIN_PRINCIPALS:-admin}
   botPrincipals:
-    - ${AUTHORIZER_INGESTION_PRINCIPAL:-ingestion-bot]}
+    - ${AUTHORIZER_INGESTION_PRINCIPAL:-ingestion-bot}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
 
 authenticationConfiguration:
@@ -141,14 +141,6 @@ elasticsearch:
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
-
-atlas:
-  host: ${ATLAS_HOST:-136.243.150.188}
-  port: ${ATLAS_PORT:-21000}
-  username: ${ATLAS_USER:-admin}
-  password: ${ATLAS_PASSWORD:-admin}
-  scheme: ${ATLAS_HTTP_SCHEME:-http}
-  tableEntityName: ${ATLAS_TABLE_ENTITY_NAME:-Table}
 
 atlas:
   host: ${ATLAS_HOST:-136.243.150.188}
