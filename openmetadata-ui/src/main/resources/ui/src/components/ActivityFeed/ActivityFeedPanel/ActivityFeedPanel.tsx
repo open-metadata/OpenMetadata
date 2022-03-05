@@ -38,6 +38,7 @@ interface FeedPanelHeaderProp
   extends HTMLAttributes<HTMLHeadingElement>,
     Pick<ActivityFeedPanelProp, 'onCancel'> {
   entityField: string;
+  noun?: string;
 }
 interface FeedPanelOverlayProp
   extends HTMLAttributes<HTMLButtonElement>,
@@ -51,12 +52,14 @@ export const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
   entityField,
   className,
+  noun,
 }) => {
   return (
     <header className={className}>
       <div className="tw-flex tw-justify-between tw-py-3">
         <p>
-          Thread on <span className="tw-heading">{entityField}</span>
+          {noun ? noun : 'Conversation'} on{' '}
+          <span className="tw-heading">{entityField}</span>
         </p>
         <svg
           className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
@@ -114,7 +117,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
           {repliesLength > 0 ? (
             <Fragment>
               <div className="tw-mb-3 tw-flex">
-                <span>{getReplyText(repliesLength)}</span>
+                <span>{getReplyText(repliesLength, 'reply', 'replies')}</span>
                 <span className="tw-flex-auto tw-self-center tw-ml-1.5">
                   <hr />
                 </span>

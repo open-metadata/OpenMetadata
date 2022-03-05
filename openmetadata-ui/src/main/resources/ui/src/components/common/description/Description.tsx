@@ -14,11 +14,12 @@
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -32,12 +33,15 @@ type Props = {
   description: string;
   isEdit?: boolean;
   isReadOnly?: boolean;
+  entityType?: string;
+  entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
   onDescriptionUpdate?: (value: string) => void;
   onSuggest?: (value: string) => void;
+  onEntityFieldSelect?: (value: string) => void;
 };
 
 const Description = ({
@@ -54,6 +58,9 @@ const Description = ({
   entityName,
   entityFieldThreads,
   onThreadLinkSelect,
+  onEntityFieldSelect,
+  entityType,
+  entityFqn,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
 
@@ -78,19 +85,9 @@ const Description = ({
               />
             ) : (
               <span className="tw-no-description tw-p-2">
-                No description added
+                No description added{' '}
               </span>
             )}
-            {!isUndefined(descriptionThread) ? (
-              <p
-                className="tw-text-right link-text"
-                onClick={() =>
-                  onThreadLinkSelect?.(descriptionThread.entityLink)
-                }>
-                <i className="far fa-comment" /> {descriptionThread.count}{' '}
-                threads
-              </p>
-            ) : null}
           </div>
           {isEdit && (
             <ModalWithMarkdownEditor
@@ -105,7 +102,7 @@ const Description = ({
         {!isReadOnly ? (
           <div
             className={classNames(
-              'tw-w-5 tw-min-w-max',
+              'tw-w-5 tw-min-w-max tw-flex',
               description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
             )}>
             <NonAdminAction
@@ -125,6 +122,50 @@ const Description = ({
                 />
               </button>
             </NonAdminAction>
+            {isUndefined(descriptionThread) &&
+            onEntityFieldSelect &&
+            !description?.trim() ? (
+              <button
+                className="focus:tw-outline-none tw-ml-1 tw-opacity-0 hover:tw-opacity-100 tw--mt-6"
+                data-testid="request-description"
+                onClick={() => onEntityFieldSelect?.('description')}>
+                <SVGIcons
+                  alt="request-description"
+                  icon={Icons.REQUEST}
+                  width="20px"
+                />
+              </button>
+            ) : null}
+            {!isUndefined(descriptionThread) ? (
+              <p
+                className="link-text tw-ml-1 tw-w-8 tw-h-8 tw-flex-none"
+                onClick={() =>
+                  onThreadLinkSelect?.(descriptionThread.entityLink)
+                }>
+                <span className="tw-flex">
+                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
+                  <span className="tw-ml-1"> {descriptionThread.count}</span>
+                </span>
+              </p>
+            ) : (
+              <Fragment>
+                {description?.trim() && onThreadLinkSelect ? (
+                  <p
+                    className="link-text tw-flex-none tw-ml-2"
+                    onClick={() =>
+                      onThreadLinkSelect?.(
+                        getEntityFeedLink(entityType, entityFqn, 'description')
+                      )
+                    }>
+                    <SVGIcons
+                      alt="comments"
+                      icon={Icons.COMMENT_PLUS}
+                      width="20px"
+                    />
+                  </p>
+                ) : null}
+              </Fragment>
+            )}
           </div>
         ) : null}
       </div>

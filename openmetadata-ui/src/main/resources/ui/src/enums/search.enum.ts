@@ -22,4 +22,6 @@ export enum SearchIndex {
   TOPIC = 'topic_search_index',
   DASHBOARD = 'dashboard_search_index',
   PIPELINE = 'pipeline_search_index',
+  USER = 'user_search_index',
+  TEAM = 'team_search_index',
 }

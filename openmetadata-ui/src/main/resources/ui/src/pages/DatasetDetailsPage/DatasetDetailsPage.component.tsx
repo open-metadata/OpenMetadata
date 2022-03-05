@@ -574,15 +574,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
     postThread(data)
       .then((res: AxiosResponse) => {
         setEntityThread((pre) => [...pre, res.data]);
+        getEntityFeedCount();
         showToast({
           variant: 'success',
-          body: 'Thread is created successfully',
+          body: 'Conversation created successfully',
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Error while creating thread',
+          body: 'Error while creating the conversation',
         });
       });
   };

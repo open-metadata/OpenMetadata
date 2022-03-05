@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { UserProfile } from 'Models';
+import { SearchIndex } from '../enums/search.enum';
 import { User } from '../generated/entity/teams/user';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -97,4 +98,10 @@ export const updateUser = (
   data: Pick<User, 'email' | 'name' | 'displayName' | 'profile' | 'isAdmin'>
 ): Promise<AxiosResponse> => {
   return APIClient.put('/users', data);
+};
+
+export const getUserCounts = () => {
+  return APIClient.get(
+    `/search/query?q=*&from=0&size=0&index=${SearchIndex.USER}`
+  );
 };

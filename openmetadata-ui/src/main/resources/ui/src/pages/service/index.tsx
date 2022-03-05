@@ -15,7 +15,13 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
-import { EntityThread, ExtraInfo, Paging, ServicesData } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityThread,
+  ExtraInfo,
+  Paging,
+  ServicesData,
+} from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -32,11 +38,13 @@ import {
   getAllFeeds,
   getFeedCount,
   postFeedById,
+  postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import IngestionError from '../../components/common/error/IngestionError';
@@ -49,6 +57,7 @@ import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
+import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import Tags from '../../components/tags/tags';
 import {
@@ -59,6 +68,7 @@ import {
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -81,6 +91,8 @@ import {
   isEven,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
+import { getDefaultValue } from '../../utils/FeedElementUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import {
   getCurrentServiceTab,
   getIsIngestionEnable,
@@ -130,6 +142,19 @@ const ServicePage: FunctionComponent = () => {
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
+  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+
+  const [threadLink, setThreadLink] = useState<string>('');
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -239,6 +264,28 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const onThreadLinkSelect = (link: string) => {
+    setThreadLink(link);
+  };
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN))
+      .then((res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Error while fetching feed count',
+        });
+      });
+  };
+
   const getSchemaFromType = (type: AirflowPipeline['pipelineType']) => {
     switch (type) {
       case PipelineType.Metadata:
@@ -254,7 +301,7 @@ const ServicePage: FunctionComponent = () => {
 
   const getAllIngestionWorkflows = (paging?: string) => {
     setIsloading(true);
-    getAirflowPipelines(['owner, tags, status'], serviceFQN, '', paging)
+    getAirflowPipelines(['owner'], serviceFQN, '', paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
@@ -753,10 +800,12 @@ const ServicePage: FunctionComponent = () => {
 
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
-      const { id } = serviceDetails;
+      const { id, ...restDetails } = serviceDetails;
 
       const updatedServiceDetails = {
-        ...serviceDetails,
+        databaseConnection: restDetails.databaseConnection,
+        name: restDetails.name,
+        serviceType: restDetails.serviceType,
         description: updatedHTML,
       };
 
@@ -765,6 +814,7 @@ const ServicePage: FunctionComponent = () => {
           setDescription(updatedHTML);
           setServiceDetails(updatedServiceDetails);
           setIsEdit(false);
+          getEntityFeedCount();
         })
         .catch((err: AxiosError) => {
           const errMsg = err.message || 'Something went wrong!';
@@ -865,15 +915,20 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN))
+  const createThread = (data: CreateThread) => {
+    postThread(data)
       .then((res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
+        setEntityThread((pre) => [...pre, res.data]);
+        getEntityFeedCount();
+        showToast({
+          variant: 'success',
+          body: 'Conversation created successfully',
+        });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Error while fetching feed count',
+          body: 'Error while creating the conversation',
         });
       });
   };
@@ -922,11 +977,19 @@ const ServicePage: FunctionComponent = () => {
               <Description
                 blurWithBodyBG
                 description={description || ''}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  'description',
+                  entityFieldThreadCount
+                )}
+                entityFqn={serviceFQN}
                 entityName={serviceFQN}
+                entityType={serviceCategory.slice(0, -1)}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
                 onDescriptionUpdate={onDescriptionUpdate}
+                onEntityFieldSelect={onEntityFieldSelect}
+                onThreadLinkSelect={onThreadLinkSelect}
               />
             </div>
 
@@ -1017,6 +1080,7 @@ const ServicePage: FunctionComponent = () => {
                       isEntityFeed
                       withSidePanel
                       className=""
+                      entityName={serviceFQN}
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
                       postFeedHandler={postFeedHandler}
@@ -1075,6 +1139,30 @@ const ServicePage: FunctionComponent = () => {
                 )}
               </div>
             </div>
+            {threadLink ? (
+              <ActivityThreadPanel
+                createThread={createThread}
+                open={Boolean(threadLink)}
+                postFeedHandler={postFeedHandler}
+                threadLink={threadLink}
+                onCancel={onThreadPanelClose}
+              />
+            ) : null}
+            {selectedField ? (
+              <RequestDescriptionModal
+                createThread={createThread}
+                defaultValue={getDefaultValue(
+                  serviceDetails?.owner as EntityReference
+                )}
+                header="Request description"
+                threadLink={getEntityFeedLink(
+                  serviceCategory.slice(0, -1),
+                  serviceFQN,
+                  selectedField
+                )}
+                onCancel={closeRequestModal}
+              />
+            ) : null}
           </div>
         </PageContainer>
       )}

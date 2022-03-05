@@ -128,26 +128,32 @@ describe('Test RolesPage component', () => {
     expect(headerTitle.textContent).toBe(mockGetRole.data[0].displayName);
     expect(addNewRuleButton).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
-    expect(tabs.childElementCount).toBe(2);
+    expect(tabs.childElementCount).toBe(3);
     expect(tabs.children[0].textContent).toBe('Policy');
-    expect(tabs.children[1].textContent).toBe('Users');
+    expect(tabs.children[1].textContent).toBe('Teams');
+    expect(tabs.children[2].textContent).toBe('Users');
     expect(tabs.children[0]).toHaveClass('active');
     expect(description).toBeInTheDocument();
   });
 
-  it('Check no rule and no user behaviour', async () => {
+  it('Check no rule, no user and no teams behaviour', async () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
     // checking No Rules Added. directly as there is no data available on 1st instance
 
     const usersButton = await findByTestId(container, 'users');
+    const teamsButton = await findByTestId(container, 'teams');
 
     expect(await findByText(container, /No Rules Added./i)).toBeInTheDocument();
 
     fireEvent.click(usersButton);
 
     expect(await findByText(container, /No Users Added./i)).toBeInTheDocument();
+
+    fireEvent.click(teamsButton);
+
+    expect(await findByText(container, /No Teams Added./i)).toBeInTheDocument();
   });
 
   it('Check behaviour when there is data in policy and user', async () => {

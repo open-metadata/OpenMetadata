@@ -33,6 +33,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
 export interface PipeLineDetailsProp {
+  pipelineFQN: string;
   version: string;
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;

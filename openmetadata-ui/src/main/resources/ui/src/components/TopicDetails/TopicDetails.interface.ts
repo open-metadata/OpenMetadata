@@ -24,6 +24,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface TopicDetailsProps {
+  topicFQN: string;
   version?: string;
   schemaText: string;
   schemaType: string;

@@ -187,7 +187,7 @@ class Profiler(Generic[MetricType]):
 
         This should only execute column metrics.
         """
-        logger.debug("Running SQL Profiler...")
+        logger.debug(f"Running SQL Profiler for {col.name}")
 
         col_metrics = self.get_col_metrics(self.static_metrics)
 
@@ -208,8 +208,15 @@ class Profiler(Generic[MetricType]):
             metric for metric in self.static_metrics if not metric.is_col_metric()
         ]
 
-        for metric in table_metrics:
-            row = self.session.query(metric().fn()).select_from(self.table).first()
+        if not table_metrics:
+            return
+
+        query = self.session.query(
+            *[metric().fn() for metric in table_metrics]
+        ).select_from(self.table)
+
+        row = query.first()
+        if row:
             self._table_results.update(dict(row))
 
     def sql_col_query_run(self, col: Column) -> None:
@@ -218,22 +225,29 @@ class Profiler(Generic[MetricType]):
         """
 
         for metric in self.get_col_metrics(self.query_metrics):
+            logger.debug(f"Running query metric {metric.name()} for {col.name}")
+            try:
+                metric_query = metric(col).query(session=self.session)
 
-            metric_query = metric(col).query(session=self.session)
+                # We might not compute some metrics based on the column type.
+                # In those cases, the `query` function returns None
+                if not metric_query:
+                    continue
 
-            # We might not compute some metrics based on the column type.
-            # In those cases, the `query` function returns None
-            if not metric_query:
-                continue
+                query_res = metric_query.all()
 
-            query_res = metric_query.all()
+                # query_res has the shape of List[Row], where each row is a dict,
+                # e.g., [{colA: 1, colB: 2},...]
+                # We are going to transform this into a Dict[List] by pivoting, so that
+                # data = {colA: [1,2,3], colB: [4,5,6]...}
+                data = {k: [dic[k] for dic in query_res] for k in dict(query_res[0])}
+                self._column_results[col.name].update({metric.name(): data})
 
-            # query_res has the shape of List[Row], where each row is a dict,
-            # e.g., [{colA: 1, colB: 2},...]
-            # We are going to transform this into a Dict[List] by pivoting, so that
-            # data = {colA: [1,2,3], colB: [4,5,6]...}
-            data = {k: [dic[k] for dic in query_res] for k in dict(query_res[0])}
-            self._column_results[col.name].update({metric.name(): data})
+            except Exception as err:  # pylint: disable=broad-except
+                logger.error(
+                    f"Exception encountered computing {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
+                )
+                self.session.rollback()
 
     def post_col_run(self, col: Column):
         """
@@ -253,6 +267,7 @@ class Profiler(Generic[MetricType]):
 
         for metric in self.get_col_metrics(self.composed_metrics):
             # Composed metrics require the results as an argument
+            logger.debug(f"Running composed metric {metric.name()} for {col.name}")
 
             self._column_results[col.name][metric.name()] = metric(col).fn(
                 current_col_results
@@ -284,12 +299,17 @@ class Profiler(Generic[MetricType]):
         Run the whole profiling
         """
 
+        logger.debug(f"Running profiler for {self.table.__tablename__}")
+
         self.execute_table()
 
         for col in self.columns:
 
             # Skip not supported types
             if col.type.__class__ in NOT_COMPUTE:
+                logger.debug(
+                    f"Skipping profile computation for {col.name}. Unsupported type {col.type.__class__}"
+                )
                 continue
 
             # Init column results dict
@@ -299,8 +319,9 @@ class Profiler(Generic[MetricType]):
                 self.execute_column(col)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.error(
-                    f"Error trying to compute profile for {self.table}.{col.name} - {exc}"
+                    f"Error trying to compute profile for {self.table.__tablename__}.{col.name} - {exc}"
                 )
+                self.session.rollback()
 
         return self
 
@@ -328,14 +349,21 @@ class Profiler(Generic[MetricType]):
         We need to transform it to TableProfile
         """
         try:
+
+            # There are columns that we might have skipped from
+            # computing metrics, if the type is not supported.
+            # Let's filter those out.
+            computed_profiles = [
+                ColumnProfile(**self.column_results.get(col.name))
+                for col in self.columns
+                if self.column_results.get(col.name)
+            ]
+
             profile = TableProfile(
                 profileDate=self.profile_date.strftime("%Y-%m-%d"),
-                columnCount=self._table_results.get("columnCount"),  # TODO IMPLEMENT
+                columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                columnProfile=[
-                    ColumnProfile(**self._column_results.get(col.name))
-                    for col in self.columns
-                ],
+                columnProfile=computed_profiles,
             )
 
             return profile
@@ -343,3 +371,7 @@ class Profiler(Generic[MetricType]):
         except ValidationError as err:
             logger.error(f"Cannot transform profiler results to TableProfile {err}")
             raise err
+
+    @property
+    def column_results(self):
+        return self._column_results

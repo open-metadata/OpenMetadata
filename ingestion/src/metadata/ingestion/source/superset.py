@@ -278,17 +278,18 @@ class SupersetSource(Source[Entity]):
                         entity=Lineage_Dashboard,
                         fqdn=f"{self.config.service_name}.{dashboard['id']}",
                     )
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__, type="dashboard"
-                            ),
+                    if from_entity and to_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id.__root__, type="table"
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_entity.id.__root__, type="dashboard"
+                                ),
+                            )
                         )
-                    )
-                    yield lineage
+                        yield lineage
 
                 except Exception as err:
                     logger.debug(traceback.print_exc())

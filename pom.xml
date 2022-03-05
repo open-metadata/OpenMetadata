@@ -40,10 +40,7 @@
     <jackson.version>2.13.1</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
-    <jersey-media-multipart.version>2.33</jersey-media-multipart.version>
-    <jersey-client.version>2.33</jersey-client.version>
-    <jersey-media-json-jackson.version>2.33</jersey-media-json-jackson.version>
-    <ambari-metrics-common.version>2.6.1.0.0</ambari-metrics-common.version>
+    <jersey-bom.version>2.35</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
@@ -69,9 +66,9 @@
     <lombok.version>1.18.22</lombok.version>
     <tomcat-jdbc.version>10.0.8</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
-    This compatability broken in 7.14, so lets keep this version pinned to 7.13.2
+    This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
-    <elasticsearch.version>7.13.2</elasticsearch.version>
+    <elasticsearch.version>7.13.4</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.1.13</openapiswagger.version>
     <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
@@ -97,6 +94,13 @@
   </properties>
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.glassfish.jersey</groupId>
+        <artifactId>jersey-bom</artifactId>
+        <version>${jersey-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>com.macasaet.fernet</groupId>
         <artifactId>fernet-java8</artifactId>
@@ -196,11 +200,6 @@
             <artifactId>protobuf-java</artifactId>
           </exclusion>
         </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.glassfish.jersey.media</groupId>
-        <artifactId>jersey-media-multipart</artifactId>
-        <version>${jersey-media-multipart.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>

@@ -30,6 +30,7 @@ import {
   mockFeedData,
   mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
@@ -39,7 +40,6 @@ import {
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
-import { FeedFilter } from '../../enums/mydata.enum';
 
 const mockData = {
   data: { hits: { hits: [] } },

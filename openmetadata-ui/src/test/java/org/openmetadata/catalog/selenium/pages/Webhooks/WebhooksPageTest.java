@@ -75,7 +75,7 @@ public class WebhooksPageTest {
   }
 
   @Test
-  void checkDuplicateWebhookName() {
+  void checkDuplicateWebhookName() throws InterruptedException {
     String name = faker.name().name();
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
@@ -92,6 +92,7 @@ public class WebhooksPageTest {
       actions.perform();
       Events.click(webDriver, webhooks.saveWebhook());
     }
+    Thread.sleep(waitTime);
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Request failed with status code 409");

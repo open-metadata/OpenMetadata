@@ -269,10 +269,10 @@ public class TagsPageTest {
   public void addSelfAssociatedTag() throws Exception {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
+    Events.click(webDriver, tagsPage.addAssociatedTagIndex(3));
     Events.click(webDriver, common.enterAssociatedTagName());
     try {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.SpecialCategory");
       WebElement sameTag = webDriver.findElement(common.tagListItem());
       if (sameTag.isDisplayed()) {
         Assert.fail("Same name tag displayed");

@@ -43,4 +43,5 @@ public class MyDataPage {
   By api = By.xpath("//a[@data-testid=\"menu-item-API\"]");
   By slack = By.xpath("//a[@data-testid=\"menu-item-Slack\"]");
   By userName = By.cssSelector("[data-testid='greeting-text']");
+  By serviceName = By.cssSelector("[data-testid='service-name']");
 }

@@ -20,3 +20,11 @@ export const hashtagRegEx = /\[#(.+?)?\]\((.+?)?\)/g;
 export const linkRegEx = /\((.+?\/\/.+?)\/(.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E\/([^<>]+?)\/([^<>]+?)>/g;
 export const entityRegex = /<#E\/([^<>]+?)\/([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
+
+export const entityUrlMap = {
+  team: 'teams',
+  user: 'user',
+};
+
+export const EditorPlaceHolder = `Use @mention to tag a user or a team.
+Use #mention to tag a data asset.`;
