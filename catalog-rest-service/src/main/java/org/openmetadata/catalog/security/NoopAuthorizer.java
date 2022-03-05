@@ -26,6 +26,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.RoleRepository;
+import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.EntityReference;
@@ -42,10 +43,11 @@ public class NoopAuthorizer implements Authorizer {
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(collectionDAO);
-    // RoleRepository needs to be instantiated for Entity.DAO_MAP to populated.
-    // As we create default admin/bots we need to have RoleRepository available in DAO_MAP.
+    // RoleRepository and TeamRepository needs to be instantiated for Entity.DAO_MAP to populated.
+    // As we create default admin/bots we need to have RoleRepository and TeamRepository available in DAO_MAP.
     // This needs to be handled better in future releases.
     RoleRepository roleRepository = new RoleRepository(collectionDAO);
+    TeamRepository teamRepository = new TeamRepository(collectionDAO);
     addAnonymousUser();
   }
 
