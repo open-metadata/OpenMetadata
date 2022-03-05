@@ -26,7 +26,7 @@
     "builtin-status-codes": "^3.0.0",
     "codemirror": "^5.62.3",
     "cookie-storage": "^6.1.0",
-    "core-js": "^3.10.1",
+    "core-js": "^3.21.0",
     "cronstrue": "^1.122.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "dagre": "^0.8.5",
