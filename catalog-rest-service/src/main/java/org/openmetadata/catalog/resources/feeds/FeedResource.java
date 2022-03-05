@@ -60,6 +60,7 @@ import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -75,6 +76,7 @@ public class FeedResource {
   public static final List<String> ALLOWED_FIELDS = getAllowedFields();
 
   private final FeedRepository dao;
+  private final Authorizer authorizer;
 
   private static List<String> getAllowedFields() {
     JsonPropertyOrder propertyOrder = Thread.class.getAnnotation(JsonPropertyOrder.class);
@@ -94,6 +96,7 @@ public class FeedResource {
   public FeedResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = new FeedRepository(dao);
+    this.authorizer = authorizer;
   }
 
   static class ThreadList extends ResultList<Thread> {
@@ -295,7 +298,12 @@ public class FeedResource {
           @PathParam("postId")
           String postId)
       throws IOException {
-    return dao.deletePost(threadId, postId, securityContext.getUserPrincipal().getName()).toResponse();
+    // validate and get thread & post
+    Thread thread = dao.get(threadId);
+    Post post = dao.getPostById(thread, postId);
+    // delete post only if the admin/bot/author tries to delete it
+    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOwnerOfPost(post));
+    return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
   @GET

@@ -487,18 +487,18 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   void delete_post_unauthorized_403() throws HttpResponseException {
-    // Create a thread and add a post
+    // Create a thread and add a post as admin user
     Thread thread = createAndCheck(create(), ADMIN_AUTH_HEADERS);
-    CreatePost createPost = createPost(null);
+    CreatePost createPost = createPost(null).withFrom(ADMIN_USER_NAME);
     thread = addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
     assertEquals(1, thread.getPosts().size());
 
-    // delete the post using a user other than the author
-    // Here post author is USER, and we try to delete as admin user
+    // delete the post using a different user who is not an admin
+    // Here post author is ADMIN, and we try to delete as USER
     Post post = thread.getPosts().get(0);
     UUID threadId = thread.getId();
     UUID postId = post.getId();
-    assertResponse(() -> deletePost(threadId, postId, ADMIN_AUTH_HEADERS), FORBIDDEN, noPermission(ADMIN_USER_NAME));
+    assertResponse(() -> deletePost(threadId, postId, AUTH_HEADERS), FORBIDDEN, noPermission(USER.getName()));
   }
 
   public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)

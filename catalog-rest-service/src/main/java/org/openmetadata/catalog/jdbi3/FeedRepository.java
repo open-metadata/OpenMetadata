@@ -45,7 +45,6 @@ import org.openmetadata.catalog.resources.feeds.FeedResource;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
@@ -187,36 +186,29 @@ public class FeedRepository {
     return thread;
   }
 
-  public Optional<Post> getPostById(Thread thread, String postId) {
-    return thread.getPosts().stream().filter(p -> p.getId().equals(UUID.fromString(postId))).findAny();
+  public Post getPostById(Thread thread, String postId) {
+    Optional<Post> post = thread.getPosts().stream().filter(p -> p.getId().equals(UUID.fromString(postId))).findAny();
+    if (post.isEmpty()) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound("Post", postId));
+    }
+    return post.get();
   }
 
   @Transaction
-  public DeleteResponse<Post> deletePost(String threadId, String postId, String userName) throws IOException {
-    // validate the thread
-    Thread thread = get(threadId);
-    Post post;
+  public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) throws IOException {
+    List<Post> posts = thread.getPosts();
+    // Remove the post to be deleted from the posts list
+    posts = posts.stream().filter(p -> !p.getId().equals(post.getId())).collect(Collectors.toList());
+    thread.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(userName).withPosts(posts);
+    // update the json document
+    dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
 
-    // validate post
-    Optional<Post> optionalPost = getPostById(thread, postId);
-    if (optionalPost.isPresent()) {
-      // delete post only if the author tries to delete it
-      post = optionalPost.get();
-      if (userName.equals(post.getFrom())) {
-        List<Post> posts = thread.getPosts();
-        // Remove the post to be deleted from the posts list
-        posts = posts.stream().filter(p -> !p.getId().equals(UUID.fromString(postId))).collect(Collectors.toList());
-        thread.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(userName).withPosts(posts);
-        // update the json document
-        dao.feedDAO().update(threadId, JsonUtils.pojoToJson(thread));
-      } else {
-        // TODO Should we also allow admins to delete a post?
-        throw new AuthorizationException(CatalogExceptionMessage.noPermission(userName));
-      }
-    } else {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound("Post", postId));
-    }
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
+  }
+
+  public EntityReference getOwnerOfPost(Post post) throws IOException {
+    User fromUser = dao.userDAO().findEntityByName(post.getFrom());
+    return Entity.getEntityReference(fromUser);
   }
 
   @Transaction
