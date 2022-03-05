@@ -40,7 +40,7 @@
     "jquery": "^3.5.0",
     "markdown-draft-js": "^2.3.0",
     "markdown-to-jsx": "^7.1.6",
-    "mobx": "6.0.1",
+    "mobx": "6.3.13",
     "mobx-react": "6.1.4",
     "moment": "^2.29.1",
     "oidc-client": "^1.11.5",
