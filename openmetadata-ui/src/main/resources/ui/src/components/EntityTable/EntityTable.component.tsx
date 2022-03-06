@@ -28,6 +28,10 @@ import {
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import {
+  ColumnTest,
+  ModifiedTableColumn,
+} from '../../interface/dataQuality.interface';
+import {
   getHtmlForNonAdminAction,
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
@@ -50,7 +54,7 @@ import Tags from '../tags/tags';
 
 type Props = {
   owner: Table['owner'];
-  tableColumns: Table['columns'];
+  tableColumns: ModifiedTableColumn[];
   joins: Array<ColumnJoins>;
   searchText?: string;
   columnName: string;
@@ -58,7 +62,7 @@ type Props = {
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
-  onUpdate?: (columns: Table['columns']) => void;
+  onUpdate?: (columns: ModifiedTableColumn[]) => void;
   onThreadLinkSelect?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
 };
@@ -87,6 +91,10 @@ const EntityTable = ({
         accessor: 'dataTypeDisplay',
       },
       {
+        Header: 'Data Quality',
+        accessor: 'columnTests',
+      },
+      {
         Header: 'Description',
         accessor: 'description',
       },
@@ -98,7 +106,9 @@ const EntityTable = ({
     []
   );
 
-  const [searchedColumns, setSearchedColumns] = useState<Table['columns']>([]);
+  const [searchedColumns, setSearchedColumns] = useState<ModifiedTableColumn[]>(
+    []
+  );
 
   const data = React.useMemo(
     () => makeData(searchedColumns),
@@ -158,7 +168,7 @@ const EntityTable = ({
   };
 
   const updateColumnDescription = (
-    tableCols: Table['columns'],
+    tableCols: ModifiedTableColumn[],
     changedColName: string,
     description: string
   ) => {
@@ -167,7 +177,7 @@ const EntityTable = ({
         col.description = description;
       } else {
         updateColumnDescription(
-          col?.children as Table['columns'],
+          col?.children as ModifiedTableColumn[],
           changedColName,
           description
         );
@@ -176,7 +186,7 @@ const EntityTable = ({
   };
 
   const updateColumnTags = (
-    tableCols: Table['columns'],
+    tableCols: ModifiedTableColumn[],
     changedColName: string,
     newColumnTags: Array<string>
   ) => {
@@ -204,7 +214,7 @@ const EntityTable = ({
         col.tags = getUpdatedTags(col);
       } else {
         updateColumnTags(
-          col?.children as Table['columns'],
+          col?.children as ModifiedTableColumn[],
           changedColName,
           newColumnTags
         );
@@ -309,7 +319,8 @@ const EntityTable = ({
               {headerGroup.headers.map((column: any, index: number) => (
                 <th
                   className={classNames('tableHead-cell', {
-                    'tw-w-60': column.id === 'tags',
+                    'tw-w-60':
+                      column.id === 'tags' || column.id === 'columnTests',
                   })}
                   key={index}
                   {...column.getHeaderProps()}>
@@ -332,6 +343,18 @@ const EntityTable = ({
                 {...row.getRowProps()}>
                 {/* eslint-disable-next-line */}
                 {row.cells.map((cell: any, index: number) => {
+                  const columnTests =
+                    cell.column.id === 'columnTests'
+                      ? ((cell.value ?? []) as ColumnTest[])
+                      : ([] as ColumnTest[]);
+                  const columnTestLength = columnTests.length;
+                  const failingTests = columnTests.filter((test) =>
+                    test.results?.some((t) => t.testCaseStatus === 'Failed')
+                  );
+                  const passingTests = columnTests.filter((test) =>
+                    test.results?.some((t) => t.testCaseStatus === 'Success')
+                  );
+
                   return (
                     <td
                       className={classNames(
@@ -353,6 +376,34 @@ const EntityTable = ({
                           )}
                         </span>
                       ) : null}
+
+                      {cell.column.id === 'columnTests' && (
+                        <Fragment>
+                          {columnTestLength ? (
+                            <Fragment>
+                              {failingTests.length ? (
+                                <div className="tw-flex">
+                                  <p className="tw-mr-2">
+                                    <i className="fas fa-times tw-text-status-failed" />
+                                  </p>
+                                  <p>
+                                    {`${failingTests.length}/${columnTestLength} tests failing`}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="tw-flex">
+                                  <div className="tw-mr-2">
+                                    <i className="fas fa-check-square tw-text-status-success" />
+                                  </div>
+                                  <p>{`${passingTests.length} tests`}</p>
+                                </div>
+                              )}
+                            </Fragment>
+                          ) : (
+                            '--'
+                          )}
+                        </Fragment>
+                      )}
 
                       {cell.column.id === 'dataTypeDisplay' && (
                         <>

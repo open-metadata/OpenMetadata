@@ -27,8 +27,9 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
-import { Column, DataType, Table } from '../generated/entity/data/table';
+import { Column, DataType } from '../generated/entity/data/table';
 import { TagLabel } from '../generated/type/tagLabel';
+import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 
@@ -253,7 +254,7 @@ export const makeRow = (column: Column) => {
 };
 
 export const makeData = (
-  columns: Table['columns'] = []
+  columns: ModifiedTableColumn[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
   const data = columns.map((column) => ({
     ...makeRow(column),
