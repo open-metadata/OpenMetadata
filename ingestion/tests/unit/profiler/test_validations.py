@@ -19,7 +19,9 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesLengthsToBeBetween import ColumnValueLengthsToBeBetween
+from metadata.generated.schema.tests.column.columnValuesLengthsToBeBetween import (
+    ColumnValueLengthsToBeBetween,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -399,9 +401,7 @@ def test_column_value_length_to_be_between():
         result="Found minLength=4.0, maxLength=16.0 vs. the expected minLength=10, maxLength=20.",
     )
 
-    col_profile_aborted = ColumnProfile(
-        minLength=4
-    )
+    col_profile_aborted = ColumnProfile(minLength=4)
 
     res_aborted = validate(
         ColumnValueLengthsToBeBetween(minValue=2, maxValue=20),
@@ -413,7 +413,7 @@ def test_column_value_length_to_be_between():
         executionTime=EXECUTION_DATE.timestamp(),
         testCaseStatus=TestCaseStatus.Aborted,
         result=(
-                "We expect `minLength` & `maxLength` to be informed on the profiler for ColumnValueLengthsToBeBetween"
-                + " but got minLength=4.0, maxLength=None."
+            "We expect `minLength` & `maxLength` to be informed on the profiler for ColumnValueLengthsToBeBetween"
+            + " but got minLength=4.0, maxLength=None."
         ),
     )

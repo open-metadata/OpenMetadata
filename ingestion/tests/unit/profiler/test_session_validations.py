@@ -20,7 +20,9 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual import ColumnValuesMissingCount
+from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual import (
+    ColumnValuesMissingCount,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
     ColumnValuesToBeNotInSet,
 )
@@ -186,9 +188,7 @@ class MetricsTest(TestCase):
         column_profile = ColumnProfile(name="nickname", nullCount=1)
 
         res_ok = validate(
-            ColumnValuesMissingCount(
-                missingCountValue=1
-            ),
+            ColumnValuesMissingCount(missingCountValue=1),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
             session=self.session,
@@ -205,7 +205,6 @@ class MetricsTest(TestCase):
             ColumnValuesMissingCount(
                 missingCountValue=2,
                 missingValueMatch=["johnny b goode"],
-
             ),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,

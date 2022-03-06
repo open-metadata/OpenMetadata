@@ -89,9 +89,7 @@ def column_values_missing_count_to_be_equal(
         if missing_count == test_case.missingCountValue
         else TestCaseStatus.Failed
     )
-    result = (
-        f"Found missingCount={missing_count}. It should be {test_case.missingCountValue}."
-    )
+    result = f"Found missingCount={missing_count}. It should be {test_case.missingCountValue}."
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result

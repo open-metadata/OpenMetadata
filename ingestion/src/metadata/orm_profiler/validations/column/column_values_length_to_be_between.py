@@ -17,7 +17,9 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesLengthsToBeBetween import ColumnValueLengthsToBeBetween
+from metadata.generated.schema.tests.column.columnValuesLengthsToBeBetween import (
+    ColumnValueLengthsToBeBetween,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
