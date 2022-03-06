@@ -26,8 +26,8 @@ from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
 from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
     ColumnValuesToMatchRegex,
 )
-from metadata.orm_profiler.engines import create_and_bind_session
 from metadata.orm_profiler.validations.core import validate
+from metadata.utils.engines import create_and_bind_session
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 Base = declarative_base()

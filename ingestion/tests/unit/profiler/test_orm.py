@@ -20,7 +20,7 @@ import sqlalchemy
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.orm_profiler.orm.converter import ometa_to_orm, get_db_name
+from metadata.orm_profiler.orm.converter import get_db_name, ometa_to_orm
 
 
 def test_simple_conversion():

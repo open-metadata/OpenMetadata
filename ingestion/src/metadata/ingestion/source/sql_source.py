@@ -21,6 +21,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -49,6 +50,7 @@ from metadata.ingestion.source.sql_source_common import (
     SQLSourceStatus,
 )
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.engines import create_and_bind_session, get_engine
 from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -87,11 +89,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status = SQLSourceStatus()
         self.sql_config = self.config
         self.connection_string = self.sql_config.get_connection_url()
-        self.engine = create_engine(
-            self.connection_string,
-            **self.sql_config.options,
-            connect_args=self.sql_config.connect_args,
-        )
+        self.engine = get_engine(config=self.sql_config)
+        self._session = None  # We will instantiate this just if needed
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
@@ -133,6 +132,16 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.debug(traceback.print_exc())
             logger.debug(f"Error loading profiler {repr(exc)}")
         return False
+
+    @property
+    def session(self) -> Session:
+        """
+        Return the SQLAlchemy session from the engine
+        """
+        if not self._session:
+            session = (create_and_bind_session(self.engine),)
+
+        return self._session
 
     def prepare(self):
         self._parse_data_model()
