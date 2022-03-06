@@ -191,7 +191,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const quilityTestFormHandler = (
+  const qualityTestFormHandler = (
     tabValue: number,
     testMode: DatasetTestModeType
   ) => {
@@ -795,7 +795,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
           postFeedHandler={postFeedHandler}
-          quilityTestFormHandler={quilityTestFormHandler}
+          qualityTestFormHandler={qualityTestFormHandler}
           removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}

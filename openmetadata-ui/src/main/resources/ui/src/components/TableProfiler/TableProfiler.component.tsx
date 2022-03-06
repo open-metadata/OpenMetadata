@@ -14,13 +14,16 @@
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { Table, TableProfile } from '../../generated/entity/data/table';
+import { useAuth } from '../../hooks/authHooks';
 import {
   ColumnTest,
   DatasetTestModeType,
 } from '../../interface/dataQuality.interface';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { Button } from '../buttons/Button/Button';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 
@@ -32,7 +35,7 @@ type Props = {
     colType: string;
     colTests?: ColumnTest[];
   }>;
-  quilityTestFormHandler: (
+  qualityTestFormHandler: (
     tabValue: number,
     testMode: DatasetTestModeType
   ) => void;
@@ -73,8 +76,9 @@ const excludedMetrics = [
 const TableProfiler: FC<Props> = ({
   tableProfiles,
   columns,
-  quilityTestFormHandler,
+  qualityTestFormHandler,
 }) => {
+  const { isAuthDisabled, isAdminUser } = useAuth();
   const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
     rows: tableProfile.rowCount,
     profileDate: tableProfile.profileDate,
@@ -256,14 +260,26 @@ const TableProfiler: FC<Props> = ({
                           `No tests available`
                         )}
                         <div className="tw-self-center tw-ml-5">
-                          <Button
-                            className="tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted"
-                            size="custom"
-                            type="button"
-                            variant="outlined"
-                            onClick={() => quilityTestFormHandler(6, 'column')}>
-                            Add Test
-                          </Button>
+                          <NonAdminAction
+                            position="bottom"
+                            title={TITLE_FOR_NON_ADMIN_ACTION}>
+                            <Button
+                              className={classNames(
+                                'tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted',
+                                {
+                                  'tw-opacity-40':
+                                    !isAdminUser && !isAuthDisabled,
+                                }
+                              )}
+                              size="custom"
+                              type="button"
+                              variant="outlined"
+                              onClick={() =>
+                                qualityTestFormHandler(6, 'column')
+                              }>
+                              Add Test
+                            </Button>
+                          </NonAdminAction>
                         </div>
                       </div>
                     </td>

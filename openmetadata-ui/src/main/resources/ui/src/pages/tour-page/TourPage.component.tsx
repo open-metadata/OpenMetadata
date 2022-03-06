@@ -205,7 +205,7 @@ const TourPage = () => {
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
             postFeedHandler={handleCountChange}
-            quilityTestFormHandler={handleCountChange}
+            qualityTestFormHandler={handleCountChange}
             removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
