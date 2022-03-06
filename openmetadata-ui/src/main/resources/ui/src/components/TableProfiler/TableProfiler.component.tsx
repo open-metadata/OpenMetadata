@@ -21,7 +21,7 @@ import {
 } from '../../interface/dataQuality.interface';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { Button } from '../buttons/Button/Button';
-import TableProfilerGraph from './TableProfilerGraph.component';
+import PopOver from '../common/popover/PopOver';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
@@ -37,10 +37,27 @@ type Props = {
   ) => void;
 };
 
-type ProfilerGraphData = Array<{
-  date: Date;
-  value: number;
-}>;
+const PercentageGraph = ({
+  percentage,
+  title,
+}: {
+  percentage: number;
+  title: string;
+}) => {
+  return (
+    <PopOver
+      position="top"
+      title={`${percentage}% ${title}`}
+      trigger="mouseenter">
+      <div className="tw-border tw-border-primary tw-h-8 tw-w-20">
+        <div
+          className="tw-bg-primary tw-opacity-40 tw-h-full"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </PopOver>
+  );
+};
 
 const excludedMetrics = [
   'profilDate',
@@ -84,17 +101,15 @@ const TableProfiler: FC<Props> = ({
       })),
       columnTests: column.colTests,
       data,
-      min: data?.length ? data[0].min ?? 0 : 0,
-      max: data?.length ? data[0].max ?? 0 : 0,
       type: column.colType,
     };
   });
 
   return (
-    <>
+    <div className="tw-table-responsive tw-overflow-x-autos">
       {tableProfiles?.length ? (
         <table
-          className="tw-table-responsive tw-overflow-x-auto"
+          className="tw-w-full"
           data-testid="schema-table"
           id="profilerDetails">
           <thead>
@@ -139,39 +154,27 @@ const TableProfiler: FC<Props> = ({
                       </div>
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
-                      <TableProfilerGraph
-                        data={
-                          col.data
-                            ?.map((d) => ({
-                              date: d.profilDate,
-                              value: d.nullCount ?? 0,
-                            }))
-                            .reverse() as ProfilerGraphData
-                        }
+                      <PercentageGraph
+                        percentage={(col.data?.[0]?.nullProportion ?? 0) * 100}
+                        title="null value"
                       />
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
-                      <TableProfilerGraph
-                        data={
-                          col.data
-                            ?.map((d) => ({
-                              date: d.profilDate,
-                              value: d.uniqueCount ?? 0,
-                            }))
-                            .reverse() as ProfilerGraphData
+                      <PercentageGraph
+                        percentage={
+                          (col.data?.[0]?.uniqueProportion ?? 0) * 100
                         }
+                        title="unique value"
                       />
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
-                      <TableProfilerGraph
-                        data={
-                          col.data
-                            ?.map((d) => ({
-                              date: d.profilDate,
-                              value: d.distinctCount ?? 0,
-                            }))
-                            .reverse() as ProfilerGraphData
+                      <PercentageGraph
+                        percentage={
+                          ((col.data?.[0]?.distinctCount ?? 0) /
+                            (col.data?.[0]?.rows ?? 0)) *
+                          100
                         }
+                        title="distinct value"
                       />
                     </td>
                     <td
@@ -263,7 +266,7 @@ const TableProfiler: FC<Props> = ({
           </Link>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
