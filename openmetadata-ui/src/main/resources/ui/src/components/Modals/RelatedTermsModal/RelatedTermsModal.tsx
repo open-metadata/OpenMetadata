@@ -13,20 +13,21 @@
 
 import { AxiosResponse } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import { FormatedUsersData, SearchResponse } from 'Models';
+import { FormatedGlossaryTermData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
-import { formatRelatedTermResponse } from '../../../utils/APIUtils';
+import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
 
 type RelatedTermsModalProp = {
-  relatedTerms?: Array<FormatedUsersData>;
+  relatedTerms?: Array<FormatedGlossaryTermData>;
   onCancel: () => void;
-  onSave: (terms: Array<FormatedUsersData>) => void;
+  onSave: (terms: Array<FormatedGlossaryTermData>) => void;
   header: string;
 };
 
@@ -38,14 +39,14 @@ const RelatedTermsModal = ({
 }: RelatedTermsModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [options, setOptions] = useState<FormatedUsersData[]>([]);
-  const [selectedOption, setSelectedOption] = useState<FormatedUsersData[]>(
-    relatedTerms ?? []
-  );
+  const [options, setOptions] = useState<FormatedGlossaryTermData[]>([]);
+  const [selectedOption, setSelectedOption] = useState<
+    FormatedGlossaryTermData[]
+  >(relatedTerms ?? []);
 
   const querySearch = (search = '') => {
     return isEmpty(search)
-      ? searchData('*', 1, 10, '', '', '', SearchIndex.GLOSSARY)
+      ? searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.GLOSSARY)
       : getSuggestions(search, SearchIndex.GLOSSARY);
   };
 
@@ -55,7 +56,7 @@ const RelatedTermsModal = ({
     querySearch(text)
       .then((res: AxiosResponse) => {
         setOptions(
-          formatRelatedTermResponse(
+          formatSearchGlossaryTermResponse(
             res.data.suggest['table-suggest'][0].options
           )
         );
@@ -76,8 +77,8 @@ const RelatedTermsModal = ({
     if (!isChecked) {
       setSelectedOption((pre) => pre.filter((option) => option.id !== id));
     } else {
-      const newOption: FormatedUsersData =
-        options.find((d) => d.id === id) || ({} as FormatedUsersData);
+      const newOption: FormatedGlossaryTermData =
+        options.find((d) => d.id === id) || ({} as FormatedGlossaryTermData);
       setSelectedOption([...selectedOption, newOption]);
     }
   };
@@ -102,7 +103,9 @@ const RelatedTermsModal = ({
   const initialSearch = () => {
     querySearch().then((res: SearchResponse) => {
       setOptions(
-        formatRelatedTermResponse(res.data.hits.hits) as FormatedUsersData[]
+        formatSearchGlossaryTermResponse(
+          res.data.hits.hits
+        ) as FormatedGlossaryTermData[]
       );
       setIsLoading(false);
     });

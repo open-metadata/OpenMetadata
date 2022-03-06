@@ -20,9 +20,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { useAuth } from '../../hooks/authHooks';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { generateTreeData, getActionsList } from '../../utils/GlossaryUtils';
 import { Button } from '../buttons/Button/Button';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import SearchInput from '../common/SearchInput/SearchInput.component';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
@@ -89,6 +91,7 @@ const GlossaryV1 = ({
   onGlossaryTermDelete,
 }: // handlePathChange,
 Props) => {
+  const { isAuthDisabled, isAdminUser } = useAuth();
   const treeRef = useRef<RcTree<DataNode>>(null);
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<
@@ -212,7 +215,7 @@ Props) => {
     );
   };
 
-  return (
+  return glossaryList.length ? (
     <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
       <div
         className="tw-flex tw-justify-between tw-items-center"
@@ -277,6 +280,27 @@ Props) => {
           onConfirm={handleDelete}
         />
       )}
+    </PageLayout>
+  ) : (
+    <PageLayout>
+      <ErrorPlaceHolder>
+        <p className="tw-text-center">No glossaries found</p>
+        <p className="tw-text-center">
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              className={classNames('tw-h-8 tw-rounded tw-my-3', {
+                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              })}
+              data-testid="add-webhook-button"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={handleAddGlossaryClick}>
+              Add New Glossary
+            </Button>
+          </NonAdminAction>
+        </p>
+      </ErrorPlaceHolder>
     </PageLayout>
   );
 };

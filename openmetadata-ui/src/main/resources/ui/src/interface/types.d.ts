@@ -216,6 +216,14 @@ declare module 'Models' {
     id: string;
   };
 
+  export type FormatedGlossaryTermData = {
+    name: string;
+    displayName: string;
+    fqdn: string;
+    type: string;
+    id: string;
+  };
+
   export interface FormatedGlossarySuggestion {
     deleted: boolean;
     description: string;

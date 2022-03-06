@@ -16,6 +16,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { FormatedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
@@ -45,7 +46,7 @@ const ReviewerModal = ({
 
   const querySearch = (search = '') => {
     return isEmpty(search)
-      ? searchData('*', 1, 10, '', '', '', SearchIndex.USER)
+      ? searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER)
       : getSuggestions(search, SearchIndex.USER);
   };
 

@@ -13,7 +13,11 @@
 
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { EditorContentRef, FormatedUsersData } from 'Models';
+import {
+  EditorContentRef,
+  FormatedGlossaryTermData,
+  FormatedUsersData,
+} from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
@@ -58,9 +62,9 @@ const AddGlossaryTerm = ({
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
-  const [relatedTerms, setRelatedTerms] = useState<Array<FormatedUsersData>>(
-    []
-  );
+  const [relatedTerms, setRelatedTerms] = useState<
+    Array<FormatedGlossaryTermData>
+  >([]);
   const [synonyms, setSynonyms] = useState('');
   const [references, setReferences] = useState<TermReference[]>([]);
 
@@ -74,7 +78,7 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<FormatedUsersData>) => {
+  const handleRelatedTermsSave = (terms: Array<FormatedGlossaryTermData>) => {
     setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };

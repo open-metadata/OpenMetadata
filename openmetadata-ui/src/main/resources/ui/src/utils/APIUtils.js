@@ -68,11 +68,12 @@ export const formatUsersResponse = (hits) => {
   return users;
 };
 
-export const formatRelatedTermResponse = (hits) => {
+export const formatSearchGlossaryTermResponse = (hits) => {
   const term = hits.map((d) => {
     return {
       name: d._source.name,
       displayName: d._source.display_name,
+      fqdn: d._source.fqdn,
       type: d._source.entity_type,
       id: d._id,
     };

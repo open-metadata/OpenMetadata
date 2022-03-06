@@ -16,6 +16,7 @@ import { ReactNode } from 'react';
 import { TagProps } from '../tags/tags.interface';
 
 export type TagsContainerProps = {
+  allowGlossary?: boolean;
   children?: ReactNode;
   editable?: boolean;
   dropDownHorzPosRight?: boolean;
