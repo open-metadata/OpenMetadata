@@ -22,6 +22,7 @@ import {
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { Button } from '../buttons/Button/Button';
 import PopOver from '../common/popover/PopOver';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
@@ -106,7 +107,7 @@ const TableProfiler: FC<Props> = ({
   });
 
   return (
-    <div className="tw-table-responsive tw-overflow-x-autos">
+    <div className="tw-table-responsive tw-overflow-x-auto">
       {tableProfiles?.length ? (
         <table
           className="tw-w-full"
@@ -150,7 +151,29 @@ const TableProfiler: FC<Props> = ({
                       className="tw-relative tableBody-cell"
                       data-testid="tableBody-cell">
                       <div className="tw-flex">
-                        <span>{col.name.colType}</span>
+                        {col.name.colType.length > 25 ? (
+                          <span>
+                            <PopOver
+                              html={
+                                <div className="tw-break-words">
+                                  <span>{col.name.colType.toLowerCase()}</span>
+                                </div>
+                              }
+                              position="bottom"
+                              theme="light"
+                              trigger="click">
+                              <div className="tw-cursor-pointer tw-underline tw-inline-block">
+                                <RichTextEditorPreviewer
+                                  markdown={`${col.name.colType
+                                    .slice(0, 20)
+                                    .toLowerCase()}...`}
+                                />
+                              </div>
+                            </PopOver>
+                          </span>
+                        ) : (
+                          col.name.colType.toLowerCase()
+                        )}
                       </div>
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">

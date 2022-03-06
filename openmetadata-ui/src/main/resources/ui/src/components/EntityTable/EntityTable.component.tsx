@@ -26,6 +26,7 @@ import {
   Table,
 } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import {
   ColumnTest,
@@ -349,10 +350,14 @@ const EntityTable = ({
                       : ([] as ColumnTest[]);
                   const columnTestLength = columnTests.length;
                   const failingTests = columnTests.filter((test) =>
-                    test.results?.some((t) => t.testCaseStatus === 'Failed')
+                    test.results?.some(
+                      (t) => t.testCaseStatus === TestCaseStatus.Failed
+                    )
                   );
                   const passingTests = columnTests.filter((test) =>
-                    test.results?.some((t) => t.testCaseStatus === 'Success')
+                    test.results?.some(
+                      (t) => t.testCaseStatus === TestCaseStatus.Success
+                    )
                   );
 
                   return (
