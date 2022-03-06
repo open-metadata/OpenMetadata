@@ -12,6 +12,7 @@
 """
 Default simple profiler to use
 """
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
@@ -34,6 +35,7 @@ class DefaultProfiler(Profiler):
         session: Session,
         table: DeclarativeMeta,
         ignore_cols: Optional[List[str]] = None,
+        profile_date: datetime = datetime.now(),
     ):
         _metrics = [
             # Table Metrics
@@ -55,5 +57,9 @@ class DefaultProfiler(Profiler):
             Metrics.HISTOGRAM.value,
         ]
         super().__init__(
-            *_metrics, session=session, table=table, ignore_cols=ignore_cols
+            *_metrics,
+            session=session,
+            table=table,
+            ignore_cols=ignore_cols,
+            profile_date=profile_date
         )
