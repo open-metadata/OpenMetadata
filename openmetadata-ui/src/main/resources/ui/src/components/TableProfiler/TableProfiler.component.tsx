@@ -12,15 +12,16 @@
  */
 
 import classNames from 'classnames';
-import React, { Fragment, useState } from 'react';
+import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Table, TableProfile } from '../../generated/entity/data/table';
 import { getConstraintIcon } from '../../utils/TableUtils';
+import { Button } from '../buttons/Button/Button';
 import TableProfilerGraph from './TableProfilerGraph.component';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
-  columns: Array<{ constraint: string; colName: string }>;
+  columns: Array<{ constraint: string; colName: string; colType: string }>;
 };
 
 type ProfilerGraphData = Array<{
@@ -28,15 +29,17 @@ type ProfilerGraphData = Array<{
   value: number;
 }>;
 
-const TableProfiler = ({ tableProfiles, columns }: Props) => {
-  const [expandedColumn, setExpandedColumn] = useState<{
-    name: string;
-    isExpanded: boolean;
-  }>({
-    name: '',
-    isExpanded: false,
-  });
+const excludedMetrics = [
+  'profilDate',
+  'name',
+  'nullCount',
+  'nullProportion',
+  'uniqueCount',
+  'uniqueProportion',
+  'rows',
+];
 
+const TableProfiler = ({ tableProfiles, columns }: Props) => {
   const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
     rows: tableProfile.rowCount,
     profileDate: tableProfile.profileDate,
@@ -49,14 +52,23 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
         (colProfile) => colProfile.name === column.colName
       );
 
-      return { profilDate: md.profileDate, ...currentColumn, rows: md.rows };
+      return {
+        profilDate: md.profileDate,
+        ...currentColumn,
+        rows: md.rows,
+      };
     });
 
     return {
       name: column,
+      columnMetrics: Object.entries(data?.[0] ?? {}).map((d) => ({
+        key: d[0],
+        value: d[1],
+      })),
       data,
       min: data?.length ? data[0].min ?? 0 : 0,
       max: data?.length ? data[0].max ?? 0 : 0,
+      type: column.colType,
     };
   });
 
@@ -70,11 +82,12 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
           <thead>
             <tr className="tableHead-row">
               <th className="tableHead-cell">Column Name</th>
-              <th className="tableHead-cell">Distinct Ratio (%)</th>
-              <th className="tableHead-cell">Null Ratio (%)</th>
-              <th className="tableHead-cell">Min</th>
-              <th className="tableHead-cell">Max</th>
-              <th className="tableHead-cell">Standard Deviation</th>
+              <th className="tableHead-cell">Type</th>
+              <th className="tableHead-cell">Null</th>
+              <th className="tableHead-cell">Unique</th>
+              <th className="tableHead-cell">Distinct</th>
+              <th className="tableHead-cell">Metrics</th>
+              <th className="tableHead-cell" />
             </tr>
           </thead>
           {columnSpecificData.map((col, colIndex) => {
@@ -88,27 +101,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                       className="tw-relative tableBody-cell"
                       data-testid="tableBody-cell">
                       <div className="tw-flex">
-                        <span
-                          className="tw-mr-2 tw-cursor-pointer"
-                          onClick={() =>
-                            setExpandedColumn((prevState) => ({
-                              name: col.name.colName,
-                              isExpanded:
-                                prevState.name === col.name.colName
-                                  ? !prevState.isExpanded
-                                  : true,
-                            }))
-                          }>
-                          {expandedColumn.name === col.name.colName ? (
-                            expandedColumn.isExpanded ? (
-                              <i className="fas fa-caret-down" />
-                            ) : (
-                              <i className="fas fa-caret-right" />
-                            )
-                          ) : (
-                            <i className="fas fa-caret-right" />
-                          )}
-                        </span>
                         {col.name.constraint && (
                           <span className="tw-mr-3 tw--ml-2">
                             {getConstraintIcon(
@@ -120,13 +112,20 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                         <span>{col.name.colName}</span>
                       </div>
                     </td>
+                    <td
+                      className="tw-relative tableBody-cell"
+                      data-testid="tableBody-cell">
+                      <div className="tw-flex">
+                        <span>{col.name.colType}</span>
+                      </div>
+                    </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <TableProfilerGraph
                         data={
                           col.data
                             ?.map((d) => ({
                               date: d.profilDate,
-                              value: d.uniqueProportion ?? 0,
+                              value: d.nullCount ?? 0,
                             }))
                             .reverse() as ProfilerGraphData
                         }
@@ -138,66 +137,52 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                           col.data
                             ?.map((d) => ({
                               date: d.profilDate,
-                              value: d.nullProportion ?? 0,
+                              value: d.uniqueCount ?? 0,
                             }))
                             .reverse() as ProfilerGraphData
                         }
                       />
                     </td>
-                    <td className="tw-relative tableBody-cell">{col.min}</td>
-                    <td className="tw-relative tableBody-cell">{col.max}</td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <TableProfilerGraph
                         data={
                           col.data
                             ?.map((d) => ({
                               date: d.profilDate,
-                              value: d.stddev ?? 0,
+                              value: d.distinctCount ?? 0,
                             }))
                             .reverse() as ProfilerGraphData
                         }
                       />
+                    </td>
+                    <td
+                      className="tw-relative tableBody-cell"
+                      data-testid="tableBody-cell">
+                      <div className="tw-border tw-border-main tw-rounded tw-p-2">
+                        {col.columnMetrics
+                          .filter((m) => !excludedMetrics.includes(m.key))
+                          .map((m, i) => (
+                            <p className="tw-mb-1 tw-flex" key={i}>
+                              <span className="tw-mx-1">{m.key}</span>
+                              <span className="tw-mx-1">-</span>
+                              <span className="tw-mx-1">{m.value}</span>
+                            </p>
+                          ))}
+                      </div>
+                    </td>
+                    <td
+                      className="tw-relative tableBody-cell"
+                      data-testid="tableBody-cell">
+                      <Button
+                        className="tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted"
+                        size="custom"
+                        type="button"
+                        variant="outlined">
+                        Add Test
+                      </Button>
                     </td>
                   </tr>
                 </tbody>
-                {expandedColumn.name === col.name.colName &&
-                  expandedColumn.isExpanded && (
-                    <tbody>
-                      {col.data?.map((colData, index) => (
-                        <tr
-                          className={classNames(
-                            'tableBody-row tw-border-0 tw-border-l tw-border-r',
-                            {
-                              'tw-border-b':
-                                columnSpecificData.length - 1 === colIndex &&
-                                col.data?.length === index + 1,
-                            }
-                          )}
-                          key={index}>
-                          <td className="tw-relative tableBody-cell">
-                            <span className="tw-pl-6">
-                              {colData.profilDate}
-                            </span>
-                          </td>
-                          <td className="tw-relative tableBody-cell">
-                            {colData.uniqueProportion ?? 0}
-                          </td>
-                          <td className="tw-relative tableBody-cell">
-                            {colData.nullProportion ?? 0}
-                          </td>
-                          <td className="tw-relative tableBody-cell">
-                            {colData.min ?? 0}
-                          </td>
-                          <td className="tw-relative tableBody-cell">
-                            {colData.max ?? 0}
-                          </td>
-                          <td className="tw-relative tableBody-cell">
-                            {colData.stddev ?? 0}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  )}
               </Fragment>
             );
           })}

@@ -595,6 +595,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   columns={columns.map((col) => ({
                     constraint: col.constraint as string,
                     colName: col.name,
+                    colType: col.dataTypeDisplay as string,
                   }))}
                   tableProfiles={tableProfile}
                 />
