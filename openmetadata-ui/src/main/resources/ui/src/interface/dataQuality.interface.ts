@@ -42,7 +42,7 @@ export interface CreateColumnTest {
   };
 }
 
-export type DatabaseTestModeType = 'table' | 'column';
+export type DatasetTestModeType = 'table' | 'column';
 
 export interface ModifiedTableColumn extends Column {
   columnTests?: CreateColumnTest[];
