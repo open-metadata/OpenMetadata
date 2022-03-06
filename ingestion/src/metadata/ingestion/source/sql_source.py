@@ -88,7 +88,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
-        self.connection_string = self.sql_config.get_connection_url()
         self.engine = get_engine(config=self.sql_config)
         self._session = None  # We will instantiate this just if needed
         self.connection = self.engine.connect()
