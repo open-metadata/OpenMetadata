@@ -253,7 +253,7 @@ const TableProfiler: FC<Props> = ({
                             ))}
                           </div>
                         ) : (
-                          `No tests added yet.`
+                          `No tests available`
                         )}
                         <div className="tw-self-center tw-ml-5">
                           <Button
