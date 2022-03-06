@@ -13,6 +13,10 @@
 
 import { AxiosResponse } from 'axios';
 import { Table } from 'Models';
+import { ColumnTestType } from '../enums/columnTest.enum';
+import { CreateTableTest } from '../generated/api/tests/createTableTest';
+import { TableTestType } from '../generated/tests/tableTest';
+import { CreateColumnTest } from '../interface/dataQuality.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -108,6 +112,51 @@ export const removeFollower: Function = (
 
   return APIClient.delete(
     `/tables/${tableId}/followers/${userId}`,
+    configOptions
+  );
+};
+
+export const addTableTestCase = (tableId: string, data: CreateTableTest) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.put(`/tables/${tableId}/tableTest`, data, configOptions);
+};
+
+export const deleteTableTestCase = (
+  tableId: string,
+  tableTestType: TableTestType
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.delete(
+    `/tables/${tableId}/tableTest/${tableTestType}`,
+    configOptions
+  );
+};
+
+export const addColumnTestCase = (tableId: string, data: CreateColumnTest) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.put(`/tables/${tableId}/columnTest`, data, configOptions);
+};
+
+export const deleteColumnTestCase = (
+  tableId: string,
+  columnName: string,
+  columnTestType: ColumnTestType
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.delete(
+    `/tables/${tableId}/columnTest/${columnName}/${columnTestType}`,
     configOptions
   );
 };

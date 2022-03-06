@@ -15,7 +15,7 @@ import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
 ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
-${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_PROFILE}`;
+${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_PROFILE},${TabSpecificField.TESTS}`;
 
 export const datasetTableTabs = [
   {
@@ -40,6 +40,10 @@ export const datasetTableTabs = [
   {
     name: 'Profiler',
     path: 'profiler',
+  },
+  {
+    name: 'Data Quality',
+    path: 'data-quality',
   },
   {
     name: 'Lineage',
@@ -77,18 +81,23 @@ export const getCurrentDatasetTab = (tab: string) => {
 
       break;
 
-    case 'lineage':
+    case 'data-quality':
       currentTab = 6;
 
       break;
 
-    case 'dbt':
+    case 'lineage':
       currentTab = 7;
 
       break;
 
-    case 'manage':
+    case 'dbt':
       currentTab = 8;
+
+      break;
+
+    case 'manage':
+      currentTab = 9;
 
       break;
 
