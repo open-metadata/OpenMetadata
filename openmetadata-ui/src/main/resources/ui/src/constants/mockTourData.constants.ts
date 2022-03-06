@@ -15,86 +15,18 @@
 
 export const mockFeedData = [
   {
-    index: 'table_search_index',
-    id: 'd336d794-6fce-4094-a064-7ceb3b208dab',
-    name: 'dim_address',
-    description:
-      'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
-    fullyQualifiedName: 'bigquery_gcp.shopify.dim_address',
-    tableType: 'Regular',
-    tags: [
-      'PersonalData.Personal',
-      'PII.Sensitive',
-      'PII.NonSensitive',
-      'PII.Sensitive',
-      'PersonalData.Personal',
-      'User.FacePhoto',
-    ],
-    service: 'bigquery_gcp',
-    serviceType: 'BigQuery',
-    database: 'shopify',
-    entityType: 'table',
-    changeDescriptions: [
-      {
-        updatedBy: 'anonymous',
-        updatedAt: 1640239422867,
-        fieldsAdded: [],
-        fieldsUpdated: [],
-        fieldsDeleted: [],
-      },
-      {
-        updatedBy: 'anonymous',
-        fieldsAdded: [
-          {
-            newValue:
-              '[{"tagFQN":"PersonalData.Personal","labelType":"Manual","state":"Confirmed"}]',
-            name: 'columns.address_id.tags',
-          },
-        ],
-        fieldsUpdated: [],
-        fieldsDeleted: [],
-        updatedAt: 1640247571788,
-      },
-      {
-        updatedBy: 'anonymous',
-        fieldsAdded: [
-          {
-            newValue:
-              '[{"tagFQN":"PII.Sensitive","labelType":"Manual","state":"Confirmed"}]',
-            name: 'columns.shop_id.tags',
-          },
-        ],
-        fieldsUpdated: [],
-        fieldsDeleted: [],
-        updatedAt: 1640248828684,
-      },
-      {
-        updatedBy: 'anonymous',
-        fieldsAdded: [
-          {
-            newValue:
-              '[{"tagFQN":"PII.NonSensitive","labelType":"Manual","state":"Confirmed"}]',
-            name: 'columns.first_name.tags',
-          },
-        ],
-        fieldsUpdated: [],
-        fieldsDeleted: [],
-        updatedAt: 1640248877069,
-      },
-      {
-        updatedBy: 'anonymous',
-        fieldsAdded: [
-          {
-            newValue:
-              '[{"tagFQN":"PII.Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","labelType":"Derived","state":"Confirmed"},{"tagFQN":"PersonalData.Personal","description":"Data that can be used to directly or indirectly identify a person.","labelType":"Derived","state":"Confirmed"},{"tagFQN":"User.FacePhoto","labelType":"Manual","state":"Confirmed"}]',
-            name: 'columns.last_name.tags',
-          },
-        ],
-        fieldsUpdated: [],
-        fieldsDeleted: [],
-        updatedAt: 1640248886960,
-      },
-    ],
+    id: '2b133a6d-8562-4220-a997-eaaa0376cad3',
+    href: 'http://localhost:8585/api/v1/feed/2b133a6d-8562-4220-a997-eaaa0376cad3',
+    threadTs: 1646577496489,
+    about: '<#E/table/bigquery_gcp.shopify.dim_staff/description>',
+    entityId: '37e50e09-d5b6-4609-821c-1ed84d92dd57',
+    createdBy: 'aaron_johnson0',
+    updatedAt: 1646577496489,
+    updatedBy: 'anonymous',
+    resolved: false,
+    message: 'Can you add a description?',
+    postsCount: 0,
+    posts: [],
   },
 ];
 
