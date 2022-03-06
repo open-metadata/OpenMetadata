@@ -12,16 +12,29 @@
  */
 
 import classNames from 'classnames';
-import React, { Fragment } from 'react';
+import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Table, TableProfile } from '../../generated/entity/data/table';
+import {
+  ColumnTest,
+  DatasetTestModeType,
+} from '../../interface/dataQuality.interface';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { Button } from '../buttons/Button/Button';
 import TableProfilerGraph from './TableProfilerGraph.component';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
-  columns: Array<{ constraint: string; colName: string; colType: string }>;
+  columns: Array<{
+    constraint: string;
+    colName: string;
+    colType: string;
+    colTests?: ColumnTest[];
+  }>;
+  quilityTestFormHandler: (
+    tabValue: number,
+    testMode: DatasetTestModeType
+  ) => void;
 };
 
 type ProfilerGraphData = Array<{
@@ -39,7 +52,11 @@ const excludedMetrics = [
   'rows',
 ];
 
-const TableProfiler = ({ tableProfiles, columns }: Props) => {
+const TableProfiler: FC<Props> = ({
+  tableProfiles,
+  columns,
+  quilityTestFormHandler,
+}) => {
   const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
     rows: tableProfile.rowCount,
     profileDate: tableProfile.profileDate,
@@ -65,6 +82,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
         key: d[0],
         value: d[1],
       })),
+      columnTests: column.colTests,
       data,
       min: data?.length ? data[0].min ?? 0 : 0,
       max: data?.length ? data[0].max ?? 0 : 0,
@@ -76,7 +94,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
     <>
       {tableProfiles?.length ? (
         <table
-          className="tw-w-full"
+          className="tw-table-responsive tw-overflow-x-auto"
           data-testid="schema-table"
           id="profilerDetails">
           <thead>
@@ -87,6 +105,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
               <th className="tableHead-cell">Unique</th>
               <th className="tableHead-cell">Distinct</th>
               <th className="tableHead-cell">Metrics</th>
+              <th className="tableHead-cell">Tests</th>
               <th className="tableHead-cell" />
             </tr>
           </thead>
@@ -158,7 +177,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                     <td
                       className="tw-relative tableBody-cell"
                       data-testid="tableBody-cell">
-                      <div className="tw-border tw-border-main tw-rounded tw-p-2">
+                      <div className="tw-border tw-border-main tw-rounded tw-p-2 tw-min-h-32 tw-max-h-44 tw-overflow-y-auto">
                         {col.columnMetrics
                           .filter((m) => !excludedMetrics.includes(m.key))
                           .map((m, i) => (
@@ -172,14 +191,55 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                     </td>
                     <td
                       className="tw-relative tableBody-cell"
+                      colSpan={2}
                       data-testid="tableBody-cell">
-                      <Button
-                        className="tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted"
-                        size="custom"
-                        type="button"
-                        variant="outlined">
-                        Add Test
-                      </Button>
+                      <div className="tw-flex tw-justify-between">
+                        {col.columnTests ? (
+                          <div className="tw-border tw-border-main tw-rounded tw-p-2 tw-min-h-32 tw-max-h-44 tw-overflow-y-auto tw-flex-1">
+                            {col.columnTests.map((m, i) => (
+                              <div className="tw-flex tw-mb-2" key={i}>
+                                <p className="tw-mr-2">
+                                  {m.results?.every(
+                                    (result) =>
+                                      result.testCaseStatus === 'Success'
+                                  ) ? (
+                                    <i className="fas fa-check-square tw-text-status-success" />
+                                  ) : (
+                                    <i className="fas fa-times tw-text-status-failed" />
+                                  )}
+                                </p>
+                                <div>
+                                  <span className="tw-mx-1 tw-font-medium">
+                                    {m.testCase.columnTestType}
+                                  </span>
+                                  <div className="tw-mx-1">
+                                    {Object.entries(
+                                      m.testCase.config ?? {}
+                                    ).map((config, i) => (
+                                      <p className="tw-mx-1" key={i}>
+                                        <span>{config[0]}:</span>
+                                        <span>{config[1] ?? 'null'}</span>
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          `No tests added yet.`
+                        )}
+                        <div className="tw-self-center tw-ml-5">
+                          <Button
+                            className="tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted"
+                            size="custom"
+                            type="button"
+                            variant="outlined"
+                            onClick={() => quilityTestFormHandler(6, 'column')}>
+                            Add Test
+                          </Button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 </tbody>

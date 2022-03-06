@@ -30,12 +30,19 @@ export interface TestCaseConfigType {
   missingValueMatch?: string;
 }
 
-export interface CreateColumnTest {
+export interface Result {
+  executionTime: number;
+  testCaseStatus: string;
+  result: string;
+}
+
+export interface ColumnTest {
   id?: string;
   columnName: string;
   description?: string;
   executionFrequency?: TestCaseExecutionFrequency;
   owner?: EntityReference;
+  results?: Result[];
   testCase: {
     columnTestType: ColumnTestType;
     config?: TestCaseConfigType;
@@ -45,7 +52,7 @@ export interface CreateColumnTest {
 export type DatasetTestModeType = 'table' | 'column';
 
 export interface ModifiedTableColumn extends Column {
-  columnTests?: CreateColumnTest[];
+  columnTests?: ColumnTest[];
 }
 
 export interface TableTestDataType {

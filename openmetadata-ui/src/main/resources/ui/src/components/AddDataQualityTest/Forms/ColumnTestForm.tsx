@@ -19,7 +19,7 @@ import { ColumnTestType } from '../../../enums/columnTest.enum';
 import { TestCaseExecutionFrequency } from '../../../generated/api/tests/createTableTest';
 import { Table } from '../../../generated/entity/data/table';
 import {
-  CreateColumnTest,
+  ColumnTest,
   ModifiedTableColumn,
 } from '../../../interface/dataQuality.interface';
 import {
@@ -33,9 +33,9 @@ import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 
 type Props = {
-  data: CreateColumnTest;
+  data: ColumnTest;
   column: ModifiedTableColumn[];
-  handleAddColumnTestCase: (data: CreateColumnTest) => void;
+  handleAddColumnTestCase: (data: ColumnTest) => void;
   onFormCancel: () => void;
 };
 
@@ -118,7 +118,7 @@ const ColumnTestForm = ({
     const selectedColumn = column.find((d) => d.name === name);
     const existingTests =
       selectedColumn?.columnTests?.map(
-        (d: CreateColumnTest) => d.testCase.columnTestType
+        (d: ColumnTest) => d.testCase.columnTestType
       ) || [];
     if (existingTests.length) {
       const newTest = Object.values(ColumnTestType).filter(
@@ -222,7 +222,7 @@ const ColumnTestForm = ({
 
   const handleSave = () => {
     if (validateForm()) {
-      const columnTestObj: CreateColumnTest = {
+      const columnTestObj: ColumnTest = {
         columnName: columnName,
         description: markdownRef.current?.getEditorContent() || undefined,
         executionFrequency: frequency,

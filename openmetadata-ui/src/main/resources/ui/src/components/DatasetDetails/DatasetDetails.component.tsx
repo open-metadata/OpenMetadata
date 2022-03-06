@@ -111,6 +111,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleShowTestForm,
   handleRemoveTableTest,
   handleRemoveColumnTest,
+  quilityTestFormHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -617,7 +618,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     constraint: col.constraint as string,
                     colName: col.name,
                     colType: col.dataTypeDisplay as string,
+                    colTests: col.columnTests,
                   }))}
+                  quilityTestFormHandler={quilityTestFormHandler}
                   tableProfiles={tableProfile}
                 />
               </div>
