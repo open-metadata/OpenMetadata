@@ -54,13 +54,6 @@ public class RolesPageTest {
     webDriver.get(url);
   }
 
-  public void waitForPageLoad() {
-    do {
-      js = (JavascriptExecutor) webDriver;
-      pageLoadStatus = (String) js.executeScript("return document.readyState");
-    } while (!pageLoadStatus.equals("complete"));
-  }
-
   @Test
   @Order(1)
   public void openRolesPage() throws InterruptedException {
@@ -91,8 +84,9 @@ public class RolesPageTest {
     Events.click(webDriver, common.descriptionSaveButton());
     webDriver.navigate().refresh();
     Thread.sleep(1000);
-    WebElement role = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
-    if (!role.isDisplayed()) {
+    try {
+      wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Role not added");
     }
   }
@@ -128,9 +122,10 @@ public class RolesPageTest {
     Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(1000);
-    WebElement operation = webDriver.findElement(rolesPage.operation());
-    WebElement access = webDriver.findElement(rolesPage.access());
-    if (!operation.isDisplayed() && !access.isDisplayed()) {
+    try {
+      webDriver.findElement(rolesPage.operation());
+      webDriver.findElement(rolesPage.access());
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Rules not added");
     }
   }
@@ -168,10 +163,10 @@ public class RolesPageTest {
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
-    if (errorMessage.isDisplayed()) {
+    try {
+      WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "Name is required");
-    } else {
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Error message not displayed");
     }
   }
@@ -187,10 +182,10 @@ public class RolesPageTest {
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
-    if (errorMessage.isDisplayed()) {
+    try {
+      WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "Display name is required");
-    } else {
+    } catch (TimeoutException | NoSuchElementException e) {
       Assert.fail("Error message not displayed");
     }
   }
@@ -213,10 +208,10 @@ public class RolesPageTest {
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
-    if (errorMessage.isDisplayed()) {
+    try {
+      WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
       Assert.assertEquals(errorMessage.getText(), "Name already exists");
-    } else {
+    } catch (TimeoutException | NoSuchElementException e) {
       Assert.fail("Error message not displayed");
     }
   }
@@ -231,11 +226,11 @@ public class RolesPageTest {
     Events.click(webDriver, rolesPage.selectAccess("allow"));
     Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
-    WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
-    if (errorMessage.isDisplayed()) {
-      Assert.assertEquals(errorMessage.getText(), "Operation is required.");
-    } else {
-      Assert.fail("Rule added without selecting operation");
+    try {
+      WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
+      Assert.assertEquals(errorMessage.getText(), "Operation is required");
+    } catch (TimeoutException | NoSuchElementException e) {
+      Assert.fail("Error message not displayed");
     }
   }
 

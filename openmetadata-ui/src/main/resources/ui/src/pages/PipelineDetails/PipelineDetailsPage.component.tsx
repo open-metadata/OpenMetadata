@@ -144,6 +144,15 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      }
+    );
+  };
+
   useEffect(() => {
     if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentPipelineTab(tab));
@@ -331,6 +340,7 @@ const PipelineDetailsPage = () => {
         setCurrentVersion(version);
         setPipelineDetails(res.data);
         setDescription(description);
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const errMsg =
@@ -350,6 +360,7 @@ const PipelineDetailsPage = () => {
           setCurrentVersion(res.data.version);
           setOwner(res.data.owner);
           setTier(getTierTags(res.data.tags));
+          getEntityFeedCount();
           resolve();
         })
         .catch((err: AxiosError) => {
@@ -370,6 +381,7 @@ const PipelineDetailsPage = () => {
         setTier(getTierTags(res.data.tags));
         setCurrentVersion(res.data.version);
         setTags(getTagsWithoutTier(res.data.tags));
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const errMsg =
@@ -384,6 +396,7 @@ const PipelineDetailsPage = () => {
   const onTaskUpdate = (jsonPatch: Array<Operation>) => {
     patchPipelineDetails(pipelineId, jsonPatch).then((res: AxiosResponse) => {
       setTasks(res.data.tasks || []);
+      getEntityFeedCount();
     });
   };
 
@@ -483,27 +496,20 @@ const PipelineDetailsPage = () => {
       });
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN)).then(
-      (res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-        setEntityFieldThreadCount(res.data.counts);
-      }
-    );
-  };
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res: AxiosResponse) => {
         setEntityThread((pre) => [...pre, res.data]);
+        getEntityFeedCount();
         showToast({
           variant: 'success',
-          body: 'Thread is created successfully',
+          body: 'Conversation created successfully',
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Error while creating thread',
+          body: 'Error while creating the conversation',
         });
       });
   };
@@ -552,6 +558,7 @@ const PipelineDetailsPage = () => {
           loadNodeHandler={loadNodeHandler}
           owner={owner}
           pipelineDetails={pipelineDetails}
+          pipelineFQN={pipelineFQN}
           pipelineTags={tags}
           pipelineUrl={pipelineUrl}
           postFeedHandler={postFeedHandler}

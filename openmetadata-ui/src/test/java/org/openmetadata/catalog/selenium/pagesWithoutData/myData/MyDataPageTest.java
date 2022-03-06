@@ -53,28 +53,28 @@ public class MyDataPageTest {
   @Order(2)
   public void checkOverview() {
     checkWhatsNew();
-    String tablesCount = webDriver.findElement(common.overviewFilterCount("tables")).getAttribute("innerHTML");
+    String tablesCount = webDriver.findElement(common.overviewFilterCount("tables")).getText();
     Assert.assertEquals(tablesCount, "0");
 
-    String topicsCount = webDriver.findElement(common.overviewFilterCount("topics")).getAttribute("innerHTML");
+    String topicsCount = webDriver.findElement(common.overviewFilterCount("topics")).getText();
     Assert.assertEquals(topicsCount, "0");
 
-    String dashboardsCount = webDriver.findElement(common.overviewFilterCount("dashboards")).getAttribute("innerHTML");
+    String dashboardsCount = webDriver.findElement(common.overviewFilterCount("dashboards")).getText();
     Assert.assertEquals(dashboardsCount, "0");
 
-    String pipelinesCount = webDriver.findElement(common.overviewFilterCount("pipelines")).getAttribute("innerHTML");
+    String pipelinesCount = webDriver.findElement(common.overviewFilterCount("pipelines")).getText();
     Assert.assertEquals(pipelinesCount, "0");
 
-    String servicesCount = webDriver.findElement(common.overviewFilterCount("service")).getAttribute("innerHTML");
+    String servicesCount = webDriver.findElement(common.overviewFilterCount("service")).getText();
     Assert.assertEquals(servicesCount, "0");
 
-    String ingestionCount = webDriver.findElement(common.overviewFilterCount("ingestion")).getAttribute("innerHTML");
+    String ingestionCount = webDriver.findElement(common.overviewFilterCount("ingestion")).getText();
     Assert.assertEquals(ingestionCount, "0");
 
-    String usersCount = webDriver.findElement(common.overviewFilterCount("user")).getAttribute("innerHTML");
-    Assert.assertEquals(usersCount, "0");
+    String usersCount = webDriver.findElement(common.overviewFilterCount("user")).getText();
+    Assert.assertEquals(usersCount, "1");
 
-    String teamsCount = webDriver.findElement(common.overviewFilterCount("terms")).getAttribute("innerHTML");
+    String teamsCount = webDriver.findElement(common.overviewFilterCount("terms")).getText();
     Assert.assertEquals(teamsCount, "0");
   }
 
@@ -84,7 +84,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement recentViews = webDriver.findElement(common.containsText("No recently viewed data."));
     if (!recentViews.isDisplayed()) {
-      throw new Exception("There shouldn't be any viewed data");
+      Assert.fail("There shouldn't be any viewed data");
     }
   }
 
@@ -94,7 +94,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement recentSearch = webDriver.findElement(common.containsText("No searched terms."));
     if (!recentSearch.isDisplayed()) {
-      throw new Exception("There shouldn't be any searched terms");
+      Assert.fail("There shouldn't be any searched terms");
     }
   }
 
@@ -104,7 +104,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement myDataResults = webDriver.findElement(common.containsText("You have not owned anything yet."));
     if (!myDataResults.isDisplayed()) {
-      throw new Exception("There shouldn't be any owned data");
+      Assert.fail("There shouldn't be any owned data");
     }
   }
 
@@ -114,7 +114,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     WebElement followResults = webDriver.findElement(common.containsText("You have not followed anything yet."));
     if (!followResults.isDisplayed()) {
-      throw new Exception("There shouldn't be any followed data");
+      Assert.fail("There shouldn't be any followed data");
     }
   }
 
@@ -124,7 +124,7 @@ public class MyDataPageTest {
     checkWhatsNew();
     Events.sendEnter(webDriver, common.searchBar());
     Thread.sleep(2000);
-    String searchedEntity = webDriver.findElement(common.noSearchResult()).getAttribute("innerHTML");
+    String searchedEntity = webDriver.findElement(common.noSearchResult()).getText();
     Assert.assertEquals(searchedEntity, "No matching data assets found");
   }
 

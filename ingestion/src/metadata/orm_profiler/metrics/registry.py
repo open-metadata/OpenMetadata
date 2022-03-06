@@ -23,7 +23,9 @@ from metadata.orm_profiler.metrics.composed.ilike_ratio import ILikeRatio
 from metadata.orm_profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.orm_profiler.metrics.composed.null_ratio import NullRatio
 from metadata.orm_profiler.metrics.composed.unique_ratio import UniqueRatio
+from metadata.orm_profiler.metrics.static.column_count import ColumnCount
 from metadata.orm_profiler.metrics.static.count import Count
+from metadata.orm_profiler.metrics.static.count_in_set import CountInSet
 from metadata.orm_profiler.metrics.static.histogram import Histogram
 from metadata.orm_profiler.metrics.static.ilike_count import ILikeCount
 from metadata.orm_profiler.metrics.static.like_count import LikeCount
@@ -50,6 +52,8 @@ class Metrics(MetricRegistry):
     # Static Metrics
     MEAN = Mean
     COUNT = Count
+    COUNT_IN_SET = CountInSet
+    COLUMN_COUNT = ColumnCount
     HISTOGRAM = Histogram
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount

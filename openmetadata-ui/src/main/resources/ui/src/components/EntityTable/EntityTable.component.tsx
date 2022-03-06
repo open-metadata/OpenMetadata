@@ -12,12 +12,13 @@
  */
 
 import classNames from 'classnames';
-import { cloneDeep, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
 import { getTableDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   Column,
   ColumnJoins,
@@ -32,7 +33,8 @@ import {
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import { getThreadValue } from '../../utils/FeedUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
   getDataTypeString,
@@ -54,9 +56,11 @@ type Props = {
   columnName: string;
   hasEditAccess: boolean;
   isReadOnly?: boolean;
+  entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
   onUpdate?: (columns: Table['columns']) => void;
   onThreadLinkSelect?: (value: string) => void;
+  onEntityFieldSelect?: (value: string) => void;
 };
 
 const EntityTable = ({
@@ -69,6 +73,8 @@ const EntityTable = ({
   entityFieldThreads,
   isReadOnly = false,
   onThreadLinkSelect,
+  onEntityFieldSelect,
+  entityFqn,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -465,7 +471,11 @@ const EntityTable = ({
                                 cell.row.cells[0].value,
                                 'tags',
                                 entityFieldThreads as EntityFieldThreads[],
-                                onThreadLinkSelect
+                                onThreadLinkSelect,
+                                EntityType.TABLE,
+                                entityFqn,
+                                `columns/${cell.row.cells[0].value}/tags`,
+                                Boolean(cell.value.length)
                               )}
                             </div>
                           )}
@@ -485,39 +495,70 @@ const EntityTable = ({
                                   />
                                 ) : (
                                   <span className="tw-no-description">
-                                    No description added
+                                    No description added{' '}
                                   </span>
-                                )}
-                                {getFieldThreadElement(
-                                  cell.row.cells[0].value,
-                                  'description',
-                                  entityFieldThreads as EntityFieldThreads[],
-                                  onThreadLinkSelect
                                 )}
                               </div>
                               {!isReadOnly ? (
-                                <NonAdminAction
-                                  html={getHtmlForNonAdminAction(
-                                    Boolean(owner)
+                                <Fragment>
+                                  <NonAdminAction
+                                    html={getHtmlForNonAdminAction(
+                                      Boolean(owner)
+                                    )}
+                                    isOwner={hasEditAccess}
+                                    permission={Operation.UpdateDescription}
+                                    position="top">
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() => {
+                                        if (!isReadOnly) {
+                                          handleEditColumn(
+                                            row.original,
+                                            row.id
+                                          );
+                                        }
+                                      }}>
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  </NonAdminAction>
+                                  {isNil(
+                                    getThreadValue(
+                                      cell.row.cells[0].value,
+                                      'description',
+                                      entityFieldThreads as EntityFieldThreads[]
+                                    )
+                                  ) && !cell.value ? (
+                                    <button
+                                      className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100"
+                                      data-testid="request-description"
+                                      onClick={() =>
+                                        onEntityFieldSelect?.(
+                                          `columns/${cell.row.cells[0].value}/description`
+                                        )
+                                      }>
+                                      <SVGIcons
+                                        alt="request-description"
+                                        icon={Icons.REQUEST}
+                                        width="20px"
+                                      />
+                                    </button>
+                                  ) : null}
+                                  {getFieldThreadElement(
+                                    cell.row.cells[0].value,
+                                    'description',
+                                    entityFieldThreads as EntityFieldThreads[],
+                                    onThreadLinkSelect,
+                                    EntityType.TABLE,
+                                    entityFqn,
+                                    `columns/${cell.row.cells[0].value}/description`,
+                                    Boolean(cell.value)
                                   )}
-                                  isOwner={hasEditAccess}
-                                  permission={Operation.UpdateDescription}
-                                  position="top">
-                                  <button
-                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                    onClick={() => {
-                                      if (!isReadOnly) {
-                                        handleEditColumn(row.original, row.id);
-                                      }
-                                    }}>
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                </NonAdminAction>
+                                </Fragment>
                               ) : null}
                             </div>
                           </div>

@@ -522,6 +522,7 @@ declare module 'Models' {
     UpdateLineage: boolean;
     SuggestTags: boolean;
     UpdateTags: boolean;
+    UpdateTeam: boolean;
   }
   export interface EditorContentRef {
     getEditorContent: () => string;

@@ -20,7 +20,7 @@ type Props = {
   loadingState?: LoadingState;
   cancelText: string | ReactNode;
   confirmText: string | ReactNode;
-  bodyText: string;
+  bodyText: string | ReactNode;
   header: string;
   headerClassName?: string;
   bodyClassName?: string;

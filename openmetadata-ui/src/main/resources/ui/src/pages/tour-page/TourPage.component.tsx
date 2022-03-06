@@ -30,6 +30,7 @@ import {
   mockFeedData,
   mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
@@ -127,7 +128,7 @@ const TourPage = () => {
             }}
             error=""
             feedData={mockFeedData as unknown as MyDataProps['feedData']}
-            feedFilter="all"
+            feedFilter={FeedFilter.ALL}
             feedFilterHandler={() => {
               setMyDataSearchResult(mockData);
             }}

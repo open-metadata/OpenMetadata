@@ -23,17 +23,18 @@ import React, {
 } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import Onboarding from '../../onboarding/Onboarding';
 import ActivityFeedCard, {
   FeedFooter,
 } from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
+import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
 
 interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: EntityThread[];
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
+  entityName?: string;
   postFeedHandler?: (value: string, id: string) => void;
 }
 interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
@@ -61,9 +62,11 @@ export const FeedListSeparator: FC<FeedListSeparatorProp> = ({
     <div className={className}>
       <div className="tw-flex tw-justify-center">
         <hr className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0" />
-        <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-primary tw-rounded tw-z-10 tw-text-primary tw-font-medium">
-          {relativeDay}
-        </span>
+        {relativeDay ? (
+          <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-grey-muted tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium">
+            {relativeDay}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -90,8 +93,8 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             from: feed.createdBy,
           };
           const postLength = feed.posts.length;
-          const replies = feed.postsCount;
-          const repliedUsers = feed.posts.map((f) => f.from);
+          const replies = feed.postsCount - 1;
+          const repliedUsers = feed.posts.map((f) => f.from).slice(1, 3);
           const lastPost = feed.posts[postLength - 1];
 
           return (
@@ -104,15 +107,11 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {postLength > 0 ? (
                 <Fragment>
-                  <ActivityFeedCard
-                    className="tw-mb-6 tw-ml-9"
-                    feed={lastPost}
-                    isEntityFeed={isEntityFeed}
-                  />
                   <div className="tw-mb-6">
                     <div className="tw-ml-9 tw-flex tw-mb-6">
                       <FeedFooter
                         isFooterVisible
+                        className="tw--mt-4"
                         lastReplyTimeStamp={lastPost?.postTs}
                         repliedUsers={repliedUsers}
                         replies={replies}
@@ -123,23 +122,27 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                           onViewMore();
                         }}
                       />
-                      <span className="tw-mx-1.5 tw-mt-1 tw-inline-block tw-text-gray-400">
-                        |
-                      </span>
-                      <p
-                        className="link-text tw-text-xs tw-mt-1.5 tw-underline"
-                        onClick={() => onThreadIdSelect(feed.id)}>
-                        Reply
-                      </p>
                     </div>
-                    {selctedThreadId === feed.id ? (
-                      <ActivityFeedEditor
-                        buttonClass="tw-mr-4"
-                        className="tw-ml-5 tw-mr-2"
-                        onSave={postFeed}
-                      />
-                    ) : null}
                   </div>
+                  <ActivityFeedCard
+                    className="tw-mb-6 tw-ml-9"
+                    feed={lastPost}
+                    isEntityFeed={isEntityFeed}
+                  />
+                  <p
+                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
+                    onClick={() => {
+                      onThreadIdSelect(feed.id);
+                    }}>
+                    Reply
+                  </p>
+                  {selctedThreadId === feed.id ? (
+                    <ActivityFeedEditor
+                      buttonClass="tw-mr-4"
+                      className="tw-ml-5 tw-mr-2"
+                      onSave={postFeed}
+                    />
+                  ) : null}
                 </Fragment>
               ) : (
                 <p
@@ -164,6 +167,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   withSidePanel = false,
   isEntityFeed = false,
   postFeedHandler,
+  entityName,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
@@ -254,7 +258,19 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
           ) : null}
         </Fragment>
       ) : (
-        <Onboarding />
+        <Fragment>
+          {entityName ? (
+            <NoFeedPlaceholder entityName={entityName} />
+          ) : (
+            <Fragment>
+              <FeedListSeparator
+                className="tw-relative tw-mt-1 tw-mb-3.5 tw-pb-5"
+                relativeDay=""
+              />
+              <>No conversations found. Try changing the filter.</>
+            </Fragment>
+          )}
+        </Fragment>
       )}
     </div>
   );

@@ -106,6 +106,11 @@ public final class Entity {
   public static final String AIRFLOW_PIPELINE = "airflowPipeline";
   public static final String WEBHOOK = "webhook";
 
+  //
+  // List of entities whose changes should not be published to the Activity Feed
+  //
+  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES = List.of(USER, TEAM, ROLE, POLICY, BOTS);
+
   private Entity() {}
 
   public static <T> void registerEntity(
@@ -183,6 +188,16 @@ public final class Entity {
   public static boolean shouldHaveOwner(@NonNull String entityType) {
     // Team does not have an owner. (yet?)
     return !entityType.equals(TEAM);
+  }
+
+  /**
+   * Returns true if the change events of the given entity type should be published to the activity feed.
+   *
+   * @param entityType Type of the entity.
+   * @return true if change events of the entity should be published to activity feed, false otherwise
+   */
+  public static boolean shouldDisplayEntityChangeOnFeed(@NonNull String entityType) {
+    return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
   public static <T> EntityInterface<T> getEntityInterface(T entity) {

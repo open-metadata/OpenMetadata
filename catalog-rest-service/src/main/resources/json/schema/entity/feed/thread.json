@@ -45,6 +45,10 @@
       "description": "Data asset about which this thread is created for with format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
+    "entityId": {
+      "description": "Entity Id of the entity that the thread belongs to.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
     "addressedTo": {
       "description": "User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"

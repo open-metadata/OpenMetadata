@@ -118,7 +118,10 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
 });
 
 jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel.tsx', () => {
-  return jest.fn().mockReturnValue(<p>FeedCards</p>);
+  return jest.fn().mockReturnValue(<p>Conversations</p>);
+});
+jest.mock('../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor.tsx', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({

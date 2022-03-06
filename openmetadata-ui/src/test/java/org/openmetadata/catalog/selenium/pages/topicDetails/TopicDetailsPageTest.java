@@ -57,6 +57,7 @@ public class TopicDetailsPageTest {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
+    options.addArguments("--no-sandbox");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
@@ -117,23 +118,21 @@ public class TopicDetailsPageTest {
   public void addTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    String[] selectedTag = new String[3];
     Events.click(webDriver, explorePage.topics());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(3));
     Events.click(webDriver, topicDetails.addTag());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      selectedTag[i] = common.tagListItem().toString();
+      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    List<WebElement> TagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
     Thread.sleep(waitTime);
-    for (int j = 0; j < TagDisplayed.size(); j++) {
-      Assert.assertEquals(TagDisplayed.get(j).getText(), selectedTag[j]);
-    }
+    Object tagCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
+    Assert.assertEquals(tagCount, 3);
   }
 
   @Test
@@ -143,16 +142,18 @@ public class TopicDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
-    List<WebElement> tagDisplayed = webDriver.findElements(topicDetails.breadCrumbTags());
+    Object count = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     Events.click(webDriver, topicDetails.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    List<WebElement> updatedTags = webDriver.findElements(topicDetails.breadCrumbTags());
-    if (updatedTags.get(1).equals(tagDisplayed.get(1))) {
-      Assert.fail("Selected Tag is not removed");
+    Thread.sleep(2000);
+    Object updatedCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
+    if (updatedCount.equals(count)) {
+      Assert.fail("Tag not removed");
     } else {
-      LOG.info("Passed");
+      LOG.info("Tag removed successfully");
     }
   }
 
@@ -160,22 +161,29 @@ public class TopicDetailsPageTest {
   @Order(6)
   void editDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    String updatedDescription = faker.address().toString();
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
+    Thread.sleep(2000);
     String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
-    Assert.assertEquals(checkDescription, updatedDescription);
+    if (!checkDescription.contains(updatedDescription)) {
+      Assert.fail("Description not updated");
+    } else {
+      LOG.info("Description Updated");
+    }
   }
 
   @Test
@@ -183,8 +191,10 @@ public class TopicDetailsPageTest {
   public void checkManage() throws InterruptedException {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Thread.sleep(waitTime);
+    actions.perform();
+    actions.click();
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
@@ -231,7 +241,6 @@ public class TopicDetailsPageTest {
       }
       e.click();
       Thread.sleep(waitTime);
-      Assert.assertTrue(webDriver.findElement(common.difference()).isDisplayed());
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, common.version());

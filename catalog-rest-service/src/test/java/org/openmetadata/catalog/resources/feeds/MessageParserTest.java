@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -41,5 +42,21 @@ public class MessageParserTest {
     assertEquals(new EntityLink("table", "tableFQN", "description", null, null), links.get(1));
     assertEquals(new EntityLink("table", "tableFQN", "columns", "c1", null), links.get(2));
     assertEquals(new EntityLink("table", "tableFQN", "columns", "c1", "description"), links.get(3));
+  }
+
+  @Test
+  void parseMessageWithFallbackText() {
+    String message =
+        "Hello <#E/user/user1|[@User One](http://localhost:8585/user/user1)> <#E/user/user2|[@User Two](http://localhost:8585/user/user2)>";
+    List<EntityLink> links = MessageParser.getEntityLinks(message);
+    assertEquals(2, links.size());
+    EntityLink link = links.get(0);
+    assertEquals("user1", link.getEntityFQN());
+    assertEquals("user", link.getEntityType());
+    assertNull(link.getFieldName());
+    link = links.get(1);
+    assertEquals("user2", link.getEntityFQN());
+    assertEquals("user", link.getEntityType());
+    assertNull(link.getFieldName());
   }
 }

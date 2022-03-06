@@ -22,6 +22,7 @@ import {
 import { SearchResponse } from 'Models';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
 import { formatDataResponse } from '../../utils/APIUtils';
 import MyDataPage from './MyData.component';
@@ -307,7 +308,7 @@ describe('Test MyData page', () => {
         }}
         error=""
         feedData={formatDataResponse(mockData.data.hits.hits)}
-        feedFilter=""
+        feedFilter={FeedFilter.ALL}
         feedFilterHandler={feedFilterHandler}
         fetchData={fetchData}
         followedData={formatDataResponse(mockData.data.hits.hits)}

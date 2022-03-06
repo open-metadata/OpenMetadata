@@ -515,4 +515,5 @@ export enum Operation {
   UpdateLineage = 'UpdateLineage',
   UpdateOwner = 'UpdateOwner',
   UpdateTags = 'UpdateTags',
+  UpdateTeam = 'UpdateTeam',
 }

@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import React, { FC, HTMLAttributes, useRef, useState } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
-import SVGIcons from '../../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
 import FeedEditor from '../../FeedEditor/FeedEditor';
@@ -23,6 +23,7 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: (value: string) => void;
   buttonClass?: string;
   placeHolder?: string;
+  defaultValue?: string;
 }
 type EditorContentRef = {
   getEditorValue: () => string;
@@ -34,6 +35,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   buttonClass = '',
   onSave,
   placeHolder,
+  defaultValue,
 }) => {
   const editorRef = useRef<EditorContentRef>();
   const [editorValue, setEditorValue] = useState<string>('');
@@ -54,6 +56,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   return (
     <div className={classNames('tw-relative', className)}>
       <FeedEditor
+        defaultValue={defaultValue}
         placeHolder={placeHolder}
         ref={editorRef}
         onChangeHandler={onChangeHandler}
@@ -71,15 +74,22 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
           trigger="mouseenter">
           <Button
             className={classNames(
-              'tw-bg-gray-400 tw-py-0.5 tw-px-1 tw-rounded',
+              'tw-py-0.5 tw-px-1 tw-rounded tw-bg-none',
               buttonClass
             )}
             disabled={editorValue.length === 0}
             size="custom"
-            theme={editorValue.length > 0 ? 'primary' : 'default'}
-            variant="contained"
+            variant="text"
             onClick={onSaveHandler}>
-            <SVGIcons alt="paper-plane" icon="icon-paper-plane" width="18px" />
+            <SVGIcons
+              alt="paper-plane"
+              icon={
+                editorValue.length > 0
+                  ? Icons.PAPER_PLANE_PRIMARY
+                  : Icons.PAPER_PLANE
+              }
+              width="18px"
+            />
           </Button>
         </PopOver>
       </div>

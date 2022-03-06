@@ -11,16 +11,23 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
-import React from 'react';
+import React, { Fragment } from 'react';
+import { EntityReference } from '../generated/entity/teams/user';
+import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getFieldThreadElement = (
   columnName: string,
   columnField: string,
   entityFieldThreads: EntityFieldThreads[],
-  onThreadLinkSelect?: (value: string) => void
+  onThreadLinkSelect?: (value: string) => void,
+  entityType?: string,
+  entityFqn?: string,
+  entityField?: string,
+  flag = true
 ) => {
   let threadValue: EntityFieldThreads = {} as EntityFieldThreads;
 
@@ -33,13 +40,46 @@ export const getFieldThreadElement = (
 
   return !isEmpty(threadValue) ? (
     <p
-      className="tw-text-right link-text"
+      className="link-text tw-w-8 tw-h-8 tw-flex-none"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onThreadLinkSelect?.(threadValue.entityLink);
       }}>
-      <i className="far fa-comment" /> {threadValue.count} threads
+      <span className="tw-flex">
+        <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+        <span className="tw-ml-1">{threadValue.count}</span>
+      </span>
     </p>
-  ) : null;
+  ) : (
+    <Fragment>
+      {entityType && entityFqn && entityField && flag ? (
+        <p
+          className="link-text tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onThreadLinkSelect?.(
+              getEntityFeedLink(entityType, entityFqn, entityField)
+            );
+          }}>
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+        </p>
+      ) : null}
+    </Fragment>
+  );
+};
+
+export const getDefaultValue = (owner: EntityReference) => {
+  const message = 'Can you add a description?';
+  if (isUndefined(owner)) {
+    return `${message}`;
+  } else {
+    const name = owner.name;
+    const displayName = owner.displayName;
+    const entityType = owner.type;
+    const mention = `<a href=${`${document.location.protocol}//${document.location.host}/${entityType}/${name}`}>@${displayName}</a>`;
+
+    return `${mention} ${message}`;
+  }
 };
