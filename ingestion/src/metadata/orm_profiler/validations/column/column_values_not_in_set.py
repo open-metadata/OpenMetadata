@@ -16,7 +16,6 @@ ColumnValuesToBeNotNull validation implementation
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
@@ -26,8 +25,8 @@ from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
 )
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.utils import logger
+from metadata.orm_profiler.validations.utils import run_col_metric
 
 logger = logger()
 
@@ -52,26 +51,16 @@ def column_values_not_in_set(
     set_count = add_props(values=test_case.forbiddenValues)(Metrics.COUNT_IN_SET.value)
 
     try:
-        col = next(
-            iter([col for col in inspect(table).c if col.name == col_profile.name]),
-            None,
+        set_count_res = run_col_metric(
+            metric=set_count,
+            session=session,
+            table=table,
+            column=col_profile.name,
         )
-
-        if col is None:
-            raise ValueError(
-                f"Cannot find the configured column {col_profile.name} for ColumnValuesToBeNotInSet"
-            )
-
-        res = (
-            Profiler(set_count, session=session, table=table, use_cols=[col])
-            .execute()
-            .column_results
-        )
-        set_count_res = res.get(col.name)[Metrics.COUNT_IN_SET.name]
 
     except Exception as err:  # pylint: disable=broad-except
         session.rollback()
-        msg = f"Error computing ColumnValuesToBeNotInSet for {col_profile.name} - {err}"
+        msg = f"Error computing {test_case.__class__.__name__} for {table.__tablename__}.{col_profile.name} - {err}"
         logger.error(msg)
         return TestCaseResult(
             executionTime=execution_date.timestamp(),
