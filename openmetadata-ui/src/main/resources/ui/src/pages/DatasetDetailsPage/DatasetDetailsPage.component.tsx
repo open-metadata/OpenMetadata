@@ -35,7 +35,11 @@ import {
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
+  addColumnTestCase,
   addFollower,
+  addTableTestCase,
+  deleteColumnTestCase,
+  deleteTableTestCase,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
@@ -54,10 +58,13 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
+  Column,
   EntityReference,
   Table,
   TableData,
@@ -65,9 +72,15 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
+import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
+import {
+  CreateColumnTest,
+  DatasetTestModeType,
+  ModifiedTableColumn,
+} from '../../interface/dataQuality.interface';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -149,6 +162,19 @@ const DatasetDetailsPage: FunctionComponent = () => {
     EntityFieldThreadCount[]
   >([]);
 
+  // Data Quality tab state
+  const [testMode, setTestMode] = useState<DatasetTestModeType>('table');
+  const [showTestForm, setShowTestForm] = useState(false);
+  const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
+
+  const handleTestModeChange = (mode: DatasetTestModeType) => {
+    setTestMode(mode);
+  };
+
+  const handleShowTestForm = (value: boolean) => {
+    setShowTestForm(value);
+  };
+
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (datasetTableTabs[currentTabIndex].path !== tab) {
@@ -161,6 +187,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           datasetTableTabs[currentTabIndex].path
         ),
       });
+      handleShowTestForm(false);
     }
   };
 
@@ -251,6 +278,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
             activeTitle: true,
           },
         ]);
+
+        if (res.data.tableTests && res.data.tableTests.length > 0) {
+          setTableTestCase(res.data.tableTests);
+        }
 
         addToRecentViewed({
           entityType: EntityType.TABLE,
@@ -588,6 +619,113 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const handleAddTableTestCase = (data: CreateTableTest) => {
+    addTableTestCase(tableDetails.id, data)
+      .then((res: AxiosResponse) => {
+        const { tableTests } = res.data;
+        let itsNewTest = true;
+        const existingData = tableTestCase.map((test) => {
+          if (test.name === tableTests[0].name) {
+            itsNewTest = false;
+
+            return tableTests[0];
+          }
+
+          return test;
+        });
+        if (itsNewTest) {
+          existingData.push(tableTests[0]);
+        }
+        setTableTestCase(existingData);
+        handleShowTestForm(false);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Something went wrong.',
+        });
+      });
+  };
+
+  const handleAddColumnTestCase = (data: CreateColumnTest) => {
+    addColumnTestCase(tableDetails.id, data)
+      .then((res: AxiosResponse) => {
+        const columnTestRes = res.data.columns.find(
+          (d: Column) => d.name === data.columnName
+        );
+        const updatedColumns = columns.map((d) => {
+          if (d.name === data.columnName) {
+            const oldTest =
+              (d as ModifiedTableColumn)?.columnTests?.filter(
+                (test) => test.id !== columnTestRes.columnTests[0].id
+              ) || [];
+
+            return {
+              ...d,
+              columnTests: [...oldTest, columnTestRes.columnTests[0]],
+            };
+          }
+
+          return d;
+        });
+        setColumns(updatedColumns);
+        handleShowTestForm(false);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Something went wrong.',
+        });
+      });
+  };
+
+  const handleRemoveTableTest = (testType: TableTestType) => {
+    deleteTableTestCase(tableDetails.id, testType)
+      .then(() => {
+        const updatedTest = tableTestCase.filter(
+          (d) => d.testCase.tableTestType !== testType
+        );
+        setTableTestCase(updatedTest);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Something went wrong.',
+        });
+      });
+  };
+
+  const handleRemoveColumnTest = (
+    columnName: string,
+    testType: ColumnTestType
+  ) => {
+    deleteColumnTestCase(tableDetails.id, columnName, testType)
+      .then(() => {
+        const updatedColumns = columns.map((d) => {
+          if (d.name === columnName) {
+            const updatedTest =
+              (d as ModifiedTableColumn)?.columnTests?.filter(
+                (test) => test.testCase.columnTestType !== testType
+              ) || [];
+
+            return {
+              ...d,
+              columnTests: updatedTest,
+            };
+          }
+
+          return d;
+        });
+        setColumns(updatedColumns);
+      })
+      .catch(() => {
+        showToast({
+          variant: 'error',
+          body: 'Something went wrong.',
+        });
+      });
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -632,6 +770,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
           feedCount={feedCount}
           followTableHandler={followTable}
           followers={followers}
+          handleAddColumnTestCase={handleAddColumnTestCase}
+          handleAddTableTestCase={handleAddTableTestCase}
+          handleRemoveColumnTest={handleRemoveColumnTest}
+          handleRemoveTableTest={handleRemoveTableTest}
+          handleShowTestForm={handleShowTestForm}
+          handleTestModeChange={handleTestModeChange}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
           isQueriesLoading={isTableQueriesLoading}
@@ -646,11 +790,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
+          showTestForm={showTestForm}
           slashedTableName={slashedTableName}
           tableDetails={tableDetails}
           tableProfile={tableProfile}
           tableQueries={tableQueries}
           tableTags={tableTags}
+          tableTestCase={tableTestCase}
+          testMode={testMode}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
           usageSummary={usageSummary}

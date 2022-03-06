@@ -19,7 +19,9 @@ import {
   LineagePos,
   LoadingNodeState,
 } from 'Models';
+import { ColumnTestType } from '../../enums/columnTest.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
   EntityReference,
   Table,
@@ -28,8 +30,13 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
+import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  CreateColumnTest,
+  DatasetTestModeType,
+} from '../../interface/dataQuality.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
@@ -68,6 +75,11 @@ export interface DatasetDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  testMode: DatasetTestModeType;
+  tableTestCase: TableTest[];
+  showTestForm: boolean;
+  handleShowTestForm: (value: boolean) => void;
+  handleTestModeChange: (mode: DatasetTestModeType) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
@@ -81,4 +93,11 @@ export interface DatasetDetailsProps {
   removeLineageHandler: (data: EdgeData) => void;
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
+  handleAddTableTestCase: (data: CreateTableTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
+  handleRemoveTableTest: (testType: TableTestType) => void;
+  handleRemoveColumnTest: (
+    columnName: string,
+    testType: ColumnTestType
+  ) => void;
 }

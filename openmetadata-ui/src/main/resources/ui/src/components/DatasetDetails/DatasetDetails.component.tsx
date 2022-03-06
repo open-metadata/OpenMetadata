@@ -43,6 +43,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
+import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ManageTab from '../ManageTab/ManageTab.component';
@@ -100,7 +101,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
+  testMode,
+  tableTestCase,
+  handleTestModeChange,
   createThread,
+  handleAddTableTestCase,
+  handleAddColumnTestCase,
+  showTestForm,
+  handleShowTestForm,
+  handleRemoveTableTest,
+  handleRemoveColumnTest,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -210,6 +220,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 5,
     },
     {
+      name: 'Data Quality',
+      icon: {
+        alt: 'data-quality',
+        name: 'icon-quality',
+        title: 'Data Quality',
+        selectedName: '',
+      },
+      isProtected: false,
+      position: 6,
+    },
+    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',
@@ -218,7 +239,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 6,
+      position: 7,
     },
     {
       name: 'DBT',
@@ -230,7 +251,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: false,
       isHidden: !dataModel?.sql,
-      position: 7,
+      position: 8,
     },
     {
       name: 'Manage',
@@ -243,7 +264,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 8,
+      position: 9,
     },
   ];
 
@@ -600,7 +621,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
+
             {activeTab === 6 && (
+              <DataQualityTab
+                columnOptions={columns}
+                handleAddColumnTestCase={handleAddColumnTestCase}
+                handleAddTableTestCase={handleAddTableTestCase}
+                handleRemoveColumnTest={handleRemoveColumnTest}
+                handleRemoveTableTest={handleRemoveTableTest}
+                handleShowTestForm={handleShowTestForm}
+                handleTestModeChange={handleTestModeChange}
+                showTestForm={showTestForm}
+                tableTestCase={tableTestCase}
+                testMode={testMode}
+              />
+            )}
+
+            {activeTab === 7 && (
               <div
                 className={classNames(
                   location.pathname.includes(ROUTES.TOUR)
@@ -622,7 +659,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 7 && Boolean(dataModel?.sql) && (
+            {activeTab === 8 && Boolean(dataModel?.sql) && (
               <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
                 <SchemaEditor
                   className="tw-h-full"
@@ -631,7 +668,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 8 && !deleted && (
+            {activeTab === 9 && !deleted && (
               <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}
