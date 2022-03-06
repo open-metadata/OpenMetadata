@@ -17,7 +17,7 @@ import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import { Table } from '../../generated/entity/data/table';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import {
-  CreateColumnTest,
+  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
   TableTestDataType,
@@ -27,7 +27,7 @@ import DataQualityTest from '../DataQualityTest/DataQualityTest';
 
 type Props = {
   handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: CreateColumnTest) => void;
+  handleAddColumnTestCase: (data: ColumnTest) => void;
   columnOptions: Table['columns'];
   testMode: DatasetTestModeType;
   handleTestModeChange: (mode: DatasetTestModeType) => void;
@@ -93,7 +93,7 @@ const DataQualityTab = ({
     setActiveData(undefined);
   };
 
-  const onColumnTestSave = (data: CreateColumnTest) => {
+  const onColumnTestSave = (data: ColumnTest) => {
     handleAddColumnTestCase(data);
     setActiveData(undefined);
   };

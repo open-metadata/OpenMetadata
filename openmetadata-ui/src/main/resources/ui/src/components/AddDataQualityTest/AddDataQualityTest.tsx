@@ -16,7 +16,7 @@ import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import { Table } from '../../generated/entity/data/table';
 import { TableTest } from '../../generated/tests/tableTest';
 import {
-  CreateColumnTest,
+  ColumnTest,
   TableTestDataType,
 } from '../../interface/dataQuality.interface';
 import ColumnTestForm from './Forms/ColumnTestForm';
@@ -28,7 +28,7 @@ type Props = {
   columnOptions: Table['columns'];
   tableTestCase: TableTest[];
   handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: CreateColumnTest) => void;
+  handleAddColumnTestCase: (data: ColumnTest) => void;
   onFormCancel: () => void;
 };
 
@@ -53,7 +53,7 @@ const AddDataQualityTest = ({
       ) : (
         <ColumnTestForm
           column={columnOptions}
-          data={data as CreateColumnTest}
+          data={data as ColumnTest}
           handleAddColumnTestCase={handleAddColumnTestCase}
           onFormCancel={onFormCancel}
         />

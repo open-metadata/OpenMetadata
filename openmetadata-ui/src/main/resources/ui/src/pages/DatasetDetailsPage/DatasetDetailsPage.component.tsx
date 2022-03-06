@@ -77,7 +77,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
 import {
-  CreateColumnTest,
+  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
@@ -118,7 +118,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [description, setDescription] = useState('');
-  const [columns, setColumns] = useState<Table['columns']>([]);
+  const [columns, setColumns] = useState<ModifiedTableColumn[]>([]);
   const [sampleData, setSampleData] = useState<TableData>({
     columns: [],
     rows: [],
@@ -189,6 +189,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
       handleShowTestForm(false);
     }
+  };
+
+  const qualityTestFormHandler = (
+    tabValue: number,
+    testMode: DatasetTestModeType
+  ) => {
+    activeTabHandler(tabValue);
+    setTestMode(testMode);
+    setShowTestForm(true);
   };
 
   const getLineageData = () => {
@@ -647,7 +656,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const handleAddColumnTestCase = (data: CreateColumnTest) => {
+  const handleAddColumnTestCase = (data: ColumnTest) => {
     addColumnTestCase(tableDetails.id, data)
       .then((res: AxiosResponse) => {
         const columnTestRes = res.data.columns.find(
@@ -786,6 +795,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
           postFeedHandler={postFeedHandler}
+          qualityTestFormHandler={qualityTestFormHandler}
           removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
           setActiveTabHandler={activeTabHandler}

@@ -36,7 +36,11 @@ import {
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
+import {
+  getTableTestsValue,
+  getTagsWithoutTier,
+  getUsagePercentile,
+} from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
@@ -111,6 +115,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleShowTestForm,
   handleRemoveTableTest,
   handleRemoveColumnTest,
+  qualityTestFormHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -350,6 +355,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           ''
         ),
     },
+    { key: 'Tests', value: getTableTestsValue(tableTestCase) },
   ];
 
   const onDescriptionEdit = (): void => {
@@ -616,7 +622,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   columns={columns.map((col) => ({
                     constraint: col.constraint as string,
                     colName: col.name,
+                    colType: col.dataTypeDisplay as string,
+                    colTests: col.columnTests,
                   }))}
+                  qualityTestFormHandler={qualityTestFormHandler}
                   tableProfiles={tableProfile}
                 />
               </div>

@@ -34,8 +34,9 @@ import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  CreateColumnTest,
+  ColumnTest,
   DatasetTestModeType,
+  ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
@@ -60,7 +61,7 @@ export interface DatasetDetailsProps {
   description: string;
   tableProfile: Table['tableProfile'];
   tableQueries: Table['tableQueries'];
-  columns: Table['columns'];
+  columns: ModifiedTableColumn[];
   tier: TagLabel;
   sampleData: TableData;
   entityLineage: EntityLineage;
@@ -78,6 +79,10 @@ export interface DatasetDetailsProps {
   testMode: DatasetTestModeType;
   tableTestCase: TableTest[];
   showTestForm: boolean;
+  qualityTestFormHandler: (
+    tabValue: number,
+    testMode: DatasetTestModeType
+  ) => void;
   handleShowTestForm: (value: boolean) => void;
   handleTestModeChange: (mode: DatasetTestModeType) => void;
   createThread: (data: CreateThread) => void;
@@ -94,7 +99,7 @@ export interface DatasetDetailsProps {
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
   handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: CreateColumnTest) => void;
+  handleAddColumnTestCase: (data: ColumnTest) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
   handleRemoveColumnTest: (
     columnName: string,
