@@ -55,7 +55,7 @@ def test_simple_conversion():
     orm_table = ometa_to_orm(table=table, database=database)
 
     assert orm_table.__tablename__ == "table1"
-    assert orm_table.__table_args__ == {"schema": "one_db"}
+    assert orm_table.__table_args__.get("schema") == "one_db"
 
     assert isinstance(orm_table.id.type, sqlalchemy.BIGINT)
     assert isinstance(orm_table.name.type, sqlalchemy.String)

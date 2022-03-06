@@ -39,6 +39,7 @@ ingestion_config = {
         "config": {
             "service_name": "test_sqlite",
             "database": sqlite_shared,  # We need this to share the session
+            "data_profiler_enabled": True,
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
