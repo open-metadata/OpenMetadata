@@ -35,6 +35,10 @@
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
+    },
+    "owner": {
+      "description": "Owner of this table.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name"],

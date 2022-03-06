@@ -79,6 +79,7 @@ public class TeamResource {
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
+    Entity.withHref(uriInfo, team.getOwner());
     return team;
   }
 
@@ -98,7 +99,7 @@ public class TeamResource {
     }
   }
 
-  static final String FIELDS = "profile,users,owns,defaultRoles";
+  static final String FIELDS = "profile,users,owns,defaultRoles,owner";
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Team.class);
 
   @GET
@@ -373,6 +374,7 @@ public class TeamResource {
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
         .withUsers(dao.getEntityReferences(ct.getUsers()))
-        .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()));
+        .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()))
+        .withOwner(ct.getOwner());
   }
 }

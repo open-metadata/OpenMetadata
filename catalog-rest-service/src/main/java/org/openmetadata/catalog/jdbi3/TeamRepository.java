@@ -13,15 +13,20 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.resources.teams.TeamResource;
@@ -32,9 +37,12 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
+@Slf4j
 public class TeamRepository extends EntityRepository<Team> {
-  static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.ALLOWED_FIELDS, "profile,users,defaultRoles");
-  static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.ALLOWED_FIELDS, "profile,users,defaultRoles");
+  static final Fields TEAM_UPDATE_FIELDS =
+      new Fields(TeamResource.ALLOWED_FIELDS, "profile,users,defaultRoles,owner,isJoinable");
+  static final Fields TEAM_PATCH_FIELDS =
+      new Fields(TeamResource.ALLOWED_FIELDS, "profile,users,defaultRoles,owner,isJoinable");
 
   public TeamRepository(CollectionDAO dao) {
     super(
@@ -46,7 +54,7 @@ public class TeamRepository extends EntityRepository<Team> {
         TEAM_PATCH_FIELDS,
         TEAM_UPDATE_FIELDS,
         false,
-        false,
+        true,
         false);
   }
 
@@ -62,13 +70,14 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public Team setFields(Team team, Fields fields) throws IOException {
+  public Team setFields(Team team, Fields fields) throws IOException, ParseException {
     if (!fields.contains("profile")) {
       team.setProfile(null); // Clear the profile attribute, if it was not requested
     }
     team.setUsers(fields.contains("users") ? getUsers(team) : null);
     team.setOwns(fields.contains("owns") ? getOwns(team) : null);
     team.setDefaultRoles(fields.contains("defaultRoles") ? getDefaultRoles(team) : null);
+    team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
     return team;
   }
 
@@ -84,9 +93,10 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void prepare(Team team) throws IOException {
+  public void prepare(Team team) throws IOException, ParseException {
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
+    team.setOwner(helper(team).validateOwnerOrNull());
   }
 
   @Override
@@ -94,14 +104,15 @@ public class TeamRepository extends EntityRepository<Team> {
     // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
+    EntityReference owner = team.getOwner();
 
-    // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null).withDefaultRoles(null).withHref(null);
+    // Don't store users, defaultRoles, owner, href as JSON. Build it on the fly based on relationships
+    team.withUsers(null).withDefaultRoles(null).withOwner(null).withHref(null);
 
     store(team.getId(), team, update);
 
     // Restore the relationships
-    team.withUsers(users).withDefaultRoles(defaultRoles);
+    team.withUsers(users).withDefaultRoles(defaultRoles).withOwner(owner);
   }
 
   @Override
@@ -112,6 +123,7 @@ public class TeamRepository extends EntityRepository<Team> {
     for (EntityReference defaultRole : listOrEmpty(team.getDefaultRoles())) {
       addRelationship(team.getId(), defaultRole.getId(), Entity.TEAM, Entity.ROLE, Relationship.HAS);
     }
+    setOwner(team.getId(), TABLE, team.getOwner());
   }
 
   @Override
@@ -196,6 +208,11 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
+    }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference()
           .withId(getId())
@@ -249,6 +266,11 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
+    public void setOwner(EntityReference owner) {
+      entity.setOwner(owner);
+    }
+
+    @Override
     public Team withHref(URI href) {
       return entity.withHref(href);
     }
@@ -268,6 +290,7 @@ public class TeamRepository extends EntityRepository<Team> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
+      recordChange("isJoinable", original.getEntity().getIsJoinable(), updated.getEntity().getIsJoinable());
       updateUsers(original.getEntity(), updated.getEntity());
       updateDefaultRoles(original.getEntity(), updated.getEntity());
     }
