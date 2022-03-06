@@ -114,7 +114,9 @@ const ColumnTestForm = ({
       setTestTypeOptions(newTest);
       setColumnTest(newTest[0]);
     } else {
-      setTestTypeOptions(Object.values(ColumnTestType));
+      const newTest = Object.values(ColumnTestType);
+      setTestTypeOptions(newTest);
+      setColumnTest(newTest[0]);
     }
   };
 
@@ -220,7 +222,6 @@ const ColumnTestForm = ({
           id: getCurrentUserId(),
         },
       };
-
       handleAddColumnTestCase(columnTestObj);
     }
   };
@@ -413,6 +414,7 @@ const ColumnTestForm = ({
           value={regex}
           onChange={handleValidation}
         />
+        {isShowError.regex && errorMsg('Regex is required.')}
       </Field>
     );
   };

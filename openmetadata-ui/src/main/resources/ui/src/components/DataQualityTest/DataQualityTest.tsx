@@ -45,20 +45,11 @@ const DataQualityTest = ({
   const [columnsData, setColumnsData] = useState<ModifiedTableColumn[]>([]);
 
   const isColumnTestDisable = () => {
-    let isDisabled = true;
+    const remainingTest = columns?.filter((d) => {
+      return d?.columnTests?.length !== Object.values(ColumnTestType).length;
+    });
 
-    for (let i = 0; i < columnsData.length; i++) {
-      if (
-        columnsData[i]?.columnTests?.length !==
-        Object.values(ColumnTestType).length
-      ) {
-        isDisabled = false;
-
-        break;
-      }
-    }
-
-    return isDisabled;
+    return !(remainingTest.length > 0);
   };
 
   const dropdownList: DropDownListItem[] = [
