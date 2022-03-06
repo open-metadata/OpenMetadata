@@ -68,6 +68,19 @@ export const formatUsersResponse = (hits) => {
   return users;
 };
 
+export const formatRelatedTermResponse = (hits) => {
+  const term = hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.display_name,
+      type: d._source.entity_type,
+      id: d._id,
+    };
+  });
+
+  return term;
+};
+
 const formatPost = (post) => {
   return {
     title: post.from,

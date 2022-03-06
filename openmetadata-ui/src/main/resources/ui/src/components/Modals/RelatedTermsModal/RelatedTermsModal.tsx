@@ -18,7 +18,7 @@ import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../../enums/search.enum';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
-import { formatUsersResponse } from '../../../utils/APIUtils';
+import { formatRelatedTermResponse } from '../../../utils/APIUtils';
 import { Button } from '../../buttons/Button/Button';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
@@ -26,7 +26,7 @@ import Loader from '../../Loader/Loader';
 type RelatedTermsModalProp = {
   relatedTerms?: Array<FormatedUsersData>;
   onCancel: () => void;
-  onSave: (reviewer: Array<FormatedUsersData>) => void;
+  onSave: (terms: Array<FormatedUsersData>) => void;
   header: string;
 };
 
@@ -52,12 +52,20 @@ const RelatedTermsModal = ({
   const handleSearchAction = (text: string) => {
     setIsLoading(true);
     setSearchText(text);
-    querySearch(text).then((res: AxiosResponse) => {
-      setOptions(
-        formatUsersResponse(res.data.suggest['table-suggest'][0].options)
-      );
-      setIsLoading(false);
-    });
+    querySearch(text)
+      .then((res: AxiosResponse) => {
+        setOptions(
+          formatRelatedTermResponse(
+            res.data.suggest['table-suggest'][0].options
+          )
+        );
+      })
+      .catch(() => {
+        if (relatedTerms?.length) {
+          setOptions(selectedOption);
+        }
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const isIncludeInOptions = (id: string): boolean => {
@@ -79,10 +87,9 @@ const RelatedTermsModal = ({
       <CheckboxUserCard
         isActionVisible
         isCheckBoxes
-        isIconVisible
         item={{
-          name: d.name,
-          description: d.displayName,
+          name: '',
+          description: d.displayName || d.name,
           id: d.id,
           isChecked: isIncludeInOptions(d.id),
         }}
@@ -95,7 +102,7 @@ const RelatedTermsModal = ({
   const initialSearch = () => {
     querySearch().then((res: SearchResponse) => {
       setOptions(
-        formatUsersResponse(res.data.hits.hits) as FormatedUsersData[]
+        formatRelatedTermResponse(res.data.hits.hits) as FormatedUsersData[]
       );
       setIsLoading(false);
     });
@@ -126,7 +133,7 @@ const RelatedTermsModal = ({
             typingInterval={1500}
             onSearch={handleSearchAction}
           />
-          <div className="tw-min-h-32">
+          <div className="tw-min-h-256">
             {isLoading ? (
               <Loader />
             ) : options.length > 0 ? (

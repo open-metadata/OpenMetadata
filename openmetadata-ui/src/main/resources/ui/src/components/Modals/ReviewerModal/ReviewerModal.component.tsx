@@ -130,7 +130,7 @@ const ReviewerModal = ({
             typingInterval={1500}
             onSearch={handleSearchAction}
           />
-          <div style={{ minHeight: '245px' }}>
+          <div className="tw-min-h-256">
             {isLoading ? (
               <Loader />
             ) : options.length > 0 ? (

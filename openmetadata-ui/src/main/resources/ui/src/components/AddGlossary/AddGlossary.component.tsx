@@ -1,10 +1,22 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import { EditorContentRef, FormatedUsersData } from 'Models';
 import React, { useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
-import UserCard from '../../pages/teams/UserCard';
 import {
   errorMsg,
   getCurrentUserId,
@@ -15,6 +27,7 @@ import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
+import Tags from '../tags/tags';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -71,8 +84,11 @@ const AddGlossary = ({
     });
   };
 
-  const handleOptionRemove = (id: string) => {
-    setReviewer((pre) => pre.filter((option) => option.id !== id));
+  const handleReviewerRemove = (
+    _event: React.MouseEvent<HTMLElement, MouseEvent>,
+    removedTag: string
+  ) => {
+    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
   };
 
   const validateForm = () => {
@@ -216,20 +232,18 @@ const AddGlossary = ({
               <i aria-hidden="true" className="fa fa-plus" />
             </Button>
           </div>
-          <div className="tw-my-4 tw-grid tw-grid-cols-2 tw-gap-4">
+          <div className="tw-my-4">
             {Boolean(reviewer.length) &&
-              reviewer.map((d) => {
+              reviewer.map((d, index) => {
                 return (
-                  <UserCard
-                    isActionVisible
-                    isIconVisible
-                    item={{
-                      name: d.name,
-                      description: d.displayName,
-                      id: d.id,
-                    }}
-                    key={d.id}
-                    onRemove={handleOptionRemove}
+                  <Tags
+                    editable
+                    isRemovable
+                    className="tw-bg-gray-200"
+                    key={index}
+                    removeTag={handleReviewerRemove}
+                    tag={d.name}
+                    type="contained"
                   />
                 );
               })}

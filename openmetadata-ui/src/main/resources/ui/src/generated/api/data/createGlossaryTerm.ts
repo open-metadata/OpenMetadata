@@ -17,10 +17,6 @@
  */
 export interface CreateGlossaryTerm {
   /**
-   * Other glossary terms that are children of this glossary term.
-   */
-  children?: EntityReference[];
-  /**
    * Description of the glossary term.
    */
   description?: string;
@@ -43,7 +39,7 @@ export interface CreateGlossaryTerm {
   /**
    * Link to a reference from an external glossary.
    */
-  references?: TermReference;
+  references?: TermReference[];
   /**
    * Other glossary terms that are related to this glossary term.
    */
@@ -63,16 +59,17 @@ export interface CreateGlossaryTerm {
 }
 
 /**
- * Other glossary terms that are children of this glossary term.
+ * Reference to the glossary that this term is part of.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Reference to the glossary that this term is part of.
+ * Reference to the parent glossary term. When null, the term is at the root of the
+ * glossary.
  *
- * Reference to the parent glossary term. When null, the term is at the root of the glossary.
+ * Other glossary terms that are related to this glossary term.
  */
 export interface EntityReference {
   /**
@@ -103,9 +100,6 @@ export interface EntityReference {
   type: string;
 }
 
-/**
- * Link to a reference from an external glossary.
- */
 export interface TermReference {
   /**
    * Name that identifies the source of an external glossary term. Example `HealthCare.gov`

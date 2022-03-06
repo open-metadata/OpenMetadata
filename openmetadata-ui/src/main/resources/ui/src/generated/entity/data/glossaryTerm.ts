@@ -65,7 +65,7 @@ export interface GlossaryTerm {
   /**
    * Link to a reference from an external glossary.
    */
-  references?: TermReference;
+  references?: TermReference[];
   /**
    * Other glossary terms that are related to this glossary term.
    */
@@ -184,9 +184,6 @@ export interface EntityReference {
   type: string;
 }
 
-/**
- * Link to a reference from an external glossary.
- */
 export interface TermReference {
   /**
    * Name that identifies the source of an external glossary term. Example `HealthCare.gov`

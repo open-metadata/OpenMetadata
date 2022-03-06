@@ -42,9 +42,11 @@ const CheckboxUserCard = ({
         'tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group'
       )}
       data-testid="user-card-container">
-      <div className="tw-flex tw-mr-2">
-        <Avatar name={item.description} />
-      </div>
+      {isIconVisible && (
+        <div className="tw-flex tw-mr-2">
+          <Avatar name={item.description || item.name} />
+        </div>
+      )}
       <div
         className={classNames('tw-flex tw-justify-center tw-flex-col')}
         data-testid="data-container">

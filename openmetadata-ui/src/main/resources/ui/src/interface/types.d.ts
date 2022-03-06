@@ -216,6 +216,27 @@ declare module 'Models' {
     id: string;
   };
 
+  export interface FormatedGlossarySuggestion {
+    deleted: boolean;
+    description: string;
+    display_name: string;
+    entity_type: string;
+    fqdn: string;
+    glossary_id: string;
+    glossary_name: string;
+    last_updated_timestamp: number;
+    name: string;
+  }
+
+  export interface GlossarySuggestionHit {
+    text: string;
+    _index?: string;
+    _type?: string;
+    _id?: string;
+    _score?: number;
+    _source: FormatedGlossarySuggestion;
+  }
+
   export type NewUser = {
     name: string;
     email: string;

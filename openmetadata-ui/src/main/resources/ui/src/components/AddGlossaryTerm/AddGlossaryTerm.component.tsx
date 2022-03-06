@@ -1,9 +1,23 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef, FormatedUsersData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
+import { TermReference } from '../../generated/entity/data/glossaryTerm';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
@@ -14,11 +28,6 @@ import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import Tags from '../tags/tags';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
-
-type DynamicReferenceFieldType = {
-  name: string;
-  endpoint: string;
-};
 
 const Field = ({
   children,
@@ -49,8 +58,11 @@ const AddGlossaryTerm = ({
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [relatedTerms, setRelatedTerms] = useState<Array<FormatedUsersData>>(
+    []
+  );
   const [synonyms, setSynonyms] = useState('');
-  const [referances, setReferances] = useState<DynamicReferenceFieldType[]>([]);
+  const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
@@ -62,7 +74,8 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (/* _terms: Array<FormatedUsersData> */) => {
+  const handleRelatedTermsSave = (terms: Array<FormatedUsersData>) => {
+    setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };
 
@@ -75,11 +88,20 @@ const AddGlossaryTerm = ({
     onReviewerModalCancel();
   };
 
-  const handleOptionRemove = (
+  const handleReviewerRemove = (
     _event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string
   ) => {
     setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
+  };
+
+  const handleTermRemove = (
+    _event: React.MouseEvent<HTMLElement, MouseEvent>,
+    removedTag: string
+  ) => {
+    setRelatedTerms((pre) =>
+      pre.filter((option) => option.name !== removedTag)
+    );
   };
 
   const handleValidation = (
@@ -112,23 +134,23 @@ const AddGlossaryTerm = ({
   };
 
   const addReferenceFields = () => {
-    setReferances([...referances, { name: '', endpoint: '' }]);
+    setReferences([...references, { name: '', endpoint: '' }]);
   };
 
   const removeReferenceFields = (i: number) => {
-    const newFormValues = [...referances];
+    const newFormValues = [...references];
     newFormValues.splice(i, 1);
-    setReferances(newFormValues);
+    setReferences(newFormValues);
   };
 
   const handleReferenceFieldsChange = (
     i: number,
-    field: keyof DynamicReferenceFieldType,
+    field: keyof TermReference,
     value: string
   ) => {
-    const newFormValues = [...referances];
+    const newFormValues = [...references];
     newFormValues[i][field] = value;
-    setReferances(newFormValues);
+    setReferences(newFormValues);
   };
 
   const validateForm = () => {
@@ -141,9 +163,15 @@ const AddGlossaryTerm = ({
   };
 
   const handleSave = () => {
-    const updatedReference = referances.filter(
+    const updatedReference = references.filter(
       (ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name)
     );
+
+    const updatedTerms = relatedTerms.map((term) => ({
+      id: term.id,
+      type: term.type,
+    }));
+
     if (validateForm()) {
       const data: CreateGlossaryTerm = {
         name,
@@ -153,8 +181,8 @@ const AddGlossaryTerm = ({
           id: r.id,
           type: r.type,
         })),
-        references:
-          updatedReference.length > 0 ? updatedReference[0] : undefined,
+        relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
+        references: updatedReference.length > 0 ? updatedReference : undefined,
         parent: !isUndefined(parentGlossaryData)
           ? {
               type: 'glossaryTerm',
@@ -293,7 +321,7 @@ const AddGlossaryTerm = ({
           />
         </Field>
 
-        <div data-testid="referances">
+        <div data-testid="references">
           <div className="tw-flex tw-items-center tw-mt-6">
             <p className="w-form-label tw-mr-3">References</p>
             <Button
@@ -306,7 +334,7 @@ const AddGlossaryTerm = ({
             </Button>
           </div>
 
-          {referances.map((value, i) => (
+          {references.map((value, i) => (
             <div className="tw-flex tw-items-center" key={i}>
               <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
                 <Field>
@@ -366,20 +394,20 @@ const AddGlossaryTerm = ({
             </Button>
           </div>
           <div className="tw-my-4">
-            {/* {Boolean(reviewer.length) &&
-              reviewer.map((d, index) => {
+            {Boolean(relatedTerms.length) &&
+              relatedTerms.map((d, index) => {
                 return (
                   <Tags
-                    isRemovable
                     editable
+                    isRemovable
                     className="tw-bg-gray-200"
                     key={index}
+                    removeTag={handleTermRemove}
                     tag={d.name}
                     type="contained"
-                    removeTag={handleOptionRemove}
                   />
                 );
-              })} */}
+              })}
           </div>
         </Field>
         <Field>
@@ -403,7 +431,7 @@ const AddGlossaryTerm = ({
                     isRemovable
                     className="tw-bg-gray-200"
                     key={index}
-                    removeTag={handleOptionRemove}
+                    removeTag={handleReviewerRemove}
                     tag={d.name}
                     type="contained"
                   />
@@ -428,6 +456,7 @@ const AddGlossaryTerm = ({
       {showRelatedTermsModal && (
         <RelatedTermsModal
           header="Add Related Terms"
+          relatedTerms={relatedTerms}
           onCancel={onRelatedTermsModalCancel}
           onSave={handleRelatedTermsSave}
         />

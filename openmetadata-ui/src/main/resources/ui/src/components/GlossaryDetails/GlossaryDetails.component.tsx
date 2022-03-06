@@ -1,13 +1,29 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import { EntityTags, FormatedUsersData } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  LIST_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+  TITLE_FOR_NON_OWNER_ACTION,
+} from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
-import { getHtmlForNonAdminAction } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import { Button } from '../buttons/Button/Button';
@@ -15,6 +31,7 @@ import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import PopOver from '../common/popover/PopOver';
 import TabsPane from '../common/TabsPane/TabsPane';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
@@ -166,7 +183,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
         <Button
-          className={classNames('tw-h-8 tw-rounded', {
+          className={classNames('tw-h-8 tw-rounded tw-mr-1', {
             'tw-opacity-40': isHasAccess,
           })}
           data-testid="add-new-tag-button"
@@ -174,7 +191,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           theme="primary"
           variant="contained"
           onClick={() => setShowRevieweModal(true)}>
-          Add New Reviewer
+          Add Reviewer
         </Button>
       </NonAdminAction>
     );
@@ -217,17 +234,56 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
             />
           </div>
         )}
-        <span className="tw-text-grey-muted">
-          {glossary.owner?.displayName || 'No owner'}
-        </span>
+        {glossary.owner?.displayName ? (
+          <span>{glossary.owner?.displayName}</span>
+        ) : (
+          <span className="tw-text-grey-muted">No owner</span>
+        )}
       </div>
 
       <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
+        {!isTagEditable && (
+          <>
+            {glossary?.tags && glossary.tags.length > 0 && (
+              <>
+                <SVGIcons
+                  alt="icon-tag"
+                  className="tw-mx-1"
+                  icon="icon-tag-grey"
+                  width="16"
+                />
+                {glossary.tags.slice(0, LIST_SIZE).map((tag, index) => (
+                  <Tags key={index} startWith="#" tag={tag} type="label" />
+                ))}
+
+                {glossary.tags.slice(LIST_SIZE).length > 0 && (
+                  <PopOver
+                    html={
+                      <>
+                        {glossary.tags.slice(LIST_SIZE).map((tag, index) => (
+                          <p className="tw-text-left" key={index}>
+                            <Tags startWith="#" tag={tag} type="label" />
+                          </p>
+                        ))}
+                      </>
+                    }
+                    position="bottom"
+                    theme="light"
+                    trigger="click">
+                    <span className="tw-cursor-pointer tw-text-xs link-text v-align-sub tw--ml-1">
+                      •••
+                    </span>
+                  </PopOver>
+                )}
+              </>
+            )}
+          </>
+        )}
         <NonAdminAction
-          html={getHtmlForNonAdminAction(Boolean(glossary.owner))}
           isOwner={Boolean(glossary.owner)}
           permission={Operation.UpdateTags}
           position="bottom"
+          title={TITLE_FOR_NON_OWNER_ACTION}
           trigger="click">
           <div
             className="tw-inline-block"
@@ -240,7 +296,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
               editable={isTagEditable}
               isLoading={isTagLoading}
               selectedTags={getSelectedTags()}
-              showTags={!isTagEditable}
+              showTags={false}
               size="small"
               tagList={tagList}
               type="label"
