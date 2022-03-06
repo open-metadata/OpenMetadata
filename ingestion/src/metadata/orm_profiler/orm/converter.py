@@ -14,10 +14,10 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 from functools import singledispatch
-from typing import Union
+from typing import Type, Union
 
 import sqlalchemy
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
@@ -84,9 +84,7 @@ def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
     )
 
 
-def ometa_to_orm(
-    table: Table, database: Union[Database, str]
-) -> type:  # Actually returns DeclarativeMeta
+def ometa_to_orm(table: Table, database: Union[Database, str]) -> DeclarativeMeta:
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy DeclarativeMeta class
@@ -103,7 +101,7 @@ def ometa_to_orm(
     }
 
     # Type takes positional arguments in the form of (name, bases, dict)
-    return type(
+    orm = type(
         table.fullyQualifiedName.replace(".", "_"),  # Output class name
         (Base,),  # SQLAlchemy declarative base
         {
@@ -112,6 +110,11 @@ def ometa_to_orm(
             **cols,
         },
     )
+
+    if not isinstance(orm, DeclarativeMeta):
+        raise ValueError("OMeta to ORM did not create a DeclarativeMeta")
+
+    return orm
 
 
 @singledispatch
