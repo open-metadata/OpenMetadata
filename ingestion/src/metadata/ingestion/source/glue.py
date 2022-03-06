@@ -157,7 +157,11 @@ class GlueSource(Source[Entity]):
                 if parameters:
                     # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
                     # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
-                    location_type = location_type if parameters.get("table_type").lower() != 'iceberg' else LocationType.Iceberg
+                    location_type = (
+                        location_type
+                        if parameters.get("table_type") != "ICEBERG"
+                        else LocationType.Iceberg
+                    )
 
                 self.dataset_name = fqn
                 table_columns = self.get_columns(table["StorageDescriptor"])
@@ -170,7 +174,9 @@ class GlueSource(Source[Entity]):
                 )
 
                 table_type: TableType = TableType.Regular
-                if table["TableType"] == "EXTERNAL_TABLE":
+                if location_type == LocationType.Iceberg:
+                    table_type = TableType.Iceberg
+                elif table["TableType"] == "EXTERNAL_TABLE":
                     table_type = TableType.External
                 elif table["TableType"] == "VIRTUAL_VIEW":
                     table_type = TableType.View
