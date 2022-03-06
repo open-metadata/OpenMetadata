@@ -101,7 +101,6 @@ class OMetaDatabaseServiceTest(TestCase):
             name="test-db-service",
             serviceType=DatabaseServiceType.MySQL,
             databaseConnection=new_connection,
-            href="http://resource-uri/",
         )
 
         updated_res = self.metadata.create_or_update(data=update_request)
