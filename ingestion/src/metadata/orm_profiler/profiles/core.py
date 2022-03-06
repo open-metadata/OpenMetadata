@@ -194,10 +194,16 @@ class Profiler(Generic[MetricType]):
         if not col_metrics:
             return
 
-        query = self.session.query(*[metric(col).fn() for metric in col_metrics])
+        try:
+            query = self.session.query(*[metric(col).fn() for metric in col_metrics])
 
-        row = query.first()
-        self._column_results[col.name].update(dict(row))
+            row = query.first()
+            self._column_results[col.name].update(dict(row))
+        except Exception as err:
+            logger.warning(
+                f"Error trying to compute column profile for {col.name} - {err}"
+            )
+            self.session.rollback()
 
     def sql_table_run(self):
         """
@@ -304,6 +310,9 @@ class Profiler(Generic[MetricType]):
         self.execute_table()
 
         for col in self.columns:
+            logger.debug(
+                f"Running profiler for {self.table.__tablename__}.{col.name} which is [{col.type}]"
+            )
 
             # Skip not supported types
             if col.type.__class__ in NOT_COMPUTE:

@@ -43,8 +43,8 @@ from metadata.ingestion.source.sql_source_common import (
     SQLSourceStatus,
 )
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
-from metadata.orm_profiler.engines import create_and_bind_session, get_engine
 from metadata.orm_profiler.utils import logger
+from metadata.utils.engines import create_and_bind_session, get_engine
 
 logger = logger()
 

@@ -25,7 +25,6 @@ from metadata.cli.docker import run_docker
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.profiler.profiler_runner import ProfilerRunner
 
 logger = logging.getLogger(__name__)
 
@@ -166,36 +165,6 @@ def report(config: str) -> None:
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
-
-
-@metadata.command()
-@click.option(
-    "-c",
-    "--config",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Profiler config",
-    required=True,
-)
-def profiler(config: str) -> None:
-    """Main command for running data openmetadata and tests"""
-    try:
-        config_file = pathlib.Path(config)
-        profiler_config = load_config_file(config_file)
-        try:
-            logger.info(f"Using config: {profiler_config}")
-            profiler_runner = ProfilerRunner.create(profiler_config)
-        except ValidationError as e:
-            click.echo(e, err=True)
-            sys.exit(1)
-
-        logger.info(f"Running Profiler for  {profiler_runner.config.profiler.type} ...")
-        profile_results = profiler_runner.run_profiler()
-        logger.info(f"Profiler Results")
-        logger.info(f"{profile_results}")
-
-    except Exception as e:
-        logger.exception(f"Scan failed: {str(e)}")
-        logger.info(f"Exiting with code 1")
 
 
 @metadata.command()

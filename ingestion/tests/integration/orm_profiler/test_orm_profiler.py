@@ -29,7 +29,7 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.orm_profiler.engines import create_and_bind_session
+from metadata.utils.engines import create_and_bind_session
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared"
 
@@ -39,6 +39,7 @@ ingestion_config = {
         "config": {
             "service_name": "test_sqlite",
             "database": sqlite_shared,  # We need this to share the session
+            "data_profiler_enabled": True,
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
