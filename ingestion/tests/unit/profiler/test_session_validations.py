@@ -20,6 +20,7 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual import ColumnValuesMissingCount
 from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
     ColumnValuesToBeNotInSet,
 )
@@ -175,5 +176,79 @@ class MetricsTest(TestCase):
             testCaseStatus=TestCaseStatus.Aborted,
             result=(
                 "We expect `valuesCount` to be informed for ColumnValuesToMatchRegex."
+            ),
+        )
+
+    def test_column_values_missing_count_to_be_equal(self):
+        """
+        Check that the metric runs and the results are correctly validated
+        """
+        column_profile = ColumnProfile(name="nickname", nullCount=1)
+
+        res_ok = validate(
+            ColumnValuesMissingCount(
+                missingCountValue=1
+            ),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Success,
+            result="Found missingCount=1.0. It should be 1.",
+        )
+
+        res_ok_2 = validate(
+            ColumnValuesMissingCount(
+                missingCountValue=2,
+                missingValueMatch=["johnny b goode"],
+
+            ),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_ok_2 == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Success,
+            result="Found missingCount=2.0. It should be 2.",
+        )
+
+        res_ko = validate(
+            ColumnValuesMissingCount(
+                missingCountValue=0,
+            ),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_ko == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Failed,
+            result="Found missingCount=1.0. It should be 0.",
+        )
+
+        res_aborted = validate(
+            ColumnValuesMissingCount(
+                missingCountValue=0,
+            ),
+            col_profile=ColumnProfile(name="nickname"),
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_aborted == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Aborted,
+            result=(
+                "We expect `nullCount` to be informed on the profiler for ColumnValuesMissingCount."
             ),
         )
