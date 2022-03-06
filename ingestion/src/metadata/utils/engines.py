@@ -20,9 +20,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-from metadata.orm_profiler.utils import logger
 
-logger = logger()
+logger = logging.getLogger("Utils")
 
 
 def get_engine(config: SQLConnectionConfig, verbose: bool = False) -> Engine:
@@ -32,7 +31,9 @@ def get_engine(config: SQLConnectionConfig, verbose: bool = False) -> Engine:
     logger.info(f"Building Engine for {config.get_service_name()}...")
 
     engine = create_engine(
-        url=config.get_connection_url(),
+        config.get_connection_url(),
+        **config.options,
+        connect_args=config.connect_args,
         echo=verbose,
     )
 

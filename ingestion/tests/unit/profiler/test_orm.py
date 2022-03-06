@@ -14,12 +14,13 @@ Validate conversion between OpenMetadata and SQLAlchemy ORM
 """
 import uuid
 
+import pytest
 import sqlalchemy
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.orm_profiler.orm.converter import ometa_to_orm
+from metadata.orm_profiler.orm.converter import get_db_name, ometa_to_orm
 
 
 def test_simple_conversion():
@@ -54,7 +55,7 @@ def test_simple_conversion():
     orm_table = ometa_to_orm(table=table, database=database)
 
     assert orm_table.__tablename__ == "table1"
-    assert orm_table.__table_args__ == {"schema": "one_db"}
+    assert orm_table.__table_args__.get("schema") == "one_db"
 
     assert isinstance(orm_table.id.type, sqlalchemy.BIGINT)
     assert isinstance(orm_table.name.type, sqlalchemy.String)
@@ -64,7 +65,22 @@ def test_simple_conversion():
     assert isinstance(orm_table.group.type, sqlalchemy.CHAR)
     assert isinstance(orm_table.savings.type, sqlalchemy.DECIMAL)
 
-    print(orm_table.__table__.c)
-    for elem in orm_table.__table__.c:
-        print(elem)
-        print(elem.name)
+
+def test_db_name():
+    """
+    Check that the singledispatch handles correctly the db name
+    """
+
+    database = Database(
+        id=uuid.uuid4(),
+        name="one_db",
+        service=EntityReference(
+            id=uuid.uuid4(), name="one_service", type="databaseService"
+        ),
+    )
+
+    assert get_db_name("hola") == "hola"
+    assert get_db_name(database) == "one_db"
+
+    with pytest.raises(NotImplementedError):
+        get_db_name(3)
