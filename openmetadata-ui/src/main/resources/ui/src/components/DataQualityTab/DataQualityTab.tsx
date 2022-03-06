@@ -18,9 +18,9 @@ import { Table } from '../../generated/entity/data/table';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import {
   CreateColumnTest,
-  DatabaseTestModeType,
+  DatasetTestModeType,
   ModifiedTableColumn,
-  TestTableDataType,
+  TableTestDataType,
 } from '../../interface/dataQuality.interface';
 import AddDataQualityTest from '../AddDataQualityTest/AddDataQualityTest';
 import DataQualityTest from '../DataQualityTest/DataQualityTest';
@@ -29,8 +29,8 @@ type Props = {
   handleAddTableTestCase: (data: CreateTableTest) => void;
   handleAddColumnTestCase: (data: CreateColumnTest) => void;
   columnOptions: Table['columns'];
-  testMode: DatabaseTestModeType;
-  handleTestModeChange: (mode: DatabaseTestModeType) => void;
+  testMode: DatasetTestModeType;
+  handleTestModeChange: (mode: DatasetTestModeType) => void;
   showTestForm: boolean;
   handleShowTestForm: (value: boolean) => void;
   tableTestCase: TableTest[];
@@ -54,7 +54,7 @@ const DataQualityTab = ({
   tableTestCase,
 }: Props) => {
   const [showDropDown, setShowDropDown] = useState(false);
-  const [activeData, setActiveData] = useState<TestTableDataType>();
+  const [activeData, setActiveData] = useState<TableTestDataType>();
 
   const onFormCancel = () => {
     handleShowTestForm(false);
@@ -65,7 +65,7 @@ const DataQualityTab = ({
     setShowDropDown(value);
   };
 
-  const handleTestSelection = (mode: DatabaseTestModeType) => {
+  const handleTestSelection = (mode: DatasetTestModeType) => {
     handleTestModeChange(mode);
     handleShowTestForm(true);
   };
@@ -75,14 +75,14 @@ const DataQualityTab = ({
     value?: string
   ) => {
     if (value) {
-      handleTestSelection(value as DatabaseTestModeType);
+      handleTestSelection(value as DatasetTestModeType);
     }
     setShowDropDown(false);
   };
 
   const handleEditTest = (
-    mode: DatabaseTestModeType,
-    obj: TestTableDataType
+    mode: DatasetTestModeType,
+    obj: TableTestDataType
   ) => {
     setActiveData(obj);
     handleTestSelection(mode);

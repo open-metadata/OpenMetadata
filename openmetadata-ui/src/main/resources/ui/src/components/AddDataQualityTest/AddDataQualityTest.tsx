@@ -17,13 +17,13 @@ import { Table } from '../../generated/entity/data/table';
 import { TableTest } from '../../generated/tests/tableTest';
 import {
   CreateColumnTest,
-  TestTableDataType,
+  TableTestDataType,
 } from '../../interface/dataQuality.interface';
 import ColumnTestForm from './Forms/ColumnTestForm';
 import TableTestForm from './Forms/TableTestForm';
 
 type Props = {
-  data?: TestTableDataType;
+  data?: TableTestDataType;
   testMode: 'table' | 'column';
   columnOptions: Table['columns'];
   tableTestCase: TableTest[];

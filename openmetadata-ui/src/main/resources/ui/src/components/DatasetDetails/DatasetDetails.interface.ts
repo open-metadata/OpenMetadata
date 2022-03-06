@@ -35,7 +35,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   CreateColumnTest,
-  DatabaseTestModeType,
+  DatasetTestModeType,
 } from '../../interface/dataQuality.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
@@ -75,11 +75,11 @@ export interface DatasetDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
-  testMode: DatabaseTestModeType;
+  testMode: DatasetTestModeType;
   tableTestCase: TableTest[];
   showTestForm: boolean;
   handleShowTestForm: (value: boolean) => void;
-  handleTestModeChange: (mode: DatabaseTestModeType) => void;
+  handleTestModeChange: (mode: DatasetTestModeType) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;

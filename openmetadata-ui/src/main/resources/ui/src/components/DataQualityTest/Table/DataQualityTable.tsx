@@ -21,8 +21,8 @@ import {
   TestCaseStatus,
 } from '../../../generated/tests/tableTest';
 import {
-  DatabaseTestModeType,
-  TestTableDataType,
+  DatasetTestModeType,
+  TableTestDataType,
 } from '../../../interface/dataQuality.interface';
 import { isEven } from '../../../utils/CommonUtils';
 import NonAdminAction from '../../common/non-admin-action/NonAdminAction';
@@ -30,9 +30,9 @@ import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 
 type Props = {
-  testCase: TestTableDataType[];
+  testCase: TableTestDataType[];
   isTableTest: boolean;
-  handleEditTest: (mode: DatabaseTestModeType, obj: TestTableDataType) => void;
+  handleEditTest: (mode: DatasetTestModeType, obj: TableTestDataType) => void;
   handleRemoveTableTest?: (testType: TableTestType) => void;
   handleRemoveColumnTest?: (
     columnName: string,
@@ -49,7 +49,7 @@ const DataQualityTable = ({
 }: Props) => {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState<{
-    data?: TestTableDataType;
+    data?: TableTestDataType;
     state: string;
   }>({
     data: undefined,
@@ -61,12 +61,12 @@ const DataQualityTable = ({
     setDeleteSelection({ data: undefined, state: '' });
   };
 
-  const confirmDelete = (data: TestTableDataType) => {
+  const confirmDelete = (data: TableTestDataType) => {
     setDeleteSelection({ data, state: '' });
     setIsConfirmationModalOpen(true);
   };
 
-  const handleDelete = (data: TestTableDataType) => {
+  const handleDelete = (data: TableTestDataType) => {
     if (isTableTest) {
       handleRemoveTableTest &&
         handleRemoveTableTest(data.testCase.tableTestType as TableTestType);
@@ -212,7 +212,7 @@ const DataQualityTable = ({
           header="Are you sure?"
           onCancel={handleCancelConfirmationModal}
           onConfirm={() =>
-            handleDelete(deleteSelection.data as TestTableDataType)
+            handleDelete(deleteSelection.data as TableTestDataType)
           }
         />
       )}

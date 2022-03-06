@@ -23,7 +23,7 @@ import {
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { DatabaseTestModeType } from '../../interface/dataQuality.interface';
+import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import DatasetDetails from './DatasetDetails.component';
 import { DatasetOwner } from './DatasetDetails.interface';
 
@@ -85,7 +85,7 @@ const DatasetDetailsProps = {
   feedCount: 0,
   entityFieldThreadCount: [],
   showTestForm: false,
-  testMode: 'table' as DatabaseTestModeType,
+  testMode: 'table' as DatasetTestModeType,
   handleAddTableTestCase: jest.fn(),
   tableTestCase: [],
   handleAddColumnTestCase: jest.fn(),

@@ -78,7 +78,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
 import {
   CreateColumnTest,
-  DatabaseTestModeType,
+  DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
 import {
@@ -163,11 +163,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
   >([]);
 
   // Data Quality tab state
-  const [testMode, setTestMode] = useState<DatabaseTestModeType>('table');
+  const [testMode, setTestMode] = useState<DatasetTestModeType>('table');
   const [showTestForm, setShowTestForm] = useState(false);
   const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
 
-  const handleTestModeChange = (mode: DatabaseTestModeType) => {
+  const handleTestModeChange = (mode: DatasetTestModeType) => {
     setTestMode(mode);
   };
 

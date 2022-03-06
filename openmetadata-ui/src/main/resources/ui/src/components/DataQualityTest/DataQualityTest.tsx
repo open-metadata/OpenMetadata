@@ -16,9 +16,9 @@ import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import {
-  DatabaseTestModeType,
+  DatasetTestModeType,
   ModifiedTableColumn,
-  TestTableDataType,
+  TableTestDataType,
 } from '../../interface/dataQuality.interface';
 import { normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
@@ -32,7 +32,7 @@ type Props = {
   tableTestCase: TableTest[];
   columns: ModifiedTableColumn[];
   showDropDown: boolean;
-  handleEditTest: (mode: DatabaseTestModeType, obj: TestTableDataType) => void;
+  handleEditTest: (mode: DatasetTestModeType, obj: TableTestDataType) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
   haandleDropDownClick: (
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
@@ -136,7 +136,7 @@ const DataQualityTest = ({
                     isTableTest={false}
                     testCase={
                       data.columnTests && data.columnTests?.length > 0
-                        ? (data.columnTests as TestTableDataType[])
+                        ? (data.columnTests as TableTestDataType[])
                         : []
                     }
                   />

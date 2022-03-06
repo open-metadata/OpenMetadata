@@ -45,11 +45,10 @@ export interface CreateColumnTest {
 export type DatabaseTestModeType = 'table' | 'column';
 
 export interface ModifiedTableColumn extends Column {
-  name: string;
   columnTests?: CreateColumnTest[];
 }
 
-export interface TestTableDataType {
+export interface TableTestDataType {
   description?: string;
   executionFrequency?: TestCaseExecutionFrequency;
   columnName?: string;
