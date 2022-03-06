@@ -108,7 +108,7 @@ def ometa_to_orm(table: Table, database: Union[Database, str]) -> DeclarativeMet
             "__tablename__": str(table.name.__root__),
             "__table_args__": {
                 "schema": get_db_name(database),
-                "extend_existing": True  # Recreates the table ORM object if it already exists. Useful for testing
+                "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
             },
             **cols,
         },
