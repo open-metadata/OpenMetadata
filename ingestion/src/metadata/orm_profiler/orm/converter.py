@@ -13,6 +13,9 @@
 Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
+from functools import singledispatch
+from typing import Union
+
 import sqlalchemy
 from sqlalchemy.orm import declarative_base
 
@@ -82,7 +85,7 @@ def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
 
 
 def ometa_to_orm(
-    table: Table, database: Database
+    table: Table, database: Union[Database, str]
 ) -> type:  # Actually returns DeclarativeMeta
     """
     Given an OpenMetadata instance, prepare
@@ -105,7 +108,41 @@ def ometa_to_orm(
         (Base,),  # SQLAlchemy declarative base
         {
             "__tablename__": str(table.name.__root__),
-            "__table_args__": {"schema": str(database.name.__root__)},
+            "__table_args__": {"schema": get_db_name(database)},
             **cols,
         },
     )
+
+
+@singledispatch
+def get_db_name(arg) -> str:
+    """
+    Return the database name to pass the table schema info
+    to the ORM object.
+
+    :param arg: Database or str
+    :return: db name
+    """
+    raise NotImplementedError(f"Cannot extract db name from {arg}")
+
+
+@get_db_name.register
+def _(arg: str) -> str:
+    """
+    Return string as is
+
+    :param arg: string
+    :return: db name
+    """
+    return arg
+
+
+@get_db_name.register
+def _(arg: Database) -> str:
+    """
+    Get the db name from the database entity
+
+    :param arg: database
+    :return: db name
+    """
+    return str(arg.name.__root__)
