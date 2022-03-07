@@ -8,10 +8,8 @@ RUN wget https://github.com/open-metadata/openmetadata-airflow-apis/releases/dow
 RUN tar zxvf openmetadata-airflow-apis-plugin.tar.gz
 RUN mkdir /om-airflow
 RUN mv plugins /om-airflow
-ENV AIRFLOW_VERSION=2.2.1
-ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 # Add docker provider for the DockerOperator
-RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
+RUN pip install "apache-airflow[docker]==2.1.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.1.4/constraints-3.9.txt"
 COPY ingestion /ingestion
 
 # TODO: deprecate install all in favor of the minimum airflow requirements

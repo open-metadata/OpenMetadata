@@ -21,7 +21,7 @@ handler.setFormatter(
 logger.addHandler(handler)
 
 calc_gb = 1024 * 1024 * 1000
-min_memory_limit = 3 * calc_gb
+min_memory_limit = 6 * calc_gb
 
 
 def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
