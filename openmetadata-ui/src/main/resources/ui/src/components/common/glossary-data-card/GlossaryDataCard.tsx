@@ -68,7 +68,7 @@ const GlossaryDataCard: FunctionComponent<Props> = ({
                 markdown={description}
               />
             ) : (
-              <span className="tw-no-description">No description added</span>
+              <span className="tw-no-description">No description</span>
             )}
           </div>
         </div>

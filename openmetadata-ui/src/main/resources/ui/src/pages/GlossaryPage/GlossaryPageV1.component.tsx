@@ -17,7 +17,9 @@ import { cloneDeep, extend } from 'lodash';
 import {
   FormatedGlossarySuggestion,
   GlossarySuggestionHit,
+  GlossaryTermAssets,
   LoadingState,
+  SearchResponse,
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -31,17 +33,27 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../axiosAPIs/glossaryAPI';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { getSuggestions, searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
-import { getAddGlossaryTermsPath, ROUTES } from '../../constants/constants';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import {
+  getAddGlossaryTermsPath,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../constants/constants';
+import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { updateGlossaryListBySearchedTerms } from '../../utils/GlossaryUtils';
+import { formatDataResponse } from '../../utils/APIUtils';
+import {
+  getHierarchicalKeysByFQN,
+  updateGlossaryListBySearchedTerms,
+} from '../../utils/GlossaryUtils';
 
 export type ModifiedGlossaryData = Glossary & {
   children?: GlossaryTerm[];
@@ -66,6 +78,11 @@ const GlossaryPageV1 = () => {
   const [isGlossaryActive, setIsGlossaryActive] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [deleteStatus, setDeleteStatus] = useState<LoadingState>('initial');
+  const [assetData, setAssetData] = useState<GlossaryTermAssets>({
+    data: [],
+    total: 0,
+    currPage: 1,
+  });
 
   const handleChildLoading = (status: boolean) => {
     setIsChildLoading(status);
@@ -223,6 +240,7 @@ const GlossaryPageV1 = () => {
           searchedTerms
         );
         setGlossariesList(arrData);
+        setExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
       });
     } else {
       const arrData = updateGlossaryListBySearchedTerms(
@@ -230,6 +248,7 @@ const GlossaryPageV1 = () => {
         searchedTerms
       );
       setGlossariesList(arrData);
+      setExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
     }
   };
 
@@ -374,6 +393,55 @@ const GlossaryPageV1 = () => {
     setExpandedKey(key);
   };
 
+  const fetchGlossaryTermAssets = (data: GlossaryTerm, forceReset = false) => {
+    if (data?.fullyQualifiedName) {
+      searchData(
+        WILD_CARD_CHAR,
+        forceReset ? 1 : assetData.currPage,
+        PAGE_SIZE,
+        `(tags:${data.fullyQualifiedName})`,
+        '',
+        '',
+        myDataSearchIndex
+      ).then((res: SearchResponse) => {
+        const hits = res.data.hits.hits;
+        if (hits.length > 0) {
+          setAssetData((pre) => {
+            const data = formatDataResponse(hits);
+            const total = res.data.hits.total.value;
+
+            return forceReset
+              ? {
+                  data,
+                  total,
+                  currPage: 1,
+                }
+              : { ...pre, data, total };
+          });
+        } else {
+          setAssetData((pre) => {
+            const data = [] as GlossaryTermAssets['data'];
+            const total = 0;
+
+            return forceReset
+              ? {
+                  data,
+                  total,
+                  currPage: 1,
+                }
+              : { ...pre, data, total };
+          });
+        }
+      });
+    } else {
+      setAssetData({ data: [], total: 0, currPage: 1 });
+    }
+  };
+
+  const handleAssetPagination = (page: number) => {
+    setAssetData((pre) => ({ ...pre, currPage: page }));
+  };
+
   const handleSelectedData = (data: Glossary | GlossaryTerm, pos: string) => {
     handleChildLoading(true);
     const hierarchy = pos.split('-').splice(1);
@@ -388,12 +456,17 @@ const GlossaryPageV1 = () => {
         (data as GlossaryTerm)?.fullyQualifiedName || data?.name,
         hierarchy
       );
+      fetchGlossaryTermAssets(data as GlossaryTerm, true);
     }
   };
 
   const handleSearchText = (text: string) => {
     setSearchText(text);
   };
+
+  useEffect(() => {
+    fetchGlossaryTermAssets(selectedData as GlossaryTerm);
+  }, [assetData.currPage]);
 
   useEffect(() => {
     fetchSearchedTerms();
@@ -409,6 +482,7 @@ const GlossaryPageV1 = () => {
         <Loader />
       ) : (
         <GlossaryV1
+          assetData={assetData}
           deleteStatus={deleteStatus}
           expandedKey={expandedKey}
           glossaryList={glossariesList as ModifiedGlossaryData[]}
@@ -427,6 +501,7 @@ const GlossaryPageV1 = () => {
           selectedData={selectedData as Glossary | GlossaryTerm}
           selectedKey={selectedKey}
           updateGlossary={updateGlossary}
+          onAssetPaginate={handleAssetPagination}
           onGlossaryDelete={handleGlossaryDelete}
           onGlossaryTermDelete={handleGlossaryTermDelete}
         />

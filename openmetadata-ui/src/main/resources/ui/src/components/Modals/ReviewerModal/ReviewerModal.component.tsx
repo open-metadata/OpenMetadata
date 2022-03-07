@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { FormatedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
@@ -44,25 +44,50 @@ const ReviewerModal = ({
     reviewer ?? []
   );
 
-  const querySearch = (search = '') => {
-    return isEmpty(search)
-      ? searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER)
-      : getSuggestions(search, SearchIndex.USER);
+  const getSearchedReviewers = (searchedData: FormatedUsersData[]) => {
+    const currOptions = selectedOption.map((item) => item.name);
+    const data = searchedData.filter((item: FormatedUsersData) => {
+      return !currOptions.includes(item.name);
+    });
+
+    return [...selectedOption, ...data];
   };
 
-  const handleSearchAction = (text: string) => {
+  const querySearch = () => {
     setIsLoading(true);
-    setSearchText(text);
-    querySearch(text)
-      .then((res: AxiosResponse) => {
-        setOptions(
-          formatUsersResponse(res.data.suggest['table-suggest'][0].options)
+    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER).then(
+      (res: SearchResponse) => {
+        const data = getSearchedReviewers(
+          formatUsersResponse(res.data.hits.hits)
         );
+        setOptions(data);
+        setIsLoading(false);
+      }
+    );
+  };
+
+  const suggestionSearch = (searchText = '') => {
+    setIsLoading(true);
+    getSuggestions(searchText, SearchIndex.USER)
+      .then((res: AxiosResponse) => {
+        const data = formatUsersResponse(
+          res.data.suggest['table-suggest'][0].options
+        );
+        setOptions(data);
       })
       .catch(() => {
         setOptions(selectedOption);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  const handleSearchAction = (text: string) => {
+    setSearchText(text);
+    if (text) {
+      suggestionSearch(text);
+    } else {
+      querySearch();
+    }
   };
 
   const isIncludeInOptions = (id: string): boolean => {
@@ -97,22 +122,11 @@ const ReviewerModal = ({
     ));
   };
 
-  const initialSearch = () => {
-    querySearch().then((res: SearchResponse) => {
-      setOptions(
-        formatUsersResponse(res.data.hits.hits) as FormatedUsersData[]
-      );
-      setIsLoading(false);
-    });
-  };
-
   useEffect(() => {
     if (!isUndefined(reviewer) && reviewer.length) {
       setOptions(reviewer);
-      setIsLoading(false);
-    } else {
-      initialSearch();
     }
+    querySearch();
   }, []);
 
   return (

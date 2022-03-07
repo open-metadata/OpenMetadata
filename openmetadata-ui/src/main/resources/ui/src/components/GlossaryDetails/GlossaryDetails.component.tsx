@@ -176,8 +176,10 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           type: 'user',
         }))
       );
+    } else {
+      setReviewer([]);
     }
-  }, []);
+  }, [glossary.reviewers]);
 
   const rightPosButton = () => {
     return (

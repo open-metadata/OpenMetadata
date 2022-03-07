@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { LoadingState } from 'Models';
+import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
@@ -23,6 +23,7 @@ import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { generateTreeData, getActionsList } from '../../utils/GlossaryUtils';
+import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -38,6 +39,7 @@ import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 
 type Props = {
+  assetData: GlossaryTermAssets;
   deleteStatus: LoadingState;
   isHasAccess: boolean;
   glossaryList: ModifiedGlossaryData[];
@@ -57,6 +59,7 @@ type Props = {
   handleSearchText: (text: string) => void;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
+  onAssetPaginate: (num: number) => void;
   isChildLoading: boolean;
   // handlePathChange: (
   //   glossary: string,
@@ -69,6 +72,7 @@ type ModifiedDataNode = DataNode & {
 };
 
 const GlossaryV1 = ({
+  assetData,
   deleteStatus = 'initial',
   isHasAccess,
   glossaryList,
@@ -89,6 +93,7 @@ const GlossaryV1 = ({
   handleSearchText,
   onGlossaryDelete,
   onGlossaryTermDelete,
+  onAssetPaginate,
 }: // handlePathChange,
 Props) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
@@ -192,6 +197,7 @@ Props) => {
           {treeData.length ? (
             <>
               <SearchInput
+                showLoadingStatus
                 placeholder="Search term..."
                 searchValue={searchText}
                 typingInterval={1500}
@@ -238,7 +244,23 @@ Props) => {
               onClick={() => {
                 setShowActions((show) => !show);
               }}>
-              Actions
+              Actions{' '}
+              {showActions ? (
+                <DropdownIcon
+                  style={{
+                    transform: 'rotate(180deg)',
+                    marginTop: '1px',
+                    color: '#fff',
+                  }}
+                />
+              ) : (
+                <DropdownIcon
+                  style={{
+                    marginTop: '1px',
+                    color: '#fff',
+                  }}
+                />
+              )}
             </Button>
           </NonAdminAction>
           {showActions && (
@@ -262,9 +284,11 @@ Props) => {
           />
         ) : (
           <GlossaryTermsV1
+            assetData={assetData}
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
             isHasAccess={isHasAccess}
+            onAssetPaginate={onAssetPaginate}
           />
         ))
       )}

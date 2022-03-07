@@ -19,6 +19,7 @@ import {
   FormatedUsersData,
 } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { TermReference } from '../../generated/entity/data/glossaryTerm';
@@ -55,6 +56,7 @@ const AddGlossaryTerm = ({
 
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
+    invalidName: false,
   });
 
   const [name, setName] = useState('');
@@ -116,12 +118,13 @@ const AddGlossaryTerm = ({
     }
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name } = cloneDeep(showErrorMsg);
+    let { name, invalidName } = cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
         setName(value);
         name = false;
+        invalidName = false;
 
         break;
       }
@@ -133,7 +136,7 @@ const AddGlossaryTerm = ({
       }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name };
+      return { ...prev, name, invalidName };
     });
   };
 
@@ -160,6 +163,7 @@ const AddGlossaryTerm = ({
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
+      invalidName: UrlEntityCharRegEx.test(name.trim()),
     };
     setShowErrorMsg(errMsg);
 
@@ -291,7 +295,11 @@ const AddGlossaryTerm = ({
             onChange={handleValidation}
           />
 
-          {showErrorMsg.name && errorMsg('Glossary term name is required.')}
+          {showErrorMsg.name
+            ? errorMsg('Glossary term name is required.')
+            : showErrorMsg.invalidName
+            ? errorMsg('Glossary term name is invalid.')
+            : null}
         </Field>
 
         <Field>

@@ -75,7 +75,7 @@ const CheckboxUserCard = ({
           {isCheckBoxes ? (
             <input
               checked={isChecked}
-              className="tw-px-2 custom-checkbox"
+              className="tw-p-1 custom-checkbox"
               data-testid="checkboxAddUser"
               type="checkbox"
               onChange={(e) => {

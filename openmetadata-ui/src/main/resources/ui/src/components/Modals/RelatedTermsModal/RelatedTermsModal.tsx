@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { FormatedGlossaryTermData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
@@ -44,29 +44,50 @@ const RelatedTermsModal = ({
     FormatedGlossaryTermData[]
   >(relatedTerms ?? []);
 
-  const querySearch = (search = '') => {
-    return isEmpty(search)
-      ? searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.GLOSSARY)
-      : getSuggestions(search, SearchIndex.GLOSSARY);
+  const getSearchedTerms = (searchedData: FormatedGlossaryTermData[]) => {
+    const currOptions = selectedOption.map((item) => item.fqdn);
+    const data = searchedData.filter((item: FormatedGlossaryTermData) => {
+      return !currOptions.includes(item.fqdn);
+    });
+
+    return [...selectedOption, ...data];
+  };
+
+  const querySearch = () => {
+    setIsLoading(true);
+    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.GLOSSARY).then(
+      (res: SearchResponse) => {
+        const data = getSearchedTerms(
+          formatSearchGlossaryTermResponse(res.data.hits.hits)
+        );
+        setOptions(data);
+        setIsLoading(false);
+      }
+    );
+  };
+
+  const suggestionSearch = (searchText = '') => {
+    setIsLoading(true);
+    getSuggestions(searchText, SearchIndex.USER)
+      .then((res: AxiosResponse) => {
+        const data = formatSearchGlossaryTermResponse(
+          res.data.suggest['table-suggest'][0].options
+        );
+        setOptions(data);
+      })
+      .catch(() => {
+        setOptions(selectedOption);
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const handleSearchAction = (text: string) => {
-    setIsLoading(true);
     setSearchText(text);
-    querySearch(text)
-      .then((res: AxiosResponse) => {
-        setOptions(
-          formatSearchGlossaryTermResponse(
-            res.data.suggest['table-suggest'][0].options
-          )
-        );
-      })
-      .catch(() => {
-        if (relatedTerms?.length) {
-          setOptions(selectedOption);
-        }
-      })
-      .finally(() => setIsLoading(false));
+    if (text) {
+      suggestionSearch(text);
+    } else {
+      querySearch();
+    }
   };
 
   const isIncludeInOptions = (id: string): boolean => {
@@ -100,24 +121,11 @@ const RelatedTermsModal = ({
     ));
   };
 
-  const initialSearch = () => {
-    querySearch().then((res: SearchResponse) => {
-      setOptions(
-        formatSearchGlossaryTermResponse(
-          res.data.hits.hits
-        ) as FormatedGlossaryTermData[]
-      );
-      setIsLoading(false);
-    });
-  };
-
   useEffect(() => {
     if (!isUndefined(relatedTerms) && relatedTerms.length) {
       setOptions(relatedTerms);
-      setIsLoading(false);
-    } else {
-      initialSearch();
     }
+    querySearch();
   }, []);
 
   return (

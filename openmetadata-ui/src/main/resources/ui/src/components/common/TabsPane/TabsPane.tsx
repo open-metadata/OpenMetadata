@@ -19,7 +19,7 @@ import { getCountBadge } from '../../../utils/CommonUtils';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 type Tab = {
   name: string;
-  icon: {
+  icon?: {
     alt: string;
     name: string;
     title: string;
