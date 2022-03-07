@@ -125,7 +125,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
             RoleResource.FIELDS,
             ADMIN_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(role);
-    role.setDefault(true);
+    role.setDefaultRole(true);
     ChangeDescription change = getChangeDescription(role.getVersion());
     change.getFieldsUpdated().add(new FieldChange().withName("default").withOldValue(false).withNewValue(true));
     return patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);

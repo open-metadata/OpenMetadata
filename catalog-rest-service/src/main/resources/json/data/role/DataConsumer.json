@@ -3,5 +3,5 @@
   "displayName": "Data Consumer",
   "description": "Users with Data Consumer role use different data assets for their day to day work.",
   "deleted": false,
-  "default": true
+  "defaultRole": true
 }
