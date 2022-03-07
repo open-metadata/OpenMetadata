@@ -23,7 +23,7 @@ export const entityRegex = /<#E\/([^<>]+?)\/([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
 export const entityUrlMap = {
   team: 'teams',
-  user: 'user',
+  user: 'users',
 };
 
 export const EditorPlaceHolder = `Use @mention to tag a user or a team.

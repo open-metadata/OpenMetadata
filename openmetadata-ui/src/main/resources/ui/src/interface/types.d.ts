@@ -179,6 +179,7 @@ declare module 'Models' {
     name: string;
     profile: UserProfile;
     teams: Array<UserTeam>;
+    follows?: Array<UserTeam>;
     timezone: string;
     href: string;
   };

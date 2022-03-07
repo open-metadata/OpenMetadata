@@ -39,6 +39,7 @@ import TeamsPage from '../pages/teams';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPageComponent from '../pages/tour-page/TourPage.component';
 import UserListPage from '../pages/UserListPage/UserListPage';
+import UserPage from '../pages/UserPage/UserPage.component';
 import WebhooksPage from '../pages/WebhooksPage/WebhooksPage.component';
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { isAuthDisabled, isAdminUser } = useAuth();
@@ -111,6 +112,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.GLOSSARY_DETAILS}
       /> */}
       {/* <Route exact component={GlossaryTermPage} path={ROUTES.GLOSSARY_TERMS} /> */}
+      <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
       {isAuthDisabled || isAdminUser ? (
         <>
           <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
