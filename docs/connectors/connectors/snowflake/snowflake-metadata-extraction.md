@@ -1,10 +1,10 @@
 ---
 description: >-
   This guide will help you configure metadata ingestion workflows using the
-  Redshift connector.
+  Snowflake connector.
 ---
 
-# Redshift Metadata Extraction
+# Snowflake Metadata Extraction
 
 There are three options for configuring metadata ingestion for this connector. They are as follows:
 
@@ -20,7 +20,7 @@ Please select the approach you would prefer to use for metadata ingestion from t
 
 ## Requirements
 
-Using the OpenMetadata Redshift connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata Snowflake connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 
 
@@ -65,28 +65,142 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 ### 1. Create a configuration file using template JSON
 
-Create a new file called `redshift.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+Create a new file called `snowflake.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
-Copy and paste the configuration template below into the `redshift.json` file you created.
+To create a configuration file for Snowflake, you’ll need to select one of the three options below and then customize the appropriate template to match your needs.
+
+* Authenticate with SSO using an External Browser Popup
+* Authenticate with SSO Specifying Provider, Username, and Password
+* Authenticate with Username and Password
+
+The choice of a template depends on how your Snowflake user will be authenticated.
+
+Please select the form of authentication you will use for Snowflake and select the template below that matches your use case. Then, copy and paste the configuration template into the `snowflake.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="redshift.json" %}
+####
+
+#### Authenticate with SSO using an External Browser Popup
+
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). This method will pop up a browser window to enable you to authenticate using your SSO method.
+
 ```json
 {
   "source": {
-    "type": "redshift",
+    "type": "snowflake",
     "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+      "host_port": "account.region.service.snowflakecomputing.com",
+      "username": "email",
+      "warehouse": "DEMO",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
+      "account": "account_name",
+      "service_name": "snowflake",
+      "data_profiler_enabled": "false",
+      "role": "Optional - Role",
+      "connect_args":{
+        "authenticator": "externalbrowser"
+      },
+      "table_filter_pattern": {
+        "excludes": [
+          "tpcds_.*temp"
+        ]
+      },
+      "schema_filter_pattern": {
+        "excludes": [
+          "tpcds_sf100tcl"
+        ]
+      }
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
+```
+
+####
+
+#### Authenticate with SSO Specifying Provider, Username, and Password
+
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). Using this method, you will specify a url for your authentication provider and a username and password that will authenticate against this provider.
+
+```json
+{
+  "source": {
+    "type": "snowflake",
+    "config": {
+      "host_port": "account.region.service.snowflakecomputing.com",
+      "username": "OKTA_USER",
+      "password": "OKTA_PASSWORD",
+      "warehouse": "DEMO",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
+      "account": "account_name",
+      "service_name": "snowflake",
+      "data_profiler_enabled": "false",
+      "role": "OPTIONAL - role",
+      "connect_args":{
+        "authenticator": "https://something.okta.com/"
+      },
+      "table_filter_pattern": {
+        "excludes": [
+          "tpcds_.*temp"
+        ]
+      },
+      "schema_filter_pattern": {
+        "excludes": [
+          "tpcds_sf100tcl"
+        ]
+      }
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
+```
+
+####
+
+#### Authenticate with Username and Password
+
+Use this method in production OpenMetadata deployments in which you plan to configure scheduled metadata ingestion. For this method your Snowflake instance must support authentication using username and password.
+
+```json
+{
+  "source": {
+    "type": "snowflake",
+    "config": {
+      "host_port": "account.region.service.snowflakecomputing.com",
       "username": "username",
       "password": "strong_password",
-      "service_name": "aws_redshift",
-      "query": "select top 50 * from {}.{}",
+      "warehouse": "DEMO",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
+      "account": "account_name",
+      "service_name": "snowflake",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
-        "excludes": ["[\\w]*event_vw.*"]
+        "excludes": [
+          "tpcds_.*temp"
+        ]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
@@ -106,31 +220,30 @@ Note: The `source.config` field in the configuration JSON will include the major
   }
 }
 ```
-{% endcode %}
 
 
 
 ### 2. Configure service settings
 
-In this step we will configure the Redshift service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step we will configure the Snowflake service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
 ####
 
 #### host\_port
 
-Edit the value for `source.config.host_port` in `redshift.json` for your Redshift deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `snowflake.json` for your Snowflake deployment. Use the `host:port` format illustrated in the example below.
 
 ```json
-"host_port": "cluster.name.region.redshift.amazonaws.com:5439"
+"host_port": "account.region.service.snowflakecomputing.com"
 ```
 
-Please ensure that your Redshift deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your Snowflake deployment is reachable from the host you are using to run metadata ingestion.
 
 ####
 
 #### username
 
-Edit the value for `source.config.username` to identify your Redshift user.
+Edit the value for `source.config.username` to identify your Snowflake user.
 
 ```json
 "username": "username"
@@ -144,7 +257,7 @@ Note: The user specified should be authorized to read all databases you want to 
 
 #### password
 
-Edit the value for `source.config.password` with the password for your Redshift user.
+Edit the value for `source.config.password` with the password for your Snowflake user.
 
 ```json
 "password": "strong_password"
@@ -154,22 +267,32 @@ Edit the value for `source.config.password` with the password for your Redshift 
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Redshift services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Snowflake services that you might be ingesting metadata from.
 
 ```json
-"service_name": "aws_redshift"
+"service_name": "snowflake"
+```
+
+####
+
+#### warehouse
+
+Edit the value for `source.config.warehouse` with the name of the Snowflake warehouse from which you want to ingest metadata.
+
+```json
+"warehouse": "DEMO",
 ```
 
 ####
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the Redshift connector will ingest metadata from all databases that the specified user is authorized to read.
+If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```json
-"database": "warehouse"
+"database": "SNOWFLAKE_SAMPLE_DATA"
 ```
 
 
@@ -252,7 +375,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](redshift-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](snowflake-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 
@@ -262,7 +385,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -288,7 +411,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -316,7 +439,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### 6. Confirm `sink` settings
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `redshift.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `snowflake.json` in Step 1. This part of your configuration file should be as follows.
 
 ```json
 "sink": {
@@ -329,7 +452,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 ### 7. Confirm `metadata_server` settings
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `redshift.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `snowflake.json` in Step 1. This part of your configuration file should be as follows.
 
 ```json
 "metadata_server": {
@@ -437,7 +560,7 @@ The OpenMetadata UI provides an integrated workflow for adding a new data servic
 
 ## Requirements
 
-Using the OpenMetadata Redshift connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for setting up a Redshift service and ingestion workflow using the OpenMetadata UI.
+Using the OpenMetadata Snowflake connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for setting up a Snowflake service and ingestion workflow using the OpenMetadata UI.
 
 
 
@@ -464,19 +587,19 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../.gitbook/assets/image (69).png>)
+![](<../../../.gitbook/assets/image (69).png>)
 
 ### 2. Initiate a new service creation
 
-From the Database Service UI, click the _Add New Service_ button to add your Redshift service to OpenMetadata for metadata ingestion.
+From the Database Service UI, click the _Add New Service_ button to add your Snowflake service to OpenMetadata for metadata ingestion.
 
-![](<../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30).png>)
 
 ### 3. Select service type
 
-Select Redshift as the service type.
+Select Snowflake as the service type.
 
-![](<../../.gitbook/assets/image (77).png>)
+![](<../../../.gitbook/assets/image (60).png>)
 
 
 
@@ -486,37 +609,37 @@ Provide a name and description for your service as illustrated below.
 
 #### Name
 
-OpenMetadata uniquely identifies services by their _Name_. Provide a name that distinguishes your deployment from other services, including other Redshift services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Name_. Provide a name that distinguishes your deployment from other services, including other Snowflake services that you might be ingesting metadata from.
 
 #### Description
 
-Provide a description for your Redshift service that enables other users to determine whether it might provide data of interest to them.
+Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../.gitbook/assets/image (57).png>)
+![](<../../../.gitbook/assets/image (65).png>)
 
 
 
 ### 5. Configure service connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../.gitbook/assets/image (9).png>)
+![](<../../../.gitbook/assets/image (62).png>)
 
 #### Host
 
-Enter fully qualified hostname for your Redshift deployment in the _Host_ field.
+Enter fully qualified hostname for your Snowflake deployment in the _Host_ field.
 
 #### Port
 
-Enter the port number on which your Redshift deployment listens for client connections in the _Port_ field.
+Enter the port number on which your Snowflake deployment listens for client connections in the _Port_ field.
 
 #### Username
 
-Enter username of your Redshift user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter username of your Snowflake user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 #### Password
 
-Enter the password for your Redshift user in the _Password_ field.&#x20;
+Enter the password for your Snowflake user in the _Password_ field.&#x20;
 
 #### Database (optional)
 
@@ -526,9 +649,9 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 ### 6. Configure metadata ingestion
 
-In this step we will configure the metadata ingestion settings for your Redshift deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step we will configure the metadata ingestion settings for your Snowflake deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../.gitbook/assets/image (18).png>)
+![](<../../../.gitbook/assets/image (27).png>)
 
 #### Ingestion name
 
@@ -608,7 +731,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../.gitbook/assets/image (67).png>)
+![](<../../../.gitbook/assets/image (58).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
@@ -616,7 +739,7 @@ If something doesn't look right, click the _Previous_ button to return to the ap
 
 ## Requirements
 
-Using the OpenMetadata Redshift connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata Snowflake connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 
 
@@ -659,26 +782,142 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 ### 1. Create a configuration file using template JSON
 
-Create a new file called `redshift.json`. Copy and paste the configuration template below into the `redshift.json` file you created.
+Create a new file called `snowflake.json`.&#x20;
+
+To create a configuration file for Snowflake, you’ll need to select one of the three options below and then customize the appropriate template to match your needs.
+
+* Authenticate with SSO using an External Browser Popup
+* Authenticate with SSO Specifying Provider, Username, and Password
+* Authenticate with Username and Password
+
+The choice of a template depends on how your Snowflake user will be authenticated.
+
+Please select the form of authentication you will use for Snowflake and select the template below that matches your use case. Then, copy and paste the configuration template into the `snowflake.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="redshift.json" %}
+####
+
+#### Authenticate with SSO using an External Browser Popup
+
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). This method will pop up a browser window to enable you to authenticate using your SSO method.
+
 ```json
 {
   "source": {
-    "type": "redshift",
+    "type": "snowflake",
     "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+      "host_port": "account.region.service.snowflakecomputing.com",
+      "username": "email",
+      "warehouse": "DEMO",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
+      "account": "account_name",
+      "service_name": "snowflake",
+      "data_profiler_enabled": "false",
+      "role": "Optional - Role",
+      "connect_args":{
+        "authenticator": "externalbrowser"
+      },
+      "table_filter_pattern": {
+        "excludes": [
+          "tpcds_.*temp"
+        ]
+      },
+      "schema_filter_pattern": {
+        "excludes": [
+          "tpcds_sf100tcl"
+        ]
+      }
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
+```
+
+####
+
+#### Authenticate with SSO Specifying Provider, Username, and Password
+
+Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). Using this method, you will specify a url for your authentication provider and a username and password that will authenticate against this provider.
+
+```json
+{
+  "source": {
+    "type": "snowflake",
+    "config": {
+      "host_port": "account.region.service.snowflakecomputing.com",
+      "username": "OKTA_USER",
+      "password": "OKTA_PASSWORD",
+      "warehouse": "DEMO",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
+      "account": "account_name",
+      "service_name": "snowflake",
+      "data_profiler_enabled": "false",
+      "role": "OPTIONAL - role",
+      "connect_args":{
+        "authenticator": "https://something.okta.com/"
+      },
+      "table_filter_pattern": {
+        "excludes": [
+          "tpcds_.*temp"
+        ]
+      },
+      "schema_filter_pattern": {
+        "excludes": [
+          "tpcds_sf100tcl"
+        ]
+      }
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
+```
+
+####
+
+#### Authenticate with Username and Password
+
+Use this method in production OpenMetadata deployments in which you plan to configure scheduled metadata ingestion. For this method your Snowflake instance must support authentication using username and password.
+
+```json
+{
+  "source": {
+    "type": "snowflake",
+    "config": {
+      "host_port": "account.region.service.snowflakecomputing.com",
       "username": "username",
       "password": "strong_password",
-      "service_name": "aws_redshift",
-      "query": "select top 50 * from {}.{}",
+      "warehouse": "DEMO",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
+      "account": "account_name",
+      "service_name": "snowflake",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
-        "excludes": ["[\\w]*event_vw.*"]
+        "excludes": [
+          "tpcds_.*temp"
+        ]
       },
       "schema_filter_pattern": {
         "excludes": ["information_schema.*"]
@@ -698,31 +937,30 @@ Note: The `source.config` field in the configuration JSON will include the major
   }
 }
 ```
-{% endcode %}
 
 
 
 ### 2. Configure service settings
 
-In this step we will configure the Redshift service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step we will configure the Snowflake service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
 ####
 
 #### host\_port
 
-Edit the value for `source.config.host_port` in `redshift.json` for your Redshift deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `snowflake.json` for your Snowflake deployment. Use the `host:port` format illustrated in the example below.
 
 ```json
-"host_port": "cluster.name.region.redshift.amazonaws.com:5439"
+"host_port": "account.region.service.snowflakecomputing.com"
 ```
 
-Please ensure that your Redshift deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your Snowflake deployment is reachable from the host you are using to run metadata ingestion.
 
 ####
 
 #### username
 
-Edit the value for `source.config.username` to identify your Redshift user.
+Edit the value for `source.config.username` to identify your Snowflake user.
 
 ```json
 "username": "username"
@@ -736,7 +974,7 @@ Note: The user specified should be authorized to read all databases you want to 
 
 #### password
 
-Edit the value for `source.config.password` with the password for your Redshift user.
+Edit the value for `source.config.password` with the password for your Snowflake user.
 
 ```json
 "password": "strong_password"
@@ -746,22 +984,32 @@ Edit the value for `source.config.password` with the password for your Redshift 
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Redshift services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Snowflake services that you might be ingesting metadata from.
 
 ```json
-"service_name": "aws_redshift"
+"service_name": "snowflake"
+```
+
+####
+
+#### warehouse
+
+Edit the value for `source.config.warehouse` with the name of the Snowflake warehouse from which you want to ingest metadata.
+
+```json
+"warehouse": "DEMO",
 ```
 
 ####
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the Redshift connector will ingest metadata from all databases that the specified user is authorized to read.
+If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```json
-"database": "warehouse"
+"database": "SNOWFLAKE_SAMPLE_DATA"
 ```
 
 
@@ -844,7 +1092,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](redshift-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](snowflake-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 
@@ -854,7 +1102,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -880,7 +1128,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -908,7 +1156,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### 6. Confirm `sink` settings
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `redshift.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `snowflake.json` in Step 1. This part of your configuration file should be as follows.
 
 ```json
 "sink": {
@@ -921,7 +1169,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 ### 7. Confirm `metadata_server` settings
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `redshift.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `snowflake.json` in Step 1. This part of your configuration file should be as follows.
 
 ```json
 "metadata_server": {
@@ -937,58 +1185,35 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ### 8. Install the Python module for this connector
 
-Run the following command to install the Python module for the Redshift connector.
+Run the following command to install the Python module for the Snowflake connector.
 
 ```bash
-pip3 install --upgrade 'openmetadata-ingestion[redshift]'
+pip3 install --upgrade 'openmetadata-ingestion[snowflake]'
 ```
 
 
 
 ### 9. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
 
-Your `redshift.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Your `snowflake.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
 To run an ingestion workflow, execute the following command from the `openmetadata` directory.
 
 ```bash
-metadata ingest -c ./redshift.json
+metadata ingest -c ./snowflake.json
 ```
 
 ## Next Steps
 
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Redshift, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Redshift service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Snowflake, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Snowflake service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../.gitbook/assets/next\_steps (1).png>)
+![](<../../../.gitbook/assets/next\_steps (1).png>)
 
 ## Troubleshooting
 
-### Error: pg\_config executable not found
-
-When attempting to install the `openmetadata-ingestion[redshift]` Python package, you might encounter the following error.
-
-```
-pg_config is required to build psycopg2 from source.  Please add the directory
-containing pg_config to the $PATH or specify the full executable path with the
-option:
-
-    python setup.py build_ext --pg-config /path/to/pg_config build ...
-    
-or with the pg_config option in 'setup.cfg'.
-    
-If you prefer to avoid building psycopg2 from source, please install the PyPI
-'psycopg2-binary' package instead.
-```
-
-The psycopg2 package is a dependency for the `openmetadata-ingestion[redshift]` Python package. To correct this problem, please install PostgreSQL on your host system.
-
-Then re-run the install command in Step 8.
-
-
-
 ### ERROR: Failed building wheel for cryptography
 
-When attempting to install the `openmetadata-ingestion[redshift]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[snowflake]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
@@ -1011,7 +1236,7 @@ If you encounter the following error when attempting to run the ingestion workfl
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/aws_redshift 
+Max retries exceeded with url: /api/v1/services/databaseServices/name/snowflake 
 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
@@ -1021,3 +1246,6 @@ To correct this problem, please follow the steps in the [Run OpenMetadata](https
 Then re-run the metadata ingestion workflow in Step 9.
 {% endtab %}
 {% endtabs %}
+
+
+

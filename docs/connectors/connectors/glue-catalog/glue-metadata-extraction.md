@@ -495,19 +495,19 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../.gitbook/assets/image (69).png>)
+![](<../../../.gitbook/assets/image (69).png>)
 
 ### 2. Initiate a new service creation
 
 From the Database Service UI, click the _Add New Service_ button to add your Glue service to OpenMetadata for metadata ingestion.
 
-![](<../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30).png>)
 
 ### 3. Select service type
 
 Select Glue as the service type.
 
-![](<../../.gitbook/assets/image (44).png>)
+![](<../../../.gitbook/assets/image (44).png>)
 
 
 
@@ -523,7 +523,7 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your Glue service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../.gitbook/assets/image (24).png>)
+![](<../../../.gitbook/assets/image (24).png>)
 
 
 
@@ -531,7 +531,7 @@ Provide a description for your Glue service that enables other users to determin
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Glue service as desired.
 
-![](<../../.gitbook/assets/image (7).png>)
+![](<../../../.gitbook/assets/image (7).png>)
 
 #### Host
 
@@ -639,7 +639,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../.gitbook/assets/image (23).png>)
+![](<../../../.gitbook/assets/image (23).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
@@ -1021,7 +1021,7 @@ metadata ingest -c ./glue.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Glue, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Glue service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../.gitbook/assets/next\_steps (1).png>)
+![](<../../../.gitbook/assets/next\_steps (1).png>)
 
 ## **Troubleshooting**
 

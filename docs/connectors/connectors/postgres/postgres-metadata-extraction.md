@@ -1,10 +1,10 @@
 ---
 description: >-
   This guide will help you configure metadata ingestion workflows using the
-  MSSQL connector.
+  Postgres connector.
 ---
 
-# MSSQL Metadata Extraction
+# Postgres Metadata Extraction
 
 There are three options for configuring metadata ingestion for this connector. They are as follows:
 
@@ -20,7 +20,7 @@ Please select the approach you would prefer to use for metadata ingestion from t
 
 ## **Requirements**
 
-Using the OpenMetadata MSSQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata Postgres connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 
 
@@ -45,6 +45,16 @@ python3 --version
 
 
 
+### PostgreSQL (version 14.1 or later)
+
+Please use the following command to check the version of PostgreSQL you have.
+
+```
+postgres --version
+```
+
+
+
 ## Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
@@ -63,34 +73,30 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 
 
-### 1. **Create a configuration file using template JSON**
+### 1**. Create a configuration file using template JSON**
 
-Create a new file called `mssql.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+Create a new file called `postgres.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
-Copy and paste the configuration template below into the `mssql.json` file you created.
+Copy and paste the configuration template below into the `postgres.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="mssql.json" %}
+{% code title="postgres.json" %}
 ```javascript
 {
   "source": {
-    "type": "mssql",
+    "type": "postgres",
     "config": {
-      "host_port": "hostname.domain.com:1433",
-      "service_name": "local_mssql",
-      "database": "mssql_db",
-      "query": "select top 50 * from {}.{}",
       "username": "username",
       "password": "strong_password",
-      "use_pymssql": false,
-      "use_pyodbc": false,
-      "uri_string": "uri_string"    
-      "schema_filter_pattern": {
-        "excludes": ["information_schema.*"]
-      }
+      "host_port": "localhost:5432",
+      "database": "postgres_db",
+      "service_name": "local_postgres",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000"
     }
   },
   "sink": {
@@ -105,38 +111,32 @@ Note: The `source.config` field in the configuration JSON will include the major
     }
   }
 }
-
- ...
 ```
 {% endcode %}
-
-{% hint style="info" %}
-If `use_pyodbc` is true, then you need to provide \*\*\*\* a `uri_string`
-{% endhint %}
 
 
 
 ### 2**. Configure service settings**
 
-In this step we will configure the MSSQL service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MSSQL service as desired.
+In this step we will configure the Postgres service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Postgres service as desired.
 
 #### ****
 
 #### **host\_port**
 
-Edit the value for `source.config.host_port` in `mssql.json` for your MSSQL deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `postgres.json` for your Postgres deployment. Use the `host:port` format illustrated in the example below.
 
 ```javascript
-"host_port": "hostname.domain.com:1433"
+"host_port": "localhost:5432"
 ```
 
-Please ensure that your MSSQL deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your Postgres deployment is reachable from the host you are using to run metadata ingestion.
 
 #### ****
 
 #### **username**
 
-Edit the value for `source.config.username` to identify your MSSQL user.
+Edit the value for `source.config.username` to identify your Postgres user.
 
 ```javascript
 "username": "username"
@@ -150,7 +150,7 @@ Edit the value for `source.config.username` to identify your MSSQL user.
 
 #### **password**
 
-Edit the value for `source.config.password` with the password for your MSSQL user.
+Edit the value for `source.config.password` with the password for your Postgres user.
 
 ```javascript
 "password": "strong_password"
@@ -160,10 +160,10 @@ Edit the value for `source.config.password` with the password for your MSSQL use
 
 #### **service\_name**
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other MSSQL services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Postgres services that you might be ingesting metadata from.
 
 ```javascript
-"service_name": "local_mssql"
+"service_name": "local_postgres"
 ```
 
 #### ****
@@ -175,7 +175,7 @@ If you want to limit metadata ingestion to a single database, include the `sourc
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```javascript
-"database": "mssql_db"
+"database": "postgres_db"
 ```
 
 
@@ -258,7 +258,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mssql-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](postgres-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 
@@ -268,7 +268,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -294,7 +294,7 @@ You can exclude the collection of sample data by adding the following key-value 
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -322,7 +322,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### **6. Confirm `sink` settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `mssql.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `postgres.json` in Step 1. This part of your configuration file should be as follows.
 
 ```javascript
 "sink": {
@@ -333,9 +333,9 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 
 
-### 7**. Confirm `metadata_server` settings**
+### **7. Confirm `metadata_server` settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `mssql.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `postgres.json` in Step 1. This part of your configuration file should be as follows.
 
 ```javascript
 "metadata_server": {
@@ -443,7 +443,7 @@ The OpenMetadata UI provides an integrated workflow for adding a new data servic
 
 ## **Requirements**
 
-Using the OpenMetadata MSSQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for setting up a MSSQL service and ingestion workflow using the OpenMetadata UI.
+Using the OpenMetadata Postgres connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for setting up a Postgres service and ingestion workflow using the OpenMetadata UI.
 
 
 
@@ -462,6 +462,16 @@ You must have a running deployment of OpenMetadata to use this guide. By default
 
 By default, OpenMetadata ships with Apache Airflow and is configured to use the distributed Airflow container. However, you may also use your own Airflow instance. To use your own Airflow instance, you will need to install the [OpenMetadata Airflow REST API plugin](https://pypi.org/project/openmetadata-airflow-managed-apis/).
 
+
+
+### PostgreSQL (version 14.1 or later)
+
+Please use the following command to check the version of PostgreSQL you have.
+
+```
+postgres --version
+```
+
 ## Procedure
 
 
@@ -470,19 +480,19 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../.gitbook/assets/image (69).png>)
+![](<../../../.gitbook/assets/image (69).png>)
 
 ### 2. Initiate a new service creation
 
-From the Database Service UI, click the _Add New Service_ button to add your MSSQL service to OpenMetadata for metadata ingestion.
+From the Database Service UI, click the _Add New Service_ button to add your Postgres service to OpenMetadata for metadata ingestion.
 
-![](<../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30).png>)
 
 ### 3. Select service type
 
-Select MSSQL as the service type.
+Select Postgres as the service type.
 
-![](<../../.gitbook/assets/image (64).png>)
+![](<../../../.gitbook/assets/image (8).png>)
 
 
 
@@ -492,37 +502,37 @@ Provide a name and description for your service as illustrated below.
 
 #### Name
 
-OpenMetadata uniquely identifies services by their _Name_. Provide a name that distinguishes your deployment from other services, including other MSSQL services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Name_. Provide a name that distinguishes your deployment from other services, including other Postgres services that you might be ingesting metadata from.
 
 #### Description
 
-Provide a description for your MSSQL service that enables other users to determine whether it might provide data of interest to them.
+Provide a description for your Postgres service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../.gitbook/assets/image (19).png>)
+![](<../../../.gitbook/assets/image (6).png>)
 
 
 
 ### 5. Configure service connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Postgres service as desired.
 
-![](<../../.gitbook/assets/image (14).png>)
+![](<../../../.gitbook/assets/image (38).png>)
 
 #### Host
 
-Enter fully qualified hostname for your MSSQL deployment in the _Host_ field.
+Enter fully qualified hostname for your Postgres deployment in the _Host_ field.
 
 #### Port
 
-Enter the port number on which your MSSQL deployment listens for client connections in the _Port_ field.
+Enter the port number on which your Postgres deployment listens for client connections in the _Port_ field.
 
 #### Username
 
-Enter username of your MSSQL user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter username of your Postgres user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 #### Password
 
-Enter the password for your MSSQL user in the _Password_ field.&#x20;
+Enter the password for your Postgres user in the _Password_ field.&#x20;
 
 #### Database (optional)
 
@@ -532,9 +542,9 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 ### 6. Configure metadata ingestion
 
-In this step we will configure the metadata ingestion settings for your MSSQL deployment. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
+In this step we will configure the metadata ingestion settings for your Postgres deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Postgres service as desired.
 
-![](../../.gitbook/assets/image.png)
+![](<../../../.gitbook/assets/image (36).png>)
 
 #### Ingestion name
 
@@ -614,7 +624,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../.gitbook/assets/image (33).png>)
+![](<../../../.gitbook/assets/image (63).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
@@ -622,7 +632,7 @@ If something doesn't look right, click the _Previous_ button to return to the ap
 
 ## **Requirements**
 
-Using the OpenMetadata MSSQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata Postgres connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 
 
@@ -647,6 +657,16 @@ python3 --version
 
 
 
+### PostgreSQL (version 14.1 or later)
+
+Please use the following command to check the version of PostgreSQL you have.
+
+```
+postgres --version
+```
+
+
+
 ## Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
@@ -663,32 +683,28 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 
 
 
-### 1. **Create a configuration file using template JSON**
+### 1**. Create a configuration file using template JSON**
 
-Create a new file called `mssql.json`. Copy and paste the configuration template below into the `mssql.json` file you created.
+Create a new file called `postgres.json`. Copy and paste the configuration template below into the `postgres.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="mssql.json" %}
+{% code title="postgres.json" %}
 ```javascript
 {
   "source": {
-    "type": "mssql",
+    "type": "postgres",
     "config": {
-      "host_port": "hostname.domain.com:1433",
-      "service_name": "local_mssql",
-      "database": "mssql_db",
-      "query": "select top 50 * from {}.{}",
       "username": "username",
       "password": "strong_password",
-      "use_pymssql": false,
-      "use_pyodbc": false,
-      "uri_string": "uri_string"    
-      "schema_filter_pattern": {
-        "excludes": ["information_schema.*"]
-      }
+      "host_port": "localhost:5432",
+      "database": "postgres_db",
+      "service_name": "local_postgres",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000"
     }
   },
   "sink": {
@@ -703,38 +719,32 @@ Note: The `source.config` field in the configuration JSON will include the major
     }
   }
 }
-
- ...
 ```
 {% endcode %}
-
-{% hint style="info" %}
-If `use_pyodbc` is true, then you need to provide \*\*\*\* a `uri_string`
-{% endhint %}
 
 
 
 ### 2**. Configure service settings**
 
-In this step we will configure the MSSQL service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MSSQL service as desired.
+In this step we will configure the Postgres service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Postgres service as desired.
 
 #### ****
 
 #### **host\_port**
 
-Edit the value for `source.config.host_port` in `mssql.json` for your MSSQL deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `postgres.json` for your Postgres deployment. Use the `host:port` format illustrated in the example below.
 
 ```javascript
-"host_port": "hostname.domain.com:1433"
+"host_port": "localhost:5432"
 ```
 
-Please ensure that your MSSQL deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your Postgres deployment is reachable from the host you are using to run metadata ingestion.
 
 #### ****
 
 #### **username**
 
-Edit the value for `source.config.username` to identify your MSSQL user.
+Edit the value for `source.config.username` to identify your Postgres user.
 
 ```javascript
 "username": "username"
@@ -748,7 +758,7 @@ Edit the value for `source.config.username` to identify your MSSQL user.
 
 #### **password**
 
-Edit the value for `source.config.password` with the password for your MSSQL user.
+Edit the value for `source.config.password` with the password for your Postgres user.
 
 ```javascript
 "password": "strong_password"
@@ -758,10 +768,10 @@ Edit the value for `source.config.password` with the password for your MSSQL use
 
 #### **service\_name**
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other MSSQL services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Postgres services that you might be ingesting metadata from.
 
 ```javascript
-"service_name": "local_mssql"
+"service_name": "local_postgres"
 ```
 
 #### ****
@@ -773,7 +783,7 @@ If you want to limit metadata ingestion to a single database, include the `sourc
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```javascript
-"database": "mssql_db"
+"database": "postgres_db"
 ```
 
 
@@ -856,7 +866,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mssql-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](postgres-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 
@@ -866,7 +876,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -892,7 +902,7 @@ You can exclude the collection of sample data by adding the following key-value 
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -920,7 +930,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### **6. Confirm `sink` settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `mssql.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `postgres.json` in Step 1. This part of your configuration file should be as follows.
 
 ```javascript
 "sink": {
@@ -931,9 +941,9 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 
 
-### 7**. Confirm `metadata_server` settings**
+### **7. Confirm `metadata_server` settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `mssql.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `postgres.json` in Step 1. This part of your configuration file should be as follows.
 
 ```javascript
 "metadata_server": {
@@ -949,35 +959,35 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ### 8. Install the Python module for this connector
 
-Run the following command to install the Python module for the MSSQL connector.
+Run the following command to install the Python module for the Postgres connector.
 
 ```bash
-pip3 install --upgrade 'openmetadata-ingestion[mssql]'
+pip3 install --upgrade 'openmetadata-ingestion[postgres]'
 ```
 
 
 
 ### 9**. Run ingestion workflow**
 
-Your `mssql.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Your `postgres.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
 To run an ingestion workflow, execute the following command from the `openmetadata` directory.
 
 ```
-metadata ingest -c ./mssql.json
+metadata ingest -c ./postgres.json
 ```
 
 ## **Next Steps**
 
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from MSSQL, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MSSQL service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Postgres, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Postgres service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../.gitbook/assets/next\_steps (1).png>)
+![](<../../../.gitbook/assets/next\_steps (1).png>)
 
 ## **Troubleshooting**
 
 ### **ERROR: Failed building wheel for cryptography**
 
-When attempting to install the `openmetadata-ingestion[mssql]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[postgres]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
@@ -1000,7 +1010,7 @@ If you encounter the following error when attempting to run the ingestion workfl
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/local_mssql 
+Max retries exceeded with url: /api/v1/services/databaseServices/name/local_postgres 
 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
@@ -1008,6 +1018,7 @@ Failed to establish a new connection: [Errno 61] Connection refused'))
 To correct this problem, please follow the steps in the [Run OpenMetadata](https://docs.open-metadata.org/v/main/try-openmetadata/run-openmetadata) guide to deploy OpenMetadata in Docker on your local machine.
 
 Then re-run the metadata ingestion workflow in Step 9.
+
+
 {% endtab %}
 {% endtabs %}
-
