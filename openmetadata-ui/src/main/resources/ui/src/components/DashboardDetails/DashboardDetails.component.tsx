@@ -540,6 +540,7 @@ const DashboardDetails = ({
                                   position="left"
                                   trigger="click">
                                   <TagsContainer
+                                    allowGlossary
                                     editable={editChartTags?.index === index}
                                     isLoading={
                                       isTagLoading &&

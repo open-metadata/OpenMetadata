@@ -432,6 +432,7 @@ const EntityTable = ({
                                 position="left"
                                 trigger="click">
                                 <TagsContainer
+                                  allowGlossary
                                   editable={editColumnTag?.index === row.id}
                                   isLoading={
                                     isTagLoading &&

@@ -375,6 +375,7 @@ const EntityPageInfo = ({
                   setIsEditable(true);
                 }}>
                 <TagsContainer
+                  allowGlossary
                   editable={isEditable}
                   isLoading={isTagLoading}
                   selectedTags={getSelectedTags()}
