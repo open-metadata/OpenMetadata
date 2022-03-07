@@ -107,23 +107,25 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {postLength > 0 ? (
                 <Fragment>
-                  <div className="tw-mb-6">
-                    <div className="tw-ml-9 tw-flex tw-mb-6">
-                      <FeedFooter
-                        isFooterVisible
-                        className="tw--mt-4"
-                        lastReplyTimeStamp={lastPost?.postTs}
-                        repliedUsers={repliedUsers}
-                        replies={replies}
-                        threadId={feed.id}
-                        onThreadSelect={(id: string) => {
-                          onThreadIdSelect('');
-                          onThreadSelect(id);
-                          onViewMore();
-                        }}
-                      />
+                  {postLength > 1 ? (
+                    <div className="tw-mb-6">
+                      <div className="tw-ml-9 tw-flex tw-mb-6">
+                        <FeedFooter
+                          isFooterVisible
+                          className="tw--mt-4"
+                          lastReplyTimeStamp={lastPost?.postTs}
+                          repliedUsers={repliedUsers}
+                          replies={replies}
+                          threadId={feed.id}
+                          onThreadSelect={(id: string) => {
+                            onThreadIdSelect('');
+                            onThreadSelect(id);
+                            onViewMore();
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
                   <ActivityFeedCard
                     className="tw-mb-6 tw-ml-9"
                     feed={lastPost}

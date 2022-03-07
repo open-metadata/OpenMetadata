@@ -105,19 +105,21 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                     />
                     {postLength > 0 ? (
                       <Fragment>
-                        <div className="tw-mb-6">
-                          <div className="tw-ml-9 tw-flex tw-mb-6">
-                            <FeedFooter
-                              isFooterVisible
-                              className="tw--mt-4"
-                              lastReplyTimeStamp={lastPost?.postTs}
-                              repliedUsers={repliedUsers}
-                              replies={replies}
-                              threadId={thread.id}
-                              onThreadSelect={() => onThreadSelect(thread.id)}
-                            />
+                        {postLength > 1 ? (
+                          <div className="tw-mb-6">
+                            <div className="tw-ml-9 tw-flex tw-mb-6">
+                              <FeedFooter
+                                isFooterVisible
+                                className="tw--mt-4"
+                                lastReplyTimeStamp={lastPost?.postTs}
+                                repliedUsers={repliedUsers}
+                                replies={replies}
+                                threadId={thread.id}
+                                onThreadSelect={() => onThreadSelect(thread.id)}
+                              />
+                            </div>
                           </div>
-                        </div>
+                        ) : null}
                         <ActivityFeedCard
                           isEntityFeed
                           className="tw-mb-6 tw-ml-9"

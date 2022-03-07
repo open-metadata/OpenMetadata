@@ -43,6 +43,7 @@ import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThr
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
@@ -472,11 +473,16 @@ const PipelineDetails = ({
                                               `tasks/${task.name}/description`
                                             )
                                           }>
-                                          <SVGIcons
-                                            alt="request-description"
-                                            icon={Icons.REQUEST}
-                                            width="20px"
-                                          />
+                                          <PopOver
+                                            position="top"
+                                            title="Request description"
+                                            trigger="mouseenter">
+                                            <SVGIcons
+                                              alt="request-description"
+                                              icon={Icons.REQUEST}
+                                              width="22px"
+                                            />
+                                          </PopOver>
                                         </button>
                                       ) : null}
                                       {getFieldThreadElement(

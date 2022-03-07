@@ -315,12 +315,18 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
               <p>{`${failingTests.length}/${tableTestLength} tests failing`}</p>
             </div>
           ) : (
-            <div className="tw-flex">
-              <div className="tw-mr-2">
-                <i className="fas fa-check-square tw-text-status-success" />
-              </div>
-              <p>{`${passingTests.length} tests`}</p>
-            </div>
+            <Fragment>
+              {passingTests.length ? (
+                <div className="tw-flex">
+                  <div className="tw-mr-2">
+                    <i className="fas fa-check-square tw-text-status-success" />
+                  </div>
+                  <p>{`${passingTests.length} tests`}</p>
+                </div>
+              ) : (
+                <p>{`${tableTestLength} tests`}</p>
+              )}
+            </Fragment>
           )}
         </Fragment>
       ) : null}
