@@ -285,7 +285,7 @@ Edit the value for `source.config.warehouse` with the name of the Snowflake ware
 
 ####
 
-#### database (optional)
+#### database
 
 If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
@@ -1002,7 +1002,7 @@ Edit the value for `source.config.warehouse` with the name of the Snowflake ware
 
 ####
 
-#### database (optional)
+#### database
 
 If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
