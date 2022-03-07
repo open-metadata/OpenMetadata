@@ -6,11 +6,11 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.tests.table.TableColumnCountToEqual",
   "properties": {
-    "value": {
-      "description": "Expected number of columns to equal to a  {value}",
+    "columnCount": {
+      "description": "Expected number of columns to equal to a {value}",
       "type": "integer"
     }
   },
-  "required": ["value"],
+  "required": ["columnCount"],
   "additionalProperties": false
 }

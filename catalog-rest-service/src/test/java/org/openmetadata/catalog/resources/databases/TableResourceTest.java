@@ -1093,7 +1093,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     Column c1 = table.getColumns().get(0);
     ColumnValueLengthsToBeBetween columnValueLengthsToBeBetween =
-        new ColumnValueLengthsToBeBetween().withMaxValue(100).withMinValue(10);
+        new ColumnValueLengthsToBeBetween().withMaxLength(100).withMinLength(10);
     ColumnTestCase columnTestCase =
         new ColumnTestCase()
             .withColumnTestType(ColumnTestCase.ColumnTestType.COLUMN_VALUE_LENGTHS_TO_BE_BETWEEN)
@@ -1746,7 +1746,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     if (expected.getTableTestType() == TableTestCase.TableTestType.TABLE_COLUMN_COUNT_TO_EQUAL) {
       TableColumnCountToEqual expectedTest = (TableColumnCountToEqual) expected.getConfig();
       TableColumnCountToEqual actualTest = JsonUtils.convertValue(actual.getConfig(), TableColumnCountToEqual.class);
-      assertEquals(expectedTest.getValue(), actualTest.getValue());
+      assertEquals(expectedTest.getColumnCount(), actualTest.getColumnCount());
     } else if (expected.getTableTestType() == TableTestCase.TableTestType.TABLE_ROW_COUNT_TO_BE_BETWEEN) {
       TableRowCountToBeBetween expectedTest = (TableRowCountToBeBetween) expected.getConfig();
       TableRowCountToBeBetween actualTest = JsonUtils.convertValue(actual.getConfig(), TableRowCountToBeBetween.class);
@@ -1807,8 +1807,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       ColumnValueLengthsToBeBetween expectedTest = (ColumnValueLengthsToBeBetween) expected.getConfig();
       ColumnValueLengthsToBeBetween actualTest =
           JsonUtils.convertValue(actual.getConfig(), ColumnValueLengthsToBeBetween.class);
-      assertEquals(expectedTest.getMaxValue(), actualTest.getMaxValue());
-      assertEquals(expectedTest.getMinValue(), actualTest.getMinValue());
+      assertEquals(expectedTest.getMaxLength(), actualTest.getMaxLength());
+      assertEquals(expectedTest.getMinLength(), actualTest.getMinLength());
     } else if (expected.getColumnTestType() == ColumnTestCase.ColumnTestType.COLUMN_VALUES_MISSING_COUNT_TO_BE_EQUAL) {
       ColumnValuesMissingCountToBeEqual expectedTest = (ColumnValuesMissingCountToBeEqual) expected.getConfig();
       ColumnValuesMissingCountToBeEqual actualTest =

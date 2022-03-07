@@ -6,21 +6,21 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.tests.column.ColumnValueLengthsToBeBetween",
   "properties": {
-    "minValue": {
-      "description": "The {minValue} for the column length. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",
+    "minLength": {
+      "description": "The {minLength} for the column length. If minLength is not included, maxLength is treated as upperBound and there will be no minimum number of rows",
       "type": "integer"
     },
-    "maxValue": {
-      "description": "The {maxValue} for the column length. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows",
+    "maxLength": {
+      "description": "The {maxLength} for the column length. if maxLength is not included, minLength is treated as lowerBound and there will eb no maximum number of rows",
       "type": "integer"
     }
   },
   "anyOf": [
     {
-      "required": ["minValue"]
+      "required": ["minLength"]
     },
     {
-      "required": ["maxValue"]
+      "required": ["maxLength"]
     }
   ],
   "additionalProperties": false
