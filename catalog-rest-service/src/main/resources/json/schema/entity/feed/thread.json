@@ -11,6 +11,10 @@
       "type": "object",
       "description": "Post within a feed.",
       "properties": {
+        "id": {
+          "description": "Unique identifier that identifies the post.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
         "message": {
           "description": "Message in markdown format. See markdown support for more details.",
           "type": "string"
@@ -24,7 +28,7 @@
           "type": "string"
         }
       },
-      "required": ["message", "from"],
+      "required": ["id", "message", "from"],
       "additionalProperties": false
     }
   },
@@ -86,6 +90,6 @@
       }
     }
   },
-  "required": ["id", "about", "posts"],
+  "required": ["id", "about", "message"],
   "additionalProperties": false
 }
