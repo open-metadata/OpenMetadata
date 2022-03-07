@@ -1,14 +1,14 @@
 ---
 description: >-
-  This guide will help you install and configure the SingleStore connector and
+  This guide will help you install and configure the Delta Lake connector and
   run metadata ingestion workflows manually.
 ---
 
-# SingleStore
+# Delta Lake
 
 ## Requirements
 
-Using the OpenMetadata SingleStore connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata Delta Lake connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 ### OpenMetadata (version 0.8.0 or later)
 
@@ -19,7 +19,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](../../try-openmetadata/run-openmetadata.md) to get up and running.
+If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](../../../try-openmetadata/run-openmetadata.md) to get up and running.
 
 ### Python (version 3.8.0 or later)
 
@@ -33,18 +33,18 @@ python3 --version
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
-1. [Prepare a Python virtual environment](singlestore.md#1.-prepare-a-python-virtual-environment)
-2. [Install the Python module for this connector](singlestore.md#install-from-pypi-or-source)
-3. [Create a configuration file using template JSON](singlestore.md#3.-create-a-configuration-file-using-template-json)
-4. [Configure service settings](singlestore.md#4.-configure-service-settings)
-5. [Enable/disable the data profiler](singlestore.md#5.-enable-disable-the-data-profiler)
-6. [Install the data profiler Python module (optional)](singlestore.md#6.-install-the-data-profiler-python-module-optional)
-7. [Configure data filters (optional)](singlestore.md#7.-configure-data-filters-optional)
-8. [Configure sample data (optional)](singlestore.md#8.-configure-sample-data-optional)
-9. [Configure DBT (optional)](singlestore.md#9.-configure-dbt-optional)
-10. [Confirm sink settings](singlestore.md#10.-confirm-sink-settings)
-11. [Confirm metadata\_server settings](singlestore.md#11.-confirm-metadata\_server-settings)
-12. [Run ingestion workflow](singlestore.md#run-manually)
+1. [Prepare a Python virtual environment](delta-lake.md#1.-prepare-a-python-virtual-environment)
+2. [Install the Python module for this connector](delta-lake.md#install-from-pypi-or-source)
+3. [Create a configuration file using template JSON](delta-lake.md#3.-create-a-configuration-file-using-template-json)
+4. [Configure service settings](delta-lake.md#4.-configure-service-settings)
+5. [Enable/disable the data profiler](delta-lake.md#5.-enable-disable-the-data-profiler)
+6. [Install the data profiler Python module (optional)](delta-lake.md#6.-install-the-data-profiler-python-module-optional)
+7. [Configure data filters (optional)](delta-lake.md#7.-configure-data-filters-optional)
+8. [Configure sample data (optional)](delta-lake.md#8.-configure-sample-data-optional)
+9. [Configure DBT (optional)](delta-lake.md#9.-configure-dbt-optional)
+10. [Confirm sink settings](delta-lake.md#10.-confirm-sink-settings)
+11. [Confirm metadata\_server settings](delta-lake.md#11.-confirm-metadata\_server-settings)
+12. [Run ingestion workflow](delta-lake.md#run-manually)
 
 ### 1. Prepare a Python virtual environment
 
@@ -88,42 +88,39 @@ pip3 install --upgrade pip setuptools
 
 ### 2. Install the Python module for this connector <a href="#install-from-pypi-or-source" id="install-from-pypi-or-source"></a>
 
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the SingleStore connector.
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the Delta Lake connector.
 
 ```bash
-pip3 install 'openmetadata-ingestion[singlestore]'
+pip3 install 'openmetadata-ingestion[deltalake]'
 ```
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `singlestore.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
+Create a new file called `deltalake.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
-Copy and paste the configuration template below into the `singlestore.json` file you created.
+Copy and paste the configuration template below into the `deltalake.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="singlestore.json" %}
+{% code title="deltalake.json" %}
 ```json
 {
   "source": {
-    "type": "singlestore",
+    "type": "deltalake",
     "config": {
-      "host_port": "hostname.domain.com:3306",
-      "scheme": "mysql+pymysql"
-      "service_type": "DatabaseServiceType.SingleStore.value",
-      "connector_type": "mysql",
+      "platform_name": "deltalake",
       "username": "username",
       "password": "strong_password",
-      "database": "singlestore_db",
-      "service_name": "local_singlestore",
+      "database": "delta",
+      "service_name": "local_deltalake",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
         "excludes": ["[\\w]*event_vw.*"]
       },
       "schema_filter_pattern": {
-        "excludes": ["singlestore.*", "information_schema.*", "performance_schema.*", "sys.*"]
+        "excludes": ["deltalake.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },
@@ -144,45 +141,19 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 ### 4. Configure service settings
 
-In this step we will configure the SingleStore service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your SingleStore service as desired.
+In this step we will configure the Delta Lake service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Delta Lake service as desired.
 
-#### host\_port
+#### platform\_name
 
-Edit the value for `source.config.host_port` in `singlestore.json` for your SingleStore deployment. Use the `host:port` format illustrated in the example below.
-
-```json
-"host_port": "hostname.domain.com:3306"
-```
-
-Please ensure that your SingleStore deployment is reachable from the host you are using to run metadata ingestion.
-
-#### scheme
-
-Edit the value for `source.config.scheme` in `singlestore.json` for your SingleStore deployment. Use the `scheme` format illustrated in the example below.
+Edit the value for `source.config.platform_name` in `deltalake.json` for your Delta Lake deployment.&#x20;
 
 ```javascript
-"scheme": "mysql+pymysql"
-```
-
-#### service\_type
-
-Edit the value for `source.config.service_type` as shown in the example below.
-
-```javascript
-"service_type": "DatabaseServiceType.SingleStore.value"
-```
-
-#### connector\_type
-
-Edit the value for `source.config.connector_type` as shown in the example below.
-
-```javascript
-"connector_type": "mysql"
+"platform_name": "deltalake",
 ```
 
 #### username
 
-Edit the value for `source.config.username` to identify your SingleStore user.
+Edit the value for `source.config.username` to identify your Delta Lake user.
 
 ```json
 "username": "username"
@@ -194,7 +165,7 @@ Note: The user specified should be authorized to read all databases you want to 
 
 #### password
 
-Edit the value for `source.config.password` with the password for your SingleStore user.
+Edit the value for `source.config.password` with the password for your Delta Lake user.
 
 ```json
 "password": "strong_password"
@@ -202,10 +173,10 @@ Edit the value for `source.config.password` with the password for your SingleSto
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other SingleStore services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Delta Lake services that you might be ingesting metadata from.
 
 ```json
-"service_name": "local_singlestore"
+"service_name": "local_deltalake"
 ```
 
 #### database (optional)
@@ -215,7 +186,7 @@ If you want to limit metadata ingestion to a single database, include the `sourc
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```json
-"database": "singlestore_db"
+"database": "delta"
 ```
 
 ### 5. Enable/disable the data profiler
@@ -324,7 +295,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](singlestore.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](delta-lake.md#table\_filter\_pattern-optional). Please check that section for details.
 
 ### 8. Configure sample data (optional)
 
@@ -332,7 +303,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../docs/.gitbook/assets/generate\_sample\_data.png)
+![](../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -356,7 +327,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../docs/.gitbook/assets/configure\_dbt.png)
+![](../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -378,7 +349,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### 10. Confirm sink settings
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `singlestore.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `deltalake.json` in Step 4. This part of your configuration file should be as follows.
 
 ```json
 "sink": {
@@ -389,7 +360,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 ### 11. Confirm metadata\_server settings
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `singlestore.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `deltalake.json` in Step 4. This part of your configuration file should be as follows.
 
 ```json
 "metadata_server": {
@@ -403,25 +374,25 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ### 12. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
 
-Your `singlestore.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Your `deltalake.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
 To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
 
 ```bash
-metadata ingest -c ./singlestore.json
+metadata ingest -c ./deltalake.json
 ```
 
 ## Next Steps
 
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from SingleStore, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the SingleStore service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Delta Lake, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Delta Lake service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../docs/.gitbook/assets/next\_steps (1).png>)
+![](<../../.gitbook/assets/next\_steps (1).png>)
 
 ## Troubleshooting
 
 ### ERROR: Failed building wheel for cryptography
 
-When attempting to install the `openmetadata-ingestion[singlestore]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[deltalake]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
@@ -434,7 +405,7 @@ This error usually occurs due to an older version of pip. Try upgrading pip as f
 pip3 install --upgrade pip setuptools
 ```
 
-Then re-run the install command in [Step 2](singlestore.md#install-from-pypi-or-source).
+Then re-run the install command in [Step 2](delta-lake.md#install-from-pypi-or-source).
 
 ### requests.exceptions.ConnectionError
 
@@ -442,11 +413,11 @@ If you encounter the following error when attempting to run the ingestion workfl
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/local_singlestore 
+Max retries exceeded with url: /api/v1/services/databaseServices/name/local_deltalake 
 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, please follow the steps in the [Run OpenMetadata](../../try-openmetadata/run-openmetadata.md) guide to deploy OpenMetadata in Docker on your local machine.
+To correct this problem, please follow the steps in the [Run OpenMetadata](../../../try-openmetadata/run-openmetadata.md) guide to deploy OpenMetadata in Docker on your local machine.
 
-Then re-run the metadata ingestion workflow in [Step 12](singlestore.md#run-manually).
+Then re-run the metadata ingestion workflow in [Step 12](delta-lake.md#run-manually).

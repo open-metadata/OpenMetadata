@@ -4,6 +4,6 @@ description: In this section, we provide guides and reference to use the MySQL c
 
 # MySQL
 
-{% content-ref url="../../../openmetadata/connectors/mysql.md" %}
-[mysql.md](../../../openmetadata/connectors/mysql.md)
+{% content-ref url="mysql.md" %}
+[mysql.md](mysql.md)
 {% endcontent-ref %}

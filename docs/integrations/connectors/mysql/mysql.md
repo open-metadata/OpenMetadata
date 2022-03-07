@@ -260,7 +260,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -286,7 +286,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -462,19 +462,19 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../.gitbook/assets/image (16).png>)
+![](<../../../.gitbook/assets/image (16).png>)
 
 ### 2. Initiate a new service creation
 
 From the Database Service UI, click the _Add New Service_ button to add your MySQL service to OpenMetadata for metadata ingestion.
 
-![](<../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30).png>)
 
 ### 3. Select service type
 
 Select MySQL as the service type.
 
-![](<../../.gitbook/assets/image (39).png>)
+![](<../../../.gitbook/assets/image (39).png>)
 
 
 
@@ -490,13 +490,13 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your MySQL service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../.gitbook/assets/image (21).png>)
+![](<../../../.gitbook/assets/image (21).png>)
 
 ### 5. Configure service connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![](<../../.gitbook/assets/image (48).png>)
+![](<../../../.gitbook/assets/image (48).png>)
 
 #### Host
 
@@ -524,7 +524,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your MySQL deployment. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![](<../../.gitbook/assets/image (3).png>)
+![](<../../../.gitbook/assets/image (3).png>)
 
 #### Ingestion name
 
@@ -604,7 +604,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../.gitbook/assets/image (49).png>)
+![](<../../../.gitbook/assets/image (49).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
@@ -848,7 +848,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -874,7 +874,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -953,7 +953,7 @@ metadata ingest -c ./mysql.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from MySQL, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MySQL service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../.gitbook/assets/next\_steps (1).png>)
+![](<../../../.gitbook/assets/next\_steps (1).png>)
 
 ## Troubleshooting
 

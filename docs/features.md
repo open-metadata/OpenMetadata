@@ -152,7 +152,7 @@ Integrate your database, dashboard, messaging, and pipeline services with OpenMe
 
 ![](.gitbook/assets/service-ingestion.gif)
 
-See the [Connectors](../connectors/connectors/) documentation for information on available connectors and how to integrate your services with OpenMetadata.
+See the [Connectors](integrations/connectors/) documentation for information on available connectors and how to integrate your services with OpenMetadata.
 
 ### Metadata Versioning & Events API
 

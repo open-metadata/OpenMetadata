@@ -1,4 +1,4 @@
-# Deploy Connectors
+# Connectors
 
 OpenMetadata supports connectors to some popular services. We will continue as a community to provide more integrations to get all your metadata into a central repository.
 
@@ -6,26 +6,26 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 * [Athena](athena.md)
 * [Azure SQL](azure-sql.md)
-* [BigQuery](../../docs/connectors/connectors/bigquery/)
+* [BigQuery](bigquery/)
 * [BigQuery Usage](bigquery-usage.md)
 * [Databricks](databricks.md)
 * [Delta Lake](delta-lake.md)
 * [DynamoDB](dynamodb.md)
 * [ElasticSearch](elastic-search.md)
-* [Glue Catalog](../../docs/connectors/connectors/glue-catalog/)
+* [Glue Catalog](glue-catalog/)
 * [Hive](hive.md)
 * [IBM Db2](ibm-db2.md)
 * [MariaDB](mariadb.md)
-* [MSSQL](../../docs/connectors/connectors/mssql/)
-* [MySQL](../../docs/openmetadata/connectors/mysql.md)
+* [MSSQL](mssql/)
+* [MySQL](mysql/mysql.md)
 * [Oracle](oracle.md)
-* [Postgres](../../docs/connectors/connectors/postgres/)
+* [Postgres](postgres/)
 * [Presto](presto.md)
-* [Redshift](../../docs/connectors/connectors/redshift/)
+* [Redshift](redshift/)
 * [Redshift Usage](redshift-usage.md)
 * [Salesforce](salesforce.md)
 * [SingleStore](singlestore.md)
-* [Snowflake](../../docs/connectors/connectors/snowflake/)
+* [Snowflake](snowflake/)
 * [Snowflake Usage](snowflake-usage.md)
 * [Trino](trino.md)
 * [Vertica](vertica.md)

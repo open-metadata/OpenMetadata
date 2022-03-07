@@ -86,4 +86,4 @@ Starting from `0.0.6` open-metadata helm release, we support automatic repair an
 
 ### What's Next
 
-Head on to [connectors](../../connectors/connectors/) section to ingest data from various sources.
+Head on to [connectors](../../docs/integrations/connectors/) section to ingest data from various sources.

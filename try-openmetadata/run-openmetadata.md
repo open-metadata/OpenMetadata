@@ -190,7 +190,7 @@ You should see a page similar to the following as the landing page for the OpenM
 ### Next Steps
 
 1. Visit the [Features](../docs/features.md) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](../connectors/connectors/) documentation to see what services you can integrate with OpenMetadata.
+2. Visit the [Connectors](../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
 3. Visit the [API](../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ### Troubleshooting

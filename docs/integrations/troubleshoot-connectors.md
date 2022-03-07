@@ -20,7 +20,7 @@ metadata --version
 
 Use the information menu in your OpenMetadata deployment user interface to check the version of OpenMetadata. The figure below illustrates how to do this.
 
-![](../.gitbook/assets/check-version.png)
+![](../../.gitbook/assets/check-version.png)
 
 ### To Upgrade Your Connector
 

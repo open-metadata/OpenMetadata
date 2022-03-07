@@ -1,14 +1,14 @@
 ---
 description: >-
-  This guide will help you install and configure the MariaDB connector and run
+  This guide will help you install and configure the Hive connector and run
   metadata ingestion workflows manually.
 ---
 
-# MariaDB
+# Hive
 
 ## **Requirements**
 
-Using the OpenMetadata MariaDB connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata Hive connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 ### **OpenMetadata (version 0.8.0 or later)**
 
@@ -29,22 +29,26 @@ Please use the following command to check the version of Python you have.
 python3 --version
 ```
 
+### Library: libsas**l2-dev**
+
+Hive connector uses `pyhive` to connect and fetch metadata. Pyhive has python SASL dependency and which requires libsasl2-dev to be installed. In some cases, you may need to set LD\_LIBRARY\_PATH to point to where libsasl2-dev is installed. Please check on how to install libsasl2 for your Linux Distro.
+
 ## **Procedure**
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
-1. [Prepare a Python virtual environment](mariadb.md#1.-prepare-a-python-virtual-environment)
-2. [Install the Python module for this connector](mariadb.md#2.-install-the-python-module-for-this-connector)
-3. [Create a configuration file using template JSON](mariadb.md#3.-create-a-configuration-file-using-template-json)
-4. [Configure service settings](mariadb.md#4.-configure-service-settings)
-5. [Enable/disable the data profiler](mariadb.md#5.-enable-disable-the-data-profiler)
-6. [Install the data profiler Python module (optional)](mariadb.md#6.-install-the-data-profiler-python-module-optional)
-7. [Configure data filters (optional)](mariadb.md#7.-configure-data-filters-optional)
-8. [Configure sample data (optional)](mariadb.md#8.-configure-sample-data-optional)
-9. [Configure DBT (optional)](mariadb.md#9.-configure-dbt-optional)
-10. [Confirm sink settings](mariadb.md#10.-confirm-sink-settings)
-11. [Confirm metadata\_server settings](mariadb.md#11.-confirm-metadata\_server-settings)
-12. [Run ingestion workflow](mariadb.md#12.-run-ingestion-workflow)
+1. [Prepare a Python virtual environment](hive.md#1.-prepare-a-python-virtual-environment)
+2. [Install the Python module for this connector](hive.md#2.-install-the-python-module-for-this-connector)
+3. [Create a configuration file using template JSON](hive.md#3.-create-a-configuration-file-using-template-json)
+4. [Configure service settings](hive.md#4.-configure-service-settings)
+5. [Enable/disable the data profiler](hive.md#5.-enable-disable-the-data-profiler)
+6. [Install the data profiler Python module (optional)](hive.md#6.-install-the-data-profiler-python-module-optional)
+7. [Configure data filters (optional)](hive.md#7.-configure-data-filters-optional)
+8. [Configure sample data (optional)](hive.md#8.-configure-sample-data-optional)
+9. [Configure DBT (optional)](hive.md#9.-configure-dbt-optional)
+10. [Confirm sink settings](hive.md#10.-confirm-sink-settings)
+11. [Confirm metadata\_server settings](hive.md#11.-confirm-metadata\_server-settings)
+12. [Run ingestion workflow](hive.md#12.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
@@ -88,39 +92,38 @@ pip3 install --upgrade pip setuptools
 
 ### **2. Install the Python module for this connector**
 
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the MariaDB connector.
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the Hive connector.
 
 ```javascript
-pip3 install 'openmetadata-ingestion[mariadb]'
+#install hive-sasl library
+sudo apt-get install libsasl2-dev
+pip3 install 'openmetadata-ingestion[hive]'
 ```
 
 ### **3. Create a configuration file using template JSON**
 
-Create a new file called `mariadb.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
+Create a new file called `hive.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
-Copy and paste the configuration template below into the `mariadb.json` file you created.
+Copy and paste the configuration template below into the `hive.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="mariadb.json" %}
+{% code title="hive.json" %}
 ```javascript
 {
   "source": {
-    "type": "mariadb",
+    "type": "hive",
     "config": {
-      "username": "username",
-      "password": "strong_password",
-      "database": "mariadb_db",
-      "service_name": "mariadb",
-      "data_profiler_enabled": "false",
-      "table_filter_pattern": {
-        "excludes": ["[\\w]*event_vw.*"]
-      },
-      "schema_filter_pattern": {
-        "excludes": ["mariadb.*", "information_schema.*", "performance_schema.*", "sys.*"]
-      }
+      "database": "hive_db",
+      "service_name": "local_hive",
+      "host_port": "hostname.domain.com:10000",
+      "scheme": "hive",
+      "query": "select top 50 * from {}.{}",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000"
     }
   },
   "sink": {
@@ -140,21 +143,21 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 ### **4. Configure service settings**
 
-In this step we will configure the MariaDB service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MariaDB service as desired.
+In this step we will configure the Hive service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Hive service as desired.
 
 #### **host\_port**
 
-Edit the value for `source.config.host_port` in `mariadb.json` for your MariaDB deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `hive.json` for your Hive deployment. Use the `host:port` format illustrated in the example below.
 
 ```javascript
-"host_port": "hostname.domain.com:5439"
+"host_port": "hostname.domain.com:10000"
 ```
 
-Please ensure that your MariaDB deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your Hive deployment is reachable from the host you are using to run metadata ingestion.
 
-#### **username**
+#### **username (optional)**
 
-Edit the value for `source.config.username` to identify your MariaDB user.
+Edit the value for `source.config.username` to identify your Hive user.
 
 ```javascript
 "username": "username"
@@ -164,9 +167,9 @@ Edit the value for `source.config.username` to identify your MariaDB user.
 **Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 {% endhint %}
 
-#### **password**
+#### **password (optional)**
 
-Edit the value for `source.config.password` with the password for your MariaDB user.
+Edit the value for `source.config.password` with the password for your Hive user.
 
 ```javascript
 "password": "strong_password"
@@ -174,10 +177,10 @@ Edit the value for `source.config.password` with the password for your MariaDB u
 
 #### **service\_name**
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other MariaDB services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Hive services that you might be ingesting metadata from.
 
 ```javascript
-"service_name": "mariadb"
+"service_name": "local_hive"
 ```
 
 #### **database (optional)**
@@ -187,7 +190,7 @@ If you want to limit metadata ingestion to a single database, include the `sourc
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```javascript
-"database": "mariadb_db"
+"database": "hive_db"
 ```
 
 ### **5. Enable/disable the data profiler**
@@ -296,7 +299,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mariadb.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](hive.md#table\_filter\_pattern-optional). Please check that section for details.
 
 ### **8. Configure sample data (optional)**
 
@@ -304,7 +307,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../docs/.gitbook/assets/generate\_sample\_data.png)
+![](../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -328,7 +331,7 @@ You can exclude the collection of sample data by adding the following key-value 
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
 
-![](../../docs/.gitbook/assets/configure\_dbt.png)
+![](../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -350,7 +353,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### **10. Confirm sink settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `mariadb.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `hive.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
 "sink": {
@@ -361,7 +364,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 ### **11. Confirm metadata\_server settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `mariadb.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `hive.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
 "metadata_server": {
@@ -375,36 +378,38 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ### **12. Run ingestion workflow**
 
-Your `mariadb.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Your `hive.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
 To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
 
 ```
-metadata ingest -c ./mariadb.json
+metadata ingest -c ./hive.json
 ```
 
 ## **Next Steps**
 
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from MariaDB, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MariaDB service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Hive, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Hive service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../docs/.gitbook/assets/next\_steps (1).png>)
+![](<../../.gitbook/assets/next\_steps (1).png>)
 
 ## **Troubleshooting**
 
 ### **ERROR: Failed building wheel for cryptography**
 
-When attempting to install the `openmetadata-ingestion[mariadb]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[hive]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
 ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
 ```
 
+This error usually occurs due to an older version of pip. Try upgrading pip as follows.
+
 ```
 pip3 install --upgrade pip setuptools
 ```
 
-Then re-run the install command in [Step 2](mariadb.md#2.-install-the-python-module-for-this-connector).
+Then re-run the install command in [Step 2](hive.md#2.-install-the-python-module-for-this-connector).
 
 ### **requests.exceptions.ConnectionError**
 
@@ -412,11 +417,11 @@ If you encounter the following error when attempting to run the ingestion workfl
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/mariadb 
+Max retries exceeded with url: /api/v1/services/databaseServices/name/local_hive 
 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
 To correct this problem, please follow the steps in the [Run OpenMetadata ](https://docs.open-metadata.org/install/run-openmetadata)guide to deploy OpenMetadata in Docker on your local machine.
 
-Then re-run the metadata ingestion workflow in [Step 12](mariadb.md#12.-run-ingestion-workflow).
+Then re-run the metadata ingestion workflow in [Step 12](hive.md#12.-run-ingestion-workflow).

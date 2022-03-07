@@ -1,14 +1,14 @@
 ---
 description: >-
-  This guide will help you install and configure the BigQuery Usage connector
-  and run metadata ingestion workflows manually.
+  This guide will help you install and configure the Presto connector and run
+  metadata ingestion workflows manually.
 ---
 
-# BigQuery Usage
+# Presto
 
 ## **Requirements**
 
-Using the OpenMetadata BigQuery Usage connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata Presto connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 ### **OpenMetadata (version 0.8.0 or later)**
 
@@ -33,18 +33,18 @@ python3 --version
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
-1. [Prepare a Python virtual environment](bigquery-usage.md#1.-prepare-a-python-virtual-environment)
-2. [Install the Python module for this connector](bigquery-usage.md#2.-install-the-python-module-for-this-connector)
-3. [Create a configuration file using template JSON](bigquery-usage.md#3.-create-a-configuration-file-using-template-json)
-4. [Configure service settings](bigquery-usage.md#4.-configure-service-settings)
-5. [Enable/disable the data profiler](bigquery-usage.md#5.-enable-disable-the-data-profiler)
-6. [Install the data profiler Python module (optional)](bigquery-usage.md#6.-install-the-data-profiler-python-module-optional)
-7. [Configure data filters (optional)](bigquery-usage.md#7.-configure-data-filters-optional)
-8. [Configure sample data (optional)](bigquery-usage.md#8.-configure-sample-data-optional)
-9. [Configure DBT (optional)](bigquery-usage.md#9.-configure-dbt-optional)
-10. [Confirm sink settings](bigquery-usage.md#10.-confirm-sink-settings)
-11. [Confirm metadata\_server settings](bigquery-usage.md#11.-confirm-metadata\_server-settings)
-12. [Run ingestion workflow](bigquery-usage.md#12.-run-ingestion-workflow)
+1. [Prepare a Python virtual environment](presto.md#1.-prepare-a-python-virtual-environment)
+2. [Install the Python module for this connector](presto.md#2.-install-the-python-module-for-this-connector)
+3. [Create a configuration file using template JSON](presto.md#3.-create-a-configuration-file-using-template-json)
+4. [Configure service settings](presto.md#4.-configure-service-settings)
+5. [Enable/disable the data profiler](presto.md#5.-enable-disable-the-data-profiler)
+6. [Install the data profiler Python module (optional)](presto.md#6.-install-the-data-profiler-python-module-optional)
+7. [Configure data filters (optional)](presto.md#7.-configure-data-filters-optional)
+8. [Configure sample data (optional)](presto.md#8.-configure-sample-data-optional)
+9. [Configure DBT (optional)](presto.md#9.-configure-dbt-optional)
+10. [Confirm sink settings](presto.md#10.-confirm-sink-settings)
+11. [Confirm metadata\_server settings](presto.md#11.-confirm-metadata\_server-settings)
+12. [Run ingestion workflow](presto.md#12.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
@@ -88,77 +88,36 @@ pip3 install --upgrade pip setuptools
 
 ### **2. Install the Python module for this connector**
 
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the BigQuery Usage connector.
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the Presto connector.
 
 ```javascript
-pip3 install 'openmetadata-ingestion[bigquery-usage]'
+pip3 install 'openmetadata-ingestion[presto]'
 ```
 
 ### **3. Create a configuration file using template JSON**
 
-Create a new file called `bigquery_usage.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
+Create a new file called `presto.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
-Copy and paste the configuration template below into the `bigquery_usage.json` file you created.
+Copy and paste the configuration template below into the `presto.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-When adding the details for the credentials path, you can either choose to pass the `credentials file`, or add the `credentials_path`, or use a secure way to pass the credentials path using the environment variables, i.e., `Application Default Credentials` (ADC).
-
-#### 3.1 Using Credentials File or Credentials Path
-
-{% code title="bigquery-creds.json (boilerplate)" %}
-```javascript
-{
-  "type": "service_account",
-  "project_id": "project_id",
-  "private_key_id": "private_key_id",
-  "private_key": "",
-  "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
-  "client_id": "",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": ""
-}
-```
-{% endcode %}
-
-You can optionally add the `query-parser` processor, `table-usage` stage and `metadata-usage` `bulk_sink` along with `metadata-server` config.
-
-{% code title="bigquery_usage.json" %}
+{% code title="presto.json" %}
 ```javascript
 {
   "source": {
-    "type": "bigquery-usage",
+    "type": "presto",
     "config": {
-      "project_id": "project_id",
-      "host_port": "https://bigquery.googleapis.com",
-      "username": "gcpuser@project_id.iam.gserviceaccount.com",
-      "service_name": "gcp_bigquery",
-      "duration": 2,
-      "options": {
-        "credentials_path": "examples/creds/bigquery-cred.json"
-      }
+      "service_name": "local_presto",
+      "host_port": "192.168.1.32:8080",
+      "catalog": "tpcds"
     }
   },
-  "processor": {
-    "type": "query-parser",
+  "sink": {
+    "type": "metadata-rest",
     "config": {
-      "filter": ""
-    }
-  },
-  "stage": {
-    "type": "table-usage",
-    "config": {
-      "filename": "/tmp/bigquery_usage"
-    }
-  },
-  "bulk_sink": {
-    "type": "metadata-usage",
-    "config": {
-      "filename": "/tmp/bigquery_usage"
     }
   },
   "metadata_server": {
@@ -172,33 +131,23 @@ You can optionally add the `query-parser` processor, `table-usage` stage and `me
 ```
 {% endcode %}
 
-#### 3.2 Using Application Default Credentials (ADC)
-
-{% code title="env variables" %}
-```
-export GOOGLE_APPLICATION_CREDENTIALS=<path-to-your-credentials-file>
-```
-{% endcode %}
-
-Users can export the path to the credentials file. Using this option, you can export the env in terminal and run BigQuery Usage config without providing `credentials_path`.
-
 ### **4. Configure service settings**
 
-In this step we will configure the BigQuery Usage service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your BigQuery service as desired.
+In this step we will configure the Presto service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Presto service as desired.
 
 #### **host\_port**
 
-Edit the value for `source.config.host_port` in `bigquery_usage.json` for your BigQuery Usage deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `presto.json` for your Presto deployment. Use the `host:port` format illustrated in the example below.
 
 ```javascript
-"host_port": "https://bigquery.googleapis.com"
+"host_port": "hostname.domain.com:8080"
 ```
 
-Please ensure that your BigQuery Usage deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your Presto deployment is reachable from the host you are using to run metadata ingestion.
 
-#### **username**
+#### **username (optional)**
 
-Edit the value for `source.config.username` to identify your BigQuery Usage user.
+Edit the value for `source.config.username` to identify your Presto user.
 
 ```javascript
 "username": "username"
@@ -208,9 +157,9 @@ Edit the value for `source.config.username` to identify your BigQuery Usage user
 **Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 {% endhint %}
 
-#### **password**
+#### **password (optional)**
 
-Edit the value for `source.config.password` with the password for your BigQuery Usage user.
+Edit the value for `source.config.password` with the password for your Presto user.
 
 ```javascript
 "password": "strong_password"
@@ -218,18 +167,10 @@ Edit the value for `source.config.password` with the password for your BigQuery 
 
 #### **service\_name**
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other BigQuery Usage services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Presto services that you might be ingesting metadata from.
 
 ```javascript
-"service_name": "gcp_bigquery"
-```
-
-#### duration
-
-Use duration to specify the window of time in which the profiler should capture usage data. Values should be integers and represent the number of days for which to capture usage information. For example, if you specify 2 as the value for duration, the data profiler will capture usage information for the 48 hours prior to when the ingestion workflow is run.
-
-```javascript
-"duration": 2
+"service_name": "local_presto"
 ```
 
 #### **database (optional)**
@@ -239,7 +180,7 @@ If you want to limit metadata ingestion to a single database, include the `sourc
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```javascript
-"database": "bigquery_db"
+"database": "presto_db"
 ```
 
 ### **5. Enable/disable the data profiler**
@@ -348,7 +289,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](bigquery-usage.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](presto.md#table\_filter\_pattern-optional). Please check that section for details.
 
 ### **8. Configure sample data (optional)**
 
@@ -356,7 +297,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../docs/.gitbook/assets/generate\_sample\_data.png)
+![](../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -380,7 +321,7 @@ You can exclude the collection of sample data by adding the following key-value 
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
 
-![](../../docs/.gitbook/assets/configure\_dbt.png)
+![](../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -402,20 +343,18 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### **10. Confirm sink settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `bigquery_usage.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `presto.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
-"bulk_sink": {
-    "type": "metadata-usage",
-    "config": {
-      "filename": "/tmp/bigquery_usage"
-    }
-  },
+"sink": {
+    "type": "metadata-rest",
+    "config": {}
+},
 ```
 
 ### **11. Confirm metadata\_server settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `bigquery_usage.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `presto.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
 "metadata_server": {
@@ -429,36 +368,38 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ### **12. Run ingestion workflow**
 
-Your `bigquery_usage.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Your `presto.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
 To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
 
 ```
-metadata ingest -c ./bigquery_usage.json
+metadata ingest -c ./presto.json
 ```
 
 ## **Next Steps**
 
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from BigQuery Usage, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the BigQuery Usage service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Presto, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Presto service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../docs/.gitbook/assets/next\_steps (1).png>)
+![](<../../.gitbook/assets/next\_steps (1).png>)
 
 ## **Troubleshooting**
 
 ### **ERROR: Failed building wheel for cryptography**
 
-When attempting to install the `openmetadata-ingestion[bigquery-usage]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[presto]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
 ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
 ```
 
+This error usually occurs due to an older version of pip. Try upgrading pip as follows.
+
 ```
 pip3 install --upgrade pip setuptools
 ```
 
-Then re-run the install command in [Step 2](bigquery-usage.md#2.-install-the-python-module-for-this-connector).
+Then re-run the install command in [Step 2](presto.md#2.-install-the-python-module-for-this-connector).
 
 ### **requests.exceptions.ConnectionError**
 
@@ -466,11 +407,11 @@ If you encounter the following error when attempting to run the ingestion workfl
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/gcp_bigquery 
+Max retries exceeded with url: /api/v1/services/databaseServices/name/local_presto 
 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
 To correct this problem, please follow the steps in the [Run OpenMetadata ](https://docs.open-metadata.org/install/run-openmetadata)guide to deploy OpenMetadata in Docker on your local machine.
 
-Then re-run the metadata ingestion workflow in [Step 12](bigquery-usage.md#12.-run-ingestion-workflow).
+Then re-run the metadata ingestion workflow in [Step 12](presto.md#12.-run-ingestion-workflow).

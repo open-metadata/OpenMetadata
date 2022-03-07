@@ -5,5 +5,5 @@ OpenMetadata Ingestion is a simple framework to build connectors and ingest meta
 ## Guides
 
 * [Ingest Sample Data](ingest-sample-data.md)
-* [Explore Connectors & Install](../connectors/connectors/)
-* [Configure Airflow](../connectors/connectors/airflow/airflow.md)
+* [Explore Connectors & Install](../docs/integrations/connectors/)
+* [Configure Airflow](../docs/integrations/connectors/airflow/airflow.md)
