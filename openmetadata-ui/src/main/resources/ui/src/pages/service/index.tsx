@@ -464,6 +464,12 @@ const ServicePage: FunctionComponent = () => {
       databaseConnection: updatedData.databaseConnection,
       name: updatedData.name,
       serviceType: updatedData.serviceType,
+      brokers: updatedData.brokers,
+      schemaRegistry: updatedData.schemaRegistry,
+      dashboardUrl: updatedData.dashboardUrl,
+      username: updatedData.username,
+      password: updatedData.password,
+      pipelineUrl: updatedData.pipelineUrl,
     };
 
     return new Promise<void>((resolve, reject) => {
@@ -545,7 +551,7 @@ const ServicePage: FunctionComponent = () => {
 
   const fetchPipeLines = (paging?: string) => {
     setIsloading(true);
-    getPipelines(serviceFQN, paging, ['owner', 'usageSummary', 'tags'])
+    getPipelines(serviceFQN, paging, ['owner', 'tags'])
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
