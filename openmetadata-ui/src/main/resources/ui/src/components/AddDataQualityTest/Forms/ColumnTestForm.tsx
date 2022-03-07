@@ -159,8 +159,8 @@ const ColumnTestForm = ({
       case ColumnTestType.columnValueLengthsToBeBetween:
       case ColumnTestType.columnValuesToBeBetween:
         errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
-        if (!isEmpty(minValue) && !isEmpty(maxValue)) {
-          errMsg.minMaxValue = (minValue as number) > (maxValue as number);
+        if (!isUndefined(minValue) && !isUndefined(maxValue)) {
+          errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
         }
 
         break;
