@@ -41,14 +41,15 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 2. [Install the Python module for this connector](hive.md#2.-install-the-python-module-for-this-connector)
 3. [Create a configuration file using template JSON](hive.md#3.-create-a-configuration-file-using-template-json)
 4. [Configure service settings](hive.md#4.-configure-service-settings)
-5. [Enable/disable the data profiler](hive.md#5.-enable-disable-the-data-profiler)
-6. [Install the data profiler Python module (optional)](hive.md#6.-install-the-data-profiler-python-module-optional)
-7. [Configure data filters (optional)](hive.md#7.-configure-data-filters-optional)
-8. [Configure sample data (optional)](hive.md#8.-configure-sample-data-optional)
-9. [Configure DBT (optional)](hive.md#9.-configure-dbt-optional)
-10. [Confirm sink settings](hive.md#10.-confirm-sink-settings)
-11. [Confirm metadata\_server settings](hive.md#11.-confirm-metadata\_server-settings)
-12. [Run ingestion workflow](hive.md#12.-run-ingestion-workflow)
+5. [Configure Kerberos authentication (optional)](hive.md#undefined)
+6. [Enable/disable the data profiler](hive.md#5.-enable-disable-the-data-profiler)
+7. [Install the data profiler Python module (optional)](hive.md#6.-install-the-data-profiler-python-module-optional)
+8. [Configure data filters (optional)](hive.md#7.-configure-data-filters-optional)
+9. [Configure sample data (optional)](hive.md#8.-configure-sample-data-optional)
+10. [Configure DBT (optional)](hive.md#9.-configure-dbt-optional)
+11. [Confirm sink settings](hive.md#10.-confirm-sink-settings)
+12. [Confirm metadata\_server settings](hive.md#11.-confirm-metadata\_server-settings)
+13. [Run ingestion workflow](hive.md#12.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
 
@@ -119,6 +120,10 @@ Note: The `source.config` field in the configuration JSON will include the major
       "database": "hive_db",
       "service_name": "local_hive",
       "host_port": "hostname.domain.com:10000",
+      "connect_args": {
+        "auth": "KERBEROS",
+        "kerberos_service_name": "hive"
+      },
       "scheme": "hive",
       "query": "select top 50 * from {}.{}",
       "data_profiler_enabled": "true",
@@ -193,7 +198,28 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "hive_db"
 ```
 
-### **5. Enable/disable the data profiler**
+### 5. Configure Kerberos authentication (optional)
+
+If you need to use Kerberos authentication, include the `source.config.connect_args` field as follows. This field is included in the configuration template JSON provided above.
+
+```json
+"connect_args": {
+  "auth": "KERBEROS",
+  "kerberos_service_name": "hive"
+} 
+```
+
+These settings will instruct the connector to use Kerberos to authenticate for this Hive service.&#x20;
+
+{% hint style="info" %}
+Note: Using Kerberos authentication requires that a Kerberos ticket has been issued using the `kinit` command.&#x20;
+{% endhint %}
+
+{% hint style="danger" %}
+Warning: If you do not intend to use Kerberos authentication, please remove the `source.config.connect_args` field from your configuration JSON.
+{% endhint %}
+
+### **6. Enable/disable the data profiler**
 
 The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
@@ -217,7 +243,7 @@ If you want to enable the data profiler, update your configuration file as follo
 **Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
 {% endhint %}
 
-### **6. Install the data profiler Python module (optional)**
+### **7. Install the data profiler Python module (optional)**
 
 If you’ve enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
 
@@ -227,7 +253,7 @@ pip3 install 'openmetadata-ingestion[data-profiler]'
 
 The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
 
-### **7. Configure data filters (optional)**
+### **8. Configure data filters (optional)**
 
 #### **include\_views (optional)**
 
@@ -301,7 +327,7 @@ Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_fil
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](hive.md#table\_filter\_pattern-optional). Please check that section for details.
 
-### **8. Configure sample data (optional)**
+### **9. Configure sample data (optional)**
 
 #### **generate\_sample\_data (optional)**
 
@@ -327,7 +353,7 @@ You can exclude the collection of sample data by adding the following key-value 
 **Note:** `generate_sample_data` is set to true by default.
 {% endhint %}
 
-### **9. Configure DBT (optional)**
+### **10. Configure DBT (optional)**
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
 
@@ -351,9 +377,9 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-### **10. Confirm sink settings**
+### **11. Confirm sink settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `hive.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `hive.json` above. This part of your configuration file should be as follows.
 
 ```javascript
 "sink": {
@@ -362,9 +388,9 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-### **11. Confirm metadata\_server settings**
+### **12. Confirm metadata\_server settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `hive.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `hive.json` above. This part of your configuration file should be as follows.
 
 ```javascript
 "metadata_server": {
@@ -376,7 +402,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-### **12. Run ingestion workflow**
+### **13. Run ingestion workflow**
 
 Your `hive.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
@@ -413,7 +439,7 @@ Then re-run the install command in [Step 2](hive.md#2.-install-the-python-module
 
 ### **requests.exceptions.ConnectionError**
 
-If you encounter the following error when attempting to run the ingestion workflow in Step 12, this is probably because there is no OpenMetadata server running at http://localhost:8585.
+If you encounter the following error when attempting to run the ingestion workflow in Step 13, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
@@ -424,4 +450,4 @@ Failed to establish a new connection: [Errno 61] Connection refused'))
 
 To correct this problem, please follow the steps in the [Run OpenMetadata ](https://docs.open-metadata.org/install/run-openmetadata)guide to deploy OpenMetadata in Docker on your local machine.
 
-Then re-run the metadata ingestion workflow in [Step 12](hive.md#12.-run-ingestion-workflow).
+Then re-run the metadata ingestion workflow in [Step 13](hive.md#12.-run-ingestion-workflow).
