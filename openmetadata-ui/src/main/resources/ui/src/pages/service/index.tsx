@@ -460,8 +460,14 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const handleConfigUpdate = (updatedData: ServicesData) => {
+    const configData = {
+      databaseConnection: updatedData.databaseConnection,
+      name: updatedData.name,
+      serviceType: updatedData.serviceType,
+    };
+
     return new Promise<void>((resolve, reject) => {
-      updateService(serviceName, serviceDetails?.id, updatedData)
+      updateService(serviceName, serviceDetails?.id, configData)
         .then((res: AxiosResponse) => {
           setServiceDetails(res.data);
           resolve();
