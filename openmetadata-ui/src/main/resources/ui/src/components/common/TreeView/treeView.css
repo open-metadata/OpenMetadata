@@ -1,0 +1,10 @@
+.rc-tree-node-selected {
+  background-color: transparent !important;
+  color: rgb(113, 71, 232);
+  box-shadow: none;
+  opacity: 1;
+}
+
+.rc-tree-switcher {
+  background-image: none !important;
+}

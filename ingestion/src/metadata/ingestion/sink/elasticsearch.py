@@ -83,7 +83,7 @@ class ElasticSearchConfig(ConfigModel):
     pipeline_index_name: str = "pipeline_search_index"
     user_index_name: str = "user_search_index"
     team_index_name: str = "team_search_index"
-    glossary_term_index_name: str = "glossary_term_search_index"
+    glossary_term_index_name: str = "glossary_search_index"
     scheme: str = "http"
     use_ssl: bool = False
     verify_certs: bool = False
@@ -570,14 +570,14 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [glossary_term.name], "weight": 10},
         ]
         timestamp = glossary_term.updatedAt.__root__
-
+        description = glossary_term.description if glossary_term.description else ""
         glossary_term_doc = GlossaryTermESDocument(
             glossary_term_id=str(glossary_term.id.__root__),
             deleted=glossary_term.deleted,
             name=glossary_term.name.__root__,
             display_name=glossary_term.displayName,
             fqdn=glossary_term.fullyQualifiedName,
-            description=glossary_term.description,
+            description=description,
             glossary_id=str(glossary_term.glossary.id.__root__),
             glossary_name=glossary_term.glossary.name,
             status=glossary_term.status.name,

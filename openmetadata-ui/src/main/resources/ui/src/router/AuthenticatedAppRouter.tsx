@@ -15,8 +15,10 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
+import AddGlossaryTermPage from '../components/AddGlossaryTermPage/AddGlossaryTermPage.component';
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
+import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
@@ -24,6 +26,7 @@ import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.c
 import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
+import GlossaryPageV1 from '../pages/GlossaryPage/GlossaryPageV1.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import RolesPage from '../pages/RolesPage/RolesPage.component';
@@ -98,8 +101,29 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
       <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
+      {/* <Route exact component={GlossaryPage} path={ROUTES.GLOSSARY} /> */}
+      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY} />
+      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
+      <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_TERMS} />
+      {/* <Route
+        exact
+        component={GlossaryTermPage}
+        path={ROUTES.GLOSSARY_DETAILS}
+      /> */}
+      {/* <Route exact component={GlossaryTermPage} path={ROUTES.GLOSSARY_TERMS} /> */}
       {isAuthDisabled || isAdminUser ? (
         <>
+          <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
+          <Route
+            exact
+            component={AddGlossaryTermPage}
+            path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
+          />
+          <Route
+            exact
+            component={AddGlossaryTermPage}
+            path={ROUTES.ADD_GLOSSARY_TERMS}
+          />
           <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
           <Route exact component={RolesPage} path={ROUTES.ROLES} />
           <Route exact component={UserListPage} path={ROUTES.USER_LIST} />

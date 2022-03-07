@@ -48,6 +48,8 @@ const PLAEHOLDER_ROUTE_VERSION = ':version';
 const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
+const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
+const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -156,6 +158,12 @@ export const ROUTES = {
   WEBHOOKS: '/webhooks',
   ADD_WEBHOOK: '/add-webhook',
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
+  GLOSSARY: '/glossary',
+  ADD_GLOSSARY: '/add-glossary',
+  GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
+  ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
+  GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
+  ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -276,6 +284,36 @@ export const getEditWebhookPath = (webhookName: string) => {
   return path;
 };
 
+export const getGlossaryTermsPath = (
+  glossaryName: string,
+  glossaryTerm = ''
+) => {
+  let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
+
+  if (glossaryTerm) {
+    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
+  }
+
+  return path;
+};
+
+export const getAddGlossaryTermsPath = (
+  glossaryName: string,
+  glossaryTerm = ''
+) => {
+  let path = glossaryTerm
+    ? ROUTES.ADD_GLOSSARY_TERMS_CHILD
+    : ROUTES.ADD_GLOSSARY_TERMS;
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
+
+  if (glossaryTerm) {
+    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
+  }
+
+  return path;
+};
+
 export const LIST_TYPES = ['numbered-list', 'bulleted-list'];
 
 export const TIMEOUT = {
@@ -297,6 +335,7 @@ export const navLinkSettings = [
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Services', to: '/services', disabled: false },
   { name: 'Webhooks', to: '/webhooks', disabled: false },
+  { name: 'Glossaries', to: '/glossary', disabled: false },
   // { name: 'Ingestions', to: '/ingestion', disabled: false },
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },

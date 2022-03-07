@@ -24,4 +24,5 @@ export enum SearchIndex {
   PIPELINE = 'pipeline_search_index',
   USER = 'user_search_index',
   TEAM = 'team_search_index',
+  GLOSSARY = 'glossary_search_index',
 }
