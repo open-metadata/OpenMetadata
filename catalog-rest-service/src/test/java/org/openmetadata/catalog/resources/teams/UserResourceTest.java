@@ -426,7 +426,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Ensure username can't be changed using patch
     User user =
         createEntity(
-            createRequest(test, 6).withName("test").withDisplayName("displayName").withEmail("test@email.com"),
+            createRequest(test, 6).withDisplayName("displayName").withEmail("test@email.com"),
             authHeaders("test@email.com"));
     String userJson = JsonUtils.pojoToJson(user);
     String newDisplayName = "newDisplayName";

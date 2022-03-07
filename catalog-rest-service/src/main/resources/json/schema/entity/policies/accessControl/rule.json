@@ -18,7 +18,8 @@
         "UpdateTags",
         "UpdateLineage",
         "DecryptTokens",
-        "UpdateTeam"
+        "UpdateTeam",
+        "ViewMetadata"
       ],
       "javaEnums": [
         { "name": "SuggestDescription" },
@@ -28,7 +29,8 @@
         { "name": "UpdateTags" },
         { "name": "UpdateLineage" },
         { "name": "DecryptTokens" },
-        { "name": "UpdateTeam" }
+        { "name": "UpdateTeam" },
+        { "name": "ViewMetadata" }
       ]
     }
   },
@@ -36,6 +38,11 @@
     "name": {
       "description": "Name for this Rule.",
       "type": "string"
+    },
+    "entityFqnRegexAttr": {
+      "description": "Entity fqn regex that the rule should match on.",
+      "type": "string",
+      "default": null
     },
     "entityTypeAttr": {
       "description": "Entity type that the rule should match on.",
@@ -52,6 +59,11 @@
       "$ref": "../../teams/role.json#/definitions/roleName",
       "default": null
     },
+    "userTeamAttr": {
+      "description": "Team of the user that the rule should match on.",
+      "$ref": "../../teams/team.json#/definitions/teamName",
+      "default": null
+    },
     "operation": {
       "description": "Operation on the entity.",
       "$ref": "#/definitions/operation",
@@ -65,7 +77,7 @@
     "priority": {
       "description": "Priority of this rule among all rules across all policies.",
       "type": "integer",
-      "default": 250000
+      "default": 1000
     },
     "enabled": {
       "description": "Is the rule enabled.",

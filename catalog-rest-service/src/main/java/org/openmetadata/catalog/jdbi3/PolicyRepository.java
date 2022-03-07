@@ -117,7 +117,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void prepare(Policy policy) throws IOException {
-    isValid(policy);
+    validate(policy);
     policy.setFullyQualifiedName(getFQN(policy));
     policy.setLocation(getLocationReference(policy));
     // Check if owner is valid and set the relationship
@@ -173,7 +173,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
    *   ]
    * </code>
    */
-  public void isValid(Policy policy) throws IOException {
+  public void validate(Policy policy) throws IOException {
     if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
       return;
     }
@@ -199,7 +199,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
 
       // If all user (subject) and entity (object) attributes are null, the rule is invalid.
-      if (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null && rule.getUserRoleAttr() == null) {
+      if (rule.getEntityFqnRegexAttr() == null
+          && rule.getEntityTagAttr() == null
+          && rule.getEntityTypeAttr() == null
+          && rule.getUserRoleAttr() == null
+          && rule.getUserTeamAttr() == null) {
         throw new IllegalArgumentException(
             String.format(
                 "Found invalid rule %s within policy %s. Please ensure that at least one among the user (subject) and entity (object) attributes is specified",

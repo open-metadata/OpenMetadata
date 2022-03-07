@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.security.policyevaluator;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Condition;
 import org.jeasy.rules.api.Facts;
@@ -40,6 +41,14 @@ class RuleCondition implements Condition {
       }
     }
 
+    String entityFqn = facts.get(CommonFields.ENTITY_FQN);
+    if (rule.getEntityFqnRegexAttr() != null) {
+      Pattern pattern = Pattern.compile(rule.getEntityFqnRegexAttr());
+      if (!pattern.matcher(entityFqn).find()) {
+        return false;
+      }
+    }
+
     List<String> entityTags = facts.get(CommonFields.ENTITY_TAGS);
     if (rule.getEntityTagAttr() != null && !entityTags.contains(rule.getEntityTagAttr())) {
       return false;
@@ -51,6 +60,11 @@ class RuleCondition implements Condition {
     }
 
     List<String> userRoles = facts.get(CommonFields.USER_ROLES);
-    return rule.getUserRoleAttr() == null || userRoles.contains(rule.getUserRoleAttr());
+    if (rule.getUserRoleAttr() != null && !userRoles.contains(rule.getUserRoleAttr())) {
+      return false;
+    }
+
+    List<String> userTeams = facts.get(CommonFields.USER_TEAMS);
+    return rule.getUserTeamAttr() == null || userTeams.contains(rule.getUserTeamAttr());
   }
 }
