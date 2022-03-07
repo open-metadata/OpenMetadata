@@ -245,7 +245,7 @@ If you want to enable the data profiler, update your configuration file as follo
 
 ### **7. Install the data profiler Python module (optional)**
 
-If you’ve enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
+If you enabled the data profiler above, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
 
 ```javascript
 pip3 install 'openmetadata-ingestion[data-profiler]'
