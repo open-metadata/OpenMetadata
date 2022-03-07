@@ -32,6 +32,7 @@
     "dagre": "^0.8.5",
     "diff": "^5.0.0",
     "draft-js": "^0.11.7",
+    "draftjs-md-converter": "^1.5.2",
     "fast-json-patch": "^3.0.0-1",
     "html-react-parser": "^1.2.6",
     "https-browserify": "^1.0.0",
