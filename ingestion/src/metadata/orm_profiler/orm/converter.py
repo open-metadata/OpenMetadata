@@ -13,8 +13,11 @@
 Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
+from functools import singledispatch
+from typing import Type, Union
+
 import sqlalchemy
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
@@ -81,9 +84,7 @@ def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
     )
 
 
-def ometa_to_orm(
-    table: Table, database: Database
-) -> type:  # Actually returns DeclarativeMeta
+def ometa_to_orm(table: Table, database: Union[Database, str]) -> DeclarativeMeta:
     """
     Given an OpenMetadata instance, prepare
     the SQLAlchemy DeclarativeMeta class
@@ -100,12 +101,54 @@ def ometa_to_orm(
     }
 
     # Type takes positional arguments in the form of (name, bases, dict)
-    return type(
+    orm = type(
         table.fullyQualifiedName.replace(".", "_"),  # Output class name
         (Base,),  # SQLAlchemy declarative base
         {
             "__tablename__": str(table.name.__root__),
-            "__table_args__": {"schema": str(database.name.__root__)},
+            "__table_args__": {
+                "schema": get_db_name(database),
+                "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
+            },
             **cols,
         },
     )
+
+    if not isinstance(orm, DeclarativeMeta):
+        raise ValueError("OMeta to ORM did not create a DeclarativeMeta")
+
+    return orm
+
+
+@singledispatch
+def get_db_name(arg) -> str:
+    """
+    Return the database name to pass the table schema info
+    to the ORM object.
+
+    :param arg: Database or str
+    :return: db name
+    """
+    raise NotImplementedError(f"Cannot extract db name from {arg}")
+
+
+@get_db_name.register
+def _(arg: str) -> str:
+    """
+    Return string as is
+
+    :param arg: string
+    :return: db name
+    """
+    return arg
+
+
+@get_db_name.register
+def _(arg: Database) -> str:
+    """
+    Get the db name from the database entity
+
+    :param arg: database
+    :return: db name
+    """
+    return str(arg.name.__root__)

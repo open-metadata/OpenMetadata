@@ -28,6 +28,7 @@ from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.utils import logger
+from metadata.orm_profiler.validations.utils import run_col_metric
 
 logger = logger()
 
@@ -61,22 +62,13 @@ def column_values_to_match_regex(
         )
 
     try:
-        col = next(
-            iter([col for col in inspect(table).c if col.name == col_profile.name]),
-            None,
-        )
 
-        if col is None:
-            raise ValueError(
-                f"Cannot find the configured column {col_profile.name} for ColumnValuesToMatchRegex"
-            )
-
-        res = (
-            Profiler(like_count, session=session, table=table, use_cols=[col])
-            .execute()
-            .column_results
+        like_count_res = run_col_metric(
+            metric=like_count,
+            session=session,
+            table=table,
+            column=col_profile.name,
         )
-        like_count_res = res.get(col.name)[Metrics.LIKE_COUNT.name]
 
     except Exception as err:  # pylint: disable=broad-except
         session.rollback()

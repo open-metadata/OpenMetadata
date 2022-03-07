@@ -19,4 +19,5 @@ export type TitleBreadcrumbProps = {
     activeTitle?: boolean;
   }>;
   className?: string;
+  noLink?: boolean;
 };

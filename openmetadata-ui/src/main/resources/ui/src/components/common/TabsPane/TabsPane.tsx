@@ -36,8 +36,15 @@ type Props = {
   setActiveTab?: (value: number) => void;
   tabs: Array<Tab>;
   className?: string;
+  rightPosButton?: JSX.Element;
 };
-const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
+const TabsPane = ({
+  activeTab,
+  setActiveTab,
+  tabs,
+  className = '',
+  rightPosButton,
+}: Props) => {
   const getTabClasses = (tab: number, activeTab: number) => {
     return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
   };
@@ -45,38 +52,41 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
   return (
     <div className={classNames('tw-bg-transparent tw--mx-6', className)}>
       <nav
-        className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-7"
+        className="tw-flex tw-items-center tw-justify-between tw-gh-tabs-container tw-px-7"
         id="tabs">
-        {tabs.map((tab) =>
-          !tab.isHidden ? (
-            tab.isProtected ? (
-              <NonAdminAction
-                isOwner={tab.protectedState}
-                key={tab.position}
-                title={TITLE_FOR_NON_OWNER_ACTION}>
+        <div className="tw-flex tw-flex-grow">
+          {tabs.map((tab) =>
+            !tab.isHidden ? (
+              tab.isProtected ? (
+                <NonAdminAction
+                  isOwner={tab.protectedState}
+                  key={tab.position}
+                  title={TITLE_FOR_NON_OWNER_ACTION}>
+                  <button
+                    className={getTabClasses(tab.position, activeTab)}
+                    data-testid="tab"
+                    id={camelCase(tab.name)}
+                    onClick={() => setActiveTab?.(tab.position)}>
+                    {tab.name}
+                  </button>
+                </NonAdminAction>
+              ) : (
                 <button
                   className={getTabClasses(tab.position, activeTab)}
                   data-testid="tab"
                   id={camelCase(tab.name)}
+                  key={tab.position}
                   onClick={() => setActiveTab?.(tab.position)}>
                   {tab.name}
+                  {!isNil(tab.count)
+                    ? getCountBadge(tab.count, '', tab.position === activeTab)
+                    : null}
                 </button>
-              </NonAdminAction>
-            ) : (
-              <button
-                className={getTabClasses(tab.position, activeTab)}
-                data-testid="tab"
-                id={camelCase(tab.name)}
-                key={tab.position}
-                onClick={() => setActiveTab?.(tab.position)}>
-                {tab.name}
-                {!isNil(tab.count)
-                  ? getCountBadge(tab.count, '', tab.position === activeTab)
-                  : null}
-              </button>
-            )
-          ) : null
-        )}
+              )
+            ) : null
+          )}
+        </div>
+        {rightPosButton}
       </nav>
     </div>
   );

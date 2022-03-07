@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import { EntityTags, TableDetail } from 'Models';
-import React from 'react';
+import React, { Fragment } from 'react';
 import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import {
@@ -27,8 +27,10 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
-import { Column, DataType, Table } from '../generated/entity/data/table';
+import { Column, DataType } from '../generated/entity/data/table';
+import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
 import { TagLabel } from '../generated/type/tagLabel';
+import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 
@@ -253,7 +255,7 @@ export const makeRow = (column: Column) => {
 };
 
 export const makeData = (
-  columns: Table['columns'] = []
+  columns: ModifiedTableColumn[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
   const data = columns.map((column) => ({
     ...makeRow(column),
@@ -289,4 +291,39 @@ export const getDataTypeString = (dataType: string): string => {
     default:
       return dataType;
   }
+};
+
+export const getTableTestsValue = (tableTestCase: TableTest[]) => {
+  const tableTestLength = tableTestCase.length;
+
+  const failingTests = tableTestCase.filter((test) =>
+    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Failed)
+  );
+  const passingTests = tableTestCase.filter((test) =>
+    test.results?.some((t) => t.testCaseStatus === TestCaseStatus.Success)
+  );
+
+  return (
+    <Fragment>
+      {tableTestLength ? (
+        <Fragment>
+          {failingTests.length ? (
+            <div className="tw-flex">
+              <p className="tw-mr-2">
+                <i className="fas fa-times tw-text-status-failed" />
+              </p>
+              <p>{`${failingTests.length}/${tableTestLength} tests failing`}</p>
+            </div>
+          ) : (
+            <div className="tw-flex">
+              <div className="tw-mr-2">
+                <i className="fas fa-check-square tw-text-status-success" />
+              </div>
+              <p>{`${passingTests.length} tests`}</p>
+            </div>
+          )}
+        </Fragment>
+      ) : null}
+    </Fragment>
+  );
 };

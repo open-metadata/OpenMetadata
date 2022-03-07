@@ -54,6 +54,34 @@ export const formatDataResponse = (hits) => {
   return formattedData;
 };
 
+export const formatUsersResponse = (hits) => {
+  const users = hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.display_name,
+      email: d._source.email,
+      type: d._source.entity_type,
+      id: d._source.user_id,
+    };
+  });
+
+  return users;
+};
+
+export const formatSearchGlossaryTermResponse = (hits) => {
+  const term = hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.display_name,
+      fqdn: d._source.fqdn,
+      type: d._source.entity_type,
+      id: d._id,
+    };
+  });
+
+  return term;
+};
+
 const formatPost = (post) => {
   return {
     title: post.from,

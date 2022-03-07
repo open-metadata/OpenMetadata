@@ -14,6 +14,7 @@
 import React from 'react';
 import AppState from '../AppState';
 import { CurrentTourPageType } from '../enums/tour.enum';
+import { getCurrentDatasetTab } from './DatasetDetailsUtils';
 
 export const getSteps = (value: string, clearSearchTerm: () => void) => {
   return [
@@ -110,7 +111,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = 1;
+        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('schema');
       },
       actionType: 'click',
       content: () => (
@@ -120,7 +121,8 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
       ),
       selector: '#sampleData',
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 2;
+        AppState.activeTabforTourDatasetPage =
+          getCurrentDatasetTab('sample_data');
       },
     },
     {
@@ -134,10 +136,11 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = 2;
+        AppState.activeTabforTourDatasetPage =
+          getCurrentDatasetTab('sample_data');
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 3;
+        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
       },
       actionType: 'click',
       content: () => (
@@ -160,10 +163,10 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = 3;
+        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 4;
+        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
       },
       actionType: 'click',
       content: () => (
@@ -185,7 +188,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = 6;
+        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('manage');
       },
       actionType: 'click',
       content: () => (
@@ -197,7 +200,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = 4;
+        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
       },
       content: () => (
         <p>

@@ -17,10 +17,10 @@ from unittest import TestCase
 from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.orm_profiler.engines import create_and_bind_session
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiles.core import Profiler
+from metadata.utils.engines import create_and_bind_session
 
 Base = declarative_base()
 

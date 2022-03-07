@@ -111,7 +111,7 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return cls(ctx, config, metadata_config, session=session)
 
-    def build_profiler(self, orm) -> Profiler:
+    def build_profiler(self, orm: DeclarativeMeta) -> Profiler:
         """
         Given a column from the entity, build the profiler
 
@@ -130,7 +130,7 @@ class OrmProfilerProcessor(Processor[Table]):
             profile_date=self.execution_date,
         )
 
-    def profile_entity(self, orm, table: Table) -> TableProfile:
+    def profile_entity(self, orm: DeclarativeMeta, table: Table) -> TableProfile:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers
@@ -175,7 +175,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def run_table_test(
         self,
         table: Table,
-        orm_table,
+        orm_table: DeclarativeMeta,
         test_case: TableTestCase,
         profiler_results: TableProfile,
     ) -> Optional[TestCaseResult]:
@@ -210,7 +210,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def run_column_test(
         self,
         table: Table,
-        orm_table,
+        orm_table: DeclarativeMeta,
         column: str,
         test_case: ColumnTestCase,
         profiler_results: TableProfile,
@@ -266,7 +266,7 @@ class OrmProfilerProcessor(Processor[Table]):
         return test_case_result
 
     def validate_config_tests(
-        self, table: Table, orm_table, profiler_results: TableProfile
+        self, table: Table, orm_table: DeclarativeMeta, profiler_results: TableProfile
     ) -> Optional[TestDef]:
         """
         Here we take care of new incoming tests in the workflow
@@ -323,7 +323,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def validate_entity_tests(
         self,
         table: Table,
-        orm_table,
+        orm_table: DeclarativeMeta,
         profiler_results: TableProfile,
         config_tests: Optional[TestDef],
     ) -> Optional[TestDef]:

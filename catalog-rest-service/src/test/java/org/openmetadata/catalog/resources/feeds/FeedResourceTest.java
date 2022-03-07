@@ -14,11 +14,14 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
@@ -49,6 +52,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
 import org.openmetadata.catalog.api.feed.ThreadCount;
@@ -263,27 +267,30 @@ public class FeedResourceTest extends CatalogApplicationTest {
   @Test
   void post_addPostWithoutMessage_4xx() {
     // Add post to a thread without message field
-    Post post = createPost(null).withMessage(null);
+    CreatePost createPost = createPost(null).withMessage(null);
 
     assertResponseContains(
-        () -> addPost(THREAD.getId(), post, AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
+        () -> addPost(THREAD.getId(), createPost, AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
   }
 
   @Test
   void post_addPostWithoutFrom_4xx() {
     // Add post to a thread without from field
-    Post post = createPost(null).withFrom(null);
+    CreatePost createPost = createPost(null).withFrom(null);
 
-    assertResponseContains(() -> addPost(THREAD.getId(), post, AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
+    assertResponseContains(
+        () -> addPost(THREAD.getId(), createPost, AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
   }
 
   @Test
   void post_addPostWithNonExistentFrom_404() {
     // Add post to a thread with non-existent from user
 
-    Post post = createPost(null).withFrom(NON_EXISTENT_ENTITY.toString());
+    CreatePost createPost = createPost(null).withFrom(NON_EXISTENT_ENTITY.toString());
     assertResponse(
-        () -> addPost(THREAD.getId(), post, AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
+        () -> addPost(THREAD.getId(), createPost, AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -292,8 +299,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Add 10 posts and validate
     int POST_COUNT = 10;
     for (int i = 0; i < POST_COUNT; i++) {
-      Post post = createPost(null);
-      thread = addPostAndCheck(thread, post, AUTH_HEADERS);
+      CreatePost createPost = createPost(null);
+      thread = addPostAndCheck(thread, createPost, AUTH_HEADERS);
     }
 
     // Check if get posts API returns all the posts
@@ -339,8 +346,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Add 10 posts and validate
     int POST_COUNT = 10;
     for (int i = 0; i < POST_COUNT; i++) {
-      Post post = createPost("message" + i);
-      thread = addPostAndCheck(thread, post, AUTH_HEADERS);
+      CreatePost createPost = createPost("message" + i);
+      thread = addPostAndCheck(thread, createPost, AUTH_HEADERS);
     }
 
     ThreadList threads = listThreads(null, 5, AUTH_HEADERS);
@@ -416,14 +423,14 @@ public class FeedResourceTest extends CatalogApplicationTest {
         ADMIN_AUTH_HEADERS);
 
     // Create a thread that has user mention in a post
-    Post post = createPost(String.format("message mentions %s", USER_LINK));
+    CreatePost createPost = createPost(String.format("message mentions %s", USER_LINK));
     Thread thread =
         createAndCheck(
             create()
                 .withMessage("Thread Message")
                 .withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
-    addPostAndCheck(thread, post, ADMIN_AUTH_HEADERS);
+    addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
 
     ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.MENTIONS.toString(), AUTH_HEADERS);
     assertEquals(2, threads.getData().size());
@@ -445,6 +452,55 @@ public class FeedResourceTest extends CatalogApplicationTest {
         entityNotFound("Thread", NON_EXISTENT_ENTITY));
   }
 
+  @Test
+  void delete_post_404() {
+    // Test with an invalid thread id
+    assertResponse(
+        () -> deletePost(NON_EXISTENT_ENTITY, NON_EXISTENT_ENTITY, AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
+
+    // Test with an invalid post id
+    assertResponse(
+        () -> deletePost(THREAD.getId(), NON_EXISTENT_ENTITY, AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Post", NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  void delete_post_200() throws HttpResponseException {
+    // Create a thread and add a post
+    Thread thread = createAndCheck(create(), AUTH_HEADERS);
+    CreatePost createPost = createPost(null);
+    thread = addPostAndCheck(thread, createPost, AUTH_HEADERS);
+    assertEquals(1, thread.getPosts().size());
+
+    // delete the post
+    Post post = thread.getPosts().get(0);
+    Post deletedPost = deletePost(thread.getId(), post.getId(), AUTH_HEADERS);
+    assertEquals(post.getId(), deletedPost.getId());
+
+    // Check if get posts API returns the post
+    PostList postList = listPosts(thread.getId().toString(), AUTH_HEADERS);
+    assertTrue(postList.getData().isEmpty());
+  }
+
+  @Test
+  void delete_post_unauthorized_403() throws HttpResponseException {
+    // Create a thread and add a post as admin user
+    Thread thread = createAndCheck(create(), ADMIN_AUTH_HEADERS);
+    CreatePost createPost = createPost(null).withFrom(ADMIN_USER_NAME);
+    thread = addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
+    assertEquals(1, thread.getPosts().size());
+
+    // delete the post using a different user who is not an admin
+    // Here post author is ADMIN, and we try to delete as USER
+    Post post = thread.getPosts().get(0);
+    UUID threadId = thread.getId();
+    UUID postId = post.getId();
+    assertResponse(() -> deletePost(threadId, postId, AUTH_HEADERS), FORBIDDEN, noPermission(USER.getName()));
+  }
+
   public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Validate returned thread from POST
@@ -457,14 +513,14 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return thread;
   }
 
-  private Thread addPostAndCheck(Thread thread, Post addPost, Map<String, String> authHeaders)
+  private Thread addPostAndCheck(Thread thread, CreatePost create, Map<String, String> authHeaders)
       throws HttpResponseException {
-    Thread returnedThread = addPost(thread.getId(), addPost, authHeaders);
+    Thread returnedThread = addPost(thread.getId(), create, authHeaders);
     // Last post is the newly added one
-    validatePost(thread, returnedThread, addPost);
+    validatePost(thread, returnedThread, create.getFrom(), create.getMessage());
 
     Thread getThread = getThread(thread.getId(), authHeaders);
-    validatePost(thread, getThread, addPost);
+    validatePost(thread, getThread, create.getFrom(), create.getMessage());
     return returnedThread;
   }
 
@@ -475,11 +531,11 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(about, thread.getAbout());
   }
 
-  private static void validatePost(Thread expected, Thread actual, Post expectedPost) {
+  private static void validatePost(Thread expected, Thread actual, String from, String message) {
     // Make sure the post added is as expected
     Post actualPost = actual.getPosts().get(actual.getPosts().size() - 1); // Last post was newly added to the thread
-    assertEquals(expectedPost.getFrom(), actualPost.getFrom());
-    assertEquals(expectedPost.getMessage(), actualPost.getMessage());
+    assertEquals(from, actualPost.getFrom());
+    assertEquals(message, actualPost.getMessage());
     assertNotNull(actualPost.getPostTs());
 
     // Ensure post count increased
@@ -490,8 +546,14 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.post(getResource("feed"), create, Thread.class, authHeaders);
   }
 
-  public static Thread addPost(UUID threadId, Post post, Map<String, String> authHeaders) throws HttpResponseException {
+  public static Thread addPost(UUID threadId, CreatePost post, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.post(getResource("feed/" + threadId + "/posts"), post, Thread.class, authHeaders);
+  }
+
+  public static Post deletePost(UUID threadId, UUID postId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return TestUtils.delete(getResource("feed/" + threadId + "/posts/" + postId), Post.class, authHeaders);
   }
 
   public static CreateThread create() {
@@ -499,9 +561,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return new CreateThread().withFrom(USER.getName()).withMessage("message").withAbout(about);
   }
 
-  public static Post createPost(String message) {
+  public static CreatePost createPost(String message) {
     message = StringUtils.isNotEmpty(message) ? message : "message";
-    return new Post().withFrom(USER.getName()).withMessage(message);
+    return new CreatePost().withFrom(USER.getName()).withMessage(message);
   }
 
   public static Thread getThread(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

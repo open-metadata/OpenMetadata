@@ -127,7 +127,7 @@ const TourPage = () => {
               pipelineCount: 8,
             }}
             error=""
-            feedData={mockFeedData as unknown as MyDataProps['feedData']}
+            feedData={mockFeedData as MyDataProps['feedData']}
             feedFilter={FeedFilter.ALL}
             feedFilterHandler={() => {
               setMyDataSearchResult(mockData);
@@ -185,10 +185,16 @@ const TourPage = () => {
             entityLineage={mockDatasetData.entityLineage}
             entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}
-            entityThread={[]}
+            entityThread={mockFeedData}
             feedCount={0}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
+            handleAddColumnTestCase={handleCountChange}
+            handleAddTableTestCase={handleCountChange}
+            handleRemoveColumnTest={handleCountChange}
+            handleRemoveTableTest={handleCountChange}
+            handleShowTestForm={handleCountChange}
+            handleTestModeChange={handleCountChange}
             isNodeLoading={{
               id: undefined,
               state: false,
@@ -199,10 +205,12 @@ const TourPage = () => {
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
             postFeedHandler={handleCountChange}
+            qualityTestFormHandler={handleCountChange}
             removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}
+            showTestForm={false}
             slashedTableName={mockDatasetData.slashedTableName}
             tableDetails={mockDatasetData.tableDetails as unknown as Table}
             tableProfile={
@@ -210,6 +218,8 @@ const TourPage = () => {
             }
             tableQueries={[]}
             tableTags={mockDatasetData.tableTags}
+            tableTestCase={[]}
+            testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             usageSummary={
