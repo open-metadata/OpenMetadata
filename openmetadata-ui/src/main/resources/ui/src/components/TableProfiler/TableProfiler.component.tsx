@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { excludedMetrics } from '../../constants/profiler.constant';
 import { Table, TableProfile } from '../../generated/entity/data/table';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -62,16 +63,6 @@ const PercentageGraph = ({
     </PopOver>
   );
 };
-
-const excludedMetrics = [
-  'profilDate',
-  'name',
-  'nullCount',
-  'nullProportion',
-  'uniqueCount',
-  'uniqueProportion',
-  'rows',
-];
 
 const TableProfiler: FC<Props> = ({
   tableProfiles,
