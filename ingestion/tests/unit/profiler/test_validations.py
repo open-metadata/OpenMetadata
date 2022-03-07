@@ -379,7 +379,7 @@ def test_column_value_length_to_be_between():
     )
 
     res_ok = validate(
-        ColumnValueLengthsToBeBetween(minValue=2, maxValue=20),
+        ColumnValueLengthsToBeBetween(minLength=2, maxLength=20),
         col_profile=col_profile,
         execution_date=EXECUTION_DATE,
     )
@@ -390,7 +390,7 @@ def test_column_value_length_to_be_between():
     )
 
     res_ko = validate(
-        ColumnValueLengthsToBeBetween(minValue=10, maxValue=20),
+        ColumnValueLengthsToBeBetween(minLength=10, maxLength=20),
         col_profile=col_profile,
         execution_date=EXECUTION_DATE,
     )
@@ -404,7 +404,7 @@ def test_column_value_length_to_be_between():
     col_profile_aborted = ColumnProfile(minLength=4)
 
     res_aborted = validate(
-        ColumnValueLengthsToBeBetween(minValue=2, maxValue=20),
+        ColumnValueLengthsToBeBetween(minLength=2, maxLength=20),
         col_profile=col_profile_aborted,
         execution_date=EXECUTION_DATE,
     )

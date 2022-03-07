@@ -56,13 +56,13 @@ def column_value_length_to_be_between(
 
     status = (
         TestCaseStatus.Success
-        if col_profile.minLength >= test_case.minValue
-        and col_profile.maxLength <= test_case.maxValue
+        if col_profile.minLength >= test_case.minLength
+        and col_profile.maxLength <= test_case.maxLength
         else TestCaseStatus.Failed
     )
     result = (
         f"Found minLength={col_profile.minLength}, maxLength={col_profile.maxLength} vs."
-        + f" the expected minLength={test_case.minValue}, maxLength={test_case.maxValue}."
+        + f" the expected minLength={test_case.minLength}, maxLength={test_case.maxLength}."
     )
 
     return TestCaseResult(
