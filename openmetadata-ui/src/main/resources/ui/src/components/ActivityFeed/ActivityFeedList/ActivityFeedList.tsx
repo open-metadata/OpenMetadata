@@ -221,7 +221,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   }, []);
 
   return (
-    <div className={classNames(className)}>
+    <div className={classNames(className)} id="feedData">
       {feedList.length > 0 ? (
         <Fragment>
           {relativeDays.map((d, i) => {
