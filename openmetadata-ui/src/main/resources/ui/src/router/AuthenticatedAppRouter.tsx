@@ -15,6 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
+import { useAuthContext } from '../auth-provider/AuthProvider';
 import AddGlossaryTermPage from '../components/AddGlossaryTermPage/AddGlossaryTermPage.component';
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
@@ -42,7 +43,8 @@ import UserListPage from '../pages/UserListPage/UserListPage';
 import UserPage from '../pages/UserPage/UserPage.component';
 import WebhooksPage from '../pages/WebhooksPage/WebhooksPage.component';
 const AuthenticatedAppRouter: FunctionComponent = () => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
 
   return (
     <Switch>
