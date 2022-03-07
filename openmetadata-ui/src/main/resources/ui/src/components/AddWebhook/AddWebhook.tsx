@@ -18,6 +18,7 @@ import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -157,6 +158,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     name: false,
     endpointUrl: false,
     eventFilters: false,
+    invalidName: false,
     invalidEndpointUrl: false,
     invalidEventFilters: false,
   });
@@ -179,12 +181,14 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     }
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name, endpointUrl, invalidEndpointUrl } = cloneDeep(showErrorMsg);
+    let { name, endpointUrl, invalidEndpointUrl, invalidName } =
+      cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
         setName(value);
         name = false;
+        invalidName = false;
 
         break;
       }
@@ -207,7 +211,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name, endpointUrl, invalidEndpointUrl };
+      return { ...prev, name, endpointUrl, invalidEndpointUrl, invalidName };
     });
   };
 
@@ -340,6 +344,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         ...updateEvents,
         ...deleteEvents,
       }),
+      invalidName: UrlEntityCharRegEx.test(name.trim()),
       invalidEndpointUrl: !isValidUrl(endpointUrl.trim()),
       invalidEventFilters: !validateEventFilters(),
     };
@@ -488,7 +493,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               value={name}
             />
           )}
-          {showErrorMsg.name && errorMsg('Webhook name is required.')}
+          {showErrorMsg.name
+            ? errorMsg('Webhook name is required.')
+            : showErrorMsg.invalidName
+            ? errorMsg('Webhook name is invalid.')
+            : null}
         </Field>
         <Field>
           <label

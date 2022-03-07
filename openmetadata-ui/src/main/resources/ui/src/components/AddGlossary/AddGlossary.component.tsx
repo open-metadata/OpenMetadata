@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import { EditorContentRef, FormatedUsersData } from 'Models';
 import React, { useRef, useState } from 'react';
+import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import {
@@ -45,6 +46,7 @@ const AddGlossary = ({
 
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
+    invalidName: false,
   });
 
   const [name, setName] = useState('');
@@ -69,18 +71,19 @@ const AddGlossary = ({
     }
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name } = cloneDeep(showErrorMsg);
+    let { name, invalidName } = cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
         setName(value);
         name = false;
+        invalidName = false;
 
         break;
       }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name };
+      return { ...prev, name, invalidName };
     });
   };
 
@@ -94,6 +97,7 @@ const AddGlossary = ({
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
+      invalidName: UrlEntityCharRegEx.test(name.trim()),
     };
     setShowErrorMsg(errMsg);
 
@@ -204,7 +208,11 @@ const AddGlossary = ({
             onChange={handleValidation}
           />
 
-          {showErrorMsg.name && errorMsg('Glossary name is required.')}
+          {showErrorMsg.name
+            ? errorMsg('Glossary name is required.')
+            : showErrorMsg.invalidName
+            ? errorMsg('Glossary name is invalid.')
+            : null}
         </Field>
         <Field>
           <label
