@@ -287,7 +287,7 @@ export const getEditWebhookPath = (webhookName: string) => {
 };
 
 export const getUserPath = (username: string) => {
-  let path = ROUTES.USERS;
+  let path = ROUTES.USER_PROFILE;
   path = path.replace(PLACEHOLDER_USER_NAME, username);
 
   return path;
