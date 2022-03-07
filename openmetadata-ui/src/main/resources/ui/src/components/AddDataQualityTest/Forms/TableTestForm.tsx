@@ -103,8 +103,8 @@ const TableTestForm = ({
 
     if (isTableRowCountToBeBetweenTest) {
       errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
-      if (!isEmpty(minValue) && !isEmpty(maxValue)) {
-        errMsg.minMaxValue = (minValue as number) > (maxValue as number);
+      if (!isUndefined(minValue) && !isUndefined(maxValue)) {
+        errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
       }
     } else {
       errMsg.values = isEmpty(value);
