@@ -52,6 +52,14 @@ OpenMetadata has the following high-level core entities and relationships:
 [filters.md](filters.md)
 {% endcontent-ref %}
 
+{% content-ref url="glossary.md" %}
+[filters.md](glossary.md)
+{% endcontent-ref %}
+
+{% content-ref url="glossaryterm.md" %}
+[filters.md](glossaryterm.md)
+{% endcontent-ref %}
+
 {% content-ref url="location.md" %}
 [location.md](location.md)
 {% endcontent-ref %}
