@@ -451,3 +451,21 @@ Failed to establish a new connection: [Errno 61] Connection refused'))
 To correct this problem, please follow the steps in the [Run OpenMetadata ](https://docs.open-metadata.org/install/run-openmetadata)guide to deploy OpenMetadata in Docker on your local machine.
 
 Then re-run the metadata ingestion workflow in [Step 13](hive.md#12.-run-ingestion-workflow).
+
+### thrift.transport.TTransport.TTransportException
+
+If you encounter the following error when attempting to run an ingestion workflow and are using Kerberos authentication, you are probably missing some required libraries.
+
+```
+thrift.transport.TTransport.TTransportException: Could not start SASL:
+b'Error in sasl_client_start (-4) SASL(-4): no mechanism available:
+No worthy mechs found'
+```
+
+To correct this problem, install all dependencies required to connect to a HIVE cluster via Kerberos. This [Stackoverflow issue](https://stackoverflow.com/questions/30705576/python-cannot-connect-hiveserver2\)-) might be of help.
+
+&#x20;For Ubuntu, you may install the required dependencies by running the following command.
+
+```
+sudo apt-get install sasl2-bin libsasl2-2 libsasl2-dev libsasl2-modules libsasl2-modules-gssapi-mit
+```
