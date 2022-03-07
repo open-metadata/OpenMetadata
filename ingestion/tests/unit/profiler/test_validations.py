@@ -153,7 +153,7 @@ def test_table_column_count_to_equal():
     )
 
     res_ok = validate(
-        TableColumnCountToEqual(value=5),
+        TableColumnCountToEqual(columnCount=5),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
@@ -164,7 +164,7 @@ def test_table_column_count_to_equal():
     )
 
     res_ko = validate(
-        TableColumnCountToEqual(value=20),
+        TableColumnCountToEqual(columnCount=20),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
@@ -180,7 +180,7 @@ def test_table_column_count_to_equal():
     )
 
     res_aborted = validate(
-        TableColumnCountToEqual(value=5),
+        TableColumnCountToEqual(columnCount=5),
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
     )

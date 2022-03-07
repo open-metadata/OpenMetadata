@@ -49,11 +49,11 @@ def table_column_count_to_equal(
 
     status = (
         TestCaseStatus.Success
-        if table_profile.columnCount == test_case.value
+        if table_profile.columnCount == test_case.columnCount
         else TestCaseStatus.Failed
     )
     result = (
-        f"Found {table_profile.columnCount} columns vs. the expected {test_case.value}"
+        f"Found {table_profile.columnCount} columns vs. the expected {test_case.columnCount}"
     )
 
     return TestCaseResult(
