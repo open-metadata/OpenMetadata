@@ -52,9 +52,7 @@ def table_column_count_to_equal(
         if table_profile.columnCount == test_case.columnCount
         else TestCaseStatus.Failed
     )
-    result = (
-        f"Found {table_profile.columnCount} columns vs. the expected {test_case.columnCount}"
-    )
+    result = f"Found {table_profile.columnCount} columns vs. the expected {test_case.columnCount}"
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
