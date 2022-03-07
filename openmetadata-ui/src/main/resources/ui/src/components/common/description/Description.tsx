@@ -22,6 +22,7 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
+import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
@@ -126,19 +127,24 @@ const Description = ({
             onEntityFieldSelect &&
             !description?.trim() ? (
               <button
-                className="focus:tw-outline-none tw-ml-1 tw-opacity-0 hover:tw-opacity-100 tw--mt-6"
+                className="focus:tw-outline-none tw-ml-2 tw-opacity-0 hover:tw-opacity-100 tw--mt-6"
                 data-testid="request-description"
                 onClick={() => onEntityFieldSelect?.('description')}>
-                <SVGIcons
-                  alt="request-description"
-                  icon={Icons.REQUEST}
-                  width="20px"
-                />
+                <PopOver
+                  position="top"
+                  title="Request description"
+                  trigger="mouseenter">
+                  <SVGIcons
+                    alt="request-description"
+                    icon={Icons.REQUEST}
+                    width="22px"
+                  />
+                </PopOver>
               </button>
             ) : null}
             {!isUndefined(descriptionThread) ? (
               <p
-                className="link-text tw-ml-1 tw-w-8 tw-h-8 tw-flex-none"
+                className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
                 }>

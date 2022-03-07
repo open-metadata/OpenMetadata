@@ -54,7 +54,7 @@ const PercentageGraph = ({
       position="top"
       title={`${percentage}% ${title}`}
       trigger="mouseenter">
-      <div className="tw-border tw-border-primary tw-h-8 tw-w-20">
+      <div className="tw-border tw-border-primary tw-h-6 tw-w-20">
         <div
           className="tw-bg-primary tw-opacity-40 tw-h-full"
           style={{ width: `${percentage}%` }}

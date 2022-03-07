@@ -143,7 +143,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
         return {
           id: hit._id,
-          value: `@${hit._source.display_name}`,
+          value: `@${hit._source.name ?? hit._source.display_name}`,
           link: `${document.location.protocol}//${document.location.host}/${
             entityUrlMap[entityType as keyof typeof entityUrlMap]
           }/${hit._source.name}`,
@@ -158,7 +158,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
         return {
           id: hit._id,
-          value: `@${hit._source.display_name}`,
+          value: `@${hit._source.name ?? hit._source.display_name}`,
           link: `${document.location.protocol}//${document.location.host}/${
             entityUrlMap[entityType as keyof typeof entityUrlMap]
           }/${hit._source.name}`,
@@ -174,10 +174,12 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       const hits = data.data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
+        const entityType = hit._source.entity_type;
+
         return {
           id: hit._id,
-          value: `#${hit._source.name}`,
-          link: `${document.location.protocol}//${document.location.host}/${hit._source.entity_type}/${hit._source.fqdn}`,
+          value: `#${entityType}/${hit._source.name}`,
+          link: `${document.location.protocol}//${document.location.host}/${entityType}/${hit._source.fqdn}`,
         };
       });
     } else {
@@ -185,10 +187,12 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       const hits = data.data.suggest['table-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
+        const entityType = hit._source.entity_type;
+
         return {
           id: hit._id,
-          value: `#${hit._source.name}`,
-          link: `${document.location.protocol}//${document.location.host}/${hit._source.entity_type}/${hit._source.fqdn}`,
+          value: `#${entityType}/${hit._source.name}`,
+          link: `${document.location.protocol}//${document.location.host}/${entityType}/${hit._source.fqdn}`,
         };
       });
     }

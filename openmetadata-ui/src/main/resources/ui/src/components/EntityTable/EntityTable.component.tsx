@@ -396,12 +396,18 @@ const EntityTable = ({
                                   </p>
                                 </div>
                               ) : (
-                                <div className="tw-flex">
-                                  <div className="tw-mr-2">
-                                    <i className="fas fa-check-square tw-text-status-success" />
-                                  </div>
-                                  <p>{`${passingTests.length} tests`}</p>
-                                </div>
+                                <Fragment>
+                                  {passingTests.length ? (
+                                    <div className="tw-flex">
+                                      <div className="tw-mr-2">
+                                        <i className="fas fa-check-square tw-text-status-success" />
+                                      </div>
+                                      <p>{`${passingTests.length} tests`}</p>
+                                    </div>
+                                  ) : (
+                                    <p>{`${columnTestLength} tests`}</p>
+                                  )}
+                                </Fragment>
                               )}
                             </Fragment>
                           ) : (
@@ -591,18 +597,23 @@ const EntityTable = ({
                                     )
                                   ) && !cell.value ? (
                                     <button
-                                      className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100"
+                                      className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
                                       data-testid="request-description"
                                       onClick={() =>
                                         onEntityFieldSelect?.(
                                           `columns/${cell.row.cells[0].value}/description`
                                         )
                                       }>
-                                      <SVGIcons
-                                        alt="request-description"
-                                        icon={Icons.REQUEST}
-                                        width="20px"
-                                      />
+                                      <PopOver
+                                        position="top"
+                                        title="Request description"
+                                        trigger="mouseenter">
+                                        <SVGIcons
+                                          alt="request-description"
+                                          icon={Icons.REQUEST}
+                                          width="22px"
+                                        />
+                                      </PopOver>
                                     </button>
                                   ) : null}
                                   {getFieldThreadElement(
