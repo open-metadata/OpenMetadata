@@ -86,9 +86,6 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
       getEditorContent(format: 'json' | 'markdown') {
         switch (format) {
           case Format.MARKDOWN:
-            console.log(
-              draftjsToMd(convertToRaw(editorState.getCurrentContent()))
-            );
             return draftjsToMd(convertToRaw(editorState.getCurrentContent()));
 
           case Format.JSON:
