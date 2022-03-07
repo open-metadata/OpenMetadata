@@ -510,7 +510,10 @@ const ColumnTestForm = ({
       <p className="tw-font-medium tw-px-4">
         {isUndefined(data) ? 'Add' : 'Edit'} Column Test
       </p>
-      <form className="tw-w-screen-sm" data-testid="form">
+      <form
+        className="tw-w-screen-sm"
+        data-testid="form"
+        onSubmit={(e) => e.preventDefault()}>
         <div className="tw-px-4 tw-mx-auto">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="columnName">
