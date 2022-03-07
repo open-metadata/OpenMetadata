@@ -23,6 +23,7 @@ import {
 import {
   DatasetTestModeType,
   TableTestDataType,
+  TestCaseConfigType,
 } from '../../../interface/dataQuality.interface';
 import { isEven } from '../../../utils/CommonUtils';
 import NonAdminAction from '../../common/non-admin-action/NonAdminAction';
@@ -80,6 +81,14 @@ const DataQualityTable = ({
     handleCancelConfirmationModal();
   };
 
+  const getConfigInfo = (config: TestCaseConfigType) => {
+    return !isEmpty(config) && config
+      ? Object.entries(config).map((d, i) => (
+          <p key={i}>{`${d[0]}: ${d[1] || '--'}`}</p>
+        ))
+      : '--';
+  };
+
   return (
     <div className="tw-table-responsive">
       <table className="tw-w-full">
@@ -111,13 +120,7 @@ const DataQualityTable = ({
                   </span>
                 </td>
                 <td className="tableBody-cell tw-w-2/12">
-                  {!isEmpty(column.testCase?.config) && column.testCase?.config
-                    ? Object.entries(column.testCase?.config).map((d, i) => (
-                        <p key={i}>{`${d[0]}: ${
-                          !isEmpty(d[1]) ? d[1] : '--'
-                        }`}</p>
-                      ))
-                    : '--'}
+                  {getConfigInfo(column.testCase?.config || {})}
                 </td>
                 <td className="tableBody-cell tw-w-1/12">
                   {column.results && column.results.length > 0 ? (
