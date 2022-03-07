@@ -628,6 +628,10 @@ export interface ColumnProfile {
    * Variance of a column.
    */
   variance?: number;
+
+  minLength?: number;
+
+  maxLength?: number;
 }
 
 export interface HistogramObject {

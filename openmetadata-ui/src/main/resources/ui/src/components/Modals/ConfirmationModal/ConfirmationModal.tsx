@@ -12,9 +12,12 @@
  */
 
 import classNames from 'classnames';
+import { LoadingState } from 'Models';
 import React, { ReactNode } from 'react';
 import { Button } from '../../buttons/Button/Button';
+import Loader from '../../Loader/Loader';
 type Props = {
+  loadingState?: LoadingState;
   cancelText: string | ReactNode;
   confirmText: string | ReactNode;
   bodyText: string | ReactNode;
@@ -28,6 +31,7 @@ type Props = {
   onCancel: () => void;
 };
 const ConfirmationModal = ({
+  loadingState = 'initial',
   cancelText,
   confirmText,
   header,
@@ -59,25 +63,39 @@ const ConfirmationModal = ({
             'tw-modal-footer tw-justify-end',
             footerClassName
           )}>
-          <Button
-            className={classNames('tw-mr-2', cancelButtonCss)}
-            data-testid="cancel"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={onCancel}>
-            {cancelText}
-          </Button>
-          <Button
-            className={confirmButtonCss}
-            data-testid="save-button"
-            size="regular"
-            theme="primary"
-            type="submit"
-            variant="contained"
-            onClick={onConfirm}>
-            {confirmText}
-          </Button>
+          {loadingState === 'waiting' ? (
+            <Button
+              disabled
+              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+              data-testid="loading-button"
+              size="regular"
+              theme="primary"
+              variant="contained">
+              <Loader size="small" type="white" />
+            </Button>
+          ) : (
+            <>
+              <Button
+                className={classNames('tw-mr-2', cancelButtonCss)}
+                data-testid="cancel"
+                size="regular"
+                theme="primary"
+                variant="text"
+                onClick={onCancel}>
+                {cancelText}
+              </Button>
+              <Button
+                className={confirmButtonCss}
+                data-testid="save-button"
+                size="regular"
+                theme="primary"
+                type="submit"
+                variant="contained"
+                onClick={onConfirm}>
+                {confirmText}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </dialog>

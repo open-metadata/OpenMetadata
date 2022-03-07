@@ -16,7 +16,7 @@ import { Table } from 'Models';
 import { ColumnTestType } from '../enums/columnTest.enum';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import { TableTestType } from '../generated/tests/tableTest';
-import { CreateColumnTest } from '../interface/dataQuality.interface';
+import { ColumnTest } from '../interface/dataQuality.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -138,7 +138,7 @@ export const deleteTableTestCase = (
   );
 };
 
-export const addColumnTestCase = (tableId: string, data: CreateColumnTest) => {
+export const addColumnTestCase = (tableId: string, data: ColumnTest) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };

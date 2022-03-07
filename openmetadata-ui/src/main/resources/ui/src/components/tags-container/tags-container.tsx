@@ -11,11 +11,22 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isNull } from 'lodash';
-import { EntityTags } from 'Models';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { debounce, isEmpty, isNull } from 'lodash';
+import { EntityTags, FormatedGlossaryTermData, SearchResponse } from 'Models';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { getSuggestions, searchData } from '../../axiosAPIs/miscAPI';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { withLoader } from '../../hoc/withLoader';
+import { formatSearchGlossaryTermResponse } from '../../utils/APIUtils';
 import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
 import Tags from '../tags/tags';
@@ -26,6 +37,7 @@ import { TagsContainerProps } from './tags-container.interface';
 // const INPUT_AUTO = 'auto';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
+  allowGlossary,
   children,
   editable,
   selectedTags,
@@ -34,6 +46,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onSelectionChange,
   showTags = true,
   type,
+  dropDownHorzPosRight = true,
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
@@ -41,6 +54,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const node = useRef<HTMLDivElement>(null);
   const [inputDomRect, setInputDomRect] = useState<DOMRect>();
+  const [glossaryList, setGlossaryList] = useState<FormatedGlossaryTermData[]>(
+    []
+  );
   // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
   // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
 
@@ -68,6 +84,36 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     }
   }, [newTag]);
 
+  const fetchGlossaryResults = useCallback((): Promise<
+    FormatedGlossaryTermData[]
+  > => {
+    return new Promise<FormatedGlossaryTermData[]>((resolve, reject) => {
+      if (isEmpty(newTag)) {
+        searchData(WILD_CARD_CHAR, 1, 1, '', '', '', SearchIndex.GLOSSARY)
+          .then((res: SearchResponse) => {
+            const data = formatSearchGlossaryTermResponse(res.data.hits.hits);
+            resolve(data);
+          })
+          .catch(() => reject());
+      } else {
+        getSuggestions(newTag, SearchIndex.GLOSSARY)
+          .then((res: AxiosResponse) => {
+            const data = formatSearchGlossaryTermResponse(
+              res.data.suggest['table-suggest'][0].options
+            );
+            resolve(data);
+          })
+          .catch(() => reject());
+      }
+    });
+  }, [newTag]);
+
+  const getGlossaryResults = useCallback(() => {
+    if (allowGlossary) {
+      fetchGlossaryResults().then((res) => setGlossaryList(res));
+    }
+  }, [allowGlossary, fetchGlossaryResults]);
+
   const getTagList = () => {
     const newTags = tagList
       .filter((tag) => {
@@ -81,7 +127,20 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         };
       });
 
-    return newTags;
+    const newGlossaries = glossaryList
+      .filter((glossary) => {
+        return !tags.some(
+          (selectedTag) => selectedTag.tagFQN === glossary.fqdn
+        );
+      })
+      .map((glossary) => {
+        return {
+          name: glossary.name,
+          value: glossary.fqdn,
+        };
+      });
+
+    return allowGlossary ? [...newTags, ...newGlossaries] : newTags;
   };
 
   const handleTagSelection = (
@@ -146,6 +205,23 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       />
     );
   };
+
+  const debouncedOnSearch = useCallback((): void => {
+    getGlossaryResults();
+  }, [getGlossaryResults]);
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 1500), [
+    debouncedOnSearch,
+  ]);
+
+  const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
+    const searchText = e.target.value;
+    setNewTag(searchText);
+    // clearTimeout(typingTimer.current);
+    // typingTimer.current = setTimeout(() => {
+    debounceOnSearch();
+  };
+
   const handleClick = (e: MouseEvent) => {
     if (node?.current?.contains(e.target as Node)) {
       return;
@@ -170,6 +246,10 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       document.removeEventListener('mousedown', handleClick);
     };
   }, [editable]);
+
+  useEffect(() => {
+    getGlossaryResults();
+  }, []);
 
   return (
     <div
@@ -208,7 +288,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 }
               }}
               onChange={(event) => {
-                setNewTag(event.target.value);
+                handleChange(event);
               }}
               // onFocus={() => {
               //   if (inputRef.current) {
@@ -218,9 +298,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             />
             {newTag && (
               <DropDownList
-                horzPosRight
                 domPosition={inputDomRect}
                 dropDownList={getTagList()}
+                horzPosRight={dropDownHorzPosRight}
                 searchString={newTag}
                 onSelect={handleTagSelection}
               />

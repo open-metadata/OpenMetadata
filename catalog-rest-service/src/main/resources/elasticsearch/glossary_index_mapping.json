@@ -36,6 +36,9 @@
     },
     "suggest": {
       "type": "completion"
+    },
+    "deleted": {
+      "type": "boolean"
     }
   }
 }

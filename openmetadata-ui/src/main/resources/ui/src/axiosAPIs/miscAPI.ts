@@ -105,7 +105,7 @@ export const getUserSuggestions: Function = (
   term: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(
-    `/search/suggest?q=${term}&index=user_search_index,team_search_index`
+    `/search/suggest?q=${term}&index=${SearchIndex.USER},${SearchIndex.TEAM}`
   );
 };
 export const getInitialEntity: Function = (): Promise<AxiosResponse> => {

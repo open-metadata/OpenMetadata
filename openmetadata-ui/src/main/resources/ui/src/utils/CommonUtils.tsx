@@ -467,6 +467,12 @@ export const getDocButton = (label: string, url: string, dataTestId = '') => {
   );
 };
 
+export const getNameFromFQN = (fqn: string): string => {
+  const arr = fqn.split('.');
+
+  return arr[arr.length - 1];
+};
+
 export const getRandomColor = (name: string) => {
   const firstAlphabet = name.charAt(0).toLowerCase();
   const asciiCode = firstAlphabet.charCodeAt(0);
