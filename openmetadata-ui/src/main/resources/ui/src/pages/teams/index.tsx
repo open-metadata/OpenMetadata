@@ -146,7 +146,12 @@ const TeamsPage = () => {
   const createNewTeam = (data: Team) => {
     const errData = onNewDataChange(data, true);
     if (!Object.values(errData).length) {
-      createTeam(data)
+      const teamData = {
+        name: data.name,
+        displayName: data.displayName,
+        description: data.description,
+      };
+      createTeam(teamData)
         .then((res: AxiosResponse) => {
           if (res.data) {
             fetchTeams();
