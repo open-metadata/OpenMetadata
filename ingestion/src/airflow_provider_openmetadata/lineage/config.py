@@ -18,11 +18,10 @@ from typing import Optional
 
 from airflow.configuration import conf
 
-from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
-class OpenMetadataLineageConfig(ConfigModel):
+class OpenMetadataLineageConfig(MetadataServerConfig):
     """
     Base class for OpenMetada lineage config
 
@@ -52,12 +51,34 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
             "lineage", "auth_provider_type", fallback="no-auth"
         )
         secret_key = conf.get("lineage", "secret_key", fallback=None)
+        api_version = conf.get("lineage", "api_version", fallback="v1")
+        retry = conf.get("lineage", "retry", fallback=3)
+        retry_wait = conf.get("lineage", "retry_wait", fallback=3)
+        org_url = conf.get("lineage", "org_url", fallback=None)
+        client_id = conf.get("lineage", "client_id", fallback=None)
+        private_key = conf.get("lineage", "private_key", fallback=None)
+        domain = conf.get("lineage", "domain", fallback=None)
+        email = conf.get("lineage", "email", fallback=None)
+        audience = conf.get(
+            "lineage", "audience", fallback="https://www.googleapis.com/oauth2/v4/token"
+        )
+        auth_header = conf.get("lineage", "auth_header", fallback="Authorization")
         return OpenMetadataLineageConfig.parse_obj(
             {
                 "airflow_service_name": airflow_service_name,
                 "api_endpoint": api_endpoint,
                 "auth_provider_type": auth_provider_type,
                 "secret_key": secret_key,
+                "audience": audience,
+                "auth_header": auth_header,
+                "email": email,
+                "domain": domain,
+                "private_key": private_key,
+                "client_id": client_id,
+                "org_url": org_url,
+                "retry_wait": retry_wait,
+                "retry": retry,
+                "api_version": api_version,
             }
         )
 
