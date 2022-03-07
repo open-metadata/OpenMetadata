@@ -130,3 +130,13 @@ export const getActionsList = (name = '') => {
     },
   ];
 };
+
+export const getHierarchicalKeysByFQN = (fqn: string) => {
+  const keys = fqn.split('.').reduce((prev, curr) => {
+    const currFqn = prev.length ? `${prev[prev.length - 1]}.${curr}` : curr;
+
+    return [...prev, currFqn];
+  }, [] as string[]);
+
+  return keys;
+};

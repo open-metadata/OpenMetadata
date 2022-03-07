@@ -14,9 +14,11 @@
 // import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
+import { LoadingState } from 'Models';
 import PropTypes from 'prop-types';
 import React, { useCallback, useEffect, useState } from 'react';
 import SVGIcons from '../../../utils/SvgUtils';
+import Loader from '../../Loader/Loader';
 
 type Props = {
   onSearch: (text: string) => void;
@@ -25,6 +27,7 @@ type Props = {
   placeholder?: string;
   label?: string;
   removeMargin?: boolean;
+  showLoadingStatus?: boolean;
 };
 
 const SearchInput = ({
@@ -34,9 +37,11 @@ const SearchInput = ({
   placeholder,
   label,
   removeMargin = false,
+  showLoadingStatus = false,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
+  const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   // const typingTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -47,6 +52,7 @@ const SearchInput = ({
 
   const debouncedOnSearch = useCallback(
     (searchText: string): void => {
+      setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
       onSearch(searchText);
     },
     [onSearch]
@@ -60,6 +66,7 @@ const SearchInput = ({
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
     const searchText = e.target.value;
     setUserSearch(searchText);
+    setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
     // clearTimeout(typingTimer.current);
     // typingTimer.current = setTimeout(() => {
     debounceOnSearch(searchText);
@@ -73,11 +80,17 @@ const SearchInput = ({
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
       <div className="tw-flex tw-bg-body-main tw-h-8 tw-relative">
-        <SVGIcons
-          alt="icon-search"
-          className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none"
-          icon={searchIcon}
-        />
+        {showLoadingStatus && loadingState === 'waiting' ? (
+          <div className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none">
+            <Loader size="small" type="default" />
+          </div>
+        ) : (
+          <SVGIcons
+            alt="icon-search"
+            className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none"
+            icon={searchIcon}
+          />
+        )}
         <input
           className="tw-form-inputs-bottom-border tw-relative tw-px-3 tw-py-1 tw-pr-8"
           data-testid="searchbar"

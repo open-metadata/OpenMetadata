@@ -246,6 +246,12 @@ declare module 'Models' {
     _source: FormatedGlossarySuggestion;
   }
 
+  export interface GlossaryTermAssets {
+    data: FormatedTableData[];
+    total: number;
+    currPage: number;
+  }
+
   export type NewUser = {
     name: string;
     email: string;

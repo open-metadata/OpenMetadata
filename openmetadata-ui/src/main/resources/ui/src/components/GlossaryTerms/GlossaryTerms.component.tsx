@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityTags } from 'Models';
+import { EntityTags, GlossaryTermAssets } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
@@ -400,7 +400,14 @@ const GlossaryTerms = ({
 
             <div className="tw-bg-white tw-flex-grow tw-py-4">
               {activeTab === 1 && <RelationshipTab />}
-              {activeTab === 2 && <AssetsTabs />}
+              {activeTab === 2 && (
+                <AssetsTabs
+                  assetData={{} as GlossaryTermAssets}
+                  onAssetPaginate={() => {
+                    return;
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>

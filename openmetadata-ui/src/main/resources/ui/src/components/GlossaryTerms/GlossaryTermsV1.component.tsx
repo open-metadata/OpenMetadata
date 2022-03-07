@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags, FormatedUsersData } from 'Models';
+import { EntityTags, FormatedUsersData, GlossaryTermAssets } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   LIST_SIZE,
@@ -40,15 +40,19 @@ import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
 type Props = {
+  assetData: GlossaryTermAssets;
   isHasAccess: boolean;
   glossaryTerm: GlossaryTerm;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
+  onAssetPaginate: (num: number) => void;
 };
 
 const GlossaryTermsV1 = ({
+  assetData,
   isHasAccess,
   glossaryTerm,
   handleGlossaryTermUpdate,
+  onAssetPaginate,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -73,34 +77,16 @@ const GlossaryTermsV1 = ({
   const tabs = [
     {
       name: 'Related Terms',
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
-      },
       isProtected: false,
       position: 1,
     },
     {
       name: 'Assets',
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
-      },
       isProtected: false,
       position: 2,
     },
     {
-      name: 'Reviewer',
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
-      },
+      name: 'Reviewers',
       isProtected: false,
       position: 3,
     },
@@ -261,8 +247,10 @@ const GlossaryTermsV1 = ({
           type: 'user',
         }))
       );
+    } else {
+      setReviewer([]);
     }
-  }, []);
+  }, [glossaryTerm.reviewers]);
 
   useEffect(() => {
     if (glossaryTerm.relatedTerms && glossaryTerm.relatedTerms.length) {
@@ -270,9 +258,7 @@ const GlossaryTermsV1 = ({
         glossaryTerm.relatedTerms.map((term) => {
           return {
             relatedTerms: (term.displayName || term.name) as string,
-            description: term.description
-              ? (term.description as string)
-              : 'No description added',
+            description: term.description ?? '',
           };
         })
       );
@@ -316,7 +302,7 @@ const GlossaryTermsV1 = ({
       </div>
     ) : (
       <ErrorPlaceHolder>
-        <p className="tw-text-base tw-text-center">No Reviewer Added.</p>
+        <p className="tw-text-base tw-text-center">No Reviewers.</p>
         <p className="tw-text-lg tw-text-center tw-mt-2">{rightPosButton()}</p>
       </ErrorPlaceHolder>
     );
@@ -576,7 +562,12 @@ const GlossaryTermsV1 = ({
 
         <div className="tw-flex-grow tw-py-4">
           {activeTab === 1 && <RelationshipTab data={relatedTerms} />}
-          {activeTab === 2 && <AssetsTabs />}
+          {activeTab === 2 && (
+            <AssetsTabs
+              assetData={assetData}
+              onAssetPaginate={onAssetPaginate}
+            />
+          )}
           {activeTab === 3 && getReviewerTabData()}
         </div>
 

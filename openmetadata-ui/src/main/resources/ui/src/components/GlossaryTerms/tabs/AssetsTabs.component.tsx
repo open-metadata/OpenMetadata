@@ -1,9 +1,8 @@
 import classNames from 'classnames';
-import { isNil } from 'lodash';
-import { Paging } from 'Models';
-import React, { useState } from 'react';
+import { GlossaryTermAssets } from 'Models';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { pagingObject } from '../../../constants/constants';
+import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -12,19 +11,17 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Topic } from '../../../generated/entity/data/topic';
 import { isEven } from '../../../utils/CommonUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
-import NextPrevious from '../../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import Pagination from '../../Pagination';
 import Tags from '../../tags/tags';
-import { MOCK_DATABASE } from './assets.mock';
 
-const AssetsTabs = () => {
-  const [data] = useState(MOCK_DATABASE.data);
-  const [paging, setPaging] = useState(pagingObject);
+interface Props {
+  assetData: GlossaryTermAssets;
+  onAssetPaginate: (num: number) => void;
+}
+
+const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
   const serviceName = ServiceCategory.DATABASE_SERVICES as ServiceCategory;
-
-  const pagingHandler = () => {
-    setPaging(MOCK_DATABASE.paging as Paging);
-  };
 
   const getOptionalTableCells = (data: Database | Topic) => {
     switch (serviceName) {
@@ -163,8 +160,8 @@ const AssetsTabs = () => {
             </tr>
           </thead>
           <tbody className="tableBody">
-            {data.length > 0 ? (
-              data.map((dataObj, index) => (
+            {assetData.data.length > 0 ? (
+              assetData.data.map((dataObj, index) => (
                 <tr
                   className={classNames(
                     'tableBody-row',
@@ -174,16 +171,14 @@ const AssetsTabs = () => {
                   key={index}>
                   <td className="tableBody-cell">
                     <Link to={getLinkForFqn(dataObj.fullyQualifiedName || '')}>
-                      {dataObj.displayName ? dataObj.displayName : dataObj.name}
+                      {dataObj.name}
                     </Link>
                   </td>
                   <td className="tableBody-cell">
                     {dataObj.description ? (
                       <RichTextEditorPreviewer markdown={dataObj.description} />
                     ) : (
-                      <span className="tw-no-description">
-                        No description added
-                      </span>
+                      <span className="tw-no-description">No description</span>
                     )}
                   </td>
                   <td className="tableBody-cell">
@@ -195,15 +190,20 @@ const AssetsTabs = () => {
             ) : (
               <tr className="tableBody-row">
                 <td className="tableBody-cell tw-text-center" colSpan={4}>
-                  No records found.
+                  No assets available.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-        <NextPrevious paging={paging} pagingHandler={pagingHandler} />
+      {assetData.total > PAGE_SIZE && assetData.data.length > 0 && (
+        <Pagination
+          currentPage={assetData.currPage}
+          paginate={onAssetPaginate}
+          sizePerPage={PAGE_SIZE}
+          totalNumberOfValues={assetData.total}
+        />
       )}
     </div>
   );

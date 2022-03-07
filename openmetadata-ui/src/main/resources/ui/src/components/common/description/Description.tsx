@@ -85,9 +85,7 @@ const Description = ({
                 maxLen={800}
               />
             ) : (
-              <span className="tw-no-description tw-p-2">
-                No description added{' '}
-              </span>
+              <span className="tw-no-description tw-p-2">No description </span>
             )}
           </div>
           {isEdit && (

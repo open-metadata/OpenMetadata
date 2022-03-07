@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import React from 'react';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 /* eslint-disable max-len */
 // need to remove eslint disable once API data comes
@@ -27,30 +28,7 @@ type Props = {
 };
 
 const RelationshipTab = ({ data }: Props) => {
-  const dummyData = [
-    {
-      relatedTerms: 'Shirts',
-      description: `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
-      It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
-      It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.`,
-    },
-    {
-      relatedTerms: 'Jeans',
-      description: '',
-    },
-    {
-      relatedTerms: 'Shoes',
-      description: `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
-      It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.
-      It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.`,
-    },
-    {
-      relatedTerms: 'Caps',
-      description: '',
-    },
-  ];
-
-  return (
+  return data?.length ? (
     <div className="tw-table-responsive" id="relationship">
       <table className="tw-w-full tw-bg-white">
         <thead>
@@ -60,8 +38,7 @@ const RelationshipTab = ({ data }: Props) => {
           </tr>
         </thead>
         <tbody>
-          {/* TODO: remove dummy data once API data comes */}
-          {(data && data.length ? data : dummyData).map((row, index) => {
+          {data.map((row, index) => {
             return (
               <tr className={classNames('tableBody-row')} key={index}>
                 <td
@@ -83,9 +60,7 @@ const RelationshipTab = ({ data }: Props) => {
                         markdown={row.description}
                       />
                     ) : (
-                      <span className="tw-no-description">
-                        No description added
-                      </span>
+                      <span className="tw-no-description">No description</span>
                     )}
                   </div>
                 </td>
@@ -95,6 +70,10 @@ const RelationshipTab = ({ data }: Props) => {
         </tbody>
       </table>
     </div>
+  ) : (
+    <ErrorPlaceHolder>
+      <p className="tw-text-base tw-text-center">No related terms.</p>
+    </ErrorPlaceHolder>
   );
 };
 
