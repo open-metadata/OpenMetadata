@@ -47,6 +47,7 @@ This schema <u>does not</u> accept additional properties.
 	 - Table constraints.
 	 - Type: `array`
 		 - **Items**
+#### TableConstraint
 		 - $ref: [#/definitions/tableConstraint](#tableconstraint)
  - **owner**
 	 - Owner of this table.
@@ -59,7 +60,7 @@ This schema <u>does not</u> accept additional properties.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
  - **serviceType**
 	 - Service type this table is hosted in.
-	 - $ref: [../services/databaseService.json#/definitions/databaseServiceType](../services/databaseservice.md#databaseservicetype)
+	 - $ref: [../services/databaseService.json#/definitions/databaseServiceType](databaseservice.md#databaseservicetype)
  - **location**
 	 - Reference to the Location that contains this table.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
@@ -93,6 +94,11 @@ This schema <u>does not</u> accept additional properties.
 	 - Type: `array`
 		 - **Items**
 		 - $ref: [#/definitions/sqlQuery](#sqlquery)
+ - **tableTests**
+	 - List of test cases that ran against a table.
+	 - Type: `array`
+		 - **Items**
+		 - $ref: [../../tests/tableTest.json](../tests/tabletest.md)
  - **dataModel**
 	 - This captures information about how the table is modeled. Currently only DBT model is supported.
 	 - $ref: [#/definitions/dataModel](#datamodel)
@@ -158,6 +164,7 @@ This schema <u>does not</u> accept additional properties.
 	 33. _"GEOGRAPHY"_
 	 34. _"ENUM"_
 	 35. _"JSON"_
+	 36. _"UUID"_
 
 
 ### constraint
@@ -173,8 +180,10 @@ This schema <u>does not</u> accept additional properties.
 
 ### tableConstraint
 
+## TableConstraint
  - This enum defines the type for table constraint.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **constraintType**
 		 - Type: `string`
@@ -193,15 +202,13 @@ This schema <u>does not</u> accept additional properties.
 
  - Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.
  - Type: `string`
- - The value must match this pattern: `^[^.]*$`
  - Length: between 1 and 128
 
 
 ### tableName
 
- - Local name (not fully qualified name) of a table.
+ - Local name (not fully qualified name) of a table. Dots will be escaped automatically.
  - Type: `string`
- - The value must match this pattern: `^[^.]*$`
  - Length: between 1 and 128
 
 
@@ -220,6 +227,9 @@ This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **name** `required`
 		 - $ref: [#/definitions/columnName](#columnname)
+	 - **displayName**
+		 - Display Name that identifies this column name.
+		 - Type: `string`
 	 - **dataType** `required`
 		 - Data type of the column (int, date etc.).
 		 - $ref: [#/definitions/dataType](#datatype)
@@ -256,6 +266,11 @@ This schema <u>does not</u> accept additional properties.
 		 - Type: `array`
 			 - **Items**
 			 - $ref: [#/definitions/column](#column)
+	 - **columnTests**
+		 - List of column test cases that ran against a table column.
+		 - Type: `array`
+			 - **Items**
+			 - $ref: [../../tests/columnTest.json](../tests/columntest.md)
 
 
 ### columnJoins
@@ -271,6 +286,7 @@ This schema <u>does not</u> accept additional properties.
 		 - Type: `array`
 			 - **Items**
 			 - Type: `object`
+			 - This schema <u>does not</u> accept additional properties.
 			 - **Properties**
 				 - **fullyQualifiedName**
 					 - $ref: [#/definitions/fullyQualifiedColumnName](#fullyqualifiedcolumnname)
@@ -359,9 +375,15 @@ This schema <u>does not</u> accept additional properties.
 		 - Type: `number`
 	 - **min**
 		 - Minimum value in a column.
-		 - Type: `number`
+		 - Types: `number`, `integer`, `string`
 	 - **max**
 		 - Maximum value in a column.
+		 - Types: `number`, `integer`, `string`
+	 - **minLength**
+		 - Minimum string length in a column.
+		 - Type: `number`
+	 - **maxLength**
+		 - Maximum string length in a column.
 		 - Type: `number`
 	 - **mean**
 		 - Avg value in a column.
@@ -405,6 +427,7 @@ This schema <u>does not</u> accept additional properties.
 
  - This schema defines the type to capture the table's sql queries.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **query**
 		 - SQL Query text that matches the table name.
@@ -437,6 +460,7 @@ This schema <u>does not</u> accept additional properties.
 
  - This captures information about how the table is modeled. Currently only DBT model is supported.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **modelType** `required`
 		 - $ref: [#/definitions/modelType](#modeltype)
@@ -468,4 +492,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

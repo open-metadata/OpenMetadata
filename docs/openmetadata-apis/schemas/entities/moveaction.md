@@ -20,16 +20,17 @@ This schema <u>does not</u> accept additional properties.
  - **destination**
 	 - Location where this entity needs to be moved to.
 	 - Type: `object`
+	 - This schema <u>does not</u> accept additional properties.
 	 - **Properties**
 		 - **storageServiceType**
 			 - The storage service to move this entity to.
-			 - $ref: [storageService.json](storageservice.md)
+			 - $ref: [../services/storageService.json](storageservice.md)
 		 - **storageClassType**
 			 - The storage class to move this entity to.
-			 - $ref: [../type/storage.json#/definitions/storageClassType](../types/storage.md#storageclasstype)
+			 - $ref: [../../type/storage.json#/definitions/storageClassType](../types/storage.md#storageclasstype)
 		 - **location**
 			 - The location where to move this entity to.
-			 - $ref: [location.json](location.md)
+			 - $ref: [../data/location.json](location.md)
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

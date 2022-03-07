@@ -15,6 +15,7 @@ This schema <u>does not</u> accept additional properties.
  - **name** `required`
 	 - Name that identifies this storage service.
 	 - Type: `string`
+	 - The value must match this pattern: `^[^.]*$`
 	 - Length: between 1 and 128
  - **displayName**
 	 - Display Name that identifies this storage service.
@@ -37,6 +38,9 @@ This schema <u>does not</u> accept additional properties.
  - **href** `required`
 	 - Link to the resource corresponding to this storage service.
 	 - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+ - **owner**
+	 - Owner of this storage service.
+	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
  - **changeDescription**
 	 - Change that lead to this version of the entity.
 	 - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
@@ -46,4 +50,4 @@ This schema <u>does not</u> accept additional properties.
 	 - Default: _false_
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

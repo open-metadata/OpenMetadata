@@ -82,7 +82,7 @@
       "minimum": 0
     },
     "relationshipType": {
-      "description": "Describes relationship between the two entities. Eg: Database --- Contains --> Table",
+      "description": "Describes relationship between the two entities. Eg: Database --- Contains --> Table.",
       "$ref": "#/definitions/relationshipType"
     },
     "deleted": {

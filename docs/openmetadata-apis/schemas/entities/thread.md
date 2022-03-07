@@ -19,11 +19,34 @@ This schema <u>does not</u> accept additional properties.
 	 - Timestamp of the when the first post created the thread in Unix epoch time milliseconds.
 	 - $ref: [../../type/basic.json#/definitions/timestamp](../types/basic.md#timestamp)
  - **about** `required`
-	 - Data asset about which this thread is created for with format <#E/{entities}/{entityType}/{field}/{fieldValue}.
+	 - Data asset about which this thread is created for with format <#E/{entities}/{entityName}/{field}/{fieldValue}.
 	 - $ref: [../../type/basic.json#/definitions/entityLink](../types/basic.md#entitylink)
+ - **entityId**
+	 - Entity Id of the entity that the thread belongs to.
+	 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
  - **addressedTo**
-	 - User or team this thread is addressed to in format <#E/{entities}/{entityType}/{field}/{fieldValue}.
+	 - User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.
 	 - $ref: [../../type/basic.json#/definitions/entityLink](../types/basic.md#entitylink)
+ - **createdBy**
+	 - User who created the thread.
+	 - Type: `string`
+ - **updatedAt**
+	 - Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.
+	 - $ref: [../../type/basic.json#/definitions/timestamp](../types/basic.md#timestamp)
+ - **updatedBy**
+	 - User who made the update.
+	 - Type: `string`
+ - **resolved**
+	 - When `true` indicates the thread has been resolved.
+	 - Type: `boolean`
+	 - Default: _false_
+ - **message**
+	 - The main message of the thread in markdown format.
+	 - Type: `string`
+ - **postsCount**
+	 - The total count of posts in the thread.
+	 - Type: `integer`
+	 - Default: `0`
  - **posts** `required`
 	 - Type: `array`
 		 - **Items**
@@ -35,6 +58,7 @@ This schema <u>does not</u> accept additional properties.
 
  - Post within a feed.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **message** `required`
 		 - Message in markdown format. See markdown support for more details.
@@ -43,10 +67,10 @@ This schema <u>does not</u> accept additional properties.
 		 - Timestamp of the post in Unix epoch time milliseconds.
 		 - $ref: [../../type/basic.json#/definitions/timestamp](../types/basic.md#timestamp)
 	 - **from** `required`
-		 - ID of User (regular user or a bot) posting the message.
-		 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
+		 - Name of the User posting the message.
+		 - Type: `string`
 
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

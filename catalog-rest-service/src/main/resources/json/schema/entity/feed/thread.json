@@ -24,7 +24,7 @@
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "from": {
-          "description": "Name of the User posting the message",
+          "description": "Name of the User posting the message.",
           "type": "string"
         }
       },
@@ -70,16 +70,16 @@
       "type": "string"
     },
     "resolved": {
-      "description": "When `true` indicates the thread has been resolved",
+      "description": "When `true` indicates the thread has been resolved.",
       "type": "boolean",
       "default": false
     },
     "message": {
-      "description": "The main message of the thread in markdown format",
+      "description": "The main message of the thread in markdown format.",
       "type": "string"
     },
     "postsCount": {
-      "description": "The total count of posts in the thread",
+      "description": "The total count of posts in the thread.",
       "type": "integer",
       "default": 0
     },

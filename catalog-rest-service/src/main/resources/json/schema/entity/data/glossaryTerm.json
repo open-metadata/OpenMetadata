@@ -15,11 +15,11 @@
       "type": "object",
       "properties": {
         "name": {
-          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`",
+          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`.",
           "type": "string"
         },
         "endpoint": {
-          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`",
+          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`.",
           "type": "string",
           "format": "uri"
         }

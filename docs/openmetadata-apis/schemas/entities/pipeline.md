@@ -52,6 +52,11 @@ This schema <u>does not</u> accept additional properties.
 	 - Type: `array`
 		 - **Items**
 		 - $ref: [#/definitions/task](#task)
+ - **pipelineStatus**
+	 - Series of pipeline executions and its status.
+	 - Type: `array`
+		 - **Items**
+		 - $ref: [#/definitions/pipelineStatus](#pipelinestatus)
  - **followers**
 	 - Followers of this Pipeline.
 	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
@@ -82,9 +87,34 @@ This schema <u>does not</u> accept additional properties.
 
 
 ## Type definitions in this schema
+### statusType
+
+ - Enum defining the possible Status.
+ - Type: `string`
+ - The value is restricted to the following: 
+	 1. _"Successful"_
+	 2. _"Failed"_
+	 3. _"Pending"_
+
+
+### taskStatus
+
+ - This schema defines a time series of the status of a Pipeline or Task.
+ - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
+ - **Properties**
+	 - **name**
+		 - Name of the Task.
+		 - Type: `string`
+	 - **executionStatus**
+		 - Status at a specific execution date.
+		 - $ref: [#/definitions/statusType](#statustype)
+
+
 ### task
 
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **name** `required`
 		 - Name that identifies this task instance uniquely.
@@ -119,4 +149,26 @@ This schema <u>does not</u> accept additional properties.
 			 - **Items**
 			 - $ref: [../../type/tagLabel.json](../types/taglabel.md)
 
-_This document was updated on: Tuesday, January 25, 2022_
+
+### pipelineStatus
+
+ - Series of pipeline executions, its status and task status.
+ - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
+ - **Properties**
+	 - **executionDate**
+		 - Date where the job was executed.
+		 - $ref: [../../type/basic.json#/definitions/timestamp](../types/basic.md#timestamp)
+	 - **executionStatus**
+		 - Status at a specific execution date.
+		 - $ref: [#/definitions/statusType](#statustype)
+	 - **taskStatus**
+		 - Series of task executions and its status.
+		 - Type: `array`
+			 - **Items**
+			 - $ref: [#/definitions/taskStatus](#taskstatus)
+
+
+
+
+_This document was updated on: Monday, March 7, 2022_
