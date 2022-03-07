@@ -61,6 +61,7 @@ public class SearchResource {
   private final RestHighLevelClient client;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final String NAME = "name";
+  private static final String DISPLAY_NAME = "display_name";
   private static final String DESCRIPTION = "description";
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
@@ -338,13 +339,13 @@ public class SearchResource {
 
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 1.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true);
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true);
     return searchBuilder(queryBuilder, null, from, size);
   }
 
