@@ -10,7 +10,7 @@
       "javaType": "org.openmetadata.catalog.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
       "type": "string",
-      "enum": ["Regular", "External", "View", "SecureView", "MaterializedView"],
+      "enum": ["Regular", "External", "View", "SecureView", "MaterializedView", "Iceberg"],
       "javaEnums": [
         {
           "name": "Regular"
@@ -26,6 +26,9 @@
         },
         {
           "name": "MaterializedView"
+        },
+        {
+          "name": "Iceberg"
         }
       ]
     },

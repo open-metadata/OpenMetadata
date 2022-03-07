@@ -20,6 +20,30 @@
           "ordinalPosition": 2
         }
       ]
+    },
+    {
+      "name": "marketing",
+      "description": "Marketing data",
+      "tableType": "Iceberg",
+      "columns": [
+        {
+          "name": "ad_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "bigint",
+          "description": "Ad ID",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "campaign_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "bigint",
+          "description": "campaign ID",
+          "ordinalPosition": 1
+        }
+      ],
+      "Parameters": {
+        "table_type": "ICEBERG"
+      }
     }
   ]
 }

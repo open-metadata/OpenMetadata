@@ -16,7 +16,7 @@
       "javaType": "org.openmetadata.catalog.type.LocationType",
       "description": "This schema defines the type used for describing different types of Location.",
       "type": "string",
-      "enum": ["Bucket", "Prefix", "Database", "Table"],
+      "enum": ["Bucket", "Prefix", "Database", "Table", "Iceberg"],
       "javaEnums": [
         {
           "name": "Bucket"
@@ -29,6 +29,9 @@
         },
         {
           "name": "Table"
+        },
+        {
+          "name": "Iceberg"
         }
       ]
     }

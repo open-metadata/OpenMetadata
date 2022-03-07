@@ -254,7 +254,7 @@ class ColumnTypeParser:
             }
         elif ColumnTypeParser._FIXED_STRING.match(s):
             m = ColumnTypeParser._FIXED_STRING.match(s)
-            return {"type": "STRING", "dataTypeDisplay": s}
+            return {"dataType": "STRING", "dataTypeDisplay": s}
         elif ColumnTypeParser._FIXED_DECIMAL.match(s):
             m = ColumnTypeParser._FIXED_DECIMAL.match(s)
             if m.group(2) is not None:  # type: ignore

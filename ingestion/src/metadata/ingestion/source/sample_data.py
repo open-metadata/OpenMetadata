@@ -331,12 +331,21 @@ class SampleDataSource(Source[Entity]):
         )
         for table in self.glue_tables["tables"]:
             table["id"] = uuid.uuid4()
+            parameters = table.get("Parameters")
+            table = {key: val for key, val in table.items() if key != "Parameters"}
             table_metadata = Table(**table)
+            location_type = LocationType.Table
+            if parameters:
+                location_type = (
+                    location_type
+                    if parameters.get("table_type") != "ICEBERG"
+                    else LocationType.Iceberg
+                )
             location_metadata = Location(
                 id=uuid.uuid4(),
                 name="s3://glue_bucket/dwh/schema/" + table["name"],
                 description=table["description"],
-                locationType=LocationType.Table,
+                locationType=location_type,
                 service=EntityReference(
                     id=self.glue_storage_service.id, type="storageService"
                 ),
