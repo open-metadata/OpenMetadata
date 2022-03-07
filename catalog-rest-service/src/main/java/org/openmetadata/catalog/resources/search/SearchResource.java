@@ -61,7 +61,6 @@ public class SearchResource {
   private final RestHighLevelClient client;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final String NAME = "name";
-  private static final String DISPLAY_NAME = "display_name";
   private static final String DESCRIPTION = "description";
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
