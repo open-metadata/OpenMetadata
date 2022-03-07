@@ -472,7 +472,7 @@ Please use the following command to check the version of PostgreSQL you have.
 postgres --version
 ```
 
-## Procedure
+## Procedure (in Beta)
 
 
 

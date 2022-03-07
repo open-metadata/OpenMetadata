@@ -454,7 +454,7 @@ You must have a running deployment of OpenMetadata to use this guide. By default
 
 By default, OpenMetadata ships with Apache Airflow and is configured to use the distributed Airflow container. However, you may also use your own Airflow instance. To use your own Airflow instance, you will need to install the [OpenMetadata Airflow REST API plugin](https://pypi.org/project/openmetadata-airflow-managed-apis/).
 
-## Procedure
+## Procedure (in Beta)
 
 
 

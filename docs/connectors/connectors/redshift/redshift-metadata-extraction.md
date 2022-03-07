@@ -6,7 +6,7 @@ description: >-
 
 # Redshift Metadata Extraction
 
-There are three options for configuring metadata ingestion for this connector. They are as follows:
+&#x20;  There are three options for configuring metadata ingestion for this connector. They are as follows:
 
 1. Schedule metadata ingestion workflows via the **Airflow SDK**. Use this option if you already have an Airflow instance running that you plan to use for workflow scheduling with OpenMetadata.
 2. Schedule metadata ingestion workflows via the **OpenMetadata UI**. Use this option if you prefer to manage ingestion through the UI and are prepared to either install the [OpenMetadata Airflow REST API plugin](https://pypi.org/project/openmetadata-airflow-managed-apis/) in your Airflow deployment or will use the Airflow container that ships with OpenMetadata.
@@ -456,7 +456,7 @@ You must have a running deployment of OpenMetadata to use this guide. By default
 
 By default, OpenMetadata ships with Apache Airflow and is configured to use the distributed Airflow container. However, you may also use your own Airflow instance. To use your own Airflow instance, you will need to install the [OpenMetadata Airflow REST API plugin](https://pypi.org/project/openmetadata-airflow-managed-apis/).
 
-## Procedure
+## Procedure (in Beta)
 
 
 
