@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     Constraint,
     ConstraintType,
     DataModel,
+    DataType,
     ModelType,
     Table,
     TableConstraint,
@@ -397,6 +398,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     model_fqdn = f"{schema}.{model_name}"
                 except Exception as err:
+                    logger.debug(traceback.print_exc())
                     logger.error(err)
                 self.data_models[model_fqdn] = model
 
@@ -562,8 +564,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             col_type, column["type"]
                         )
                         if col_type == "NULL" or col_type is None:
-                            col_type = "VARCHAR"
-                            data_type_display = "varchar"
+                            col_type = DataType.VARCHAR.name
+                            data_type_display = col_type.lower()
                             logger.warning(
                                 "Unknown type {} mapped to VARCHAR: {}".format(
                                     repr(column["type"]), column["name"]
@@ -579,10 +581,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = (
                             1 if col_data_length is None else col_data_length
                         )
-                        if col_type == "ARRAY":
-                            if arr_data_type is None:
-                                arr_data_type = "VARCHAR"
-                            dataTypeDisplay = col_type + "<" + arr_data_type + ">"
+                        if col_type == "ARRAY" and arr_data_type is None:
+                            arr_data_type = DataType.VARCHAR.name
+                            dataTypeDisplay = f"array<{arr_data_type}>"
+
                         om_column = Column(
                             name=column["name"],
                             description=column.get("comment", None),
@@ -640,7 +642,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 ]
                         except Exception as err:
                             logger.debug(traceback.print_exc())
-                            logger.debug(err)
+                            logger.error(err)
+
                         om_column = col_dict
                 except Exception as err:
                     logger.debug(traceback.print_exc())
