@@ -460,8 +460,20 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const handleConfigUpdate = (updatedData: ServicesData) => {
+    const configData = {
+      databaseConnection: updatedData.databaseConnection,
+      name: updatedData.name,
+      serviceType: updatedData.serviceType,
+      brokers: updatedData.brokers,
+      schemaRegistry: updatedData.schemaRegistry,
+      dashboardUrl: updatedData.dashboardUrl,
+      username: updatedData.username,
+      password: updatedData.password,
+      pipelineUrl: updatedData.pipelineUrl,
+    };
+
     return new Promise<void>((resolve, reject) => {
-      updateService(serviceName, serviceDetails?.id, updatedData)
+      updateService(serviceName, serviceDetails?.id, configData)
         .then((res: AxiosResponse) => {
           setServiceDetails(res.data);
           resolve();
@@ -539,7 +551,7 @@ const ServicePage: FunctionComponent = () => {
 
   const fetchPipeLines = (paging?: string) => {
     setIsloading(true);
-    getPipelines(serviceFQN, paging, ['owner', 'usageSummary', 'tags'])
+    getPipelines(serviceFQN, paging, ['owner', 'tags'])
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
