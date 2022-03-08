@@ -6,8 +6,8 @@ This document summarizes information relevant to OpenMetadata committers and con
 [how-to-contribute.md](how-to-contribute.md)
 {% endcontent-ref %}
 
-{% content-ref url="https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/ux-style-guide.md" %}
-[https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/ux-style-guide.md](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/ux-style-guide.md)
+{% content-ref url="ux-style-guide.md" %}
+[ux-style-guide.md](docs/open-source-community/ux-style-guide.md)
 {% endcontent-ref %}
 
 {% content-ref url="prerequisites.md" %}
@@ -34,8 +34,8 @@ This document summarizes information relevant to OpenMetadata committers and con
 [run-integration-tests.md](run-integration-tests.md)
 {% endcontent-ref %}
 
-{% content-ref url="https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/ui/README.md" %}
-[https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/ui/README.md](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/ui/README.md)
+{% content-ref url="ui/" %}
+[ui](ui/)
 {% endcontent-ref %}
 
 {% content-ref url="solution-design.md" %}

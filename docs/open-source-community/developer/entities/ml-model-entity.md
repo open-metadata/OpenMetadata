@@ -35,7 +35,7 @@ There are some common questions with lifecycle tools, such as _Where (URL) is th
 
 This information, together with the rest of the features brought by OpenMetadata, lets us also manage topics such as schema changes in the sources or feature drifts, with the corresponding alerting systems.
 
-While we can already extract certain pieces of information automatically via our Connectors (e.g., [Mlflow](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/entities/broken-reference/README.md)), there are attributes that we'll need to fill in by ourselves. Thanks to the [Solution Design](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/entities/broken-reference/README.md) of OpenMetadata and the [Python API](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/entities/broken-reference/README.md), this is going to be a rather easy task that will unlock the full power of your **organization's metadata**.
+While we can already extract certain pieces of information automatically via our Connectors (e.g., [Mlflow](broken-reference)), there are attributes that we'll need to fill in by ourselves. Thanks to the [Solution Design](broken-reference) of OpenMetadata and the [Python API](broken-reference), this is going to be a rather easy task that will unlock the full power of your **organization's metadata**.
 
 ## Properties
 
@@ -65,7 +65,7 @@ When talking about the `MlModel` features and how to inform them, we have made a
 Being able to track both sides of a feature is a powerful way to know how our algorithm uses the Data Platform. This will help us show feature definitions as well as keep track of their origins.
 
 {% hint style="info" %}
-To fully understand what we are going to show now, it would be interesting for the reader to make sure to visit the [Python API](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/entities/broken-reference/README.md) section.
+To fully understand what we are going to show now, it would be interesting for the reader to make sure to visit the [Python API](broken-reference) section.
 {% endhint %}
 
 Let's create an example of an `MlFeature`:
