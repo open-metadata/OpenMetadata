@@ -194,11 +194,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const qualityTestFormHandler = (
     tabValue: number,
-    testMode: DatasetTestModeType,
-    columnName: string
+    testMode?: DatasetTestModeType,
+    columnName?: string
   ) => {
     activeTabHandler(tabValue);
-    setTestMode(testMode);
+    setTestMode(testMode as DatasetTestModeType);
     setSelectedColumn(columnName);
     setShowTestForm(true);
   };

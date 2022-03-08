@@ -410,7 +410,7 @@ const RolesPage = () => {
     return (
       <span
         className={classNames(
-          'tw-border tw-border-grey-muted tw-rounded tw-px-1 tw-font-normal',
+          'tw-border tw-border-grey-muted tw-rounded tw-px-1 tw-font-normal tw-text-sm',
           className
         )}>
         Default
