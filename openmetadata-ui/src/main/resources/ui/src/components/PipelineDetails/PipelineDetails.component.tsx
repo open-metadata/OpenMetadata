@@ -247,22 +247,9 @@ const PipelineDetails = ({
     }
   };
 
-  const onTagUpdate = (selectedTags?: Array<string>) => {
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
-      const prevTags =
-        pipelineDetails?.tags?.filter((tag) =>
-          selectedTags.includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
-        })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          tagFQN: tag,
-        }));
-      const updatedTags = [...prevTags, ...newTags];
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedPipeline = { ...pipelineDetails, tags: updatedTags };
       tagUpdateHandler(updatedPipeline);
     }

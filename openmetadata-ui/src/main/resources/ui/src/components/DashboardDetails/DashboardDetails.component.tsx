@@ -245,22 +245,9 @@ const DashboardDetails = ({
     }
   };
 
-  const onTagUpdate = (selectedTags?: Array<string>) => {
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
-      const prevTags =
-        dashboardDetails?.tags?.filter((tag) =>
-          selectedTags.includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
-        })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          tagFQN: tag,
-        }));
-      const updatedTags = [...prevTags, ...newTags];
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
       tagUpdateHandler(updatedDashboard);
     }
@@ -304,7 +291,10 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (selectedTags?: Array<EntityTags>) => {
+  const handleChartTagSelection = (
+    selectedTags?: Array<EntityTags>,
+    allTags?: Array<string>
+  ) => {
     if (selectedTags && editChartTags) {
       const prevTags = editChartTags.chart.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
@@ -319,6 +309,7 @@ const DashboardDetails = ({
         .map((tag) => ({
           labelType: 'Manual',
           state: 'Confirmed',
+          source: (allTags || []).includes(tag.tagFQN) ? 'Tag' : 'Glossary',
           tagFQN: tag.tagFQN,
         }));
 
@@ -554,7 +545,7 @@ const DashboardDetails = ({
                                       handleChartTagSelection();
                                     }}
                                     onSelectionChange={(tags) => {
-                                      handleChartTagSelection(tags);
+                                      handleChartTagSelection(tags, tagList);
                                     }}>
                                     {chart.tags?.length ? (
                                       <button
