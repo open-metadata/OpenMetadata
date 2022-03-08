@@ -107,9 +107,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Given a global default role has been set, ...
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
-    UUID nonDefaultRoleId = roles.stream().filter(role -> !role.getDefault()).findAny().orElseThrow().getId();
+    UUID nonDefaultRoleId = roles.stream().filter(role -> !role.getDefaultRole()).findAny().orElseThrow().getId();
     UUID defaultRoleId =
-        roles.stream().filter(Role::getDefault).findAny().orElseThrow().getId(); // DataConsumer is global default role.
+        roles.stream()
+            .filter(Role::getDefaultRole)
+            .findAny()
+            .orElseThrow()
+            .getId(); // DataConsumer is global default role.
 
     // ... when a user is created without any roles, then the global default role should be assigned.
     CreateUser create = createRequest(test, 1);
@@ -128,7 +132,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     UUID prevDefaultRoleId = defaultRoleId;
     Role defaultRole = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1000), ADMIN_AUTH_HEADERS);
     String defaultRoleJson = JsonUtils.pojoToJson(defaultRole);
-    defaultRole.setDefault(true);
+    defaultRole.setDefaultRole(true);
     defaultRoleId = defaultRole.getId(); // New global default role.
     assertNotEquals(prevDefaultRoleId, defaultRoleId);
     roleResourceTest.patchEntity(defaultRoleId, defaultRoleJson, defaultRole, ADMIN_AUTH_HEADERS);
@@ -305,7 +309,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Role role2 = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
     UUID defaultRoleId =
         roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData().stream()
-            .filter(Role::getDefault)
+            .filter(Role::getDefaultRole)
             .findAny()
             .orElseThrow()
             .getId(); // DataConsumer is default role.
@@ -460,7 +464,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
     UUID defaultRoleId =
-        roles.stream().filter(Role::getDefault).findAny().orElseThrow().getId(); // DataConsumer is default role.
+        roles.stream().filter(Role::getDefaultRole).findAny().orElseThrow().getId(); // DataConsumer is default role.
     EntityReference defaultRoleRef =
         new RoleEntityInterface(roleResourceTest.getEntity(defaultRoleId, RoleResource.FIELDS, ADMIN_AUTH_HEADERS))
             .getEntityReference();
