@@ -93,6 +93,27 @@ Please configure an ingestion workflow to run periodically. You can also use Apa
 
 Visit the documentation for [connectors](faq.md#connectors) and select the guide for service you would like to ingest data from. Follow the instructions for installing, configuring, and running ingestion from the command line for the relevant connector.
 
+#### How to resolve the issue if you are receiving the following error for authentication when ingesting metadata?&#x20;
+
+```
+metadata.ingestion.ometa.client.APIError: Principal: CatalogPrincipal{name='test-openmetadata'} is not admin
+```
+
+Please add the name given in the error inside the YAML file under botPrincipals.
+
+```
+authorizerConfiguration:
+  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+  # JWT Filter
+  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+  adminPrincipals:
+    - "username"
+  botPrincipals:
+    - "ingestion-bot"
+    - "test-openmetadata"
+  principalDomain: "open-metadata.org"
+```
+
 ### BigQuery
 
 #### Are columns of the type array supported for BigQuery?
@@ -188,6 +209,10 @@ All OpenMetadata APIs have the entity type and ID to identify an entity. All ent
 #### Why do I receive an error when I try to start OpenMetadata in Mac OS using Docker?&#x20;
 
 Please check to ensure your system meets the Docker resource requirements specified in the [Run OpenMetadata](install/run-openmetadata.md) guide.
+
+#### **What should be done if the docker containers are exiting with the 137 exit code?**
+
+If you are receiving the 137 exit code, increase the memory to 6 GB from Settings >> Resources >> Memory**.**
 
 ## Elasticsearch
 
