@@ -98,7 +98,7 @@ const DataQualityTest = ({
                 onClick={() => {
                   handleShowDropDown(true);
                 }}>
-                Actions{' '}
+                Add Test{' '}
                 {showDropDown ? (
                   <DropdownIcon
                     style={{
