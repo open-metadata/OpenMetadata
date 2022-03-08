@@ -23,7 +23,7 @@ export interface Role {
   /**
    * If `true`, this role is set as default and will be assigned to all users.
    */
-  default?: boolean;
+  defaultRole?: boolean;
   /**
    * When `true` indicates the entity has been soft deleted.
    */

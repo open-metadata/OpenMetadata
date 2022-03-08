@@ -169,7 +169,7 @@ const RolesPage = () => {
       .then((res: AxiosResponse) => {
         const { data } = res.data;
         setRoles(data);
-        setDefaultRole(data.find((role: Role) => role.default));
+        setDefaultRole(data.find((role: Role) => role.defaultRole));
         setCurrentRole(data[0]);
         AppState.updateUserRole(data);
       })
@@ -300,7 +300,7 @@ const RolesPage = () => {
 
   const onSetDefaultRole = () => {
     if (isSettingDefaultRole) {
-      const updatedRole = { ...currentRole, default: true };
+      const updatedRole = { ...currentRole, defaultRole: true };
       const jsonPatch = compare(currentRole as Role, updatedRole);
       updateRole(currentRole?.id as string, jsonPatch)
         .then((res: AxiosResponse) => {
@@ -309,7 +309,7 @@ const RolesPage = () => {
             setRoles((pre) => {
               return pre.map((role) => ({
                 ...role,
-                default: false,
+                defaultRole: false,
               }));
             });
           }
@@ -503,7 +503,7 @@ const RolesPage = () => {
                 title={role.displayName}>
                 <span>{role.displayName}</span>{' '}
               </p>
-              {role.default ? getDefaultBadge() : null}
+              {role.defaultRole ? getDefaultBadge() : null}
             </div>
           ))}
       </>
@@ -735,12 +735,12 @@ const RolesPage = () => {
                         className="tw-heading tw-text-link tw-text-base"
                         data-testid="header-title">
                         {currentRole?.displayName}
-                        {currentRole?.default
+                        {currentRole?.defaultRole
                           ? getDefaultBadge('tw-ml-2')
                           : null}
                       </div>
                       <div className="tw-flex">
-                        {!currentRole?.default ? (
+                        {!currentRole?.defaultRole ? (
                           <NonAdminAction
                             position="bottom"
                             title={TITLE_FOR_NON_ADMIN_ACTION}>
