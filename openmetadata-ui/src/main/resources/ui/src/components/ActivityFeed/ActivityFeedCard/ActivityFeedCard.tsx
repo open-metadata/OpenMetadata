@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
 import { Post } from 'Models';
-import React, { FC, Fragment, HTMLAttributes } from 'react';
+import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
+import { getUserByName } from '../../../axiosAPIs/userAPI';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { User } from '../../../generated/entity/teams/user';
 import { getPartialNameFromFQN } from '../../../utils/CommonUtils';
 import {
   getEntityField,
@@ -26,10 +29,13 @@ import {
   getFrontEndFormat,
   getReplyText,
 } from '../../../utils/FeedUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import Avatar from '../../common/avatar/Avatar';
+import PopOver from '../../common/popover/PopOver';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '../../Loader/Loader';
 
 interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   feed: Post;
@@ -75,9 +81,122 @@ const FeedHeader: FC<FeedHeaderProp> = ({
   entityField,
   isEntityFeed,
 }) => {
+  const [userData, setUserData] = useState<User>({} as User);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  const onMousEnterHandler = () => {
+    getUserByName(createdBy, 'profile,roles,teams,follows,owns')
+      .then((res: AxiosResponse) => {
+        setUserData(res.data);
+      })
+      .catch(() => {
+        setIsError(true);
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  const getUserData = () => {
+    const image = userData.profile?.images?.image512;
+    const displayName = userData.displayName ?? '';
+    const name = userData.name ?? '';
+    const teams = userData.teams;
+    const roles = userData.roles;
+
+    return (
+      <Fragment>
+        {isError ? (
+          <p>Error while getting user data.</p>
+        ) : (
+          <div>
+            {isLoading ? (
+              <Loader size="small" />
+            ) : (
+              <div>
+                <div className="tw-flex">
+                  <div className="tw-mr-2">
+                    {image ? (
+                      <img src={image} width="30px" />
+                    ) : (
+                      <Avatar name={createdBy} type="square" width="30" />
+                    )}
+                  </div>
+                  <div className="tw-self-center">
+                    <p>
+                      <span className="tw-font-medium tw-mr-2">
+                        {displayName}
+                      </span>
+                      <span className="tw-text-grey-muted">{name}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="tw-text-left">
+                  {teams?.length || roles?.length ? (
+                    <hr className="tw-my-2 tw--mx-3" />
+                  ) : null}
+                  {teams?.length ? (
+                    <p className="tw-mt-2">
+                      <SVGIcons
+                        alt="icon"
+                        className="tw-w-4"
+                        icon={Icons.TEAMS_GREY}
+                      />
+                      <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
+                        Teams
+                      </span>
+                      <span>
+                        {teams.map((team, i) => (
+                          <span
+                            className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
+                            key={i}>
+                            {team?.displayName ?? team?.name}
+                          </span>
+                        ))}
+                      </span>
+                    </p>
+                  ) : null}
+                  {roles?.length ? (
+                    <p className="tw-mt-2">
+                      <SVGIcons
+                        alt="icon"
+                        className="tw-w-4"
+                        icon={Icons.USERS}
+                      />
+                      <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
+                        Roles
+                      </span>
+                      <span>
+                        {roles.map((role, i) => (
+                          <span
+                            className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
+                            key={i}>
+                            {role?.displayName ?? role?.name}
+                          </span>
+                        ))}
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Fragment>
+    );
+  };
+
   return (
     <div className={classNames('tw-flex tw-mb-1.5', className)}>
-      <Avatar name={createdBy} type="square" width="30" />
+      <PopOver
+        hideDelay={500}
+        html={getUserData()}
+        position="top"
+        theme="light"
+        trigger="mouseenter">
+        <span className="tw-cursor-pointer" onMouseEnter={onMousEnterHandler}>
+          <Avatar name={createdBy} type="square" width="30" />
+        </span>
+      </PopOver>
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
         {createdBy}
         {entityFQN && entityType && entityFQN ? (
