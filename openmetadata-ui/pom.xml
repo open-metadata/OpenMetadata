@@ -95,7 +95,7 @@
       <plugin>
         <groupId>com.github.eirslett</groupId>
         <artifactId>frontend-maven-plugin</artifactId>
-        <version>1.11.0</version>
+        <version>1.12.1</version>
 
         <!-- optional -->
         <configuration>
@@ -110,7 +110,7 @@
               <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v12.22.1</nodeVersion>
+              <nodeVersion>v17.4.0</nodeVersion>
               <yarnVersion>v1.22.17</yarnVersion>
             </configuration>
           </execution>
