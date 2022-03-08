@@ -569,13 +569,16 @@ const TeamsPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className={classNames('link-text tw-underline', {
+                        <Button
+                          className={classNames({
                             'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                           })}
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={() => setIsAddingTeam(true)}>
                           Click here
-                        </button>
+                        </Button>
                       </NonAdminAction>
                       {' to add new Team'}
                     </div>

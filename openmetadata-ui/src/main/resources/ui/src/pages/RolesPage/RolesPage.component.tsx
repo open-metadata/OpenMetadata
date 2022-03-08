@@ -514,7 +514,7 @@ const RolesPage = () => {
     if (!rules.length) {
       return (
         <div className="tw-text-center tw-py-5">
-          <p className="tw-text-base">No Rules Added.</p>
+          <p className="tw-text-base">No rules.</p>
         </div>
       );
     }
@@ -818,14 +818,16 @@ const RolesPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="link-text tw-underline"
+                        <Button
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={() => {
                             setErrorData(undefined);
                             setIsAddingRole(true);
                           }}>
                           Click here
-                        </button>
+                        </Button>
                         {' to add new Role'}
                       </NonAdminAction>
                     </p>

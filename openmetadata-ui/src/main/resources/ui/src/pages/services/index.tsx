@@ -556,7 +556,7 @@ const ServicesPage = () => {
                               />
                             ) : (
                               <span className="tw-no-description">
-                                No description added
+                                No description
                               </span>
                             )}
                           </div>
@@ -623,12 +623,14 @@ const ServicesPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="link-text tw-underline"
+                        <Button
                           data-testid="add-service-button"
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={handleAddService}>
                           Click here
-                        </button>
+                        </Button>
                       </NonAdminAction>{' '}
                       to add new {servicesDisplayName[serviceName]}
                     </p>
