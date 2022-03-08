@@ -120,7 +120,7 @@ authorizerConfiguration:
   adminPrincipals:
     - ${AUTHORIZER_ADMIN_PRINCIPALS:-admin}
   botPrincipals:
-    - ${AUTHORIZER_INGESTION_PRINCIPAL:-ingestion-bot]}
+    - ${AUTHORIZER_INGESTION_PRINCIPAL:-ingestion-bot}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
 
 authenticationConfiguration:
