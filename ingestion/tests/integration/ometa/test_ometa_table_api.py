@@ -291,8 +291,6 @@ class OMetaTableTest(TestCase):
                         name="id",
                         uniqueCount=3.0,
                         uniqueProportion=1.0,
-                        missingCount=0.0,
-                        missingPercentage=0.0,
                         min=1,
                         max=3,
                         mean=1.5,
