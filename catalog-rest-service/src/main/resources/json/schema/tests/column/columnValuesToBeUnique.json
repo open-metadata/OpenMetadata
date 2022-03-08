@@ -5,6 +5,11 @@
   "description": "This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be unique. ",
   "type": "object",
   "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeUnique",
-  "properties": {},
+  "properties": {
+    "columnValuesToBeUnique": {
+      "type": "boolean",
+      "default": true
+    }
+  },
   "additionalProperties": false
 }

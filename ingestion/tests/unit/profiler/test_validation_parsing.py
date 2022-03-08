@@ -51,7 +51,10 @@ def test_column_values_to_be_unique():
     """
     ColumnValuesToBeUnique
     """
-    obj = {"config": {}, "columnTestType": "columnValuesToBeUnique"}
+    obj = {
+        "config": {"columnValuesToBeUnique": True},
+        "columnTestType": "columnValuesToBeUnique",
+    }
 
     test_case = ColumnTestCase.parse_obj(obj)
 
@@ -62,12 +65,14 @@ def test_column_values_to_be_not_null():
     """
     ColumnValuesToBeNotNull
     """
-    obj = {"config": {}, "columnTestType": "columnValuesToBeNotNull"}
+    obj = {
+        "config": {"columnValuesToBeNotNull": True},
+        "columnTestType": "columnValuesToBeNotNull",
+    }
 
     test_case = ColumnTestCase.parse_obj(obj)
 
-    # TODO: we should parse this properly
-    # assert isinstance(test_case.config, ColumnValuesToBeNotNull)
+    assert isinstance(test_case.config, ColumnValuesToBeNotNull)
 
 
 def test_column_values_to_be_between():
@@ -132,6 +137,15 @@ def test_column_values_missing_count_to_be_equal():
     """
     obj = {
         "config": {"missingCountValue": 10, "missingValueMatch": ["N/A"]},
+        "columnTestType": "columnValuesMissingCountToBeEqual",
+    }
+
+    test_case = ColumnTestCase.parse_obj(obj)
+
+    assert isinstance(test_case.config, ColumnValuesMissingCount)
+
+    obj = {
+        "config": {"missingCountValue": 10},
         "columnTestType": "columnValuesMissingCountToBeEqual",
     }
 
