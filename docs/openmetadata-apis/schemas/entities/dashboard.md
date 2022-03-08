@@ -74,6 +74,7 @@ This schema does not accept additional properties.
 	 - When `true` indicates the entity has been soft deleted.
 	 - Type: `boolean`
 	 - Default: _false_
+>>>>>>> a07bc411 (updated json schema and schema docs (#3219))
 
 * **id** `required`
   * Unique identifier that identifies a dashboard instance.
@@ -141,4 +142,7 @@ This schema does not accept additional properties.
   * Type: `boolean`
   * Default: _false_
 
+<<<<<<< HEAD
+_This document was updated on: Monday, March 7, 2022_=======
 _This document was updated on: Monday, March 7, 2022_
+>>>>>>> a07bc411 (updated json schema and schema docs (#3219))

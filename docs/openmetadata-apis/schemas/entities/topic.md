@@ -9,6 +9,8 @@ Type: `object`
 This schema does not accept additional properties.
 
 ## Properties
+<<<<<<< HEAD
+=======
  - **id** `required`
 	 - Unique identifier that identifies this topic instance.
 	 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
@@ -94,6 +96,7 @@ This schema does not accept additional properties.
 	 - When `true` indicates the entity has been soft deleted.
 	 - Type: `boolean`
 	 - Default: _false_
+>>>>>>> a07bc411 (updated json schema and schema docs (#3219))
 
 * **id** `required`
   * Unique identifier that identifies this topic instance.
@@ -180,7 +183,13 @@ This schema does not accept additional properties.
 
 ## Type definitions in this schema
 
+<<<<<<< HEAD
 ### topicName
+=======
+ - Name that identifies a topic.
+ - Type: `string`
+ - Length: between 1 and 128
+>>>>>>> a07bc411 (updated json schema and schema docs (#3219))
 
 * Name that identifies a topic.
 * Type: `string`
@@ -197,10 +206,18 @@ This schema does not accept additional properties.
 
 ### cleanupPolicy
 
+<<<<<<< HEAD
 * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
 * The value is restricted to the following:
   1. _"delete"_
   2. _"compact"_
+
+_This document was updated on: Tuesday, January 25, 2022_
+=======
+ - Topic clean up policy. For Kafka - `cleanup.policy` configuration.
+ - The value is restricted to the following: 
+	 1. _"delete"_
+	 2. _"compact"_
 
 
 ### topicConfig
@@ -211,4 +228,4 @@ This schema does not accept additional properties.
 
 
 
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Monday, March 7, 2022_>>>>>>> a07bc411 (updated json schema and schema docs (#3219))

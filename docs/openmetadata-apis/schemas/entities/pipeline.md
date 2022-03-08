@@ -9,6 +9,8 @@ Type: `object`
 This schema does not accept additional properties.
 
 ## Properties
+<<<<<<< HEAD
+=======
  - **id** `required`
 	 - Unique identifier that identifies a pipeline instance.
 	 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
@@ -84,6 +86,7 @@ This schema does not accept additional properties.
 	 - When `true` indicates the entity has been soft deleted.
 	 - Type: `boolean`
 	 - Default: _false_
+>>>>>>> a07bc411 (updated json schema and schema docs (#3219))
 
 * **id** `required`
   * Unique identifier that identifies a pipeline instance.
@@ -219,6 +222,70 @@ This schema does not accept additional properties.
       * **Items**
       * $ref: [../../type/tagLabel.json](../types/taglabel.md)
 
+_This document was updated on: Tuesday, January 25, 2022_
+=======
+### statusType
+
+ - Enum defining the possible Status.
+ - Type: `string`
+ - The value is restricted to the following: 
+	 1. _"Successful"_
+	 2. _"Failed"_
+	 3. _"Pending"_
+
+
+### taskStatus
+
+ - This schema defines a time series of the status of a Pipeline or Task.
+ - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
+ - **Properties**
+	 - **name**
+		 - Name of the Task.
+		 - Type: `string`
+	 - **executionStatus**
+		 - Status at a specific execution date.
+		 - $ref: [#/definitions/statusType](#statustype)
+
+
+### task
+
+ - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
+ - **Properties**
+	 - **name** `required`
+		 - Name that identifies this task instance uniquely.
+		 - Type: `string`
+	 - **displayName**
+		 - Display Name that identifies this Task. It could be title or label from the pipeline services.
+		 - Type: `string`
+	 - **fullyQualifiedName**
+		 - A unique name that identifies a pipeline in the format 'ServiceName.PipelineName.TaskName'.
+		 - Type: `string`
+	 - **description**
+		 - Description of this Task.
+		 - Type: `string`
+	 - **taskUrl**
+		 - Task URL to visit/manage. This URL points to respective pipeline service UI.
+		 - Type: `string`
+		 - String format must be a "uri"
+	 - **downstreamTasks**
+		 - All the tasks that are downstream of this task.
+		 - Type: `array`
+			 - **Items**
+			 - Type: `string`
+	 - **taskType**
+		 - Type of the Task. Usually refers to the class it implements.
+		 - Type: `string`
+	 - **taskSQL**
+		 - SQL used in the task. Can be used to determine the lineage.
+		 - $ref: [../../type/basic.json#/definitions/sqlQuery](../types/basic.md#sqlquery)
+	 - **tags**
+		 - Tags for this task.
+		 - Type: `array`
+			 - **Items**
+			 - $ref: [../../type/tagLabel.json](../types/taglabel.md)
+
 
 ### pipelineStatus
 
@@ -242,3 +309,4 @@ This schema does not accept additional properties.
 
 
 _This document was updated on: Monday, March 7, 2022_
+>>>>>>> a07bc411 (updated json schema and schema docs (#3219))

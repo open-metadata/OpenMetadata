@@ -9,6 +9,8 @@ Type: `object`
 This schema does not accept additional properties.
 
 ## Properties
+
+=======
  - **id**
 	 - Unique identifier that identifies this database instance.
 	 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
@@ -117,6 +119,7 @@ This schema does not accept additional properties.
 
 ## Type definitions in this schema
 
+=======
 ### databaseName
 
  - Name that identifies the database.
@@ -124,3 +127,5 @@ This schema does not accept additional properties.
 * Length: between 1 and 128
 
 _This document was updated on: Monday, March 7, 2022_
+=======
+
