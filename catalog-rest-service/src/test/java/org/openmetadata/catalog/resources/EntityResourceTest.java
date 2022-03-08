@@ -80,6 +80,8 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateGlossary;
+import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
@@ -92,6 +94,8 @@ import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServi
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.Glossary;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -104,6 +108,8 @@ import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
+import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
@@ -114,6 +120,8 @@ import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
+import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
@@ -136,6 +144,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -192,11 +201,23 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
 
   public static TagLabel USER_ADDRESS_TAG_LABEL;
-  public static TagLabel USER_BANK_ACCOUNT_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
   public static TagLabel PII_SENSITIVE_TAG_LABEL;
   public static TagLabel TIER1_TAG_LABEL;
   public static TagLabel TIER2_TAG_LABEL;
+
+  public static Glossary GLOSSARY1;
+  public static EntityReference GLOSSARY1_REF;
+  public static Glossary GLOSSARY2;
+  public static EntityReference GLOSSARY2_REF;
+
+  public static GlossaryTerm GLOSSARY1_TERM1;
+  public static EntityReference GLOSSARY1_TERM1_REF;
+  public static TagLabel GLOSSARY1_TERM1_LABEL;
+
+  public static GlossaryTerm GLOSSARY2_TERM1;
+  public static EntityReference GLOSSARY2_TERM1_REF;
+  public static TagLabel GLOSSARY2_TERM1_LABEL;
 
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
@@ -353,7 +374,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
 
     USER_ADDRESS_TAG_LABEL = getTagLabel("User.Address");
-    USER_BANK_ACCOUNT_TAG_LABEL = getTagLabel("User.BankAccount");
     PERSONAL_DATA_TAG_LABEL = getTagLabel("PersonalData.Personal");
     PII_SENSITIVE_TAG_LABEL = getTagLabel("PII.Sensitive");
     TIER1_TAG_LABEL = getTagLabel("Tier.Tier1");
@@ -386,16 +406,51 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
 
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
+    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY1_REF = new GlossaryEntityInterface(GLOSSARY1).getEntityReference();
+
+    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
+    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY2_REF = new GlossaryEntityInterface(GLOSSARY2).getEntityReference();
+
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    CreateGlossaryTerm createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("g1t1", null, "", null)
+            .withRelatedTerms(null)
+            .withGlossary(GLOSSARY1_REF);
+    GLOSSARY1_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY1_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY1_TERM1).getEntityReference();
+    GLOSSARY1_TERM1_LABEL = getTagLabel(GLOSSARY1_TERM1);
+
+    createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("g2t1", null, "", null)
+            .withRelatedTerms(null)
+            .withGlossary(GLOSSARY2_REF);
+    GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY2_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY2_TERM1).getEntityReference();
+    GLOSSARY2_TERM1_LABEL = getTagLabel(GLOSSARY2_TERM1);
+
     COLUMNS =
         Arrays.asList(
             getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
             getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-            getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
+            getColumn("c3", BIGINT, GLOSSARY1_TERM1_LABEL));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
     Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
     return new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
+  }
+
+  private TagLabel getTagLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withDescription(term.getDescription())
+        .withSource(Source.GLOSSARY);
   }
 
   @AfterAll
@@ -1141,6 +1196,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (supportsTags) {
       entityInterface.setTags(new ArrayList<>());
       entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
+      entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL);
       change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(entityInterface.getTags()));
     }
     if (supportsDots) {

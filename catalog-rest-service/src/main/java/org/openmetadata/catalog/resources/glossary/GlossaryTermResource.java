@@ -116,7 +116,7 @@ public class GlossaryTermResource {
     }
   }
 
-  static final String FIELDS = "children,relatedTerms,reviewers,tags";
+  static final String FIELDS = "children,relatedTerms,reviewers,tags,usageCount";
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
 
   @GET

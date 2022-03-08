@@ -67,7 +67,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     chart.setServiceType(dashboardService.getServiceType());
     chart.setFullyQualifiedName(getFQN(chart));
     chart.setOwner(helper(chart).validateOwnerOrNull());
-    chart.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), chart.getTags()));
+    chart.setTags(addDerivedTags(chart.getTags()));
   }
 
   @Override

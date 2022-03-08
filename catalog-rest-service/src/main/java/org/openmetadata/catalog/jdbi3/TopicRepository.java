@@ -75,7 +75,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
     topic.setOwner(helper(topic).validateOwnerOrNull());
-    topic.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), topic.getTags()));
+    topic.setTags(addDerivedTags(topic.getTags()));
   }
 
   @Override
