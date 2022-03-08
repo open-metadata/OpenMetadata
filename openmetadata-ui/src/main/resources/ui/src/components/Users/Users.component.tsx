@@ -1,4 +1,3 @@
-import classNames from 'classnames';
 import React, { useState } from 'react';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import UserCard from '../../pages/teams/UserCard';
@@ -65,17 +64,6 @@ const Users = ({ userData }: Props) => {
           <p className="tw-mt-4">
             <span className="tw-text-base tw-font-medium tw-mr-2">
               {userData.displayName || userData.name}
-            </span>
-            <span
-              className={classNames(
-                'tw-text-xs tw-border tw-px-1 tw-py-0.5 tw-rounded',
-                userData.deleted ? 'tw-border-grey-muted' : 'tw-border-success'
-              )}>
-              {userData.deleted ? (
-                <span className="tw-text-grey-muted">Inactive</span>
-              ) : (
-                <span className="tw-text-success">Active</span>
-              )}
             </span>
           </p>
           <p className="tw-mt-2">{userData.email}</p>
