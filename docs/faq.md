@@ -26,7 +26,7 @@ Please refer to the [Quick Start Guide for Developers](open-source-community/dev
 
 We do support OpenMetadata on Kubernetes that can be hosted on any cloud service. Please refer to [Run in Kubernetes](https://docs.open-metadata.org/install/run-in-kubernetes).
 
-We are actively working on a SaaS solution and will make it available soon. If you are interested, please connect with us via our [Slack community](https://slack.open-metadata.org).
+We are actively working on a SaaS solution and will make it available soon. If you are interested, please [sign up here](https://docs.google.com/forms/d/e/1FAIpQLSenNG4oXOB1DHyAP3ZesHcgKlFWz08BSgSd5sxDkc62jkAsYg/viewform?usp=sf\_link). You can also connect with us via our [Slack community](https://slack.open-metadata.org).
 
 #### How do I delete sample data?
 
