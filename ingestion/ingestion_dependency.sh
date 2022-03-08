@@ -11,6 +11,7 @@
 #  limitations under the License.
 
 while ! wget -O /dev/null -o /dev/null mysql:3306; do sleep 5; done
+airflow db init
 airflow users create \
     --username admin \
     --firstname Peter \
@@ -18,9 +19,11 @@ airflow users create \
     --role Admin \
     --email spiderman@superhero.org \
     --password admin
-airflow db upgrade
 (while ! wget -O /dev/null -o /dev/null http://ingestion:8080; do sleep 5; done; sleep 5; curl -u admin:admin --data '{"dag_run_id":"sample_data_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_data/dagRuns) &
 (while ! wget -O /dev/null -o /dev/null http://openmetadata-server:8585/api/v1/tables/name/bigquery_gcp.shopify.fact_sale; do sleep 5; done; sleep 7; curl -u admin:admin --data '{"dag_run_id":"sample_usage_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_usage/dagRuns) &
 (while ! wget -O /dev/null -o /dev/null http://openmetadata-server:8585/api/v1/tables/name/bigquery_gcp.shopify.fact_sale; do sleep 5; done; sleep 9; curl -u admin:admin --data '{"dag_run_id":"sample_dbt_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/sample_dbt/dagRuns) &
 (while ! wget -O /dev/null -o /dev/null http://openmetadata-server:8585/api/v1/tables/name/bigquery_gcp.shopify.fact_sale; do sleep 5; done; sleep 10; curl -u admin:admin --data '{"dag_run_id":"index_metadata_1"}' -H "Content-type: application/json" -X POST http://ingestion:8080/api/v1/dags/index_metadata/dagRuns) &
-airflow standalone
+airflow webserver --port 8080 -D &
+(sleep 5; airflow db upgrade)
+(sleep 5; airflow db upgrade)
+airflow scheduler
