@@ -193,11 +193,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const qualityTestFormHandler = (
     tabValue: number,
-    testMode: DatasetTestModeType
+    testMode?: DatasetTestModeType
   ) => {
     activeTabHandler(tabValue);
-    setTestMode(testMode);
-    setShowTestForm(true);
+    if (testMode) {
+      setTestMode(testMode);
+      setShowTestForm(true);
+    }
   };
 
   const getLineageData = () => {

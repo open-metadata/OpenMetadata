@@ -11,16 +11,27 @@
  *  limitations under the License.
  */
 
-export const excludedMetrics = [
-  'profilDate',
-  'name',
-  'nullCount',
-  'nullProportion',
-  'uniqueCount',
-  'uniqueProportion',
-  'rows',
-  'histogram',
-  'missingCount',
-  'missingPercentage',
-  'distinctProportion',
-];
+import { HistogramObject } from '../generated/entity/data/table';
+
+export const getRoundedValue = (
+  value:
+    | string
+    | number
+    | boolean
+    | Date
+    | HistogramObject
+    | null
+    | undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    | any[]
+) => {
+  if (typeof value == 'number' && !isNaN(value)) {
+    if (Number.isInteger(value)) {
+      return value;
+    } else {
+      return value.toFixed(2);
+    }
+  } else {
+    return value;
+  }
+};

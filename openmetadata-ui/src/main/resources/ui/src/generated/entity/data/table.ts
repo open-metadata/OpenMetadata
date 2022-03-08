@@ -632,6 +632,8 @@ export interface ColumnProfile {
   minLength?: number;
 
   maxLength?: number;
+
+  distinctProportion?: number;
 }
 
 export interface HistogramObject {
