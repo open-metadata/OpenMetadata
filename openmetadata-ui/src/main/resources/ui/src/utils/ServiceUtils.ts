@@ -372,6 +372,7 @@ export const getAirflowPipelineTypes = (
     case DatabaseServiceType.Postgres:
     case DatabaseServiceType.Trino:
     case DatabaseServiceType.Vertica:
+    case DatabaseServiceType.MariaDB:
       return [PipelineType.Metadata];
 
     default:
