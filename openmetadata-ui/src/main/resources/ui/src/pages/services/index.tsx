@@ -415,7 +415,7 @@ const ServicesPage = () => {
               <label className="tw-mb-0">
                 {dashboardService.serviceType === DashboardServiceType.Tableau
                   ? 'Site URL:'
-                  : 'Dashboard URL:'}
+                  : 'URL:'}
               </label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {dashboardService.dashboardUrl}
@@ -533,37 +533,38 @@ const ServicesPage = () => {
                       <div
                         className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                         key={index}>
-                        <div className="tw-flex-auto">
-                          <Link
-                            to={getServiceDetailsPath(
-                              service.name,
-                              serviceName
-                            )}>
-                            <button>
-                              <h6
-                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                                data-testid={`service-name-${service.name}`}
-                                title={service.name}>
-                                {service.name}
-                              </h6>
-                            </button>
-                          </Link>
-                          <div
-                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                            data-testid="service-description">
-                            {service.description ? (
-                              <RichTextEditorPreviewer
-                                enableSeeMoreVariant={false}
-                                markdown={service.description}
-                              />
-                            ) : (
-                              <span className="tw-no-description">
-                                No description
-                              </span>
-                            )}
+                        <div className="tw-flex-auto tw-flex tw-flex-col tw-justify-between">
+                          <div>
+                            <Link
+                              to={getServiceDetailsPath(
+                                service.name,
+                                serviceName
+                              )}>
+                              <button>
+                                <h6
+                                  className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                                  data-testid={`service-name-${service.name}`}
+                                  title={service.name}>
+                                  {service.name}
+                                </h6>
+                              </button>
+                            </Link>
+                            <div
+                              className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                              data-testid="service-description">
+                              {service.description ? (
+                                <RichTextEditorPreviewer
+                                  enableSeeMoreVariant={false}
+                                  markdown={service.description}
+                                />
+                              ) : (
+                                <span className="tw-no-description">
+                                  No description
+                                </span>
+                              )}
+                            </div>
+                            {getOptionalFields(service)}
                           </div>
-                          {getOptionalFields(service)}
-
                           <div className="" data-testid="service-type">
                             <label className="tw-mb-0">Type:</label>
                             <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">

@@ -59,7 +59,7 @@ import {
   restrictFormSubmit,
 } from '../../../utils/CommonUtils';
 import {
-  getIngestionTypeList,
+  getAirflowPipelineTypes,
   getIsIngestionEnable,
   getKeyValueObject,
   getKeyValuePair,
@@ -404,14 +404,14 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     });
     setSelectService(service);
     if (isIngestionEnable) {
-      const ingestionTypes = getIngestionTypeList(service, true) || [];
+      const ingestionTypes = getAirflowPipelineTypes(service, true) || [];
       const ingestionScheduleList: IngestionListType[] = [];
 
       ingestionTypes.forEach((s, i) => {
         ingestionScheduleList.push({
           showError: false,
           type: s,
-          ingestionName: '',
+          ingestionName: name || '',
           includeView: true,
           enableDataProfiler: false,
           ingestSampleData: false,
@@ -618,25 +618,30 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
         {
+          const updateUrl = url.trim();
+          const updatedPort = port.trim();
+
           setMsg = {
             ...setMsg,
-            url: !url,
-            port: !port,
+            url: !updateUrl,
+            port: !updatedPort,
           };
+          setUrl(updateUrl);
+          setPort(updatedPort);
+          isValid = Boolean(updateUrl && updatedPort);
         }
-
-        isValid = Boolean(url && port);
 
         break;
       case ServiceCategory.MESSAGING_SERVICES:
         {
+          const updatedBrokers = brokers.trim();
           setMsg = {
             ...setMsg,
-            broker: !brokers,
+            broker: !updatedBrokers,
           };
+          setBrokers(updatedBrokers);
+          isValid = Boolean(updatedBrokers);
         }
-
-        isValid = Boolean(brokers);
 
         break;
       case ServiceCategory.DASHBOARD_SERVICES:
@@ -644,50 +649,77 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           switch (selectService) {
             case DashboardServiceType.Redash:
               {
+                const updatedUrl = dashboardUrl.trim();
+                const updatedKey = apiKey.trim();
                 setMsg = {
                   ...setMsg,
-                  dashboardUrl: !dashboardUrl,
-                  apiKey: !apiKey,
+                  dashboardUrl: !updatedUrl,
+                  apiKey: !updatedKey,
                 };
+                setDashboardUrl(updatedUrl);
+                setApiKey(updatedKey);
+                isValid = Boolean(updatedUrl && updatedKey);
               }
-
-              isValid = Boolean(dashboardUrl && apiKey);
 
               break;
             case DashboardServiceType.Tableau:
               {
+                const updatedUrl = dashboardUrl.trim();
+                const updatedSiteName = siteName.trim();
+                const updatedPassword = password.trim();
+                const updatedUsername = username.trim();
+                const updatedApiVersion = apiVersion.trim();
+                const updatedServer = server.trim();
+
                 setMsg = {
                   ...setMsg,
-                  dashboardUrl: !dashboardUrl,
-                  siteName: !siteName,
-                  username: !username,
-                  password: !password,
-                  apiVersion: !apiVersion,
+                  dashboardUrl: !updatedUrl,
+                  siteName: !updatedSiteName,
+                  username: !updatedUsername,
+                  password: !updatedPassword,
+                  apiVersion: !updatedApiVersion,
                   server: !server,
                 };
-              }
 
-              isValid = Boolean(
-                dashboardUrl &&
-                  siteName &&
-                  username &&
-                  password &&
-                  apiVersion &&
-                  server
-              );
+                setDashboardUrl(updatedUrl);
+                setSiteName(updatedSiteName);
+                setPassword(updatedPassword);
+                setUsername(updatedUsername);
+                setApiVersion(updatedApiVersion);
+                setServer(updatedServer);
+
+                isValid = Boolean(
+                  updatedUrl &&
+                    updatedSiteName &&
+                    updatedUsername &&
+                    updatedPassword &&
+                    updatedApiVersion &&
+                    updatedServer
+                );
+              }
 
               break;
             default:
               {
+                const updatedUrl = dashboardUrl.trim();
+                const updatedPassword = password.trim();
+                const updatedUsername = username.trim();
+
                 setMsg = {
                   ...setMsg,
-                  dashboardUrl: !dashboardUrl,
-                  username: !dashboardUrl,
-                  password: !password,
+                  dashboardUrl: !updatedUrl,
+                  username: !updatedUsername,
+                  password: !updatedPassword,
                 };
-              }
 
-              isValid = Boolean(dashboardUrl && dashboardUrl && password);
+                setDashboardUrl(updatedUrl);
+                setPassword(updatedPassword);
+                setUsername(updatedUsername);
+
+                isValid = Boolean(
+                  updatedUrl && updatedUsername && updatedPassword
+                );
+              }
 
               break;
           }
@@ -696,12 +728,14 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         break;
       case ServiceCategory.PIPELINE_SERVICES:
         {
+          const updatedPipelineUrl = pipelineUrl.trim();
           setMsg = {
             ...setMsg,
-            pipelineUrl: !pipelineUrl,
+            pipelineUrl: !updatedPipelineUrl,
           };
+          setPipelineUrl(updatedPipelineUrl);
+          isValid = Boolean(updatedPipelineUrl);
         }
-        isValid = Boolean(pipelineUrl);
 
         break;
       default:
@@ -1562,17 +1596,20 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
         break;
 
-      case 2:
+      case 2: {
+        const newName = name.trim();
         isValid = data
-          ? Boolean(name)
-          : Boolean(name && !isServiceNameExists());
+          ? Boolean(newName)
+          : Boolean(newName && !isServiceNameExists());
         setdescription(markdownRef.current?.getEditorContent() || '');
+        setName(newName);
         setShowErrorMsg({
           ...showErrorMsg,
-          name: !name,
+          name: !newName,
         });
 
         break;
+      }
 
       case 3:
         isValid = handleErrorForAdditionalField();
