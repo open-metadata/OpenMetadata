@@ -41,26 +41,6 @@ config = {
     },
 }
 
-config1 = {
-    "source": {
-        "type": "vertica",
-        "config": {
-            "username": "dbadmin",
-            "service_name": "local_vertica",
-            "host_port": "136.243.150.188:5433",
-            "table_filter_pattern": {"excludes": []},
-        },
-    },
-    "sink": {"type": "metadata-rest", "config": {}},
-    "metadata_server": {
-        "type": "metadata-server",
-        "config": {
-            "api_endpoint": "http://localhost:8585/api",
-            "auth_provider_type": "no-auth",
-        },
-    },
-}
-
 
 class VerticaIngestionTest(TestCase):
     VERTICA_SOURCE = "metadata.ingestion.source.vertica.VerticaSource"
