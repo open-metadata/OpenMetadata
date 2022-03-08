@@ -28,6 +28,8 @@ export interface TestCaseConfigType {
   forbiddenValues?: Array<number | string>;
   missingCountValue?: number;
   missingValueMatch?: string;
+  columnValuesToBeUnique?: boolean;
+  columnValuesToBeNotNull?: boolean;
 }
 
 export interface Result {

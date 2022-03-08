@@ -116,6 +116,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleRemoveTableTest,
   handleRemoveColumnTest,
   qualityTestFormHandler,
+  selectedColumn,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -640,6 +641,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 handleRemoveTableTest={handleRemoveTableTest}
                 handleShowTestForm={handleShowTestForm}
                 handleTestModeChange={handleTestModeChange}
+                selectedColumn={selectedColumn}
                 showTestForm={showTestForm}
                 tableTestCase={tableTestCase}
                 testMode={testMode}

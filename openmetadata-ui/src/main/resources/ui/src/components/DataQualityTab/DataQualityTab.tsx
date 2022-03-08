@@ -35,6 +35,7 @@ type Props = {
   handleShowTestForm: (value: boolean) => void;
   tableTestCase: TableTest[];
   handleRemoveTableTest: (testType: TableTestType) => void;
+  selectedColumn: string;
   handleRemoveColumnTest: (
     columnName: string,
     testType: ColumnTestType
@@ -52,6 +53,7 @@ const DataQualityTab = ({
   handleRemoveColumnTest,
   testMode,
   tableTestCase,
+  selectedColumn,
 }: Props) => {
   const [showDropDown, setShowDropDown] = useState(false);
   const [activeData, setActiveData] = useState<TableTestDataType>();
@@ -106,6 +108,7 @@ const DataQualityTab = ({
           data={activeData}
           handleAddColumnTestCase={onColumnTestSave}
           handleAddTableTestCase={onTableTestSave}
+          selectedColumn={selectedColumn}
           tableTestCase={tableTestCase}
           testMode={testMode}
           onFormCancel={onFormCancel}

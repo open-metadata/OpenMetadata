@@ -478,3 +478,7 @@ export const getEntityFeedLink: Function = (
 
   return `<#E/${type}/${fqn}${field ? `/${field}` : ''}>`;
 };
+
+export const isSupportedTest = (dataType: string) => {
+  return dataType === 'ARRAY' || dataType === 'STRUCT';
+};
