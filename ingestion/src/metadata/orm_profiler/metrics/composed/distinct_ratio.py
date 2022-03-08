@@ -10,28 +10,28 @@
 #  limitations under the License.
 
 """
-Unique Ratio Composed Metric definition
+Distinct Ratio Composed Metric definition
 """
 from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
 
 
-class UniqueRatio(ComposedMetric):
+class DistinctRatio(ComposedMetric):
     """
-    Given the total count and unique count,
-    compute the unique ratio
+    Given the total count and distinct count,
+    compute the distinct ratio
     """
 
     @classmethod
     def name(cls):
-        return "uniqueProportion"
+        return "distinctProportion"
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:
-        return Count.name(), UniqueCount.name()
+        return Count.name(), DistinctCount.name()
 
     @property
     def metric_type(self):
@@ -47,7 +47,7 @@ class UniqueRatio(ComposedMetric):
         results of other Metrics
         """
         res_count = res.get(Count.name())
-        res_unique = res.get(UniqueCount.name())
+        res_unique = res.get(DistinctCount.name())
 
         if res_count and res_unique is not None:
             return res_unique / res_count

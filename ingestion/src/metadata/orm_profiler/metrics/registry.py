@@ -18,6 +18,7 @@ Note that we are using our own Registry definition
 that allows us to directly call our metrics without
 having the verbosely pass .value all the time...
 """
+from metadata.orm_profiler.metrics.composed.distinct_ratio import DistinctRatio
 from metadata.orm_profiler.metrics.composed.duplicate_count import DuplicateCount
 from metadata.orm_profiler.metrics.composed.ilike_ratio import ILikeRatio
 from metadata.orm_profiler.metrics.composed.like_ratio import LikeRatio
@@ -56,6 +57,7 @@ class Metrics(MetricRegistry):
     COUNT_IN_SET = CountInSet
     COLUMN_COUNT = ColumnCount
     DISTINCT_COUNT = DistinctCount
+    DISTINCT_RATIO = DistinctRatio
     HISTOGRAM = Histogram
     ILIKE_COUNT = ILikeCount
     LIKE_COUNT = LikeCount

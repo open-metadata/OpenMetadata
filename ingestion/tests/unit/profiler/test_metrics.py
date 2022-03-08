@@ -514,6 +514,31 @@ class MetricsTest(TestCase):
 
         assert res.get(User.name.name)[Metrics.DISTINCT_COUNT.name] == 2.0
 
+    def test_distinct_ratio(self):
+        """
+        Check Distinct Ratio Metric
+        """
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+        distinct_ratio = Metrics.DISTINCT_RATIO.value
+        res = (
+            Profiler(
+                count,
+                distinct_count,
+                distinct_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.name],
+            )
+            .execute()
+            ._column_results
+        )
+
+        assert (
+            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
+            == "0.67"
+        )
+
     def test_count_in_set(self):
         """
         Check Count In Set metric
