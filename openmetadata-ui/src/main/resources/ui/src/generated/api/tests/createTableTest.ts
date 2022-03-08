@@ -136,8 +136,6 @@ export interface TableTestCase {
 export interface TableRowCountToBeBetween {
   /**
    * Expected number of rows {value}
-   *
-   * Expected number of columns to equal to a  {value}
    */
   value?: number;
   /**
@@ -150,6 +148,10 @@ export interface TableRowCountToBeBetween {
    * included, maxValue is treated as upperBound and there will be no minimum number of rows
    */
   minValue?: number;
+  /**
+   * Expected number of columns to equal to a {value}
+   */
+  columnCount?: number;
 }
 
 export enum TableTestType {

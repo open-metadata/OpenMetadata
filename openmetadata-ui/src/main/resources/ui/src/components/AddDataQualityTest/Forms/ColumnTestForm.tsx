@@ -191,16 +191,22 @@ const ColumnTestForm = ({
   const getTestConfi = () => {
     switch (columnTest) {
       case ColumnTestType.columnValueLengthsToBeBetween:
+        return {
+          minLength: !isEmpty(minValue) ? minValue : undefined,
+          maxLength: !isEmpty(maxValue) ? maxValue : undefined,
+        };
       case ColumnTestType.columnValuesToBeBetween:
         return {
-          minValue: minValue,
-          maxValue: maxValue,
+          minValue: !isEmpty(minValue) ? minValue : undefined,
+          maxValue: !isEmpty(maxValue) ? maxValue : undefined,
         };
 
       case ColumnTestType.columnValuesMissingCountToBeEqual:
         return {
           missingCountValue: missingCountValue,
-          missingValueMatch: missingValueMatch,
+          missingValueMatch: !isEmpty(missingValueMatch)
+            ? missingValueMatch
+            : undefined,
         };
 
       case ColumnTestType.columnValuesToBeNotInSet:
