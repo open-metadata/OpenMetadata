@@ -13,12 +13,12 @@
  */
 
 /**
- * This scheam defines the test TableColumnCountToEqual. Test the number of columns equal to
- * a value.
+ * This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to
+ * match a given regular expression.
  */
-export interface TableColumnCountToEqual {
+export interface ColumnValuesToMatchRegex {
   /**
-   * Expected number of columns to equal to a {value}
+   * The regular expression the column entries should match.
    */
-  columnCount: number;
+  regex: string;
 }

@@ -115,20 +115,36 @@ const TableTestForm = ({
     return !Object.values(errMsg).includes(true);
   };
 
-  const handleSave = () => {
-    const isTableRowCountToBeBetweenTest =
-      tableTest === TableTestType.TableRowCountToBeBetween;
+  const getConfigValue = () => {
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+        return {
+          maxValue: isEmpty(maxValue) ? undefined : maxValue,
+          minValue: isEmpty(minValue) ? undefined : minValue,
+        };
 
+      case TableTestType.TableColumnCountToEqual:
+        return {
+          columnCount: isEmpty(value) ? undefined : value,
+        };
+
+      case TableTestType.TableRowCountToEqual:
+        return {
+          value: isEmpty(value) ? undefined : value,
+        };
+
+      default:
+        return {};
+    }
+  };
+
+  const handleSave = () => {
     if (validateForm()) {
       const createTest: CreateTableTest = {
         description: markdownRef.current?.getEditorContent() || undefined,
         executionFrequency: frequency,
         testCase: {
-          config: {
-            maxValue: isTableRowCountToBeBetweenTest ? maxValue : undefined,
-            minValue: isTableRowCountToBeBetweenTest ? minValue : undefined,
-            value: isTableRowCountToBeBetweenTest ? undefined : value,
-          },
+          config: getConfigValue(),
           tableTestType: tableTest,
         },
         owner: {

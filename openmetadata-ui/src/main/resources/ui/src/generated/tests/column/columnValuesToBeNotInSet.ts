@@ -13,12 +13,12 @@
  */
 
 /**
- * This scheam defines the test TableColumnCountToEqual. Test the number of columns equal to
- * a value.
+ * This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be
+ * in the set.
  */
-export interface TableColumnCountToEqual {
+export interface ColumnValuesToBeNotInSet {
   /**
-   * Expected number of columns to equal to a {value}
+   * An Array of values.
    */
-  columnCount: number;
+  forbiddenValues: Array<number | string>;
 }
