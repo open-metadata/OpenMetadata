@@ -842,7 +842,15 @@ const ServicePage: FunctionComponent = () => {
 
   const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
     const updatedData = {
-      ...serviceDetails,
+      databaseConnection: serviceDetails?.databaseConnection,
+      name: serviceDetails?.name,
+      serviceType: serviceDetails?.serviceType,
+      brokers: serviceDetails?.brokers,
+      schemaRegistry: serviceDetails?.schemaRegistry,
+      dashboardUrl: serviceDetails?.dashboardUrl,
+      username: serviceDetails?.username,
+      password: serviceDetails?.password,
+      pipelineUrl: serviceDetails?.pipelineUrl,
       owner,
     };
 

@@ -22,6 +22,7 @@ import {
   ColumnTest,
   DatasetTestModeType,
 } from '../../interface/dataQuality.interface';
+import { getRoundedValue } from '../../utils/ProfilerUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { Button } from '../buttons/Button/Button';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -38,29 +39,26 @@ type Props = {
   }>;
   qualityTestFormHandler: (
     tabValue: number,
-    testMode: DatasetTestModeType
+    testMode?: DatasetTestModeType
   ) => void;
 };
 
 const PercentageGraph = ({
   percentage,
-  title,
 }: {
   percentage: number;
   title: string;
 }) => {
   return (
-    <PopOver
-      position="top"
-      title={`${percentage}% ${title}`}
-      trigger="mouseenter">
-      <div className="tw-border tw-border-primary tw-h-6 tw-w-20">
-        <div
-          className="tw-bg-primary tw-opacity-40 tw-h-full"
-          style={{ width: `${percentage}%` }}
-        />
+    <div className="tw-border tw-inline-block tw-border-primary tw-h-5 tw-w-20 ">
+      <div
+        className="tw-bg-primary-hover-lite tw-h-full"
+        style={{ width: `${percentage}%` }}>
+        <div className="tw-w-20 tw-text-grey-body tw-font-medium tw-text-xs tw-leading-5 tw-text-center">
+          {getRoundedValue(percentage)}%
+        </div>
       </div>
-    </PopOver>
+    </div>
   );
 };
 
@@ -91,10 +89,12 @@ const TableProfiler: FC<Props> = ({
 
     return {
       name: column,
-      columnMetrics: Object.entries(data?.[0] ?? {}).map((d) => ({
-        key: d[0],
-        value: d[1],
-      })),
+      columnMetrics: Object.entries(data?.[0] ?? {})
+        .map((d) => ({
+          key: d[0],
+          value: d[1],
+        }))
+        .filter((m) => !excludedMetrics.includes(m.key)),
       columnTests: column.colTests,
       data,
       type: column.colType,
@@ -112,9 +112,9 @@ const TableProfiler: FC<Props> = ({
             <tr className="tableHead-row">
               <th className="tableHead-cell">Column Name</th>
               <th className="tableHead-cell">Type</th>
-              <th className="tableHead-cell">Null</th>
-              <th className="tableHead-cell">Unique</th>
-              <th className="tableHead-cell">Distinct</th>
+              <th className="tableHead-cell">Null %</th>
+              <th className="tableHead-cell">Unique %</th>
+              <th className="tableHead-cell">Distinct %</th>
               <th className="tableHead-cell">Metrics</th>
               <th className="tableHead-cell">Tests</th>
               <th className="tableHead-cell" />
@@ -139,7 +139,32 @@ const TableProfiler: FC<Props> = ({
                             )}
                           </span>
                         )}
-                        <span>{col.name.colName}</span>
+                        <div className="tw-flex">
+                          {col.name.colName.length > 25 ? (
+                            <span>
+                              <PopOver
+                                html={
+                                  <div className="tw-break-words">
+                                    <span>{col.name.colName}</span>
+                                  </div>
+                                }
+                                position="bottom"
+                                theme="light"
+                                trigger="click">
+                                <div className="tw-cursor-pointer tw-underline tw-inline-block">
+                                  <RichTextEditorPreviewer
+                                    markdown={`${col.name.colName.slice(
+                                      0,
+                                      20
+                                    )}...`}
+                                  />
+                                </div>
+                              </PopOver>
+                            </span>
+                          ) : (
+                            col.name.colName
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td
@@ -188,9 +213,7 @@ const TableProfiler: FC<Props> = ({
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <PercentageGraph
                         percentage={
-                          ((col.data?.[0]?.distinctCount ?? 0) /
-                            (col.data?.[0]?.rows ?? 0)) *
-                          100
+                          (col.data?.[0]?.distinctProportion ?? 0) * 100
                         }
                         title="distinct value"
                       />
@@ -198,17 +221,21 @@ const TableProfiler: FC<Props> = ({
                     <td
                       className="tw-relative tableBody-cell"
                       data-testid="tableBody-cell">
-                      <div className="tw-border tw-border-main tw-rounded tw-p-2 tw-min-h-32 tw-max-h-44 tw-overflow-y-auto">
-                        {col.columnMetrics
-                          .filter((m) => !excludedMetrics.includes(m.key))
-                          .map((m, i) => (
+                      {col.columnMetrics.length ? (
+                        <div className=" tw-rounded tw-max-h-44 tw-overflow-y-auto">
+                          {col.columnMetrics.map((m, i) => (
                             <p className="tw-mb-1 tw-flex" key={i}>
                               <span className="tw-mx-1">{m.key}</span>
                               <span className="tw-mx-1">-</span>
-                              <span className="tw-mx-1">{m.value}</span>
+                              <span className="tw-mx-1">
+                                {getRoundedValue(m.value)}
+                              </span>
                             </p>
                           ))}
-                      </div>
+                        </div>
+                      ) : (
+                        `No metrics available`
+                      )}
                     </td>
                     <td
                       className="tw-relative tableBody-cell"
@@ -216,7 +243,7 @@ const TableProfiler: FC<Props> = ({
                       data-testid="tableBody-cell">
                       <div className="tw-flex tw-justify-between">
                         {col.columnTests ? (
-                          <div className="tw-border tw-border-main tw-rounded tw-p-2 tw-min-h-32 tw-max-h-44 tw-overflow-y-auto tw-flex-1">
+                          <div className="tw-rounded tw-max-h-44 tw-overflow-y-auto tw-flex-1">
                             {col.columnTests.map((m, i) => (
                               <div className="tw-flex tw-mb-2" key={i}>
                                 <p className="tw-mr-2">
@@ -230,7 +257,9 @@ const TableProfiler: FC<Props> = ({
                                   )}
                                 </p>
                                 <div>
-                                  <span className="tw-mx-1 tw-font-medium">
+                                  <span
+                                    className="tw-mx-1 tw-font-medium tw-cursor-pointer"
+                                    onClick={() => qualityTestFormHandler(6)}>
                                     {m.testCase.columnTestType}
                                   </span>
                                   <div className="tw-mx-1">
@@ -263,6 +292,7 @@ const TableProfiler: FC<Props> = ({
                                 }
                               )}
                               size="custom"
+                              theme="primary"
                               type="button"
                               variant="outlined"
                               onClick={() =>

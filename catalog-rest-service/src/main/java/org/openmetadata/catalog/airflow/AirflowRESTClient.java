@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
@@ -37,6 +38,7 @@ import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.operations.pipelines.PipelineStatus;
 import org.openmetadata.catalog.util.JsonUtils;
 
+@Slf4j
 public class AirflowRESTClient {
   private final URL url;
   private final String username;
@@ -108,6 +110,28 @@ public class AirflowRESTClient {
     } catch (Exception e) {
       throw AirflowPipelineDeploymentException.byMessage(airflowPipeline.getName(), e.getMessage());
     }
+  }
+
+  public String deletePipeline(String pipelineName) {
+    try {
+      String token = authenticate();
+      String authToken = String.format(AUTH_TOKEN, token);
+      String triggerEndPoint = "%s/rest_api/api?api=delete_delete&dag_id=%s";
+      String triggerUrl = String.format(triggerEndPoint, url, pipelineName);
+      JSONObject requestPayload = new JSONObject();
+      requestPayload.put("workflow_name", pipelineName);
+      HttpRequest request =
+          HttpRequest.newBuilder(URI.create(triggerUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
+              .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
+              .build();
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      return response.body();
+    } catch (Exception e) {
+      LOG.error("Failed to delete Airflow Pipeline from Airflow DAGS");
+    }
+    return null;
   }
 
   public String runPipeline(String pipelineName) {

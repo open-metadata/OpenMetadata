@@ -81,7 +81,7 @@ export interface DatasetDetailsProps {
   showTestForm: boolean;
   qualityTestFormHandler: (
     tabValue: number,
-    testMode: DatasetTestModeType
+    testMode?: DatasetTestModeType
   ) => void;
   handleShowTestForm: (value: boolean) => void;
   handleTestModeChange: (mode: DatasetTestModeType) => void;
