@@ -19,6 +19,9 @@ from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.column.columnValuesLengthsToBeBetween import (
+    ColumnValueLengthsToBeBetween,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -150,7 +153,7 @@ def test_table_column_count_to_equal():
     )
 
     res_ok = validate(
-        TableColumnCountToEqual(value=5),
+        TableColumnCountToEqual(columnCount=5),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
@@ -161,7 +164,7 @@ def test_table_column_count_to_equal():
     )
 
     res_ko = validate(
-        TableColumnCountToEqual(value=20),
+        TableColumnCountToEqual(columnCount=20),
         table_profile=table_profile,
         execution_date=EXECUTION_DATE,
     )
@@ -177,7 +180,7 @@ def test_table_column_count_to_equal():
     )
 
     res_aborted = validate(
-        TableColumnCountToEqual(value=5),
+        TableColumnCountToEqual(columnCount=5),
         table_profile=table_profile_aborted,
         execution_date=EXECUTION_DATE,
     )
@@ -362,5 +365,55 @@ def test_column_values_to_be_not_null():
         testCaseStatus=TestCaseStatus.Aborted,
         result=(
             "We expect `nullCount` to be informed on the profiler for ColumnValuesToBeNotNull."
+        ),
+    )
+
+
+def test_column_value_length_to_be_between():
+    """
+    Check ColumnValueLengthsToBeBetween
+    """
+    col_profile = ColumnProfile(
+        minLength=4,
+        maxLength=16,
+    )
+
+    res_ok = validate(
+        ColumnValueLengthsToBeBetween(minLength=2, maxLength=20),
+        col_profile=col_profile,
+        execution_date=EXECUTION_DATE,
+    )
+    assert res_ok == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Success,
+        result="Found minLength=4.0, maxLength=16.0 vs. the expected minLength=2, maxLength=20.",
+    )
+
+    res_ko = validate(
+        ColumnValueLengthsToBeBetween(minLength=10, maxLength=20),
+        col_profile=col_profile,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_ko == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Found minLength=4.0, maxLength=16.0 vs. the expected minLength=10, maxLength=20.",
+    )
+
+    col_profile_aborted = ColumnProfile(minLength=4)
+
+    res_aborted = validate(
+        ColumnValueLengthsToBeBetween(minLength=2, maxLength=20),
+        col_profile=col_profile_aborted,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert res_aborted == TestCaseResult(
+        executionTime=EXECUTION_DATE.timestamp(),
+        testCaseStatus=TestCaseStatus.Aborted,
+        result=(
+            "We expect `minLength` & `maxLength` to be informed on the profiler for ColumnValueLengthsToBeBetween"
+            + " but got minLength=4.0, maxLength=None."
         ),
     )

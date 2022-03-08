@@ -443,15 +443,15 @@ public class TableRepository extends EntityRepository<Table> {
         });
   }
 
-  private void addDerivedTags(List<Column> columns) throws IOException {
+  private void addDerivedColumnTags(List<Column> columns) throws IOException {
     if (columns == null || columns.isEmpty()) {
       return;
     }
 
     for (Column column : columns) {
-      column.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), column.getTags()));
+      column.setTags(addDerivedTags(column.getTags()));
       if (column.getChildren() != null) {
-        addDerivedTags(column.getChildren());
+        addDerivedColumnTags(column.getChildren());
       }
     }
   }
@@ -475,10 +475,10 @@ public class TableRepository extends EntityRepository<Table> {
     table.setOwner(helper(table).validateOwnerOrNull());
 
     // Validate table tags and add derived tags to the list
-    table.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), table.getTags()));
+    table.setTags(addDerivedTags(table.getTags()));
 
     // Validate column tags
-    addDerivedTags(table.getColumns());
+    addDerivedColumnTags(table.getColumns());
   }
 
   private EntityReference getDatabase(Table table) throws IOException, ParseException {
@@ -564,7 +564,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void applyTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
-      EntityUtil.applyTags(daoCollection.tagDAO(), column.getTags(), column.getFullyQualifiedName());
+      applyTags(column.getTags(), column.getFullyQualifiedName());
       if (column.getChildren() != null) {
         applyTags(column.getChildren());
       }
@@ -1023,11 +1023,11 @@ public class TableRepository extends EntityRepository<Table> {
       }
 
       // Delete tags related to deleted columns
-      deletedColumns.forEach(deleted -> EntityUtil.removeTags(daoCollection.tagDAO(), deleted.getFullyQualifiedName()));
+      deletedColumns.forEach(deleted -> daoCollection.tagDAO().deleteTags(deleted.getFullyQualifiedName()));
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        EntityUtil.applyTags(daoCollection.tagDAO(), added.getTags(), added.getFullyQualifiedName());
+        applyTags(added.getTags(), added.getFullyQualifiedName());
       }
 
       // Carry forward the user generated metadata from existing columns to new columns

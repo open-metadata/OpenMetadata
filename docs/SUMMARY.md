@@ -70,6 +70,8 @@
     * [Delete Action](openmetadata-apis/schemas/entities/deleteaction.md)
     * [Feed](openmetadata-apis/schemas/entities/thread.md)
     * [Filters](openmetadata-apis/schemas/entities/filters.md)
+    * [Glossary](openmetadata-apis/schemas/entities/glossary.md)
+    * [Glossary Term](openmetadata-apis/schemas/entities/glossaryterm.md)
     * [Location](openmetadata-apis/schemas/entities/location.md)
     * [Messaging Service](openmetadata-apis/schemas/entities/messagingservice.md)
     * [Metrics](openmetadata-apis/schemas/entities/metrics.md)

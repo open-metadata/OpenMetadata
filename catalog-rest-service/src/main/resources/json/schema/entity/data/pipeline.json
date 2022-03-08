@@ -9,11 +9,7 @@
       "javaType": "org.openmetadata.catalog.type.StatusType",
       "description": "Enum defining the possible Status.",
       "type": "string",
-      "enum": [
-        "Successful",
-        "Failed",
-        "Pending"
-      ],
+      "enum": ["Successful", "Failed", "Pending"],
       "javaEnums": [
         {
           "name": "Successful"
@@ -108,7 +104,7 @@
           "$ref": "#/definitions/statusType"
         },
         "taskStatus": {
-          "description": "Series of task executions and its status",
+          "description": "Series of task executions and its status.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/taskStatus"
@@ -180,7 +176,7 @@
       "default": null
     },
     "pipelineStatus": {
-      "description": "Series of pipeline executions and its status",
+      "description": "Series of pipeline executions and its status.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/pipelineStatus"

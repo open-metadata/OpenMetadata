@@ -59,6 +59,13 @@ class Histogram(QueryMetric):
                 "step"
             )
         )
+
+        if dict(bins.first()).get("step") == 0:
+            logger.debug(
+                f"MIN({self.col.name}) == MAX({self.col.name}). Aborting histogram computation."
+            )
+            return None
+
         bins_cte = bins.cte("bins")
 
         ranges = session.query(

@@ -17,6 +17,7 @@ import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
+import { EntityType } from '../../enums/entity.enum';
 import {
   JoinedWith,
   Table,
@@ -32,17 +33,25 @@ import {
   getTableFQNFromColumnFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
+import {
+  getTableTestsValue,
+  getTagsWithoutTier,
+  getUsagePercentile,
+} from '../../utils/TableUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
+import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import ManageTab from '../ManageTab/ManageTab.component';
+import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTable, {
   SampleColumns,
 } from '../SampleDataTable/SampleDataTable.component';
@@ -96,7 +105,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
+  testMode,
+  tableTestCase,
+  handleTestModeChange,
   createThread,
+  handleAddTableTestCase,
+  handleAddColumnTestCase,
+  showTestForm,
+  handleShowTestForm,
+  handleRemoveTableTest,
+  handleRemoveColumnTest,
+  qualityTestFormHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -111,6 +130,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [selectedField, setSelectedField] = useState<string>('');
+
+  const onEntityFieldSelect = (value: string) => {
+    setSelectedField(value);
+  };
+  const closeRequestModal = () => {
+    setSelectedField('');
+  };
 
   const setUsageDetails = (
     usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity
@@ -198,6 +225,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 5,
     },
     {
+      name: 'Data Quality',
+      icon: {
+        alt: 'data-quality',
+        name: 'icon-quality',
+        title: 'Data Quality',
+        selectedName: '',
+      },
+      isProtected: false,
+      position: 6,
+    },
+    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',
@@ -206,7 +244,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 6,
+      position: 7,
     },
     {
       name: 'DBT',
@@ -218,7 +256,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: false,
       isHidden: !dataModel?.sql,
-      position: 7,
+      position: 8,
     },
     {
       name: 'Manage',
@@ -231,7 +269,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 8,
+      position: 9,
     },
   ];
 
@@ -317,6 +355,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           ''
         ),
     },
+    { key: 'Tests', value: getTableTestsValue(tableTestCase) },
   ];
 
   const onDescriptionEdit = (): void => {
@@ -476,7 +515,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       'description',
                       entityFieldThreadCount
                     )}
+                    entityFqn={datasetFQN}
                     entityName={entityName}
+                    entityType={EntityType.TABLE}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
                     isReadOnly={deleted}
@@ -484,6 +525,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
+                    onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </div>
@@ -505,11 +547,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       'columns',
                       entityFieldThreadCount
                     )}
+                    entityFqn={datasetFQN}
                     hasEditAccess={hasEditAccess()}
                     isReadOnly={deleted}
                     joins={tableJoinData.columnJoins as ColumnJoins[]}
                     owner={owner}
                     sampleData={sampleData}
+                    onEntityFieldSelect={onEntityFieldSelect}
                     onThreadLinkSelect={onThreadLinkSelect}
                     onUpdate={onColumnsUpdate}
                   />
@@ -524,6 +568,19 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onCancel={onThreadPanelClose}
                   />
                 ) : null}
+                {selectedField ? (
+                  <RequestDescriptionModal
+                    createThread={createThread}
+                    defaultValue={getDefaultValue(owner)}
+                    header="Request description"
+                    threadLink={getEntityFeedLink(
+                      EntityType.TABLE,
+                      datasetFQN,
+                      selectedField
+                    )}
+                    onCancel={closeRequestModal}
+                  />
+                ) : null}
               </div>
             )}
             {activeTab === 2 && (
@@ -535,6 +592,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   isEntityFeed
                   withSidePanel
                   className=""
+                  entityName={entityName}
                   feedList={entityThread}
                   isLoading={isentityThreadLoading}
                   postFeedHandler={postFeedHandler}
@@ -564,12 +622,31 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   columns={columns.map((col) => ({
                     constraint: col.constraint as string,
                     colName: col.name,
+                    colType: col.dataTypeDisplay as string,
+                    colTests: col.columnTests,
                   }))}
+                  qualityTestFormHandler={qualityTestFormHandler}
                   tableProfiles={tableProfile}
                 />
               </div>
             )}
+
             {activeTab === 6 && (
+              <DataQualityTab
+                columnOptions={columns}
+                handleAddColumnTestCase={handleAddColumnTestCase}
+                handleAddTableTestCase={handleAddTableTestCase}
+                handleRemoveColumnTest={handleRemoveColumnTest}
+                handleRemoveTableTest={handleRemoveTableTest}
+                handleShowTestForm={handleShowTestForm}
+                handleTestModeChange={handleTestModeChange}
+                showTestForm={showTestForm}
+                tableTestCase={tableTestCase}
+                testMode={testMode}
+              />
+            )}
+
+            {activeTab === 7 && (
               <div
                 className={classNames(
                   location.pathname.includes(ROUTES.TOUR)
@@ -591,7 +668,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 7 && Boolean(dataModel?.sql) && (
+            {activeTab === 8 && Boolean(dataModel?.sql) && (
               <div className="tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
                 <SchemaEditor
                   className="tw-h-full"
@@ -600,7 +677,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
-            {activeTab === 8 && !deleted && (
+            {activeTab === 9 && !deleted && (
               <div>
                 <ManageTab
                   currentTier={tier?.tagFQN}

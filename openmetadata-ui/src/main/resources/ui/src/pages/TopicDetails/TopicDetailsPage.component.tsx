@@ -115,6 +115,15 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN)).then(
+      (res: AxiosResponse) => {
+        setFeedCount(res.data.totalCount);
+        setEntityFieldThreadCount(res.data.counts);
+      }
+    );
+  };
+
   const fetchActivityFeed = () => {
     setIsentityThreadLoading(true);
     getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN))
@@ -273,6 +282,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         setCurrentVersion(version);
         setTopicDetails(res.data);
         setDescription(description);
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const errMsg =
@@ -292,6 +302,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           setCurrentVersion(res.data.version);
           setOwner(res.data.owner);
           setTier(getTierTags(res.data.tags));
+          getEntityFeedCount();
           resolve();
         })
         .catch((err: AxiosError) => {
@@ -312,6 +323,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         setTier(getTierTags(res.data.tags));
         setCurrentVersion(res.data.version);
         setTags(getTagsWithoutTier(res.data.tags));
+        getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const errMsg =
@@ -359,27 +371,20 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN)).then(
-      (res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-        setEntityFieldThreadCount(res.data.counts);
-      }
-    );
-  };
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res: AxiosResponse) => {
         setEntityThread((pre) => [...pre, res.data]);
+        getEntityFeedCount();
         showToast({
           variant: 'success',
-          body: 'Thread is created successfully',
+          body: 'Conversation created successfully',
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Error while creating thread',
+          body: 'Error while creating the conversation',
         });
       });
   };
@@ -429,6 +434,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           topicDetails={topicDetails}
+          topicFQN={topicFQN}
           topicTags={tags}
           unfollowTopicHandler={unfollowTopic}
           users={AppState.users}

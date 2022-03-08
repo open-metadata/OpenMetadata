@@ -63,7 +63,7 @@ This schema <u>does not</u> accept additional properties.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
  - **serviceType**
 	 - Service type where this dashboard is hosted in.
-	 - $ref: [../services/dashboardService.json#/definitions/dashboardServiceType](../services/dashboardservice.md#dashboardservicetype)
+	 - $ref: [../services/dashboardService.json#/definitions/dashboardServiceType](dashboardservice.md#dashboardservicetype)
  - **usageSummary**
 	 - Latest usage information for this database.
 	 - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
@@ -76,4 +76,4 @@ This schema <u>does not</u> accept additional properties.
 	 - Default: _false_
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

@@ -40,6 +40,7 @@ This schema <u>does not</u> accept additional properties.
 
  - Type for capturing JDBC connector information.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **driverClass** `required`
 		 - $ref: [#/definitions/driverClass](#driverclass)
@@ -49,4 +50,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

@@ -22,10 +22,10 @@ import {
 import { SearchResponse } from 'Models';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
 import { formatDataResponse } from '../../utils/APIUtils';
 import MyDataPage from './MyData.component';
-import { FeedFilter } from '../../enums/mydata.enum';
 
 const mockData = {
   data: {

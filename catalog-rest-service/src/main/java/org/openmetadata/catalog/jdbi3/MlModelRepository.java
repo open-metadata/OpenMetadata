@@ -152,7 +152,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       daoCollection.dashboardDAO().findEntityReferenceById(mlModel.getDashboard().getId());
     }
 
-    mlModel.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), mlModel.getTags()));
+    mlModel.setTags(addDerivedTags(mlModel.getTags()));
   }
 
   @Override

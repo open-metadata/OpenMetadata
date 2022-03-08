@@ -15,7 +15,6 @@ package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Include.DELETED;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,7 +43,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
@@ -62,9 +60,7 @@ import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TableConstraint;
-import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -277,73 +273,6 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
-  }
-
-  /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
-  public static void applyTags(TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) {
-    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      String json = tagDAO.findTag(tagLabel.getTagFQN());
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
-      }
-
-      // Apply tagLabel to targetFQN that identifies an entity or field
-      tagDAO.applyTag(
-          tagLabel.getTagFQN(), targetFQN, tagLabel.getLabelType().ordinal(), tagLabel.getState().ordinal());
-    }
-  }
-
-  public static List<TagLabel> getDerivedTags(TagDAO tagDAO, TagLabel tagLabel, Tag tag) throws IOException {
-    List<TagLabel> derivedTags = new ArrayList<>();
-    for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
-      String json = tagDAO.findTag(fqn);
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), fqn));
-      }
-      Tag tempTag = JsonUtils.readValue(json, Tag.class);
-      derivedTags.add(
-          new TagLabel()
-              .withTagFQN(fqn)
-              .withState(tagLabel.getState())
-              .withDescription(tempTag.getDescription())
-              .withLabelType(LabelType.DERIVED));
-    }
-    return derivedTags;
-  }
-
-  /** Validate given list of tags and add derived tags to it */
-  public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
-    if (tagLabels == null || tagLabels.isEmpty()) {
-      return tagLabels;
-    }
-
-    List<TagLabel> updatedTagLabels = new ArrayList<>(tagLabels);
-    for (TagLabel tagLabel : tagLabels) {
-      String json = tagDAO.findTag(tagLabel.getTagFQN());
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
-      }
-      Tag tag = JsonUtils.readValue(json, Tag.class);
-
-      // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagDAO, tagLabel, tag);
-      mergeTags(updatedTagLabels, derivedTags);
-    }
-    updatedTagLabels.sort(compareTagLabel);
-    return updatedTagLabels;
-  }
-
-  public static void removeTags(TagDAO tagDAO, String fullyQualifiedName) {
-    tagDAO.deleteTags(fullyQualifiedName);
-  }
-
-  public static void removeTagsByPrefix(TagDAO tagDAO, String fullyQualifiedName) {
-    tagDAO.deleteTagsByPrefix(fullyQualifiedName);
   }
 
   /** Merge derivedTags into tags, if it already does not exist in tags */

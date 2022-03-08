@@ -152,18 +152,31 @@ class GlueSource(Source[Entity]):
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
                 fqn = f"{self.config.service_name}.{self.database_name}.{table['Name']}"
+                parameters = table.get("Parameters")
+                location_type = LocationType.Table
+                if parameters:
+                    # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
+                    # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
+                    location_type = (
+                        location_type
+                        if parameters.get("table_type") != "ICEBERG"
+                        else LocationType.Iceberg
+                    )
+
                 self.dataset_name = fqn
                 table_columns = self.get_columns(table["StorageDescriptor"])
                 location_entity = Location(
                     name=table["StorageDescriptor"]["Location"],
-                    locationType=LocationType.Table,
+                    locationType=location_type,
                     service=EntityReference(
                         id=self.storage_service.id, type="storageService"
                     ),
                 )
 
                 table_type: TableType = TableType.Regular
-                if table["TableType"] == "EXTERNAL_TABLE":
+                if location_type == LocationType.Iceberg:
+                    table_type = TableType.Iceberg
+                elif table["TableType"] == "EXTERNAL_TABLE":
                     table_type = TableType.External
                 elif table["TableType"] == "VIRTUAL_VIEW":
                     table_type = TableType.View

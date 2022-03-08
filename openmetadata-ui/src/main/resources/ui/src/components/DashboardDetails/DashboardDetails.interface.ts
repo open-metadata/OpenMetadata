@@ -36,6 +36,7 @@ export interface ChartType extends Chart {
 }
 
 export interface DashboardDetailsProps {
+  dashboardFQN: string;
   version: string;
   isNodeLoading: LoadingNodeState;
   lineageLeafNodes: LeafNodes;

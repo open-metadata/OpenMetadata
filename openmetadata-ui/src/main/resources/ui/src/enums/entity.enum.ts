@@ -46,4 +46,5 @@ export enum TabSpecificField {
   CHARTS = 'charts',
   TASKS = 'tasks',
   TABLE_QUERIES = 'tableQueries',
+  TESTS = 'tests',
 }

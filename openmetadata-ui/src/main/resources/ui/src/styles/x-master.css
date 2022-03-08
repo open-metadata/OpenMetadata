@@ -900,3 +900,8 @@ body .profiler-graph .recharts-active-dot circle {
   background: #ebeef1;
   font-size: 90%;
 }
+
+/* Markdown with preview editor css */
+.public-DraftStyleDefault-block {
+  margin: 0;
+}

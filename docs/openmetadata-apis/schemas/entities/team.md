@@ -47,6 +47,9 @@ This schema <u>does not</u> accept additional properties.
 	 - When `true` indicates the entity has been soft deleted.
 	 - Type: `boolean`
 	 - Default: _false_
+ - **defaultRoles**
+	 - Roles to be assigned to all users that are part of this team.
+	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 
 
 ## Type definitions in this schema
@@ -59,4 +62,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

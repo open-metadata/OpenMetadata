@@ -15,6 +15,7 @@ This schema <u>does not</u> accept additional properties.
  - **name** `required`
 	 - Name that identifies this pipeline service.
 	 - Type: `string`
+	 - The value must match this pattern: `^[^.]*$`
 	 - Length: between 1 and 128
  - **serviceType**
 	 - Type of pipeline service such as Airflow or Prefect...
@@ -41,6 +42,9 @@ This schema <u>does not</u> accept additional properties.
  - **ingestionSchedule**
 	 - Schedule for running metadata ingestion jobs.
 	 - $ref: [../../type/schedule.json](../types/schedule.md)
+ - **owner**
+	 - Owner of this pipeline service.
+	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
  - **href**
 	 - Link to the resource corresponding to this pipeline service.
 	 - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
@@ -62,8 +66,9 @@ This schema <u>does not</u> accept additional properties.
 	 1. _"Airflow"_
 	 2. _"Prefect"_
 	 3. _"Glue"_
+	 4. _"Generic"_
 
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

@@ -56,3 +56,12 @@ ALTER TABLE role_entity
 ADD COLUMN `default` BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.default')),
 ADD INDEX(`default`);
 
+-- Add tag label source
+ALTER TABLE tag_usage
+ADD COLUMN source TINYINT NOT NULL FIRST, -- Source of tag (either from TagCategory or Glossary)
+DROP KEY unique_name,
+ADD UNIQUE KEY unique_name(source, tagFQN, targetFQN);
+
+UPDATE tag_usage
+SET source = 0
+WHERE source IS NULL;

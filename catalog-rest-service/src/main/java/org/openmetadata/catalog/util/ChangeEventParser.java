@@ -297,8 +297,15 @@ public final class ChangeEventParser {
     // compute the differences
     List<DiffRow> rows = generator.generateDiffRows(List.of(oldValue), List.of(newValue));
 
-    // There will be only one row of output
-    String diff = rows.get(0).getOldLine();
+    // merge rows by \n for new line
+    String diff = null;
+    for (var row : rows) {
+      if (diff == null) {
+        diff = row.getOldLine();
+      } else {
+        diff = String.format("%s\n%s", diff, row.getOldLine());
+      }
+    }
 
     // The additions and removals will be wrapped by <!add> and <!remove> tags
     // Replace them with html tags to render nicely in the UI
@@ -307,8 +314,10 @@ public final class ChangeEventParser {
     String spanAdd = "<span class=\"diff-added\">";
     String spanRemove = "<span class=\"diff-removed\">";
     String spanClose = "</span>";
-    diff = replaceWithHtml(diff, addMarker, spanAdd, spanClose);
-    diff = replaceWithHtml(diff, removeMarker, spanRemove, spanClose);
+    if (diff != null) {
+      diff = replaceWithHtml(diff, addMarker, spanAdd, spanClose);
+      diff = replaceWithHtml(diff, removeMarker, spanRemove, spanClose);
+    }
     return diff;
   }
 

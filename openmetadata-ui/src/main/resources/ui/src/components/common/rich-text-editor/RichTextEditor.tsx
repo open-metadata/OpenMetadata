@@ -12,7 +12,8 @@
  */
 
 import { convertFromRaw, convertToRaw, EditorState } from 'draft-js';
-import { draftToMarkdown, markdownToDraft } from 'markdown-draft-js';
+import { draftjsToMd } from 'draftjs-md-converter';
+import { markdownToDraft } from 'markdown-draft-js';
 import React, {
   forwardRef,
   useEffect,
@@ -46,13 +47,8 @@ const getIntialContent = (format: string, content?: string) => {
           },
           preserveNewlines: true,
         });
-        const modifiedBlock = rawData.blocks.filter((data: any) => {
-          if (data.text) {
-            return data;
-          }
-        });
 
-        const state = convertFromRaw({ ...rawData, blocks: modifiedBlock });
+        const state = convertFromRaw({ ...rawData });
 
         return EditorState.createWithContent(state);
 
@@ -90,9 +86,7 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
       getEditorContent(format: 'json' | 'markdown') {
         switch (format) {
           case Format.MARKDOWN:
-            return draftToMarkdown(
-              convertToRaw(editorState.getCurrentContent())
-            );
+            return draftjsToMd(convertToRaw(editorState.getCurrentContent()));
 
           case Format.JSON:
           default:

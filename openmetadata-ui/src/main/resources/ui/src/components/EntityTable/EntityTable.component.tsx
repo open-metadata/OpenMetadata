@@ -12,12 +12,13 @@
  */
 
 import classNames from 'classnames';
-import { cloneDeep, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
 import { getTableDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   Column,
   ColumnJoins,
@@ -25,14 +26,20 @@ import {
   Table,
 } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import {
+  ColumnTest,
+  ModifiedTableColumn,
+} from '../../interface/dataQuality.interface';
 import {
   getHtmlForNonAdminAction,
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import { getThreadValue } from '../../utils/FeedUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
   getDataTypeString,
@@ -48,15 +55,17 @@ import Tags from '../tags/tags';
 
 type Props = {
   owner: Table['owner'];
-  tableColumns: Table['columns'];
+  tableColumns: ModifiedTableColumn[];
   joins: Array<ColumnJoins>;
   searchText?: string;
   columnName: string;
   hasEditAccess: boolean;
   isReadOnly?: boolean;
+  entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
-  onUpdate?: (columns: Table['columns']) => void;
+  onUpdate?: (columns: ModifiedTableColumn[]) => void;
   onThreadLinkSelect?: (value: string) => void;
+  onEntityFieldSelect?: (value: string) => void;
 };
 
 const EntityTable = ({
@@ -69,6 +78,8 @@ const EntityTable = ({
   entityFieldThreads,
   isReadOnly = false,
   onThreadLinkSelect,
+  onEntityFieldSelect,
+  entityFqn,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -79,6 +90,10 @@ const EntityTable = ({
       {
         Header: 'Type',
         accessor: 'dataTypeDisplay',
+      },
+      {
+        Header: 'Data Quality',
+        accessor: 'columnTests',
       },
       {
         Header: 'Description',
@@ -92,7 +107,9 @@ const EntityTable = ({
     []
   );
 
-  const [searchedColumns, setSearchedColumns] = useState<Table['columns']>([]);
+  const [searchedColumns, setSearchedColumns] = useState<ModifiedTableColumn[]>(
+    []
+  );
 
   const data = React.useMemo(
     () => makeData(searchedColumns),
@@ -152,7 +169,7 @@ const EntityTable = ({
   };
 
   const updateColumnDescription = (
-    tableCols: Table['columns'],
+    tableCols: ModifiedTableColumn[],
     changedColName: string,
     description: string
   ) => {
@@ -161,7 +178,7 @@ const EntityTable = ({
         col.description = description;
       } else {
         updateColumnDescription(
-          col?.children as Table['columns'],
+          col?.children as ModifiedTableColumn[],
           changedColName,
           description
         );
@@ -170,7 +187,7 @@ const EntityTable = ({
   };
 
   const updateColumnTags = (
-    tableCols: Table['columns'],
+    tableCols: ModifiedTableColumn[],
     changedColName: string,
     newColumnTags: Array<string>
   ) => {
@@ -198,7 +215,7 @@ const EntityTable = ({
         col.tags = getUpdatedTags(col);
       } else {
         updateColumnTags(
-          col?.children as Table['columns'],
+          col?.children as ModifiedTableColumn[],
           changedColName,
           newColumnTags
         );
@@ -303,7 +320,8 @@ const EntityTable = ({
               {headerGroup.headers.map((column: any, index: number) => (
                 <th
                   className={classNames('tableHead-cell', {
-                    'tw-w-60': column.id === 'tags',
+                    'tw-w-60':
+                      column.id === 'tags' || column.id === 'columnTests',
                   })}
                   key={index}
                   {...column.getHeaderProps()}>
@@ -326,6 +344,22 @@ const EntityTable = ({
                 {...row.getRowProps()}>
                 {/* eslint-disable-next-line */}
                 {row.cells.map((cell: any, index: number) => {
+                  const columnTests =
+                    cell.column.id === 'columnTests'
+                      ? ((cell.value ?? []) as ColumnTest[])
+                      : ([] as ColumnTest[]);
+                  const columnTestLength = columnTests.length;
+                  const failingTests = columnTests.filter((test) =>
+                    test.results?.some(
+                      (t) => t.testCaseStatus === TestCaseStatus.Failed
+                    )
+                  );
+                  const passingTests = columnTests.filter((test) =>
+                    test.results?.some(
+                      (t) => t.testCaseStatus === TestCaseStatus.Success
+                    )
+                  );
+
                   return (
                     <td
                       className={classNames(
@@ -347,6 +381,40 @@ const EntityTable = ({
                           )}
                         </span>
                       ) : null}
+
+                      {cell.column.id === 'columnTests' && (
+                        <Fragment>
+                          {columnTestLength ? (
+                            <Fragment>
+                              {failingTests.length ? (
+                                <div className="tw-flex">
+                                  <p className="tw-mr-2">
+                                    <i className="fas fa-times tw-text-status-failed" />
+                                  </p>
+                                  <p>
+                                    {`${failingTests.length}/${columnTestLength} tests failing`}
+                                  </p>
+                                </div>
+                              ) : (
+                                <Fragment>
+                                  {passingTests.length ? (
+                                    <div className="tw-flex">
+                                      <div className="tw-mr-2">
+                                        <i className="fas fa-check-square tw-text-status-success" />
+                                      </div>
+                                      <p>{`${passingTests.length} tests`}</p>
+                                    </div>
+                                  ) : (
+                                    <p>{`${columnTestLength} tests`}</p>
+                                  )}
+                                </Fragment>
+                              )}
+                            </Fragment>
+                          ) : (
+                            '--'
+                          )}
+                        </Fragment>
+                      )}
 
                       {cell.column.id === 'dataTypeDisplay' && (
                         <>
@@ -426,6 +494,7 @@ const EntityTable = ({
                                 position="left"
                                 trigger="click">
                                 <TagsContainer
+                                  allowGlossary
                                   editable={editColumnTag?.index === row.id}
                                   isLoading={
                                     isTagLoading &&
@@ -465,7 +534,11 @@ const EntityTable = ({
                                 cell.row.cells[0].value,
                                 'tags',
                                 entityFieldThreads as EntityFieldThreads[],
-                                onThreadLinkSelect
+                                onThreadLinkSelect,
+                                EntityType.TABLE,
+                                entityFqn,
+                                `columns/${cell.row.cells[0].value}/tags`,
+                                Boolean(cell.value.length)
                               )}
                             </div>
                           )}
@@ -485,39 +558,75 @@ const EntityTable = ({
                                   />
                                 ) : (
                                   <span className="tw-no-description">
-                                    No description added
+                                    No description added{' '}
                                   </span>
-                                )}
-                                {getFieldThreadElement(
-                                  cell.row.cells[0].value,
-                                  'description',
-                                  entityFieldThreads as EntityFieldThreads[],
-                                  onThreadLinkSelect
                                 )}
                               </div>
                               {!isReadOnly ? (
-                                <NonAdminAction
-                                  html={getHtmlForNonAdminAction(
-                                    Boolean(owner)
+                                <Fragment>
+                                  <NonAdminAction
+                                    html={getHtmlForNonAdminAction(
+                                      Boolean(owner)
+                                    )}
+                                    isOwner={hasEditAccess}
+                                    permission={Operation.UpdateDescription}
+                                    position="top">
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() => {
+                                        if (!isReadOnly) {
+                                          handleEditColumn(
+                                            row.original,
+                                            row.id
+                                          );
+                                        }
+                                      }}>
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  </NonAdminAction>
+                                  {isNil(
+                                    getThreadValue(
+                                      cell.row.cells[0].value,
+                                      'description',
+                                      entityFieldThreads as EntityFieldThreads[]
+                                    )
+                                  ) && !cell.value ? (
+                                    <button
+                                      className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
+                                      data-testid="request-description"
+                                      onClick={() =>
+                                        onEntityFieldSelect?.(
+                                          `columns/${cell.row.cells[0].value}/description`
+                                        )
+                                      }>
+                                      <PopOver
+                                        position="top"
+                                        title="Request description"
+                                        trigger="mouseenter">
+                                        <SVGIcons
+                                          alt="request-description"
+                                          icon={Icons.REQUEST}
+                                          width="22px"
+                                        />
+                                      </PopOver>
+                                    </button>
+                                  ) : null}
+                                  {getFieldThreadElement(
+                                    cell.row.cells[0].value,
+                                    'description',
+                                    entityFieldThreads as EntityFieldThreads[],
+                                    onThreadLinkSelect,
+                                    EntityType.TABLE,
+                                    entityFqn,
+                                    `columns/${cell.row.cells[0].value}/description`,
+                                    Boolean(cell.value)
                                   )}
-                                  isOwner={hasEditAccess}
-                                  permission={Operation.UpdateDescription}
-                                  position="top">
-                                  <button
-                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                    onClick={() => {
-                                      if (!isReadOnly) {
-                                        handleEditColumn(row.original, row.id);
-                                      }
-                                    }}>
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                </NonAdminAction>
+                                </Fragment>
                               ) : null}
                             </div>
                           </div>

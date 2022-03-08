@@ -16,11 +16,12 @@ import logging
 import re
 import traceback
 import uuid
+from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -28,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
     Constraint,
     ConstraintType,
     DataModel,
+    DataType,
     ModelType,
     Table,
     TableConstraint,
@@ -48,7 +50,10 @@ from metadata.ingestion.source.sql_source_common import (
     SQLConnectionConfig,
     SQLSourceStatus,
 )
+from metadata.orm_profiler.orm.converter import ometa_to_orm
+from metadata.orm_profiler.profiles.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.engines import create_and_bind_session, get_engine
 from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -86,12 +91,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
-        self.connection_string = self.sql_config.get_connection_url()
-        self.engine = create_engine(
-            self.connection_string,
-            **self.sql_config.options,
-            connect_args=self.sql_config.connect_args,
-        )
+        self.engine = get_engine(config=self.sql_config)
+        self._session = None  # We will instantiate this just if needed
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
@@ -103,25 +104,25 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         if self.config.dbt_manifest_file is not None:
             with open(self.config.dbt_manifest_file, "r", encoding="utf-8") as manifest:
                 self.dbt_manifest = json.load(manifest)
+        self.profile_date = datetime.now()
 
-    def _instantiate_profiler(self) -> bool:
+    def run_profiler(self, table: Table, schema: str) -> Optional[TableProfile]:
         """
-        If the profiler is configured, load it and run.
+        Convert the table to an ORM object and run the ORM
+        profiler.
 
-        Return True if the profiling ran correctly
+        :param table: Table Entity to be ingested
+        :param schema: Table schema
+        :return: TableProfile
         """
         try:
-            if self.config.data_profiler_enabled:
-                if self.data_profiler is None:
-                    # pylint: disable=import-outside-toplevel
-                    from metadata.profiler.dataprofiler import DataProfiler
+            orm = ometa_to_orm(table=table, database=schema)
+            profiler = DefaultProfiler(
+                session=self.session, table=orm, profile_date=self.profile_date
+            )
+            profiler.execute()
+            return profiler.get_profile()
 
-                    # pylint: enable=import-outside-toplevel
-
-                    self.data_profiler = DataProfiler(
-                        status=self.status, config=self.config
-                    )
-                return True
         # Catch any errors during profiling init and continue ingestion
         except ModuleNotFoundError as err:
             logger.error(
@@ -131,8 +132,19 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.print_exc())
-            logger.debug(f"Error loading profiler {repr(exc)}")
-        return False
+            logger.debug(f"Error running ingestion profiler {repr(exc)}")
+
+        return None
+
+    @property
+    def session(self) -> Session:
+        """
+        Return the SQLAlchemy session from the engine
+        """
+        if not self._session:
+            self._session = create_and_bind_session(self.engine)
+
+        return self._session
 
     def prepare(self):
         self._parse_data_model()
@@ -237,14 +249,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(err)
 
                 try:
-                    if self._instantiate_profiler():
-                        profile = self.run_data_profiler(table_name, schema)
-                        table_entity.tableProfile = (
-                            [profile] if profile is not None else None
-                        )
+                    if self.config.data_profiler_enabled:
+                        profile = self.run_profiler(table=table_entity, schema=schema)
+                        table_entity.tableProfile = [profile] if profile else None
                 # Catch any errors during the profile runner and continue
                 except Exception as err:
                     logger.error(err)
+
                 # check if we have any model to associate with
                 table_entity.dataModel = self._get_data_model(schema, table_name)
 
@@ -387,6 +398,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     model_fqdn = f"{schema}.{model_name}"
                 except Exception as err:
+                    logger.debug(traceback.print_exc())
                     logger.error(err)
                 self.data_models[model_fqdn] = model
 
@@ -552,8 +564,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             col_type, column["type"]
                         )
                         if col_type == "NULL" or col_type is None:
-                            col_type = "VARCHAR"
-                            data_type_display = "varchar"
+                            col_type = DataType.VARCHAR.name
+                            data_type_display = col_type.lower()
                             logger.warning(
                                 "Unknown type {} mapped to VARCHAR: {}".format(
                                     repr(column["type"]), column["name"]
@@ -569,10 +581,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = (
                             1 if col_data_length is None else col_data_length
                         )
-                        if col_type == "ARRAY":
-                            if arr_data_type is None:
-                                arr_data_type = "VARCHAR"
-                            dataTypeDisplay = col_type + "<" + arr_data_type + ">"
+                        if col_type == "ARRAY" and arr_data_type is None:
+                            arr_data_type = DataType.VARCHAR.name
+                            dataTypeDisplay = f"array<{arr_data_type}>"
+
                         om_column = Column(
                             name=column["name"],
                             description=column.get("comment", None),
@@ -630,7 +642,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 ]
                         except Exception as err:
                             logger.debug(traceback.print_exc())
-                            logger.debug(err)
+                            logger.error(err)
+
                         om_column = col_dict
                 except Exception as err:
                     logger.debug(traceback.print_exc())
@@ -642,32 +655,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(f"{repr(err)}: {table} {err}")
             return None
 
-    def _check_col_length(self, datatype, col_raw_type):
+    @staticmethod
+    def _check_col_length(datatype, col_raw_type):
         if datatype and datatype.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
             try:
                 return col_raw_type.length if col_raw_type.length else 1
             except AttributeError:
                 return 1
-
-    def run_data_profiler(self, table: str, schema: str) -> TableProfile:
-        """
-        Run the profiler for a table in a schema.
-
-        Prepare specific namings for different sources, e.g. bigquery
-        """
-        dataset_name = f"{schema}.{table}"
-        self.status.scanned(f"profile of {dataset_name}")
-        logger.info(f"Running Profiling for {dataset_name}. ")
-        if self.config.scheme == "bigquery":
-            table = dataset_name
-        profile = self.data_profiler.run_profiler(
-            dataset_name=dataset_name,
-            profile_date=self.sql_config.data_profiler_date,
-            schema=schema,
-            table=table,
-        )
-        logger.debug(f"Finished profiling {dataset_name}")
-        return profile
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type

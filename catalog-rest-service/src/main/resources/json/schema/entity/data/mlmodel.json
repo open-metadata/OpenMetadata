@@ -82,7 +82,7 @@
           "$ref": "#/definitions/fullyQualifiedFeatureSourceName"
         },
         "dataSource": {
-          "description": "Description of the Data Source (e.g., a Table)",
+          "description": "Description of the Data Source (e.g., a Table).",
           "$ref": "../../type/entityReference.json"
         },
         "tags": {

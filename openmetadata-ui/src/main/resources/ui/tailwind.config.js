@@ -171,6 +171,7 @@ module.exports = {
         12: '3rem',
         32: '8rem',
         168: '10.5rem',
+        256: '16rem',
         tab: '24rem',
       },
       padding: {
@@ -178,6 +179,7 @@ module.exports = {
       },
       zIndex: {
         9999: 9999,
+        1: 1,
       },
     },
   },

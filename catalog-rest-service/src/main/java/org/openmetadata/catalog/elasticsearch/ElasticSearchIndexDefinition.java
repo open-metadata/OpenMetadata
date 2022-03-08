@@ -882,6 +882,7 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
         .lastUpdatedTimestamp(updatedTimestamp)
         .entityType("glossaryTerm")
         .suggest(suggest)
+        .deleted(glossaryTerm.getDeleted())
         .tags(parseTags.tags);
   }
 }

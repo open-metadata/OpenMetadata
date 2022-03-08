@@ -15,6 +15,7 @@ This schema <u>does not</u> accept additional properties.
  - **name** `required`
 	 - Name that identifies this dashboard service.
 	 - Type: `string`
+	 - The value must match this pattern: `^[^.]*$`
 	 - Length: between 1 and 128
  - **displayName**
 	 - Display Name that identifies this dashboard service.
@@ -34,6 +35,9 @@ This schema <u>does not</u> accept additional properties.
  - **updatedBy**
 	 - User who made the update.
 	 - Type: `string`
+ - **owner**
+	 - Owner of this dashboard service.
+	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
  - **dashboardUrl** `required`
 	 - Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.
 	 - Type: `string`
@@ -70,8 +74,9 @@ This schema <u>does not</u> accept additional properties.
 	 3. _"Tableau"_
 	 4. _"Redash"_
 	 5. _"Metabase"_
+	 6. _"PowerBI"_
 
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

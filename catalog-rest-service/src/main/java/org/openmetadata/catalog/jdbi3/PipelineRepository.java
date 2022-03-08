@@ -168,7 +168,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
-    pipeline.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), pipeline.getTags()));
+    pipeline.setTags(addDerivedTags(pipeline.getTags()));
   }
 
   @Override

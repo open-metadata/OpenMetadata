@@ -49,6 +49,7 @@ import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 
 @Slf4j
 public final class TestUtils {
@@ -238,6 +239,9 @@ public final class TestUtils {
     // So add to the expectedList, the derived tags before validating the tags
     List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
     for (TagLabel expected : expectedList) {
+      if (expected.getSource() != Source.TAG) {
+        continue; // TODO similar test for glossary
+      }
       Tag tag = TagResourceTest.getTag(expected.getTagFQN(), ADMIN_AUTH_HEADERS);
       List<TagLabel> derived = new ArrayList<>();
       for (String fqn : listOrEmpty(tag.getAssociatedTags())) {

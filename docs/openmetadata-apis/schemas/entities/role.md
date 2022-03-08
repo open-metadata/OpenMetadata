@@ -44,16 +44,23 @@ This schema <u>does not</u> accept additional properties.
  - **users**
 	 - Users that have this role assigned.
 	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+ - **default**
+	 - If `true`, this role is set as default and will be assigned to all users.
+	 - Type: `boolean`
+	 - Default: _false_
+ - **teams**
+	 - Teams that have this role assigned.
+	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 
 
 ## Type definitions in this schema
 ### roleName
 
- - A unique name of the role.
+ - A unique name for the role.
  - Type: `string`
  - Length: between 1 and 128
 
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

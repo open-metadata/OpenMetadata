@@ -19,16 +19,18 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.type.TagLabel.State;
 
 /**
  * Enum ordinal number is stored in the database. New enums must be added at the end to ensure backward compatibility
+ *
+ * <p>Any time a new enum is added in the middle instead of at the end or enum ordinal value change, this test will
+ * fail. Update the test with total number of enums and test the ordinal number of the last enum. This will help catch
+ * new enum inadvertently being added in the middle.
  */
 class EnumBackwardCompatibilityTest {
-  /**
-   * Any time a new enum is added, this test will fail. Update the test with total number of enums and test the ordinal
-   * number of the last enum. This will help catch new enum inadvertently being added in the middle.
-   */
+  /** */
   @Test
   void testRelationshipEnumBackwardCompatible() {
     assertEquals(17, Relationship.values().length);
@@ -53,5 +55,15 @@ class EnumBackwardCompatibilityTest {
   void testTagStateEnumBackwardCompatible() {
     assertEquals(2, TagLabel.State.values().length);
     assertEquals(1, State.CONFIRMED.ordinal());
+  }
+
+  /**
+   * Any time a new enum is added, this test will fail. Update the test with total number of enums and test the ordinal
+   * number of the last enum. This will help catch new enum inadvertently being added in the middle.
+   */
+  @Test
+  void testTagSourceEnumBackwardCompatible() {
+    assertEquals(0, Source.TAG.ordinal());
+    assertEquals(1, Source.GLOSSARY.ordinal());
   }
 }

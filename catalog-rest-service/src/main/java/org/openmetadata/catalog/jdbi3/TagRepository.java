@@ -27,6 +27,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -251,11 +252,11 @@ public class TagRepository {
   }
 
   private Integer getUsageCount(TagCategory category) {
-    return dao.tagDAO().getTagCount(category.getName());
+    return dao.tagDAO().getTagCount(Source.TAG.ordinal(), category.getName());
   }
 
   private Integer getUsageCount(Tag tag) {
-    return dao.tagDAO().getTagCount(tag.getFullyQualifiedName());
+    return dao.tagDAO().getTagCount(Source.TAG.ordinal(), tag.getFullyQualifiedName());
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {

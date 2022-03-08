@@ -16,7 +16,10 @@ import { capitalize } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../../components/common/avatar/Avatar';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import { SearchIndex } from '../../enums/search.enum';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { useAuth } from '../../hooks/authHooks';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
@@ -46,6 +49,7 @@ const UserCard = ({
   onSelect,
   onRemove,
 }: Props) => {
+  const { isAuthDisabled, isAdminUser, userPermissions } = useAuth();
   const getArrForPartialName = (
     type: string
   ): Array<'service' | 'database' | 'table' | 'column'> => {
@@ -130,7 +134,7 @@ const UserCard = ({
         )}
 
         <div
-          className={classNames('tw-flex tw-flex-col', {
+          className={classNames('tw-flex tw-justify-center tw-flex-col', {
             'tw-pl-2': !isDataset,
           })}
           data-testid="data-container">
@@ -146,13 +150,15 @@ const UserCard = ({
                 title={item.description}>
                 {item.description}
               </p>
-              <p
-                className={classNames(
-                  isActionVisible ? 'tw-truncate tw-w-32' : null
-                )}
-                title={isIconVisible ? item.name : capitalize(item.name)}>
-                {isIconVisible ? item.name : capitalize(item.name)}
-              </p>
+              {item.name && (
+                <p
+                  className={classNames(
+                    isActionVisible ? 'tw-truncate tw-w-32' : null
+                  )}
+                  title={isIconVisible ? item.name : capitalize(item.name)}>
+                  {isIconVisible ? item.name : capitalize(item.name)}
+                </p>
+              )}
             </>
           )}
         </div>
@@ -161,7 +167,7 @@ const UserCard = ({
         <div className="tw-flex-none">
           {isCheckBoxes ? (
             <input
-              className="tw-px-2 custom-checkbox"
+              className="tw-p-1 custom-checkbox"
               data-testid="checkboxAddUser"
               type="checkbox"
               onChange={() => {
@@ -169,17 +175,28 @@ const UserCard = ({
               }}
             />
           ) : (
-            <span
-              data-testid="remove"
-              onClick={() => onRemove?.(item.id as string)}>
-              <SVGIcons
-                alt="delete"
-                className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-                icon="icon-delete"
-                title="Remove"
-                width="12px"
-              />
-            </span>
+            <NonAdminAction
+              html={<>You do not have permission to update the team.</>}
+              permission={Operation.UpdateTeam}
+              position="bottom">
+              <span
+                className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                  'tw-opacity-40':
+                    !isAdminUser &&
+                    !isAuthDisabled &&
+                    !userPermissions[Operation.UpdateTeam],
+                })}
+                data-testid="remove"
+                onClick={() => onRemove?.(item.id as string)}>
+                <SVGIcons
+                  alt="delete"
+                  className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
+                  icon="icon-delete"
+                  title="Remove"
+                  width="12px"
+                />
+              </span>
+            </NonAdminAction>
           )}
         </div>
       )}

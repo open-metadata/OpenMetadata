@@ -124,7 +124,7 @@ class RedashSource(Source[Entity]):
         for dashboard_info in dashboard_info["results"]:
             dashboard_id = dashboard_info["id"]
             if dashboard_id is not None:
-                dashboard_data = self.client.dashboard(dashboard_info["slug"])
+                dashboard_data = self.client.get_dashboard(dashboard_id)
                 self.dashboards_to_charts[dashboard_id] = []
                 for widgets in dashboard_data.get("widgets", []):
                     visualization = widgets.get("visualization")
@@ -147,10 +147,11 @@ class RedashSource(Source[Entity]):
             dashboard_id = dashboard_info["id"]
             if dashboard_id is not None:
                 self.status.item_scanned_status()
-                dashboard_data = self.client.dashboard(dashboard_info["slug"])
+                dashboard_data = self.client.get_dashboard(dashboard_id)
                 dashboard_url = (
                     f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
                 )
+                dashboard_description = ""
                 for widgets in dashboard_data.get("widgets", []):
                     dashboard_description = widgets.get("text")
                 yield Dashboard(

@@ -75,7 +75,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
-    metrics.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), metrics.getTags()));
+    metrics.setTags(addDerivedTags(metrics.getTags()));
   }
 
   @Override

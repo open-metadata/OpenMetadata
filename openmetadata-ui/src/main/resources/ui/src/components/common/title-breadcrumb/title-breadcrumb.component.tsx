@@ -19,6 +19,7 @@ import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
+  noLink = false,
 }: TitleBreadcrumbProps) => {
   return (
     <nav className={className} data-testid="breadcrumb">
@@ -36,7 +37,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   src={link.imgSrc}
                 />
               ) : null}
-              {index < titleLinks.length - 1 ? (
+              {index < titleLinks.length - 1 && !noLink ? (
                 <>
                   <Link className={classes} to={link.url}>
                     {link.name}
@@ -50,14 +51,21 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   {link.name}
                 </Link>
               ) : (
-                <span
-                  className={classNames(
-                    classes,
-                    'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                <>
+                  <span
+                    className={classNames(
+                      classes,
+                      'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                    )}
+                    data-testid="inactive-link">
+                    {link.name}
+                  </span>
+                  {noLink && index < titleLinks.length - 1 && (
+                    <span className="tw-px-2">
+                      <i className="fas fa-angle-right tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                    </span>
                   )}
-                  data-testid="inactive-link">
-                  {link.name}
-                </span>
+                </>
               )}
             </li>
           );

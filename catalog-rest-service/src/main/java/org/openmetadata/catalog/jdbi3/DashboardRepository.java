@@ -134,7 +134,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
-    dashboard.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), dashboard.getTags()));
+    dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
 

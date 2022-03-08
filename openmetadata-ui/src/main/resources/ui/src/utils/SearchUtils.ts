@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+
 export const getSearchAPIQuery = (
   queryString: string,
   from: number,
@@ -26,7 +28,7 @@ export const getSearchAPIQuery = (
     ? queryString.includes(':')
       ? queryString
       : `*${queryString}*`
-    : '*';
+    : WILD_CARD_CHAR;
 
   return `q=${query}${
     filters ? ` AND ${filters}` : ''

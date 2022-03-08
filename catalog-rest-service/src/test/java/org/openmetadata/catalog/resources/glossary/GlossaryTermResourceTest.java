@@ -30,14 +30,12 @@ import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -64,16 +62,6 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
-  public static Glossary GLOSSARY1;
-  public static EntityReference GLOSSARY_REF1;
-  public static Glossary GLOSSARY2;
-  public static EntityReference GLOSSARY_REF2;
-
-  public static GlossaryTerm GLOSSARY_TERM1;
-  public static EntityReference GLOSSARY_TERM_REF1;
-  public static GlossaryTerm GLOSSARY_TERM2;
-  public static EntityReference GLOSSARY_TERM_REF2;
-
   public GlossaryTermResourceTest() {
     super(
         Entity.GLOSSARY_TERM,
@@ -86,27 +74,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         true,
         false,
         false);
-  }
-
-  @BeforeAll
-  public void setup(TestInfo test) throws IOException, URISyntaxException {
-    super.setup(test);
-    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest(test, 1);
-    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY_REF1 = new GlossaryEntityInterface(GLOSSARY1).getEntityReference();
-
-    createGlossary = glossaryResourceTest.createRequest(test, 2);
-    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY_REF2 = new GlossaryEntityInterface(GLOSSARY2).getEntityReference();
-
-    CreateGlossaryTerm createGlossaryTerm = createRequest(test, 1).withRelatedTerms(null);
-    GLOSSARY_TERM1 = createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY_TERM_REF1 = new GlossaryTermEntityInterface(GLOSSARY_TERM1).getEntityReference();
-
-    createGlossaryTerm = createRequest(test, 2).withRelatedTerms(null);
-    GLOSSARY_TERM2 = createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY_TERM_REF2 = new GlossaryTermEntityInterface(GLOSSARY_TERM2).getEntityReference();
   }
 
   @Order(0)
@@ -150,7 +117,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     queryParams.put("fields", "children,relatedTerms,reviewers,tags");
     ResultList<GlossaryTerm> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     List<GlossaryTerm> expectedTerms =
-        Arrays.asList(GLOSSARY_TERM1, GLOSSARY_TERM2, term1, term11, term12, term2, term21, term22);
+        Arrays.asList(GLOSSARY1_TERM1, GLOSSARY2_TERM1, term1, term11, term12, term2, term21, term22);
     assertContains(expectedTerms, list.getData());
 
     // List terms under glossary1
@@ -262,8 +229,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         .withSynonyms(List.of("syn1", "syn2", "syn3"))
         .withDescription(description)
         .withDisplayName(displayName)
-        .withGlossary(GLOSSARY_REF1)
-        .withRelatedTerms(Arrays.asList(GLOSSARY_TERM_REF1, GLOSSARY_TERM_REF2))
+        .withGlossary(GLOSSARY1_REF)
+        .withRelatedTerms(Arrays.asList(GLOSSARY1_TERM1_REF, GLOSSARY2_TERM1_REF))
         .withReviewers(List.of(USER_OWNER1));
   }
 

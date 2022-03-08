@@ -67,6 +67,8 @@ openmetadata-ui/src/main/resources/ui/src/test
 
 #tests
 .coverage
+/ingestion/coverage.xml
+/ingestion/junit/*
 
 #vscode
 */.vscode/*

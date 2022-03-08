@@ -33,9 +33,9 @@ export interface CreateGlossary {
    */
   owner?: EntityReference;
   /**
-   * User names of the reviewers for this glossary.
+   * User references of the reviewers for this glossary.
    */
-  reviewers?: string[];
+  reviewers?: EntityReference[];
   /**
    * Tags for this glossary
    */

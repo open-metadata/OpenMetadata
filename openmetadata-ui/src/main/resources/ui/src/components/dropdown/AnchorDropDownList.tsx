@@ -100,7 +100,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                 )}
               </div>
             ) : (
-              <Fragment />
+              <Fragment key={index} />
             )
           )}
         </div>

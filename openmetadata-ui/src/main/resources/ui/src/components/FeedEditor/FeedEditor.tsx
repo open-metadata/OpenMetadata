@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
+import { EditorPlaceHolder } from '../../constants/feed.constants';
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
@@ -71,10 +72,10 @@ const modules = {
 
 const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   (
-    { className, editorClass, placeHolder, onChangeHandler }: FeedEditorProp,
+    { className, editorClass, onChangeHandler, defaultValue }: FeedEditorProp,
     ref
   ) => {
-    const [value, setValue] = useState<string>('');
+    const [value, setValue] = useState<string>(defaultValue ?? '');
 
     const handleOnChange = (value: string) => {
       setValue(value);
@@ -97,7 +98,7 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
-          placeholder={placeHolder ?? 'Enter a reply'}
+          placeholder={EditorPlaceHolder}
           theme="snow"
           value={value}
           onChange={handleOnChange}

@@ -22,7 +22,6 @@ public final class FeedUtil {
 
   public static void addPost(Thread thread, Post post) {
     // Add new post to the thread
-    post.setPostTs(System.currentTimeMillis());
     thread.getPosts().add(post);
     thread.withPostsCount(thread.getPosts().size());
   }

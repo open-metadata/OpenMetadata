@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +39,8 @@ import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.feeds.FeedResource;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
@@ -49,6 +52,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 
 @Slf4j
@@ -144,12 +148,13 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread addPostToThread(String id, Post post) throws IOException {
+  public Thread addPostToThread(String id, Post post, String userName) throws IOException {
     // Query 1 - validate the user posting the message
     User fromUser = dao.userDAO().findEntityByName(post.getFrom());
 
     // Query 2 - Find the thread
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
+    thread.withUpdatedBy(userName).withUpdatedAt(System.currentTimeMillis());
     FeedUtil.addPost(thread, post);
 
     // TODO is rewriting entire json okay?
@@ -179,6 +184,31 @@ public class FeedRepository {
     storeMentions(thread, post.getMessage());
 
     return thread;
+  }
+
+  public Post getPostById(Thread thread, String postId) {
+    Optional<Post> post = thread.getPosts().stream().filter(p -> p.getId().equals(UUID.fromString(postId))).findAny();
+    if (post.isEmpty()) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound("Post", postId));
+    }
+    return post.get();
+  }
+
+  @Transaction
+  public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) throws IOException {
+    List<Post> posts = thread.getPosts();
+    // Remove the post to be deleted from the posts list
+    posts = posts.stream().filter(p -> !p.getId().equals(post.getId())).collect(Collectors.toList());
+    thread.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(userName).withPosts(posts);
+    // update the json document
+    dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
+
+    return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
+  }
+
+  public EntityReference getOwnerOfPost(Post post) throws IOException {
+    User fromUser = dao.userDAO().findEntityByName(post.getFrom());
+    return Entity.getEntityReference(fromUser);
   }
 
   @Transaction

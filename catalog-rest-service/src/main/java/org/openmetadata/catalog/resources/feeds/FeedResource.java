@@ -37,6 +37,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
@@ -50,6 +51,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
@@ -58,6 +60,7 @@ import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -73,6 +76,7 @@ public class FeedResource {
   public static final List<String> ALLOWED_FIELDS = getAllowedFields();
 
   private final FeedRepository dao;
+  private final Authorizer authorizer;
 
   private static List<String> getAllowedFields() {
     JsonPropertyOrder propertyOrder = Thread.class.getAnnotation(JsonPropertyOrder.class);
@@ -92,6 +96,7 @@ public class FeedResource {
   public FeedResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = new FeedRepository(dao);
+    this.authorizer = authorizer;
   }
 
   static class ThreadList extends ResultList<Thread> {
@@ -259,12 +264,46 @@ public class FeedResource {
         @ApiResponse(
             responseCode = "200",
             description = "The post",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Post.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePost.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response addPost(@Context UriInfo uriInfo, @PathParam("id") String id, @Valid Post post) throws IOException {
-    Thread thread = addHref(uriInfo, dao.addPostToThread(id, post));
+  public Response addPost(
+      @Context SecurityContext securityContext,
+      @Context UriInfo uriInfo,
+      @PathParam("id") String id,
+      @Valid CreatePost createPost)
+      throws IOException {
+    Post post = getPost(createPost);
+    Thread thread = addHref(uriInfo, dao.addPostToThread(id, post, securityContext.getUserPrincipal().getName()));
     return Response.created(thread.getHref()).entity(thread).build();
+  }
+
+  @DELETE
+  @Path("/{threadId}/posts/{postId}")
+  @Operation(
+      summary = "Delete a post from its thread",
+      tags = "feeds",
+      description = "Delete a post from an existing thread.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "post with {postId} is not found"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deletePost(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ThreadId of the post to be deleted", schema = @Schema(type = "string"))
+          @PathParam("threadId")
+          String threadId,
+      @Parameter(description = "PostId of the post to be deleted", schema = @Schema(type = "string"))
+          @PathParam("postId")
+          String postId)
+      throws IOException {
+    // validate and get thread & post
+    Thread thread = dao.get(threadId);
+    Post post = dao.getPostById(thread, postId);
+    // delete post only if the admin/bot/author tries to delete it
+    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOwnerOfPost(post));
+    return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
   @GET
@@ -293,5 +332,13 @@ public class FeedResource {
         .withAddressedTo(create.getAddressedTo())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  private Post getPost(CreatePost create) {
+    return new Post()
+        .withId(UUID.randomUUID())
+        .withMessage(create.getMessage())
+        .withFrom(create.getFrom())
+        .withPostTs(System.currentTimeMillis());
   }
 }

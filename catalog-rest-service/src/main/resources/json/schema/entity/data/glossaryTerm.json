@@ -15,11 +15,11 @@
       "type": "object",
       "properties": {
         "name": {
-          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`",
+          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`.",
           "type": "string"
         },
         "endpoint": {
-          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`",
+          "description": "Name that identifies the source of an external glossary term. Example `HealthCare.gov`.",
           "type": "string",
           "format": "uri"
         }
@@ -104,6 +104,10 @@
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "usageCount": {
+      "description": "Count of how many times this and it's children glossary terms are used as labels.",
+      "type": "integer"
     },
     "tags": {
       "description": "Tags for this glossary term.",

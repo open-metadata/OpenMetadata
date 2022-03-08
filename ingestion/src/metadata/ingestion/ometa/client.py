@@ -11,6 +11,7 @@
 """
 Python API REST wrapper and helpers
 """
+import datetime
 import logging
 import time
 from typing import Callable, List, Optional
@@ -133,12 +134,17 @@ class REST:
         headers = {"Content-type": "application/json"}
         if (
             self.config.expires_in
-            and time.time() >= self.config.expires_in
+            and datetime.datetime.utcnow().timestamp() >= self.config.expires_in
             or not self.config.access_token
         ):
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":
-                self.config.expires_in = time.time() + expiry - 120
+                if isinstance(expiry, datetime.datetime):
+                    self.config.expires_in = expiry.timestamp() - 120
+                else:
+                    self.config.expires_in = (
+                        datetime.datetime.utcnow().timestamp() + expiry - 120
+                    )
         headers[
             self.config.auth_header
         ] = f"{self._auth_token_mode} {self.config.access_token}"
