@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
@@ -37,6 +38,7 @@ import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.operations.pipelines.PipelineStatus;
 import org.openmetadata.catalog.util.JsonUtils;
 
+@Slf4j
 public class AirflowRESTClient {
   private final URL url;
   private final String username;
@@ -125,15 +127,11 @@ public class AirflowRESTClient {
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-      if (response.statusCode() == 200) {
-        return response.body();
-      }
-
-      throw AirflowPipelineDeploymentException.byMessage(
-          pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
+      return response.body();
     } catch (Exception e) {
-      throw AirflowPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+      LOG.error("Failed to delete Airflow Pipeline from Airflow DAGS");
     }
+    return null;
   }
 
   public String runPipeline(String pipelineName) {
