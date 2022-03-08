@@ -35,6 +35,7 @@ class ColumnCount(StaticMetric):
         """
         return False
 
+    @property
     def metric_type(self):
         return int
 

@@ -62,6 +62,7 @@ class StdDev(StaticMetric):
     def name(cls):
         return "stddev"
 
+    @property
     def metric_type(self):
         return float
 

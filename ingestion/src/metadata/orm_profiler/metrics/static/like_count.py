@@ -29,6 +29,7 @@ class LikeCount(StaticMetric):
     def name(cls):
         return "likeCount"
 
+    @property
     def metric_type(self):
         return int
 

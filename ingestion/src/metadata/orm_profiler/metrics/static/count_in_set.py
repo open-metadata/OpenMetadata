@@ -32,6 +32,7 @@ class CountInSet(StaticMetric):
     def name(cls):
         return "countInSet"
 
+    @property
     def metric_type(self):
         return int
 
