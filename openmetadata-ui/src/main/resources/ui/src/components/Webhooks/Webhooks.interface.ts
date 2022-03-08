@@ -12,12 +12,14 @@
  */
 
 import { Paging } from 'Models';
-import { Webhook } from '../../generated/entity/events/webhook';
+import { Status, Webhook } from '../../generated/entity/events/webhook';
 
 export interface WebhooksProps {
   data: Array<Webhook>;
   paging: Paging;
+  selectedStatus: Status[];
   onAddWebhook: () => void;
   onClickWebhook: (name: string) => void;
   onPageChange: (type: string) => void;
+  onStatusFilter: (status: Status[]) => void;
 }

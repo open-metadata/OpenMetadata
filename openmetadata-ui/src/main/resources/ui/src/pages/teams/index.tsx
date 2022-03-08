@@ -20,6 +20,7 @@ import { FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createTeam,
   getTeamByName,
@@ -57,7 +58,8 @@ import UserCard from './UserCard';
 const TeamsPage = () => {
   const { team } = useParams() as Record<string, string>;
   const history = useHistory();
-  const { isAuthDisabled, isAdminUser, userPermissions } = useAuth();
+  const { isAdminUser, userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [error, setError] = useState<string>('');

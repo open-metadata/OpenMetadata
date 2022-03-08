@@ -13,12 +13,12 @@
 
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useAuth } from '../../hooks/authHooks';
 import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -71,7 +71,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   createThread,
   topicFQN,
 }: TopicDetailsProps) => {
-  const { isAuthDisabled } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);

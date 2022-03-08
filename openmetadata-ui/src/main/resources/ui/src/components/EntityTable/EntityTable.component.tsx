@@ -203,6 +203,7 @@ const EntityTable = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
+          source: allTags.includes(tag) ? 'Tag' : 'Glossary',
           tagFQN: tag,
         }));
       const updatedTags = [...(prevTags as TagLabel[]), ...newTags];

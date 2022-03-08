@@ -16,13 +16,13 @@ import { compare } from 'fast-json-patch';
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { useAuth } from '../../hooks/authHooks';
 import {
   getCurrentUserId,
   getHtmlForNonAdminAction,
@@ -92,7 +92,7 @@ const DashboardDetails = ({
   createThread,
   dashboardFQN,
 }: DashboardDetailsProps) => {
-  const { isAuthDisabled } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);

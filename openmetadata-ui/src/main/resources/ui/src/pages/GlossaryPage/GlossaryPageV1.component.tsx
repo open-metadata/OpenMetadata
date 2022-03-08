@@ -23,6 +23,7 @@ import {
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -63,7 +64,8 @@ const GlossaryPageV1 = () => {
   // const { glossaryName, glossaryTermsFQN } =
   // useParams<{ [key: string]: string }>();
 
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);

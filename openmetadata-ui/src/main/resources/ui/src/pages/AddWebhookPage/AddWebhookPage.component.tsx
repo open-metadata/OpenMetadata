@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { addWebhook } from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -25,7 +26,8 @@ import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 
 const AddWebhookPage: FunctionComponent = () => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const showToast = useToastContext();
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -51,7 +53,7 @@ const AddWebhookPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: err.message || 'Something went wrong!',
+          body: err.response?.data?.message || 'Something went wrong!',
         });
         setStatus('initial');
       });

@@ -17,6 +17,7 @@ import { isUndefined, toLower } from 'lodash';
 import { EntityTags, FormErrorData } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createTag,
   createTagCategory,
@@ -56,7 +57,8 @@ import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
 // import { Tag, TagsCategory } from './tagsTypes';
 const TagsPage = () => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
   const [currentCategory, setCurrentCategory] = useState<TagCategory>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);

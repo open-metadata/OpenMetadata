@@ -12,6 +12,7 @@
  */
 
 import React, { Fragment } from 'react';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { useAuth } from '../../hooks/authHooks';
 import { DropDownListItem, DropDownListProp } from './types';
 
@@ -22,7 +23,8 @@ const CheckBoxDropDownList = ({
   selectedItems,
   disabledItems,
 }: DropDownListProp) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
 
   return (
     <>

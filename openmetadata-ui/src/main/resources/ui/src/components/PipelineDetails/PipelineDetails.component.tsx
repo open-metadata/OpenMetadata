@@ -17,13 +17,13 @@ import { isNil } from 'lodash';
 import { EntityFieldThreads, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useAuth } from '../../hooks/authHooks';
 import {
   getCurrentUserId,
   getHtmlForNonAdminAction,
@@ -93,7 +93,7 @@ const PipelineDetails = ({
   createThread,
   pipelineFQN,
 }: PipeLineDetailsProp) => {
-  const { isAuthDisabled } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);

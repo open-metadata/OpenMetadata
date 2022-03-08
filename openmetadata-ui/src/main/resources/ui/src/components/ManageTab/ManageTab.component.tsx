@@ -18,6 +18,7 @@ import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
@@ -48,7 +49,8 @@ const ManageTab: FunctionComponent<Props> = ({
   onSave,
   hasEditAccess,
 }: Props) => {
-  const { userPermissions, isAuthDisabled } = useAuth();
+  const { userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const getOwnerList = () => {
     const user = !isEmpty(appState.userDetails)
       ? appState.userDetails

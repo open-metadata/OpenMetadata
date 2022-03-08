@@ -40,6 +40,7 @@ const WebhookDataCardBody: FunctionComponent<Props> = ({
           <span className="tw-ml-1">{startCase(status)}</span>
         </span>
         <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
+        <span className="tw-text-grey-muted">Url:&nbsp;</span>
         <span>{endpoint}</span>
       </div>
       <div className="description-text" data-testid="description-text">
