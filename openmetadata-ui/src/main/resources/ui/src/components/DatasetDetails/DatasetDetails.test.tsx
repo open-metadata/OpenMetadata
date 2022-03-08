@@ -88,6 +88,7 @@ const DatasetDetailsProps = {
   testMode: 'table' as DatasetTestModeType,
   handleAddTableTestCase: jest.fn(),
   tableTestCase: [],
+  selectedColumn: '',
   handleAddColumnTestCase: jest.fn(),
   createThread: jest.fn(),
   handleShowTestForm: jest.fn(),

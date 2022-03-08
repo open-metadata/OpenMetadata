@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-empty-interface */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,4 +16,6 @@
  * This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a
  * column are null. Values must be explicitly null. Empty strings don't count as null.
  */
-export interface ColumnValuesToBeNotNull {}
+export interface ColumnValuesToBeNotNull {
+  columnValuesToBeNotNull?: boolean;
+}
