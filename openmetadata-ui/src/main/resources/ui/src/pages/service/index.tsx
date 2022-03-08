@@ -303,7 +303,7 @@ const ServicePage: FunctionComponent = () => {
 
   const getAllIngestionWorkflows = (paging?: string) => {
     setIsloading(true);
-    getAirflowPipelines(['owner'], serviceFQN, '', paging)
+    getAirflowPipelines(['owner', 'status'], serviceFQN, '', paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
@@ -318,7 +318,8 @@ const ServicePage: FunctionComponent = () => {
           variant: 'error',
           body: msg ?? `Error while getting ingestion workflow`,
         });
-      });
+      })
+      .finally(() => setIsloading(false));
   };
 
   const triggerIngestionById = (
@@ -343,7 +344,8 @@ const ServicePage: FunctionComponent = () => {
               msg ?? `Error while triggering ingestion workflow ${displayName}`,
           });
           reject();
-        });
+        })
+        .finally(() => setIsloading(false));
     });
   };
 
@@ -366,7 +368,7 @@ const ServicePage: FunctionComponent = () => {
           });
           reject();
         });
-    });
+    }).finally(() => setIsloading(false));
   };
 
   const updateIngestion = (
