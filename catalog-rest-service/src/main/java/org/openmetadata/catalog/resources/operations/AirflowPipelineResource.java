@@ -29,8 +29,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -59,7 +57,6 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
@@ -122,13 +119,8 @@ public class AirflowPipelineResource {
     }
   }
 
-  static final String FIELDS = "owner,status";
-  public static final List<String> ALLOWED_FIELDS;
-
-  static {
-    List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
-    ALLOWED_FIELDS = Collections.unmodifiableList(list);
-  }
+  static final String FIELDS = FIELD_OWNER;
+  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(AirflowPipeline.class);
 
   @GET
   @Valid
@@ -188,7 +180,7 @@ public class AirflowPipelineResource {
     } else { // Forward paging or first page
       airflowPipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
     }
-    if (fieldsParam != null && fieldsParam.contains("status")) {
+    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
       addStatus(airflowPipelines.getData());
     }
     return addHref(uriInfo, airflowPipelines);
