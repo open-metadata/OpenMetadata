@@ -60,7 +60,7 @@
       "description": "Users that have this role assigned.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
-    "default": {
+    "defaultRole": {
       "description": "If `true`, this role is set as default role and will be assigned to all users.",
       "type": "boolean",
       "default": false
