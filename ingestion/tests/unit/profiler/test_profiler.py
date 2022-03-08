@@ -90,8 +90,6 @@ class ProfilerTest(TestCase):
             duplicateCount=None,
             nullCount=0,
             nullProportion=0.0,
-            missingPercentage=None,
-            missingCount=None,
             uniqueCount=2,
             uniqueProportion=1.0,
             min=30.0,
@@ -102,6 +100,8 @@ class ProfilerTest(TestCase):
             sum=61.0,
             stddev=0.25,
             variance=None,
+            distinctCount=2.0,
+            distinctProportion=1.0,
             histogram=Histogram(
                 boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
             ),

@@ -44,6 +44,8 @@ class DefaultProfiler(Profiler):
             # Column Metrics
             Metrics.MEAN.value,
             Metrics.COUNT.value,
+            Metrics.DISTINCT_COUNT.value,
+            Metrics.DISTINCT_RATIO.value,
             Metrics.MIN.value,
             Metrics.MIN_LENGTH.value,
             Metrics.MAX.value,
