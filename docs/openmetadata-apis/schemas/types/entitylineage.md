@@ -31,6 +31,7 @@ This schema <u>does not</u> accept additional properties.
 
  - Edge in the lineage graph from one entity to another by entity IDs.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **fromEntity**
 		 - From entity that is upstream of lineage edge.
@@ -46,6 +47,7 @@ This schema <u>does not</u> accept additional properties.
 
  - Edge in the lineage graph from one entity to another using entity references.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **fromEntity**
 		 - From entity that is upstream of lineage edge.
@@ -59,4 +61,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

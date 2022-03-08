@@ -1,8 +1,8 @@
-# ChangeEvent
+# Webhook
 
 This schema defines webhook for receiving events from OpenMetadata.
 
-**$id:** [**https://open-metadata.org/schema/entity/events/webhook.json**](https://open-metadata.org/schema/entity/events/webhook.json)
+<b id="https/open-metadata.org/schema/entity/events/webhook.json">&#36;id: https://open-metadata.org/schema/entity/events/webhook.json</b>
 
 Type: `object`
 
@@ -16,14 +16,17 @@ This schema <u>does not</u> accept additional properties.
 	 - Unique name of the application receiving webhook events.
 	 - Type: `string`
 	 - Length: between 1 and 128
+ - **displayName**
+	 - Display Name that identifies this webhook.
+	 - Type: `string`
  - **description**
 	 - Description of the application.
 	 - Type: `string`
- - **endpoint**
+ - **endpoint** `required`
 	 - Endpoint to receive the webhook events over POST requests.
 	 - Type: `string`
 	 - String format must be a "uri"
- - **eventFilters**
+ - **eventFilters** `required`
 	 - Endpoint to receive the webhook events over POST requests.
 	 - Type: `array`
 		 - **Items**
@@ -53,14 +56,14 @@ This schema <u>does not</u> accept additional properties.
 	 - User who made the update.
 	 - Type: `string`
  - **status**
-	 - Status is `notStarted`, when webhook was created with `enabled` set to false and it never started publishing events. Status is `started` when webhook is normally functioning and 200 OK response was received for callback notification. Status is `failed` on bad callback URL, connection failures, `1xx`, and `3xx` response was received for callback notification. Status is `awaitingRetry` when previous attempt at callback timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.
+	 - Status is `disabled`, when webhook was created with `enabled` set to false and it never started publishing events. Status is `active` when webhook is normally functioning and 200 OK response was received for callback notification. Status is `failed` on bad callback URL, connection failures, `1xx`, and `3xx` response was received for callback notification. Status is `awaitingRetry` when previous attempt at callback timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all retries fail.
 	 - Type: `string`
 	 - The value is restricted to the following: 
-		 1. _"notStarted"_
-		 2. _"started"_
-		 3. _"failed"_
+		 1. _"disabled"_
+		 2. _"failed"_
+		 3. _"retryLimitReached"_
 		 4. _"awaitingRetry"_
-		 5. _"retryLimitReached"_
+		 5. _"active"_
  - **failureDetails**
 	 - Failure details are set only when `status` is not `success`.
 	 - Type: `object`

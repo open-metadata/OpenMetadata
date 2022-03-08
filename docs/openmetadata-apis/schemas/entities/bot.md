@@ -6,6 +6,8 @@ This schema defines Bot entity. A bot automates tasks, such as adding descriptio
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
  - **id**
 	 - Unique identifier of a bot instance.
@@ -41,4 +43,4 @@ Type: `object`
 	 - Default: _false_
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

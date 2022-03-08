@@ -38,6 +38,7 @@ This schema defines basic common types that are used by other schemas.
 
  - Time interval in unixTimeMillis.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
 	 - **start**
 		 - Start time in unixTimeMillis.
@@ -69,7 +70,7 @@ This schema defines basic common types that are used by other schemas.
 
 ### entityLink
 
- - Link to an entity or field within an entity using this format `<#E/{entities}/{entityType}/{field}/{fieldValue}`.
+ - Link to an entity or field within an entity using this format `<#E/{entities}/{entityType}/{field}/{arrayFieldName}/{arrayFieldValue}`.
  - Type: `string`
  - The value must match this pattern: `^<#E/\S+/\S+>$`
 
@@ -82,4 +83,4 @@ This schema defines basic common types that are used by other schemas.
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

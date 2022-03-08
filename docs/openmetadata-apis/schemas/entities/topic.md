@@ -38,17 +38,17 @@ This schema <u>does not</u> accept additional properties.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
  - **serviceType**
 	 - Service type where this topic is hosted in.
-	 - $ref: [../services/messagingService.json#/definitions/messagingServiceType](../services/messagingservice.md#messagingservicetype)
- - **partitions** `required`
-	 - Number of partitions into which the topic is divided.
-	 - Type: `integer`
-	 - Range:  &ge; 1
+	 - $ref: [../services/messagingService.json#/definitions/messagingServiceType](messagingservice.md#messagingservicetype)
  - **schemaText**
 	 - Schema used for message serialization. Optional as some topics may not have associated schemas.
 	 - Type: `string`
  - **schemaType**
 	 - Schema used for message serialization.
 	 - $ref: [#/definitions/schemaType](#schematype)
+ - **partitions** `required`
+	 - Number of partitions into which the topic is divided.
+	 - Type: `integer`
+	 - Range:  &ge; 1
  - **cleanupPolicies**
 	 - Topic clean up policies. For Kafka - `cleanup.policy` configuration.
 	 - Type: `array`
@@ -70,6 +70,9 @@ This schema <u>does not</u> accept additional properties.
 	 - Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.
 	 - Type: `integer`
 	 - Default: _"-1"_
+ - **topicConfig**
+	 - Contains key/value pair of topic configuration.
+	 - $ref: [#/definitions/topicConfig](#topicconfig)
  - **owner**
 	 - Owner of this topic.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
@@ -98,7 +101,6 @@ This schema <u>does not</u> accept additional properties.
 
  - Name that identifies a topic.
  - Type: `string`
- - The value must match this pattern: `^[^.]*$`
  - Length: between 1 and 128
 
 
@@ -120,6 +122,12 @@ This schema <u>does not</u> accept additional properties.
 	 2. _"compact"_
 
 
+### topicConfig
+
+ - Contains key/value pair of topic configuration.
+ - Type: `object`
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+
+
+_This document was updated on: Monday, March 7, 2022_

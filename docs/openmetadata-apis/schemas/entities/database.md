@@ -44,7 +44,7 @@ This schema <u>does not</u> accept additional properties.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
  - **serviceType**
 	 - Service type where this database is hosted in.
-	 - $ref: [../services/databaseService.json#/definitions/databaseServiceType](../services/databaseservice.md#databaseservicetype)
+	 - $ref: [../services/databaseService.json#/definitions/databaseServiceType](databaseservice.md#databaseservicetype)
  - **location**
 	 - Reference to the Location that contains this database.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
@@ -68,10 +68,9 @@ This schema <u>does not</u> accept additional properties.
 
  - Name that identifies the database.
  - Type: `string`
- - The value must match this pattern: `^[^.]*$`
  - Length: between 1 and 128
 
 
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

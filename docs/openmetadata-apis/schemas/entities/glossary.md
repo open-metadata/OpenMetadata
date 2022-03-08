@@ -1,8 +1,8 @@
-# Team
+# Glossary
 
-This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.
+This schema defines the Glossary entity. A Glossary is collection of hierarchical GlossaryTerms.
 
-**$id:**[**https://open-metadata.org/schema/entity/teams/team.json**](https://open-metadata.org/schema/entity/teams/team.json)
+**$id:**[**https//:open-metadata.org/schema/entity/data/glossary.json**](https://open-metadata.org/schema/entity/data/glossary.json)
 
 Type: `object`
 
@@ -10,14 +10,17 @@ This schema <u>does not</u> accept additional properties.
 
 ## Properties
  - **id** `required`
+	 - Unique identifier of a glossary instance.
 	 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
  - **name** `required`
-	 - $ref: [#/definitions/teamName](#teamname)
+	 - Preferred name for the glossary term.
+	 - $ref: [#/definitions/name](#name)
+	 - Type: `string`
  - **displayName**
-	 - Name used for display purposes. Example 'Data Science team'.
+	 - Display Name that identifies this glossary.
 	 - Type: `string`
  - **description**
-	 - Description of the team.
+	 - Description of the glossary.
 	 - Type: `string`
  - **version**
 	 - Metadata version of the entity.
@@ -28,18 +31,22 @@ This schema <u>does not</u> accept additional properties.
  - **updatedBy**
 	 - User who made the update.
 	 - Type: `string`
- - **href** `required`
+ - **href**
 	 - Link to the resource corresponding to this entity.
 	 - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
- - **profile**
-	 - Team profile information.
-	 - $ref: [../../type/profile.json](../types/profile.md)
- - **users**
-	 - Users that are part of the team.
-	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
- - **owns**
-	 - List of entities owned by the team.
-	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+ - **reviewers**
+	 - User references of the reviewers for this glossary.
+	 - Type: `array`
+		 - **Items**
+		 - $ref: [../../type/entityReference.json](../types/entityreference.md)
+ - **owner**
+	 - Owner of this glossary.
+	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
+ - **tags**
+	 - Tags for this glossary.
+	 - Type: `array`
+		 - **Items**
+		 - $ref: [../../type/tagLabel.json](../types/taglabel.md)
  - **changeDescription**
 	 - Change that lead to this version of the entity.
 	 - $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)
@@ -47,15 +54,12 @@ This schema <u>does not</u> accept additional properties.
 	 - When `true` indicates the entity has been soft deleted.
 	 - Type: `boolean`
 	 - Default: _false_
- - **defaultRoles**
-	 - Roles to be assigned to all users that are part of this team.
-	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 
 
 ## Type definitions in this schema
-### teamName
+### name
 
- - A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.
+ - Name that identifies a glossary term.
  - Type: `string`
  - Length: between 1 and 128
 

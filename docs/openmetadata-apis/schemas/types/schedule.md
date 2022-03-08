@@ -6,6 +6,8 @@ This schema defines the type used for the schedule. The schedule has a start tim
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
  - **startDate**
 	 - Start date and time of the schedule.
@@ -15,4 +17,4 @@ Type: `object`
 	 - $ref: [basic.json#/definitions/duration](basic.md#duration)
 
 
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_

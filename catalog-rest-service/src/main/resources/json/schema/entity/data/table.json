@@ -110,7 +110,7 @@
       "maxLength": 128
     },
     "tableName": {
-      "description": "Local name (not fully qualified name) of a table. Dots will be escaped automatically",
+      "description": "Local name (not fully qualified name) of a table. Dots will be escaped automatically.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128

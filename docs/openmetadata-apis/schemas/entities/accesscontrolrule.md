@@ -20,7 +20,7 @@ This schema <u>does not</u> accept additional properties.
 	 - $ref: [../../type/tagLabel.json#/definitions/tagFQN](../types/taglabel.md#tagfqn)
  - **userRoleAttr**
 	 - Role of the user that the rule should match on.
-	 - $ref: [../teams/team.json#/definitions/teamName](team.md#teamname)
+	 - $ref: [../teams/role.json#/definitions/roleName](role.md#rolename)
  - **operation**
 	 - Operation on the entity.
 	 - $ref: [#/definitions/operation](#operation)
@@ -50,7 +50,8 @@ This schema <u>does not</u> accept additional properties.
 	 4. _"UpdateOwner"_
 	 5. _"UpdateTags"_
 	 6. _"UpdateLineage"_
+	 7. _"DecryptTokens"_
+	 8. _"UpdateTeam"_
 
 
-	
-_This document was updated on: Tuesday, January 25, 2022_
+_This document was updated on: Monday, March 7, 2022_
