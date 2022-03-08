@@ -5,6 +5,11 @@
   "description": "This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a column are null. Values must be explicitly null. Empty strings don't count as null. ",
   "type": "object",
   "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeNotNull",
-  "properties": {},
+  "properties": {
+    "columnValuesToBeNotNull": {
+      "type": "boolean",
+      "default": true
+    }
+  },
   "additionalProperties": false
 }
