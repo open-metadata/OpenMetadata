@@ -485,7 +485,7 @@ export const getRandomColor = (name: string) => {
   const b = num & 255;
 
   return {
-    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.3)',
+    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.6)',
     character: firstAlphabet.toUpperCase(),
   };
 };
