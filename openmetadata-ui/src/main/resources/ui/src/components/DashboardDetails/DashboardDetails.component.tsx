@@ -480,7 +480,7 @@ const DashboardDetails = ({
                                       />
                                     ) : (
                                       <span className="tw-no-description">
-                                        No description added
+                                        No description
                                       </span>
                                     )}
                                   </div>

@@ -94,7 +94,7 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
               variant="text">
               {showCopiedText ? (
                 <span className="tw-mr-1 tw-text-success tw-bg-success-lite tw-px-1 tw-rounded-md">
-                  Copied!
+                  Copied to the clipboard
                 </span>
               ) : null}
               <SVGIcons alt="copy" icon={Icons.COPY} width="16px" />
@@ -119,9 +119,13 @@ const TableQueries: FC<TableQueriesProp> = ({ queries, className }) => {
   return (
     <div className={className}>
       <div className="tw-my-6">
-        {queries?.map((query, index) => (
-          <QueryCard key={index} query={query} />
-        ))}
+        {queries ? (
+          queries.map((query, index) => <QueryCard key={index} query={query} />)
+        ) : (
+          <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+            <span>No queries data available.</span>
+          </div>
+        )}
       </div>
     </div>
   );

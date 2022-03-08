@@ -237,7 +237,7 @@ const ServicePage: FunctionComponent = () => {
       key: 'Owner',
       value:
         serviceDetails?.owner?.type === 'team'
-          ? getTeamDetailsPath(serviceDetails?.owner?.type || '')
+          ? getTeamDetailsPath(serviceDetails?.owner?.name || '')
           : serviceDetails?.owner?.name || '',
       placeholderText: serviceDetails?.owner?.displayName || '',
       isLink: serviceDetails?.owner?.type === 'team',
@@ -1061,7 +1061,7 @@ const ServicePage: FunctionComponent = () => {
                                     />
                                   ) : (
                                     <span className="tw-no-description">
-                                      No description added
+                                      No description
                                     </span>
                                   )}
                                 </td>

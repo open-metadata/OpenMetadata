@@ -140,12 +140,12 @@ describe('Test RolesPage component', () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
-    // checking No Rules Added. directly as there is no data available on 1st instance
+    // checking No rules. directly as there is no data available on 1st instance
 
     const usersButton = await findByTestId(container, 'users');
     const teamsButton = await findByTestId(container, 'teams');
 
-    expect(await findByText(container, /No Rules Added./i)).toBeInTheDocument();
+    expect(await findByText(container, /No rules./i)).toBeInTheDocument();
 
     fireEvent.click(usersButton);
 

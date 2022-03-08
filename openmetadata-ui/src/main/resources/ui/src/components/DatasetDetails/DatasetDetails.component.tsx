@@ -609,11 +609,15 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 4 && (
-              <div>
+              <div
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
+                id="tablequeries">
+                <div />
                 <TableQueries
                   isLoading={isQueriesLoading}
                   queries={tableQueries}
                 />
+                <div />
               </div>
             )}
             {activeTab === 5 && (
