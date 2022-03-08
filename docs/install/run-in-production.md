@@ -79,7 +79,7 @@ cd openmetadata-0.6.0
 OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.6.0` directory.
 
 ```
-./bin/openmetdata.sh start
+./bin/openmetadata.sh start
 ```
 
 We recommend configuring `serviced` to monitor the OpenMetadata command to restart in case of any failures.
