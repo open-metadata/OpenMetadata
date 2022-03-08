@@ -81,7 +81,7 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
         docker = DockerClient(
             compose_project_name="openmetadata",
             compose_files=[docker_compose_file_path],
-            compose_env_file=env_file
+            compose_env_file=env_file,
         )
 
         if start:
