@@ -203,6 +203,7 @@ const EntityTable = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
+          source: allTags.includes(tag) ? 'Tag' : 'Glossary',
           tagFQN: tag,
         }));
       const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
@@ -558,7 +559,7 @@ const EntityTable = ({
                                   />
                                 ) : (
                                   <span className="tw-no-description">
-                                    No description added{' '}
+                                    No description{' '}
                                   </span>
                                 )}
                               </div>

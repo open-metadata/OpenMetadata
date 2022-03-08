@@ -17,6 +17,7 @@ import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -96,7 +97,8 @@ const GlossaryV1 = ({
   onAssetPaginate,
 }: // handlePathChange,
 Props) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const treeRef = useRef<RcTree<DataNode>>(null);
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<

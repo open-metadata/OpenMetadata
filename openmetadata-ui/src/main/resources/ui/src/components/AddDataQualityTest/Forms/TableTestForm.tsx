@@ -54,7 +54,7 @@ const TableTestForm = ({
 }: Props) => {
   const markdownRef = useRef<EditorContentRef>();
   const [tableTest, setTableTest] = useState<TableTestType | undefined>(
-    data?.testCase?.tableTestType
+    data?.testCase?.tableTestType || ('' as TableTestType)
   );
   const [description] = useState(data?.description || '');
   const [minValue, setMinValue] = useState<number | undefined>(
@@ -75,6 +75,8 @@ const TableTestForm = ({
     minOrMax: false,
     values: false,
     minMaxValue: false,
+    allTestAdded: false,
+    tableTest: false,
   });
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>();
 
@@ -86,8 +88,13 @@ const TableTestForm = ({
       const newTest = Object.values(TableTestType).filter(
         (d) => !existingTest.includes(d)
       );
+      const allTestAdded =
+        tableTestCase.length === Object.values(TableTestType).length;
+      setIsShowError({
+        ...isShowError,
+        allTestAdded,
+      });
       setTestTypeOptions(newTest);
-      setTableTest(newTest[0]);
     } else {
       const testValue = Object.values(TableTestType);
       setTestTypeOptions(testValue);
@@ -100,6 +107,8 @@ const TableTestForm = ({
 
     const isTableRowCountToBeBetweenTest =
       tableTest === TableTestType.TableRowCountToBeBetween;
+
+    errMsg.tableTest = isEmpty(tableTest);
 
     if (isTableRowCountToBeBetweenTest) {
       errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
@@ -291,6 +300,7 @@ const TableTestForm = ({
               name="tableTestType"
               value={tableTest}
               onChange={handleValidation}>
+              <option value="">Select table test</option>
               {testTypeOptions &&
                 testTypeOptions.length > 0 &&
                 testTypeOptions.map((option) => (
@@ -299,6 +309,8 @@ const TableTestForm = ({
                   </option>
                 ))}
             </select>
+            {isShowError.allTestAdded &&
+              errorMsg('All the tests have been added to the table.')}
           </Field>
 
           <Field>
@@ -349,6 +361,7 @@ const TableTestForm = ({
           </Button>
           <Button
             className="tw-w-16 tw-h-10"
+            disabled={isShowError.allTestAdded}
             size="regular"
             theme="primary"
             variant="contained"

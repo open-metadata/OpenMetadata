@@ -23,6 +23,7 @@ import {
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -37,7 +38,6 @@ import { getSuggestions, searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
-import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   getAddGlossaryTermsPath,
   PAGE_SIZE,
@@ -63,7 +63,8 @@ const GlossaryPageV1 = () => {
   // const { glossaryName, glossaryTermsFQN } =
   // useParams<{ [key: string]: string }>();
 
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -394,12 +395,13 @@ const GlossaryPageV1 = () => {
   };
 
   const fetchGlossaryTermAssets = (data: GlossaryTerm, forceReset = false) => {
-    if (data?.fullyQualifiedName) {
+    if (data?.fullyQualifiedName || data?.name) {
+      const tagName = data?.fullyQualifiedName || data?.name; // Incase fqn is not fetched yet.
       searchData(
-        WILD_CARD_CHAR,
+        '',
         forceReset ? 1 : assetData.currPage,
         PAGE_SIZE,
-        `(tags:${data.fullyQualifiedName})`,
+        `(tags:${tagName})`,
         '',
         '',
         myDataSearchIndex

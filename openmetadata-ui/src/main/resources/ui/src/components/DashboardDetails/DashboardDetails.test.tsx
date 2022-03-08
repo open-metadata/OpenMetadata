@@ -20,6 +20,18 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import DashboardDetails from './DashboardDetails.component';
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 const mockUserTeam = [
   {
     description: 'description',

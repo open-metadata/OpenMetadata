@@ -32,6 +32,18 @@ jest.mock('../../axiosAPIs/rolesAPI', () => ({
   updateRole: jest.fn(),
 }));
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 jest.mock(
   '../../components/containers/PageLayout',
   () =>
@@ -140,12 +152,12 @@ describe('Test RolesPage component', () => {
     const { container } = render(<RolesPage />, {
       wrapper: MemoryRouter,
     });
-    // checking No Rules Added. directly as there is no data available on 1st instance
+    // checking No rules. directly as there is no data available on 1st instance
 
     const usersButton = await findByTestId(container, 'users');
     const teamsButton = await findByTestId(container, 'teams');
 
-    expect(await findByText(container, /No Rules Added./i)).toBeInTheDocument();
+    expect(await findByText(container, /No rules./i)).toBeInTheDocument();
 
     fireEvent.click(usersButton);
 

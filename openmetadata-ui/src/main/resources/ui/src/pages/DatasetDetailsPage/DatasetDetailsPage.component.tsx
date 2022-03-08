@@ -166,6 +166,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [testMode, setTestMode] = useState<DatasetTestModeType>('table');
   const [showTestForm, setShowTestForm] = useState(false);
   const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
+  const [selectedColumn, setSelectedColumn] = useState<string>();
 
   const handleTestModeChange = (mode: DatasetTestModeType) => {
     setTestMode(mode);
@@ -193,13 +194,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const qualityTestFormHandler = (
     tabValue: number,
-    testMode?: DatasetTestModeType
+    testMode?: DatasetTestModeType,
+    columnName?: string
   ) => {
     activeTabHandler(tabValue);
-    if (testMode) {
-      setTestMode(testMode);
-      setShowTestForm(true);
-    }
+    setTestMode(testMode as DatasetTestModeType);
+    setSelectedColumn(columnName);
+    setShowTestForm(true);
   };
 
   const getLineageData = () => {
@@ -649,6 +650,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         }
         setTableTestCase(existingData);
         handleShowTestForm(false);
+        showToast({
+          variant: 'success',
+          body: `Test ${data.testCase.tableTestType} for ${name} has been added.`,
+        });
       })
       .catch(() => {
         showToast({
@@ -681,6 +686,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         });
         setColumns(updatedColumns);
         handleShowTestForm(false);
+        showToast({
+          variant: 'success',
+          body: `Test ${data.testCase.columnTestType} for ${data.columnName} has been added.`,
+        });
       })
       .catch(() => {
         showToast({
@@ -800,6 +809,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           qualityTestFormHandler={qualityTestFormHandler}
           removeLineageHandler={removeLineageHandler}
           sampleData={sampleData}
+          selectedColumn={selectedColumn as string}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
           showTestForm={showTestForm}

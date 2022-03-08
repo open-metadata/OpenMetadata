@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import { Key } from 'rc-tree/lib/interface';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   getGlossariesByName,
   getGlossaryTermByFQN,
@@ -36,7 +37,8 @@ import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const GlossaryTermPage: FunctionComponent = () => {
   const showToast = useToastContext();
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const { glossaryName, glossaryTermsFQN } =
     useParams<{ [key: string]: string }>();
   const [isLoading, setIsLoading] = useState(true);

@@ -30,6 +30,7 @@ type Props = {
   handleAddTableTestCase: (data: CreateTableTest) => void;
   handleAddColumnTestCase: (data: ColumnTest) => void;
   onFormCancel: () => void;
+  selectedColumn: string;
 };
 
 const AddDataQualityTest = ({
@@ -37,6 +38,7 @@ const AddDataQualityTest = ({
   data,
   testMode,
   columnOptions = [],
+  selectedColumn,
   handleAddTableTestCase,
   handleAddColumnTestCase,
   onFormCancel,
@@ -55,6 +57,7 @@ const AddDataQualityTest = ({
           column={columnOptions}
           data={data as ColumnTest}
           handleAddColumnTestCase={handleAddColumnTestCase}
+          selectedColumn={selectedColumn}
           onFormCancel={onFormCancel}
         />
       )}

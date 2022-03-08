@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import { SearchIndex } from '../../enums/search.enum';
@@ -49,7 +50,8 @@ const UserCard = ({
   onSelect,
   onRemove,
 }: Props) => {
-  const { isAuthDisabled, isAdminUser, userPermissions } = useAuth();
+  const { isAdminUser, userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const getArrForPartialName = (
     type: string
   ): Array<'service' | 'database' | 'table' | 'column'> => {

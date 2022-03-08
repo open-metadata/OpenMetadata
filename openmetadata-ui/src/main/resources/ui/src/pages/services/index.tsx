@@ -17,6 +17,7 @@ import { isNil } from 'lodash';
 import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
   deleteService,
@@ -94,7 +95,8 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const showToast = useToastContext();
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState({
@@ -557,7 +559,7 @@ const ServicesPage = () => {
                                 />
                               ) : (
                                 <span className="tw-no-description">
-                                  No description added
+                                  No description
                                 </span>
                               )}
                             </div>
@@ -624,12 +626,14 @@ const ServicesPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="link-text tw-underline"
+                        <Button
                           data-testid="add-service-button"
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={handleAddService}>
                           Click here
-                        </button>
+                        </Button>
                       </NonAdminAction>{' '}
                       to add new {servicesDisplayName[serviceName]}
                     </p>

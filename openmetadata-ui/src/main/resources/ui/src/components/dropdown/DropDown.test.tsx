@@ -21,6 +21,18 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import DropDown from './DropDown';
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 const mockDropDown = [
   { name: 'Test1', to: '/test1', disabled: false },
   { name: 'Test2', to: '/test2', disabled: false },

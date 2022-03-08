@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { excludedMetrics } from '../../constants/profiler.constant';
 import { Table, TableProfile } from '../../generated/entity/data/table';
@@ -39,7 +40,8 @@ type Props = {
   }>;
   qualityTestFormHandler: (
     tabValue: number,
-    testMode?: DatasetTestModeType
+    testMode?: DatasetTestModeType,
+    columnName?: string
   ) => void;
 };
 
@@ -67,7 +69,8 @@ const TableProfiler: FC<Props> = ({
   columns,
   qualityTestFormHandler,
 }) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
     rows: tableProfile.rowCount,
     profileDate: tableProfile.profileDate,
@@ -280,27 +283,34 @@ const TableProfiler: FC<Props> = ({
                           `No tests available`
                         )}
                         <div className="tw-self-center tw-ml-5">
-                          <NonAdminAction
-                            position="bottom"
-                            title={TITLE_FOR_NON_ADMIN_ACTION}>
-                            <Button
-                              className={classNames(
-                                'tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted',
-                                {
-                                  'tw-opacity-40':
-                                    !isAdminUser && !isAuthDisabled,
-                                }
-                              )}
-                              size="custom"
-                              theme="primary"
-                              type="button"
-                              variant="outlined"
-                              onClick={() =>
-                                qualityTestFormHandler(6, 'column')
-                              }>
-                              Add Test
-                            </Button>
-                          </NonAdminAction>
+                          {col.name.colType.length > 25 ? (
+                            <span>Not supported</span>
+                          ) : (
+                            <NonAdminAction
+                              position="bottom"
+                              title={TITLE_FOR_NON_ADMIN_ACTION}>
+                              <Button
+                                className={classNames(
+                                  'tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted',
+                                  {
+                                    'tw-opacity-40':
+                                      !isAdminUser && !isAuthDisabled,
+                                  }
+                                )}
+                                size="custom"
+                                type="button"
+                                variant="outlined"
+                                onClick={() =>
+                                  qualityTestFormHandler(
+                                    6,
+                                    'column',
+                                    col.name.colName
+                                  )
+                                }>
+                                Add Test
+                              </Button>
+                            </NonAdminAction>
+                          )}
                         </div>
                       </div>
                     </td>

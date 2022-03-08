@@ -19,6 +19,7 @@ import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createRole,
   getPolicy,
@@ -66,7 +67,8 @@ const getActiveTabClass = (tab: number, currentTab: number) => {
 const RolesPage = () => {
   const showToast = useToastContext();
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [currentRole, setCurrentRole] = useState<Role>();
   const [currentPolicy, setCurrentPolicy] = useState<Policy>();
   const [error, setError] = useState<string>('');
@@ -514,7 +516,7 @@ const RolesPage = () => {
     if (!rules.length) {
       return (
         <div className="tw-text-center tw-py-5">
-          <p className="tw-text-base">No Rules Added.</p>
+          <p className="tw-text-base">No rules.</p>
         </div>
       );
     }
@@ -818,14 +820,16 @@ const RolesPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="link-text tw-underline"
+                        <Button
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={() => {
                             setErrorData(undefined);
                             setIsAddingRole(true);
                           }}>
                           Click here
-                        </button>
+                        </Button>
                         {' to add new Role'}
                       </NonAdminAction>
                     </p>

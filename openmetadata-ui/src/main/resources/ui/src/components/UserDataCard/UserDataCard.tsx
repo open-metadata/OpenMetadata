@@ -22,7 +22,7 @@ type Item = {
   email: string;
   isActiveUser: boolean;
   profilePhoto: string;
-  teamCount: number;
+  teamCount: string;
 };
 
 type Props = {

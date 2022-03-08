@@ -83,7 +83,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         key={index}
         role="menuitem"
         onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
-        <p className="tw-truncate tw-w-52" title={item.name as string}>
+        <p className="tw-truncate tw-w-80" title={item.name as string}>
           {item.name}
         </p>
       </div>

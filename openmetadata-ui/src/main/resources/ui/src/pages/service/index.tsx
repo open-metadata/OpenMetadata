@@ -25,6 +25,7 @@ import {
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   addAirflowPipeline,
   deleteAirflowPipelineById,
@@ -113,7 +114,8 @@ const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
   const history = useHistory();
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [serviceName, setServiceName] = useState(
     serviceCategory || getServiceCategoryFromType(serviceType)
   );
@@ -237,7 +239,7 @@ const ServicePage: FunctionComponent = () => {
       key: 'Owner',
       value:
         serviceDetails?.owner?.type === 'team'
-          ? getTeamDetailsPath(serviceDetails?.owner?.type || '')
+          ? getTeamDetailsPath(serviceDetails?.owner?.name || '')
           : serviceDetails?.owner?.name || '',
       placeholderText: serviceDetails?.owner?.displayName || '',
       isLink: serviceDetails?.owner?.type === 'team',
@@ -1061,7 +1063,7 @@ const ServicePage: FunctionComponent = () => {
                                     />
                                   ) : (
                                     <span className="tw-no-description">
-                                      No description added
+                                      No description
                                     </span>
                                   )}
                                 </td>

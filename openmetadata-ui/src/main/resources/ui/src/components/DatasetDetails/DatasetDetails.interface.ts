@@ -79,9 +79,11 @@ export interface DatasetDetailsProps {
   testMode: DatasetTestModeType;
   tableTestCase: TableTest[];
   showTestForm: boolean;
+  selectedColumn: string;
   qualityTestFormHandler: (
     tabValue: number,
-    testMode?: DatasetTestModeType
+    testMode?: DatasetTestModeType,
+    columnName?: string
   ) => void;
   handleShowTestForm: (value: boolean) => void;
   handleTestModeChange: (mode: DatasetTestModeType) => void;

@@ -13,6 +13,7 @@
 
 import { UserPermissions } from 'Models';
 import React from 'react';
+import { useAuthContext } from '../../../auth-provider/AuthProvider';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../../hooks/authHooks';
 import PopOver from '../popover/PopOver';
@@ -38,7 +39,8 @@ const NonAdminAction = ({
   trigger = 'mouseenter',
   permission,
 }: Props) => {
-  const { isAuthDisabled, isAdminUser, userPermissions } = useAuth();
+  const { isAdminUser, userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
 
   const handleCapturedEvent = (
     e: React.KeyboardEvent | React.MouseEvent

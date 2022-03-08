@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-empty-interface */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,4 +16,6 @@
  * This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be
  * unique.
  */
-export interface ColumnValuesToBeUnique {}
+export interface ColumnValuesToBeUnique {
+  columnValuesToBeUnique?: boolean;
+}

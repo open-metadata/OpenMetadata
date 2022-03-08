@@ -24,7 +24,7 @@ calc_gb = 1024 * 1024 * 1000
 min_memory_limit = 3 * calc_gb
 
 
-def run_docker(start, stop, pause, resume, clean, file_path):
+def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
     try:
         from python_on_whales import DockerClient
 
@@ -69,10 +69,19 @@ def run_docker(start, stop, pause, resume, clean, file_path):
                 logger.info(f"Using docker compose file from {file_path}")
                 docker_compose_file_path = pathlib.Path(file_path)
 
+        env_file = None
+        if env_file_path is not None:
+            if env_file_path == "":
+                raise ValueError("Please provide path to env file")
+            else:
+                logger.info(f"Using env file from {env_file_path}")
+                env_file = pathlib.Path(env_file_path)
+
         # Set up Docker Client Config with docker compose file path
         docker = DockerClient(
             compose_project_name="openmetadata",
             compose_files=[docker_compose_file_path],
+            compose_env_file=env_file,
         )
 
         if start:

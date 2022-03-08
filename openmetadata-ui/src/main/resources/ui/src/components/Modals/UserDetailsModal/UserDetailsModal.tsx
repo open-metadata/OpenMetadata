@@ -108,19 +108,6 @@ const UserDetailsModal = ({
               <span className="tw-text-base tw-font-medium tw-mr-2">
                 {userData.displayName || userData.name}
               </span>
-              <span
-                className={classNames(
-                  'tw-text-xs tw-border tw-px-1 tw-py-0.5 tw-rounded',
-                  userData.deleted
-                    ? 'tw-border-grey-muted'
-                    : 'tw-border-success'
-                )}>
-                {userData.deleted ? (
-                  <span className="tw-text-grey-muted">Inactive</span>
-                ) : (
-                  <span className="tw-text-success">Active</span>
-                )}
-              </span>
             </p>
             <p className="tw-mb-1">
               <span className="tw-mr-1">{userData.name}</span>|

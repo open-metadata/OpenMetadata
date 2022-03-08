@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
+import { useAuth } from '../../hooks/authHooks';
 import {
   DatasetTestModeType,
   ModifiedTableColumn,
   TableTestDataType,
 } from '../../interface/dataQuality.interface';
-import { normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
+import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
@@ -55,26 +57,17 @@ const DataQualityTest = ({
   handleRemoveColumnTest,
   haandleDropDownClick,
 }: Props) => {
+  const { isAuthDisabled, isAdminUser } = useAuth();
   const [columnsData, setColumnsData] = useState<ModifiedTableColumn[]>([]);
-
-  const isColumnTestDisable = () => {
-    const remainingTest = columns?.filter((d) => {
-      return d?.columnTests?.length !== Object.values(ColumnTestType).length;
-    });
-
-    return !(remainingTest.length > 0);
-  };
 
   const dropdownList: DropDownListItem[] = [
     {
       name: 'Table Test',
       value: 'table',
-      disabled: tableTestCase.length >= Object.values(TableTestType).length,
     },
     {
       name: 'Column Test',
       value: 'column',
-      disabled: isColumnTestDisable(),
     },
   ];
 
@@ -91,10 +84,39 @@ const DataQualityTest = ({
       <div className="tw-flex tw-justify-end">
         <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
           <span className="tw-relative">
-            <button onClick={() => handleShowDropDown(true)}>
-              Add Test{' '}
-              <DropdownIcon style={{ marginTop: '1px', color: normalLink }} />
-            </button>
+            <NonAdminAction
+              position="bottom"
+              title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Button
+                className={classNames('tw-h-8 tw-rounded tw-mb-1 tw--mt-2', {
+                  'tw-opacity-40': !isAuthDisabled && !isAdminUser,
+                })}
+                data-testid="add-new-tag-button"
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={() => {
+                  handleShowDropDown(true);
+                }}>
+                Add Test{' '}
+                {showDropDown ? (
+                  <DropdownIcon
+                    style={{
+                      transform: 'rotate(180deg)',
+                      marginTop: '1px',
+                      color: '#fff',
+                    }}
+                  />
+                ) : (
+                  <DropdownIcon
+                    style={{
+                      marginTop: '1px',
+                      color: '#fff',
+                    }}
+                  />
+                )}
+              </Button>
+            </NonAdminAction>
             {showDropDown && (
               <DropDownList
                 dropDownList={dropdownList}
@@ -147,7 +169,7 @@ const DataQualityTest = ({
         </div>
       ) : (
         <ErrorPlaceHolder>
-          <p>No test available.</p>
+          <p className="tw-mb-5">No test available.</p>
           {addTestButton(false)}
         </ErrorPlaceHolder>
       )}

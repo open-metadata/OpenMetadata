@@ -118,13 +118,13 @@ module.exports = {
         'status-queued': statusQueued,
         // Ingestion statuses end
         // Webhook statuses begin
-        notStarted: ideal,
-        started: success,
+        disabled: ideal,
+        active: success,
         failed: error,
         awaitingRetry: success,
         retryLimitReached: warning,
-        'notStarted-lite': idealBG,
-        'started-lite': successBG,
+        'disabled-lite': idealBG,
+        'active-lite': successBG,
         'failed-lite': errorBG,
         'awaitingRetry-lite': successBG,
         'retryLimitReached-lite': warningBG,

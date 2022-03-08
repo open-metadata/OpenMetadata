@@ -13,12 +13,12 @@
 
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useAuth } from '../../hooks/authHooks';
 import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -71,7 +71,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   createThread,
   topicFQN,
 }: TopicDetailsProps) => {
-  const { isAuthDisabled } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -274,22 +274,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     );
   };
 
-  const onTagUpdate = (selectedTags?: Array<string>) => {
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
-      const prevTags =
-        topicDetails?.tags?.filter((tag) =>
-          selectedTags.includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
-        })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          tagFQN: tag,
-        }));
-      const updatedTags = [...prevTags, ...newTags];
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTopic = { ...topicDetails, tags: updatedTags };
       tagUpdateHandler(updatedTopic);
     }

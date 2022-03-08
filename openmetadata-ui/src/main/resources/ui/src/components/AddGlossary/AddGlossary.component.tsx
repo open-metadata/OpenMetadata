@@ -162,25 +162,16 @@ const AddGlossary = ({
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Your Glossary</h6>
+        <h6 className="tw-heading tw-text-base">Configure Glossary</h6>
         <div className="tw-mb-5">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
-          <br />
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
+          A Glossary is a controlled vocabulary used to define the concepts and
+          terminology in an organization. Glossaries can be specific to a
+          certain domain (for e.g., Business Glossary, Technical Glossary). In
+          the glossary, the standard terms and concepts can be defined along
+          with the synonyms, and related terms. Control can be established over
+          how and who can add the terms in the glossary.
         </div>
-        {/* {getDocButton('Read Webhook Doc', '', 'webhook-doc')} */}
+        {/* {getDocButton('Read Glossary Doc', '', 'glossary-doc')} */}
       </>
     );
   };
