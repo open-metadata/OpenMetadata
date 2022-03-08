@@ -14,9 +14,11 @@ Unique Ratio Composed Metric definition
 """
 from typing import Any, Dict, Optional, Tuple
 
+from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
 
 
 class UniqueRatio(ComposedMetric):
