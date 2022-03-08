@@ -43,7 +43,7 @@ class DistinctRatio(ComposedMetric):
 
     def fn(self, res: Dict[str, Any]) -> Optional[float]:
         """
-        Safely compute null ratio based on the profiler
+        Safely compute distinct ratio based on the profiler
         results of other Metrics
         """
         res_count = res.get(Count.name())
