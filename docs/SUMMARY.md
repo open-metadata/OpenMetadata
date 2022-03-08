@@ -88,7 +88,6 @@
     * [Dashboard Service](openmetadata-apis/schemas/entities/dashboardservice.md)
     * [Database](openmetadata-apis/schemas/entities/database.md)
     * [Database Service](openmetadata-apis/schemas/entities/databaseservice.md)
-    *
     * [Delete Action](openmetadata-apis/schemas/entities/deleteaction.md)
     * [Feed](openmetadata-apis/schemas/entities/thread.md)
     * [Filters](openmetadata-apis/schemas/entities/filters.md)

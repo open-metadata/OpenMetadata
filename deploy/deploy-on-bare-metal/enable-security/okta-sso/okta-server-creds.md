@@ -25,7 +25,7 @@ description: >-
 
 * Click on the **Create App Integration** button.
 
-![](<../../../../docs/.gitbook/assets/image (11).png>)
+![](<../../../../docs/.gitbook/assets/image (42).png>)
 
 ## Step 3: Configuring the App
 
@@ -65,7 +65,7 @@ It is recommended to create a separate authorization server for different applic
 
 * From the **Authorization Servers** tab, click on **Add Authorization Server** button.
 
-![](<../../../../docs/.gitbook/assets/image (29).png>)
+![](<../../../../docs/.gitbook/assets/image (26).png>)
 
 * Enter a Name and Description.&#x20;
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](okta-server-creds.md#step-7-where-to-find-the-credentials) to locate the Client ID.
@@ -114,7 +114,7 @@ This will generate the Issuer URL.
 * You can also go to **Application -> Application** as in step 2.
 * You should be able to see your application in the list.
 
-![](<../../../../docs/.gitbook/assets/image (35).png>)
+![](<../../../../docs/.gitbook/assets/image (59).png>)
 
 * Click on your application.
 * You will find your **Client ID** and **Okta domain**.
