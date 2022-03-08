@@ -11,7 +11,7 @@ RUN mv plugins /om-airflow
 ENV AIRFLOW_VERSION=2.1.4
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 # Add docker provider for the DockerOperator
-RUN pip install "apache-airflow[docker]==2.1.4" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.1.4/constraints-3.9.txt"
+RUN pip install "apache-airflow[docker]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 COPY ingestion /ingestion
 
 # TODO: deprecate install all in favor of the minimum airflow requirements
