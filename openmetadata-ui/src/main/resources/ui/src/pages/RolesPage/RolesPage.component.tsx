@@ -19,6 +19,7 @@ import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createRole,
   getPolicy,
@@ -66,7 +67,8 @@ const getActiveTabClass = (tab: number, currentTab: number) => {
 const RolesPage = () => {
   const showToast = useToastContext();
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [currentRole, setCurrentRole] = useState<Role>();
   const [currentPolicy, setCurrentPolicy] = useState<Policy>();
   const [error, setError] = useState<string>('');

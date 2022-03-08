@@ -24,7 +24,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { Webhook } from '../../generated/entity/events/webhook';
+import { Status, Webhook } from '../../generated/entity/events/webhook';
 import useToastContext from '../../hooks/useToastContext';
 
 const WebhooksPage: FunctionComponent = () => {
@@ -33,6 +33,7 @@ const WebhooksPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [data, setData] = useState<Array<Webhook>>([]);
+  const [selectedStatus, setSelectedStatus] = useState<Status[]>([]);
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
@@ -64,6 +65,10 @@ const WebhooksPage: FunctionComponent = () => {
     fetchData(pagingString);
   };
 
+  const handleStatusFilter = (status: Status[]) => {
+    setSelectedStatus(status);
+  };
+
   const handleAddWebhook = () => {
     history.push(ROUTES.ADD_WEBHOOK);
   };
@@ -82,9 +87,11 @@ const WebhooksPage: FunctionComponent = () => {
         <Webhooks
           data={data}
           paging={paging}
+          selectedStatus={selectedStatus}
           onAddWebhook={handleAddWebhook}
           onClickWebhook={handleClickWebhook}
           onPageChange={handlePageChange}
+          onStatusFilter={handleStatusFilter}
         />
       ) : (
         <Loader />

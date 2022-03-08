@@ -135,7 +135,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       })
       .map((glossary) => {
         return {
-          name: glossary.name,
+          name: glossary.fqdn,
           value: glossary.fqdn,
         };
       });

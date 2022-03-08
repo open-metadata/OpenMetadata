@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { excludedMetrics } from '../../constants/profiler.constant';
 import { Table, TableProfile } from '../../generated/entity/data/table';
@@ -68,7 +69,8 @@ const TableProfiler: FC<Props> = ({
   columns,
   qualityTestFormHandler,
 }) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
     rows: tableProfile.rowCount,
     profileDate: tableProfile.profileDate,

@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -26,7 +27,6 @@ import {
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
-import { useAuth } from '../../hooks/authHooks';
 import {
   getCurrentUserId,
   getPartialNameFromFQN,
@@ -118,7 +118,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   qualityTestFormHandler,
   selectedColumn,
 }: DatasetDetailsProps) => {
-  const { isAuthDisabled } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);

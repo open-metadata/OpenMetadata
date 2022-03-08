@@ -6,6 +6,18 @@ jest.mock('../../components/GlossaryTerms/GlossaryTerms.component', () => {
   return jest.fn().mockReturnValue(<div>GlossaryTerms.component</div>);
 });
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 jest.mock('../../axiosAPIs/glossaryAPI', () => ({
   getGlossariesByName: jest.fn().mockImplementation(() => Promise.resolve()),
   getGlossaryTermsById: jest.fn().mockImplementation(() => Promise.resolve()),

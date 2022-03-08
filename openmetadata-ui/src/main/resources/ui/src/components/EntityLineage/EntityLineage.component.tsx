@@ -36,6 +36,7 @@ import ReactFlow, {
   ReactFlowProvider,
   removeElements,
 } from 'react-flow-renderer';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -91,7 +92,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   entityLineageHandler,
 }: EntityLineageProp) => {
   const showToast = useToastContext();
-  const { userPermissions, isAuthDisabled, isAdminUser } = useAuth();
+  const { userPermissions, isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
   const [reactFlowInstance, setReactFlowInstance] = useState<OnLoadParams>();

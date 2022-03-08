@@ -249,25 +249,16 @@ const AddGlossaryTerm = ({
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Your Glossary</h6>
+        <h6 className="tw-heading tw-text-base">Configure Glossary Term</h6>
         <div className="tw-mb-5">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
-          <br />
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
+          Every term in the glossary has a unique definition. Along with
+          defining the standard term for a concept, the synonyms as well as
+          related terms (for e.g., parent and child terms) can be specified.
+          References can be added to the assets related to the terms. New terms
+          can be added or updated to the Glossary. The glossary terms can be
+          reviewed by certain users, who can accept or reject the terms.
         </div>
-        {/* {getDocButton('Read Webhook Doc', '', 'webhook-doc')} */}
+        {/* {getDocButton('Read Glossary Term Doc', '', 'glossary-term-doc')} */}
       </>
     );
   };
