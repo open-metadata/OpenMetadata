@@ -301,14 +301,6 @@
           "description": "No.of null value proportion in columns.",
           "type": "number"
         },
-        "missingPercentage": {
-          "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
-          "type": "number"
-        },
-        "missingCount": {
-          "description": "Missing count is calculated by subtracting valuesCount - validCount.",
-          "type": "number"
-        },
         "uniqueCount": {
           "description": "No. of unique values in the column.",
           "type": "number"
@@ -319,6 +311,10 @@
         },
         "distinctCount": {
           "description": "Number of values that contain distinct values.",
+          "type": "number"
+        },
+        "distinctProportion": {
+          "description": "Proportion of distinct values in a column.",
           "type": "number"
         },
         "min": {

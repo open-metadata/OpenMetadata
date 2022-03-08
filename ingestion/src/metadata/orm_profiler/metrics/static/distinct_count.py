@@ -10,30 +10,23 @@
 #  limitations under the License.
 
 """
-Table Count Metric definition
+Distinct Count Metric definition
 """
-from sqlalchemy import func
+from sqlalchemy import distinct, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
 
-class RowCount(StaticMetric):
+class DistinctCount(StaticMetric):
     """
-    ROW_NUMBER Metric
+    DISTINCT_COUNT Metric
 
-    Count all rows on a table
+    Given a column, count the number of distinct values
     """
 
     @classmethod
     def name(cls):
-        return "rowCount"
-
-    @classmethod
-    def is_col_metric(cls) -> bool:
-        """
-        Mark the class as a Table Metric
-        """
-        return False
+        return "distinctCount"
 
     @property
     def metric_type(self):
@@ -41,4 +34,4 @@ class RowCount(StaticMetric):
 
     @_label
     def fn(self):
-        return func.count()
+        return func.count(distinct(self.col))

@@ -65,6 +65,13 @@ class MetricsTest(TestCase):
                 comments="maybe some comments",
                 age=31,
             ),
+            User(
+                name="John",
+                fullname="John Doe",
+                nickname=None,
+                comments=None,
+                age=None,
+            ),
         ]
         cls.session.add_all(data)
         cls.session.commit()
@@ -105,7 +112,7 @@ class MetricsTest(TestCase):
         )
         res = profiler.execute()._column_results
 
-        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 1
+        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 2
 
     def test_null_ratio(self):
         """
@@ -126,7 +133,10 @@ class MetricsTest(TestCase):
             use_cols=[User.nickname],
         )
         res = profiler.execute()._column_results
-        assert res.get(User.nickname.name).get(Metrics.NULL_RATIO.name) == 0.5
+        assert (
+            str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
+            == "0.67"
+        )
 
     def test_table_row_count(self):
         """
@@ -135,7 +145,7 @@ class MetricsTest(TestCase):
         table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(table_count, session=self.session, table=User)
         res = profiler.execute()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 2
+        assert res.get(Metrics.ROW_COUNT.name) == 3
 
     def test_table_column_count(self):
         """
@@ -186,7 +196,7 @@ class MetricsTest(TestCase):
         Check composed duplicate count
         """
         count = Metrics.COUNT.value
-        unique = Metrics.UNIQUE_COUNT.value
+        unique = Metrics.DISTINCT_COUNT.value
         dup_count = Metrics.DUPLICATE_COUNT.value
         res = (
             Profiler(
@@ -218,7 +228,7 @@ class MetricsTest(TestCase):
         assert res.get(User.age.name)[Metrics.HISTOGRAM.name]
         assert (
             len(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"])
-            == 2  # Too little values
+            == 3  # Too little values. Counts nulls
         )
 
     def test_like_count(self):
@@ -234,7 +244,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 2
+        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 3
 
         like = add_props(expression="Jo%")(Metrics.LIKE_COUNT.value)
         res = (
@@ -243,7 +253,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 1
+        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 2
 
         # Running safely
         # with pytest.raises(AttributeError):
@@ -265,7 +275,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 2
+        assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 3
 
         ilike = add_props(expression="ja%")(Metrics.ILIKE_COUNT.value)
         res = (
@@ -454,13 +464,13 @@ class MetricsTest(TestCase):
         unique_count = Metrics.UNIQUE_COUNT.value
         res = (
             Profiler(
-                unique_count, session=self.session, table=User, use_cols=[User.age]
+                unique_count, session=self.session, table=User, use_cols=[User.name]
             )
             .execute()
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.UNIQUE_COUNT.name] == 2
+        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 1
 
     def test_unique_ratio(self):
         """
@@ -476,13 +486,58 @@ class MetricsTest(TestCase):
                 unique_ratio,
                 session=self.session,
                 table=User,
-                use_cols=[User.age],
+                use_cols=[User.name],
             )
             .execute()
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.UNIQUE_RATIO.name] == 1.0
+        assert (
+            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.33"
+        )
+
+    def test_distinct_count(self):
+        """
+        Check Distinct Count Metric
+        """
+        count = Metrics.DISTINCT_COUNT.value
+        res = (
+            Profiler(
+                count,
+                session=self.session,
+                table=User,
+                use_cols=[User.name],
+            )
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.name.name)[Metrics.DISTINCT_COUNT.name] == 2.0
+
+    def test_distinct_ratio(self):
+        """
+        Check Distinct Ratio Metric
+        """
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+        distinct_ratio = Metrics.DISTINCT_RATIO.value
+        res = (
+            Profiler(
+                count,
+                distinct_count,
+                distinct_ratio,
+                session=self.session,
+                table=User,
+                use_cols=[User.name],
+            )
+            .execute()
+            ._column_results
+        )
+
+        assert (
+            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
+            == "0.67"
+        )
 
     def test_count_in_set(self):
         """
@@ -496,7 +551,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 1.0
+        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 2.0
 
         set_count = add_props(values=["John", "Jane"])(Metrics.COUNT_IN_SET.value)
         res = (
@@ -505,4 +560,4 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 2.0
+        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 3

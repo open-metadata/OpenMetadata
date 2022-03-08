@@ -601,85 +601,85 @@
               "name": "address_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.52805369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 29,
               "uniqueProportion": 0.2290940013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address1",
               "uniqueCount": 53,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address2",
               "uniqueCount": 76,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "company",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "zip",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -692,85 +692,85 @@
               "name": "address_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.15982599,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 29,
               "uniqueProportion": 0.455669453,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address1",
               "uniqueCount": 41,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address2",
               "uniqueCount": 15,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "company",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 3,
-              "missingPercentage": 0.1478114
+              "distinctCount": 3,
+              "distinctProportion": 0.1478114
             },
             {
               "name": "zip",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 11,
-              "missingPercentage": 0.284726178
+              "distinctCount": 11,
+              "distinctProportion": 0.284726178
             },
             {
               "name": "country",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -783,85 +783,85 @@
               "name": "address_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.78621859,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 29,
               "uniqueProportion": 0.1729116032,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address1",
               "uniqueCount": 51,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address2",
               "uniqueCount": 93,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "company",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "zip",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -874,85 +874,85 @@
               "name": "address_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.68665925,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 29,
               "uniqueProportion": 0.1079933845,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address1",
               "uniqueCount": 35,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address2",
               "uniqueCount": 94,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "company",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "zip",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -965,85 +965,85 @@
               "name": "address_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.80217948
+              "distinctCount": 9,
+              "distinctProportion": 0.80217948
             },
             {
               "name": "shop_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 29,
-              "missingPercentage": 0.170325111
+              "distinctCount": 29,
+              "distinctProportion": 0.170325111
             },
             {
               "name": "first_name",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address1",
               "uniqueCount": 95,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "address2",
               "uniqueCount": 10,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "company",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "zip",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         }
@@ -1343,15 +1343,15 @@
               "name": "api_client_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.87924166,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "title",
               "uniqueCount": 29,
               "uniqueProportion": 0.4712713414,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -1364,15 +1364,15 @@
               "name": "api_client_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.45292365,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "title",
               "uniqueCount": 29,
               "uniqueProportion": 0.283684969,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -1385,15 +1385,15 @@
               "name": "api_client_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.95612392,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "title",
               "uniqueCount": 29,
               "uniqueProportion": 0.351362996,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -1406,15 +1406,15 @@
               "name": "api_client_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.92492032,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "title",
               "uniqueCount": 29,
               "uniqueProportion": 0.33027726,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -1427,15 +1427,15 @@
               "name": "api_client_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.99869876
+              "distinctCount": 9,
+              "distinctProportion": 0.99869876
             },
             {
               "name": "title",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 29,
-              "missingPercentage": 0.416460065
+              "distinctCount": 29,
+              "distinctProportion": 0.416460065
             }
           ]
         }
@@ -2733,204 +2733,204 @@
               "name": "customer_id",
               "uniqueCount": 46,
               "uniqueProportion": 0.4556834255,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 36,
               "uniqueProportion": 0.412740311,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "average_order_size",
               "uniqueCount": 9,
               "uniqueProportion": 0.4848320849,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 16,
               "uniqueProportion": 0.274374675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 19,
               "uniqueProportion": 0.1779729031,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 5,
               "uniqueProportion": 0.403198425,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 41,
               "uniqueProportion": 0.5763257885,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "rank",
               "uniqueCount": 1,
               "uniqueProportion": 0.271483578,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "new",
               "uniqueCount": 18,
               "uniqueProportion": 0.54392552,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returning",
               "uniqueCount": 48,
               "uniqueProportion": 0.457357716,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "loyal",
               "uniqueCount": 47,
               "uniqueProportion": 0.1455819185,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "at_risk",
               "uniqueCount": 25,
               "uniqueProportion": 0.502421822,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "dormant",
               "uniqueCount": 10,
               "uniqueProportion": 0.4514540014,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "promising",
               "uniqueCount": 5,
               "uniqueProportion": 0.643516191,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "predicted_average_number_of_days_between_orders",
               "uniqueCount": 37,
               "uniqueProportion": 0.1991445491,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "expected_purchase_value_in_next_30_days",
               "uniqueCount": 23,
               "uniqueProportion": 0.3934633215,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 10,
               "uniqueProportion": 0.521182903,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 41,
               "uniqueProportion": 0.577276297,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 15,
               "uniqueProportion": 0.1038962515,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 24,
               "uniqueProportion": 0.4806029226,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 23,
               "uniqueProportion": 0.285063012,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "email",
               "uniqueCount": 4,
               "uniqueProportion": 0.502737667,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 4,
               "uniqueProportion": 0.424923401,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "verified_email",
               "uniqueCount": 39,
               "uniqueProportion": 0.1127764811,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "created_at",
               "uniqueCount": 35,
               "uniqueProportion": 0.5043061999,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "accepts_marketing",
               "uniqueCount": 32,
               "uniqueProportion": 0.370361415,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 47,
               "uniqueProportion": 0.983529122,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 38,
               "uniqueProportion": 0.1136043573,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -2943,204 +2943,204 @@
               "name": "customer_id",
               "uniqueCount": 4,
               "uniqueProportion": 0.4183210675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 29,
               "uniqueProportion": 0.119225249,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "average_order_size",
               "uniqueCount": 41,
               "uniqueProportion": 0.1217252894,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 31,
               "uniqueProportion": 0.2646313743,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 14,
               "uniqueProportion": 0.6232851174,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 45,
               "uniqueProportion": 0.6065123498,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 7,
               "uniqueProportion": 0.5597331188,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "rank",
               "uniqueCount": 10,
               "uniqueProportion": 0.24848206,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "new",
               "uniqueCount": 22,
               "uniqueProportion": 0.4650916037,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returning",
               "uniqueCount": 46,
               "uniqueProportion": 0.2610128633,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "loyal",
               "uniqueCount": 40,
               "uniqueProportion": 0.4377761525,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "at_risk",
               "uniqueCount": 16,
               "uniqueProportion": 0.5155847099,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "dormant",
               "uniqueCount": 30,
               "uniqueProportion": 0.543161414,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "promising",
               "uniqueCount": 24,
               "uniqueProportion": 0.31008394,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "predicted_average_number_of_days_between_orders",
               "uniqueCount": 48,
               "uniqueProportion": 0.4433839684,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "expected_purchase_value_in_next_30_days",
               "uniqueCount": 38,
               "uniqueProportion": 0.4677442675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 22,
               "uniqueProportion": 0.5428334295,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 36,
               "uniqueProportion": 0.2237347631,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 33,
               "uniqueProportion": 0.6154536097,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 49,
               "uniqueProportion": 0.3830947963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 21,
               "uniqueProportion": 0.5591015673,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "email",
               "uniqueCount": 36,
               "uniqueProportion": 0.2337815644,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 13,
               "uniqueProportion": 0.5565825944,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "verified_email",
               "uniqueCount": 48,
               "uniqueProportion": 0.3505349173,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "created_at",
               "uniqueCount": 1,
               "uniqueProportion": 0.1188236769,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "accepts_marketing",
               "uniqueCount": 19,
               "uniqueProportion": 0.2701732882,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 36,
               "uniqueProportion": 0.588168791,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 48,
               "uniqueProportion": 0.4528911076,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -3153,204 +3153,204 @@
               "name": "customer_id",
               "uniqueCount": 36,
               "uniqueProportion": 0.336195998,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 28,
               "uniqueProportion": 0.4739714916,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "average_order_size",
               "uniqueCount": 19,
               "uniqueProportion": 0.5744817038,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 46,
               "uniqueProportion": 0.2788957693,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 45,
               "uniqueProportion": 0.937251,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 41,
               "uniqueProportion": 0.2810435177,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 12,
               "uniqueProportion": 0.2593465018,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "rank",
               "uniqueCount": 4,
               "uniqueProportion": 0.3510410083,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "new",
               "uniqueCount": 39,
               "uniqueProportion": 0.2894960005,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returning",
               "uniqueCount": 17,
               "uniqueProportion": 0.2547630752,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "loyal",
               "uniqueCount": 32,
               "uniqueProportion": 0.4110863218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "at_risk",
               "uniqueCount": 15,
               "uniqueProportion": 0.1368357218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "dormant",
               "uniqueCount": 34,
               "uniqueProportion": 0.6528436015,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "promising",
               "uniqueCount": 47,
               "uniqueProportion": 0.2185756809,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "predicted_average_number_of_days_between_orders",
               "uniqueCount": 10,
               "uniqueProportion": 0.536535383,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "expected_purchase_value_in_next_30_days",
               "uniqueCount": 22,
               "uniqueProportion": 0.5537655182,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 19,
               "uniqueProportion": 0.519391001,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 35,
               "uniqueProportion": 0.2591610934,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 23,
               "uniqueProportion": 0.5388931626,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 22,
               "uniqueProportion": 0.67035295,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 36,
               "uniqueProportion": 0.2429327282,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "email",
               "uniqueCount": 43,
               "uniqueProportion": 0.298778278,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 10,
               "uniqueProportion": 0.313471376,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "verified_email",
               "uniqueCount": 14,
               "uniqueProportion": 0.2123758734,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "created_at",
               "uniqueCount": 5,
               "uniqueProportion": 0.1133450776,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "accepts_marketing",
               "uniqueCount": 47,
               "uniqueProportion": 0.559404346,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 47,
               "uniqueProportion": 0.3787454124,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 36,
               "uniqueProportion": 0.6354123098,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -3363,204 +3363,204 @@
               "name": "customer_id",
               "uniqueCount": 6,
               "uniqueProportion": 0.5743524436,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 50,
               "uniqueProportion": 0.6085937123,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "average_order_size",
               "uniqueCount": 33,
               "uniqueProportion": 0.1216335522,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 7,
               "uniqueProportion": 0.4860854512,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 11,
               "uniqueProportion": 0.2709761857,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 45,
               "uniqueProportion": 0.6521664,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 27,
               "uniqueProportion": 0.65104552,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "rank",
               "uniqueCount": 33,
               "uniqueProportion": 0.2576120378,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "new",
               "uniqueCount": 41,
               "uniqueProportion": 0.4945043017,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returning",
               "uniqueCount": 2,
               "uniqueProportion": 0.5011627434,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "loyal",
               "uniqueCount": 44,
               "uniqueProportion": 0.542212894,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "at_risk",
               "uniqueCount": 28,
               "uniqueProportion": 0.34878114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "dormant",
               "uniqueCount": 44,
               "uniqueProportion": 0.4879537976,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "promising",
               "uniqueCount": 27,
               "uniqueProportion": 0.4609134841,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "predicted_average_number_of_days_between_orders",
               "uniqueCount": 22,
               "uniqueProportion": 0.1257138318,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "expected_purchase_value_in_next_30_days",
               "uniqueCount": 45,
               "uniqueProportion": 0.2320211758,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_name",
               "uniqueCount": 37,
               "uniqueProportion": 0.554473982,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_name",
               "uniqueCount": 22,
               "uniqueProportion": 0.2061011165,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "city",
               "uniqueCount": 40,
               "uniqueProportion": 0.2329718096,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "region",
               "uniqueCount": 26,
               "uniqueProportion": 0.3342512759,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "country",
               "uniqueCount": 15,
               "uniqueProportion": 0.636461656,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "email",
               "uniqueCount": 48,
               "uniqueProportion": 0.3903644928,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "phone",
               "uniqueCount": 24,
               "uniqueProportion": 0.2869745093,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "verified_email",
               "uniqueCount": 15,
               "uniqueProportion": 0.3816119087,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "created_at",
               "uniqueCount": 20,
               "uniqueProportion": 0.21255889,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "accepts_marketing",
               "uniqueCount": 22,
               "uniqueProportion": 0.2773134541,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 12,
               "uniqueProportion": 0.5725251922,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 20,
               "uniqueProportion": 0.5881850772,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -3573,204 +3573,204 @@
               "name": "customer_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 12,
-              "missingPercentage": 0.5051158739
+              "distinctCount": 12,
+              "distinctProportion": 0.5051158739
             },
             {
               "name": "shop_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 20,
-              "missingPercentage": 0.4392737435
+              "distinctCount": 20,
+              "distinctProportion": 0.4392737435
             },
             {
               "name": "average_order_size",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 46,
-              "missingPercentage": 0.211333415
+              "distinctCount": 46,
+              "distinctProportion": 0.211333415
             },
             {
               "name": "total_order_count",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 41,
-              "missingPercentage": 0.523845794
+              "distinctCount": 41,
+              "distinctProportion": 0.523845794
             },
             {
               "name": "total_order_value",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.5035239596
+              "distinctCount": 9,
+              "distinctProportion": 0.5035239596
             },
             {
               "name": "first_order_date",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 42,
-              "missingPercentage": 0.2339934101
+              "distinctCount": 42,
+              "distinctProportion": 0.2339934101
             },
             {
               "name": "last_order_date",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 7,
-              "missingPercentage": 0.3713034
+              "distinctCount": 7,
+              "distinctProportion": 0.3713034
             },
             {
               "name": "rank",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 8,
-              "missingPercentage": 0.4928660268
+              "distinctCount": 8,
+              "distinctProportion": 0.4928660268
             },
             {
               "name": "new",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 8,
-              "missingPercentage": 0.1182713053
+              "distinctCount": 8,
+              "distinctProportion": 0.1182713053
             },
             {
               "name": "returning",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 35,
-              "missingPercentage": 0.3816858866
+              "distinctCount": 35,
+              "distinctProportion": 0.3816858866
             },
             {
               "name": "loyal",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 49,
-              "missingPercentage": 0.1353642629
+              "distinctCount": 49,
+              "distinctProportion": 0.1353642629
             },
             {
               "name": "at_risk",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.6448024763
+              "distinctCount": 9,
+              "distinctProportion": 0.6448024763
             },
             {
               "name": "dormant",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 3,
-              "missingPercentage": 0.205675956
+              "distinctCount": 3,
+              "distinctProportion": 0.205675956
             },
             {
               "name": "promising",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 11,
-              "missingPercentage": 0.3642826316
+              "distinctCount": 11,
+              "distinctProportion": 0.3642826316
             },
             {
               "name": "predicted_average_number_of_days_between_orders",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 7,
-              "missingPercentage": 0.181878483
+              "distinctCount": 7,
+              "distinctProportion": 0.181878483
             },
             {
               "name": "expected_purchase_value_in_next_30_days",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 33,
-              "missingPercentage": 0.3608017907
+              "distinctCount": 33,
+              "distinctProportion": 0.3608017907
             },
             {
               "name": "first_name",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 49,
-              "missingPercentage": 0.5433543468
+              "distinctCount": 49,
+              "distinctProportion": 0.5433543468
             },
             {
               "name": "last_name",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 45,
-              "missingPercentage": 0.917230701
+              "distinctCount": 45,
+              "distinctProportion": 0.917230701
             },
             {
               "name": "city",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 46,
-              "missingPercentage": 0.186672047
+              "distinctCount": 46,
+              "distinctProportion": 0.186672047
             },
             {
               "name": "region",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 17,
-              "missingPercentage": 0.3818051185
+              "distinctCount": 17,
+              "distinctProportion": 0.3818051185
             },
             {
               "name": "country",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 2,
-              "missingPercentage": 0.7356057
+              "distinctCount": 2,
+              "distinctProportion": 0.7356057
             },
             {
               "name": "email",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 46,
-              "missingPercentage": 0.5562358023
+              "distinctCount": 46,
+              "distinctProportion": 0.5562358023
             },
             {
               "name": "phone",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 35,
-              "missingPercentage": 0.2363921367
+              "distinctCount": 35,
+              "distinctProportion": 0.2363921367
             },
             {
               "name": "verified_email",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 32,
-              "missingPercentage": 0.1098246458
+              "distinctCount": 32,
+              "distinctProportion": 0.1098246458
             },
             {
               "name": "created_at",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 15,
-              "missingPercentage": 0.419264446
+              "distinctCount": 15,
+              "distinctProportion": 0.419264446
             },
             {
               "name": "accepts_marketing",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 20,
-              "missingPercentage": 0.1568123619
+              "distinctCount": 20,
+              "distinctProportion": 0.1568123619
             },
             {
               "name": "customer",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 20,
-              "missingPercentage": 0.4638419273
+              "distinctCount": 20,
+              "distinctProportion": 0.4638419273
             },
             {
               "name": "shipping_address",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 24,
-              "missingPercentage": 0.887110909
+              "distinctCount": 24,
+              "distinctProportion": 0.887110909
             },
             {
               "name": "orders",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 29,
-              "missingPercentage": 0.0639865
+              "distinctCount": 29,
+              "distinctProportion": 0.0639865
             }
           ]
         }
@@ -9002,190 +9002,190 @@
               "name": "sale_id",
               "uniqueCount": 46,
               "uniqueProportion": 0.4556834255,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "billing_address_id",
               "uniqueCount": 36,
               "uniqueProportion": 0.412740311,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "api_client_id",
               "uniqueCount": 9,
               "uniqueProportion": 0.4848320849,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer_id",
               "uniqueCount": 16,
               "uniqueProportion": 0.274374675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "line_item_id",
               "uniqueCount": 19,
               "uniqueProportion": 0.1779729031,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_id",
               "uniqueCount": 5,
               "uniqueProportion": 0.403198425,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "order_id",
               "uniqueCount": 41,
               "uniqueProportion": 0.5763257885,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_id",
               "uniqueCount": 1,
               "uniqueProportion": 0.271483578,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_variant_id",
               "uniqueCount": 18,
               "uniqueProportion": 0.54392552,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address_id",
               "uniqueCount": 48,
               "uniqueProportion": 0.457357716,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 47,
               "uniqueProportion": 0.1455819185,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_id",
               "uniqueCount": 25,
               "uniqueProportion": 0.502421822,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gross_sales",
               "uniqueCount": 10,
               "uniqueProportion": 0.4514540014,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "net_sales",
               "uniqueCount": 5,
               "uniqueProportion": 0.643516191,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_sales",
               "uniqueCount": 37,
               "uniqueProportion": 0.1991445491,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returns",
               "uniqueCount": 23,
               "uniqueProportion": 0.3934633215,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "discounts",
               "uniqueCount": 10,
               "uniqueProportion": 0.521182903,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping",
               "uniqueCount": 41,
               "uniqueProportion": 0.577276297,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "taxes",
               "uniqueCount": 15,
               "uniqueProportion": 0.1038962515,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_discounts",
               "uniqueCount": 24,
               "uniqueProportion": 0.4806029226,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_gross_sales",
               "uniqueCount": 23,
               "uniqueProportion": 0.285063012,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_cards_issued",
               "uniqueCount": 4,
               "uniqueProportion": 0.502737667,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "quantity",
               "uniqueCount": 4,
               "uniqueProportion": 0.424923401,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "currency",
               "uniqueCount": 39,
               "uniqueProportion": 0.1127764811,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "is_deleted",
               "uniqueCount": 35,
               "uniqueProportion": 0.5043061999,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "test",
               "uniqueCount": 32,
               "uniqueProportion": 0.370361415,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "happened_at",
               "uniqueCount": 47,
               "uniqueProportion": 0.983529122,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -9198,190 +9198,190 @@
               "name": "sale_id",
               "uniqueCount": 4,
               "uniqueProportion": 0.4183210675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "billing_address_id",
               "uniqueCount": 29,
               "uniqueProportion": 0.119225249,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "api_client_id",
               "uniqueCount": 41,
               "uniqueProportion": 0.1217252894,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer_id",
               "uniqueCount": 31,
               "uniqueProportion": 0.2646313743,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "line_item_id",
               "uniqueCount": 14,
               "uniqueProportion": 0.6232851174,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_id",
               "uniqueCount": 45,
               "uniqueProportion": 0.6065123498,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "order_id",
               "uniqueCount": 7,
               "uniqueProportion": 0.5597331188,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_id",
               "uniqueCount": 10,
               "uniqueProportion": 0.24848206,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_variant_id",
               "uniqueCount": 22,
               "uniqueProportion": 0.4650916037,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address_id",
               "uniqueCount": 46,
               "uniqueProportion": 0.2610128633,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 40,
               "uniqueProportion": 0.4377761525,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_id",
               "uniqueCount": 16,
               "uniqueProportion": 0.5155847099,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gross_sales",
               "uniqueCount": 30,
               "uniqueProportion": 0.543161414,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "net_sales",
               "uniqueCount": 24,
               "uniqueProportion": 0.31008394,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_sales",
               "uniqueCount": 48,
               "uniqueProportion": 0.4433839684,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returns",
               "uniqueCount": 38,
               "uniqueProportion": 0.4677442675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "discounts",
               "uniqueCount": 22,
               "uniqueProportion": 0.5428334295,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping",
               "uniqueCount": 36,
               "uniqueProportion": 0.2237347631,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "taxes",
               "uniqueCount": 33,
               "uniqueProportion": 0.6154536097,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_discounts",
               "uniqueCount": 49,
               "uniqueProportion": 0.3830947963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_gross_sales",
               "uniqueCount": 21,
               "uniqueProportion": 0.5591015673,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_cards_issued",
               "uniqueCount": 36,
               "uniqueProportion": 0.2337815644,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "quantity",
               "uniqueCount": 13,
               "uniqueProportion": 0.5565825944,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "currency",
               "uniqueCount": 48,
               "uniqueProportion": 0.3505349173,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "is_deleted",
               "uniqueCount": 1,
               "uniqueProportion": 0.1188236769,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "test",
               "uniqueCount": 19,
               "uniqueProportion": 0.2701732882,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "happened_at",
               "uniqueCount": 36,
               "uniqueProportion": 0.588168791,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -9394,190 +9394,190 @@
               "name": "sale_id",
               "uniqueCount": 36,
               "uniqueProportion": 0.336195998,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "billing_address_id",
               "uniqueCount": 28,
               "uniqueProportion": 0.4739714916,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "api_client_id",
               "uniqueCount": 19,
               "uniqueProportion": 0.5744817038,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer_id",
               "uniqueCount": 46,
               "uniqueProportion": 0.2788957693,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "line_item_id",
               "uniqueCount": 45,
               "uniqueProportion": 0.937251,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_id",
               "uniqueCount": 41,
               "uniqueProportion": 0.2810435177,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "order_id",
               "uniqueCount": 12,
               "uniqueProportion": 0.2593465018,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_id",
               "uniqueCount": 4,
               "uniqueProportion": 0.3510410083,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_variant_id",
               "uniqueCount": 39,
               "uniqueProportion": 0.2894960005,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address_id",
               "uniqueCount": 17,
               "uniqueProportion": 0.2547630752,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 32,
               "uniqueProportion": 0.4110863218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_id",
               "uniqueCount": 15,
               "uniqueProportion": 0.1368357218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gross_sales",
               "uniqueCount": 34,
               "uniqueProportion": 0.6528436015,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "net_sales",
               "uniqueCount": 47,
               "uniqueProportion": 0.2185756809,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_sales",
               "uniqueCount": 10,
               "uniqueProportion": 0.536535383,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returns",
               "uniqueCount": 22,
               "uniqueProportion": 0.5537655182,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "discounts",
               "uniqueCount": 19,
               "uniqueProportion": 0.519391001,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping",
               "uniqueCount": 35,
               "uniqueProportion": 0.2591610934,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "taxes",
               "uniqueCount": 23,
               "uniqueProportion": 0.5388931626,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_discounts",
               "uniqueCount": 22,
               "uniqueProportion": 0.67035295,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_gross_sales",
               "uniqueCount": 36,
               "uniqueProportion": 0.2429327282,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_cards_issued",
               "uniqueCount": 43,
               "uniqueProportion": 0.298778278,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "quantity",
               "uniqueCount": 10,
               "uniqueProportion": 0.313471376,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "currency",
               "uniqueCount": 14,
               "uniqueProportion": 0.2123758734,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "is_deleted",
               "uniqueCount": 5,
               "uniqueProportion": 0.1133450776,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "test",
               "uniqueCount": 47,
               "uniqueProportion": 0.559404346,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "happened_at",
               "uniqueCount": 47,
               "uniqueProportion": 0.3787454124,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -9590,190 +9590,190 @@
               "name": "sale_id",
               "uniqueCount": 6,
               "uniqueProportion": 0.5743524436,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "billing_address_id",
               "uniqueCount": 50,
               "uniqueProportion": 0.6085937123,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "api_client_id",
               "uniqueCount": 33,
               "uniqueProportion": 0.1216335522,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer_id",
               "uniqueCount": 7,
               "uniqueProportion": 0.4860854512,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "line_item_id",
               "uniqueCount": 11,
               "uniqueProportion": 0.2709761857,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_id",
               "uniqueCount": 45,
               "uniqueProportion": 0.6521664,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "order_id",
               "uniqueCount": 27,
               "uniqueProportion": 0.65104552,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_id",
               "uniqueCount": 33,
               "uniqueProportion": 0.2576120378,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "product_variant_id",
               "uniqueCount": 41,
               "uniqueProportion": 0.4945043017,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address_id",
               "uniqueCount": 2,
               "uniqueProportion": 0.5011627434,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 44,
               "uniqueProportion": 0.542212894,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_id",
               "uniqueCount": 28,
               "uniqueProportion": 0.34878114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gross_sales",
               "uniqueCount": 44,
               "uniqueProportion": 0.4879537976,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "net_sales",
               "uniqueCount": 27,
               "uniqueProportion": 0.4609134841,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_sales",
               "uniqueCount": 22,
               "uniqueProportion": 0.1257138318,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "returns",
               "uniqueCount": 45,
               "uniqueProportion": 0.2320211758,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "discounts",
               "uniqueCount": 37,
               "uniqueProportion": 0.554473982,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping",
               "uniqueCount": 22,
               "uniqueProportion": 0.2061011165,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "taxes",
               "uniqueCount": 40,
               "uniqueProportion": 0.2329718096,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_discounts",
               "uniqueCount": 26,
               "uniqueProportion": 0.3342512759,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_card_gross_sales",
               "uniqueCount": 15,
               "uniqueProportion": 0.636461656,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "gift_cards_issued",
               "uniqueCount": 48,
               "uniqueProportion": 0.3903644928,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "quantity",
               "uniqueCount": 24,
               "uniqueProportion": 0.2869745093,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "currency",
               "uniqueCount": 15,
               "uniqueProportion": 0.3816119087,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "is_deleted",
               "uniqueCount": 20,
               "uniqueProportion": 0.21255889,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "test",
               "uniqueCount": 22,
               "uniqueProportion": 0.2773134541,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "happened_at",
               "uniqueCount": 12,
               "uniqueProportion": 0.5725251922,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -9786,190 +9786,190 @@
               "name": "sale_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 12,
-              "missingPercentage": 0.5051158739
+              "distinctCount": 12,
+              "distinctProportion": 0.5051158739
             },
             {
               "name": "billing_address_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 20,
-              "missingPercentage": 0.4392737435
+              "distinctCount": 20,
+              "distinctProportion": 0.4392737435
             },
             {
               "name": "api_client_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 46,
-              "missingPercentage": 0.211333415
+              "distinctCount": 46,
+              "distinctProportion": 0.211333415
             },
             {
               "name": "customer_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 41,
-              "missingPercentage": 0.523845794
+              "distinctCount": 41,
+              "distinctProportion": 0.523845794
             },
             {
               "name": "line_item_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.5035239596
+              "distinctCount": 9,
+              "distinctProportion": 0.5035239596
             },
             {
               "name": "location_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 42,
-              "missingPercentage": 0.2339934101
+              "distinctCount": 42,
+              "distinctProportion": 0.2339934101
             },
             {
               "name": "order_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 7,
-              "missingPercentage": 0.3713034
+              "distinctCount": 7,
+              "distinctProportion": 0.3713034
             },
             {
               "name": "product_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 8,
-              "missingPercentage": 0.4928660268
+              "distinctCount": 8,
+              "distinctProportion": 0.4928660268
             },
             {
               "name": "product_variant_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 8,
-              "missingPercentage": 0.1182713053
+              "distinctCount": 8,
+              "distinctProportion": 0.1182713053
             },
             {
               "name": "shipping_address_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 35,
-              "missingPercentage": 0.3816858866
+              "distinctCount": 35,
+              "distinctProportion": 0.3816858866
             },
             {
               "name": "shop_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 49,
-              "missingPercentage": 0.1353642629
+              "distinctCount": 49,
+              "distinctProportion": 0.1353642629
             },
             {
               "name": "user_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.6448024763
+              "distinctCount": 9,
+              "distinctProportion": 0.6448024763
             },
             {
               "name": "gross_sales",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 3,
-              "missingPercentage": 0.205675956
+              "distinctCount": 3,
+              "distinctProportion": 0.205675956
             },
             {
               "name": "net_sales",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 11,
-              "missingPercentage": 0.3642826316
+              "distinctCount": 11,
+              "distinctProportion": 0.3642826316
             },
             {
               "name": "total_sales",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 7,
-              "missingPercentage": 0.181878483
+              "distinctCount": 7,
+              "distinctProportion": 0.181878483
             },
             {
               "name": "returns",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 33,
-              "missingPercentage": 0.3608017907
+              "distinctCount": 33,
+              "distinctProportion": 0.3608017907
             },
             {
               "name": "discounts",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 49,
-              "missingPercentage": 0.5433543468
+              "distinctCount": 49,
+              "distinctProportion": 0.5433543468
             },
             {
               "name": "shipping",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 45,
-              "missingPercentage": 0.917230701
+              "distinctCount": 45,
+              "distinctProportion": 0.917230701
             },
             {
               "name": "taxes",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 46,
-              "missingPercentage": 0.186672047
+              "distinctCount": 46,
+              "distinctProportion": 0.186672047
             },
             {
               "name": "gift_card_discounts",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 17,
-              "missingPercentage": 0.3818051185
+              "distinctCount": 17,
+              "distinctProportion": 0.3818051185
             },
             {
               "name": "gift_card_gross_sales",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 2,
-              "missingPercentage": 0.7356057
+              "distinctCount": 2,
+              "distinctProportion": 0.7356057
             },
             {
               "name": "gift_cards_issued",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 46,
-              "missingPercentage": 0.5562358023
+              "distinctCount": 46,
+              "distinctProportion": 0.5562358023
             },
             {
               "name": "quantity",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 35,
-              "missingPercentage": 0.2363921367
+              "distinctCount": 35,
+              "distinctProportion": 0.2363921367
             },
             {
               "name": "currency",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 32,
-              "missingPercentage": 0.1098246458
+              "distinctCount": 32,
+              "distinctProportion": 0.1098246458
             },
             {
               "name": "is_deleted",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 15,
-              "missingPercentage": 0.419264446
+              "distinctCount": 15,
+              "distinctProportion": 0.419264446
             },
             {
               "name": "test",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 20,
-              "missingPercentage": 0.1568123619
+              "distinctCount": 20,
+              "distinctProportion": 0.1568123619
             },
             {
               "name": "happened_at",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 20,
-              "missingPercentage": 0.4638419273
+              "distinctCount": 20,
+              "distinctProportion": 0.4638419273
             }
           ]
         }
@@ -11293,211 +11293,211 @@
               "name": "derived_session_token",
               "uniqueCount": 46,
               "uniqueProportion": 0.4556834255,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 36,
               "uniqueProportion": 0.412740311,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_duration",
               "uniqueCount": 9,
               "uniqueProportion": 0.4848320849,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_pageviews",
               "uniqueCount": 16,
               "uniqueProportion": 0.274374675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_started_at",
               "uniqueCount": 19,
               "uniqueProportion": 0.1779729031,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_token",
               "uniqueCount": 5,
               "uniqueProportion": 0.403198425,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_token",
               "uniqueCount": 1,
               "uniqueProportion": 0.5763257885,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "landing_page_url",
               "uniqueCount": 1,
               "uniqueProportion": 0.271483578,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_path",
               "uniqueCount": 18,
               "uniqueProportion": 0.54392552,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_url",
               "uniqueCount": 8,
               "uniqueProportion": 0.457357716,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "referrer_tld",
               "uniqueCount": 47,
               "uniqueProportion": 0.1455819185,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_browser",
               "uniqueCount": 25,
               "uniqueProportion": 0.502421822,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_raw",
               "uniqueCount": 10,
               "uniqueProportion": 0.4514540014,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_orders_completed",
               "uniqueCount": 5,
               "uniqueProportion": 0.643516191,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "completed_first_order_at",
               "uniqueCount": 37,
               "uniqueProportion": 0.1991445491,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "hit_first_checkout_at",
               "uniqueCount": 23,
               "uniqueProportion": 0.3934633215,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "started_first_checkout_at",
               "uniqueCount": 10,
               "uniqueProportion": 0.521182903,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_products_added_to_cart",
               "uniqueCount": 41,
               "uniqueProportion": 0.577276297,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_product_variants_added_to_cart",
               "uniqueCount": 15,
               "uniqueProportion": 0.1038962515,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_error",
               "uniqueCount": 24,
               "uniqueProportion": 0.4806029226,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_payment_error",
               "uniqueCount": 23,
               "uniqueProportion": 0.285063012,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_out_of_stock_warning",
               "uniqueCount": 4,
               "uniqueProportion": 0.502737667,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_credit_card_info_error",
               "uniqueCount": 4,
               "uniqueProportion": 0.424923401,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_discount",
               "uniqueCount": 39,
               "uniqueProportion": 0.1127764811,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_free_shipping",
               "uniqueCount": 35,
               "uniqueProportion": 0.5043061999,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_city",
               "uniqueCount": 32,
               "uniqueProportion": 0.370361415,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region",
               "uniqueCount": 47,
               "uniqueProportion": 0.983529122,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region_code",
               "uniqueCount": 38,
               "uniqueProportion": 0.1136043573,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country_code",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -11510,211 +11510,211 @@
               "name": "derived_session_token",
               "uniqueCount": 4,
               "uniqueProportion": 0.4183210675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 29,
               "uniqueProportion": 0.119225249,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_duration",
               "uniqueCount": 41,
               "uniqueProportion": 0.1217252894,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_pageviews",
               "uniqueCount": 31,
               "uniqueProportion": 0.2646313743,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_started_at",
               "uniqueCount": 14,
               "uniqueProportion": 0.6232851174,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_token",
               "uniqueCount": 45,
               "uniqueProportion": 0.6065123498,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_token",
               "uniqueCount": 7,
               "uniqueProportion": 0.5597331188,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "landing_page_url",
               "uniqueCount": 0,
               "uniqueProportion": 0.24848206,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_path",
               "uniqueCount": 22,
               "uniqueProportion": 0.4650916037,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_url",
               "uniqueCount": 6,
               "uniqueProportion": 0.2610128633,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "referrer_tld",
               "uniqueCount": 40,
               "uniqueProportion": 0.4377761525,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_browser",
               "uniqueCount": 16,
               "uniqueProportion": 0.5155847099,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_raw",
               "uniqueCount": 30,
               "uniqueProportion": 0.543161414,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_orders_completed",
               "uniqueCount": 24,
               "uniqueProportion": 0.31008394,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "completed_first_order_at",
               "uniqueCount": 48,
               "uniqueProportion": 0.4433839684,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "hit_first_checkout_at",
               "uniqueCount": 38,
               "uniqueProportion": 0.4677442675,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "started_first_checkout_at",
               "uniqueCount": 22,
               "uniqueProportion": 0.5428334295,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_products_added_to_cart",
               "uniqueCount": 36,
               "uniqueProportion": 0.2237347631,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_product_variants_added_to_cart",
               "uniqueCount": 33,
               "uniqueProportion": 0.6154536097,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_error",
               "uniqueCount": 49,
               "uniqueProportion": 0.3830947963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_payment_error",
               "uniqueCount": 21,
               "uniqueProportion": 0.5591015673,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_out_of_stock_warning",
               "uniqueCount": 36,
               "uniqueProportion": 0.2337815644,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_credit_card_info_error",
               "uniqueCount": 13,
               "uniqueProportion": 0.5565825944,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_discount",
               "uniqueCount": 48,
               "uniqueProportion": 0.3505349173,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_free_shipping",
               "uniqueCount": 1,
               "uniqueProportion": 0.1188236769,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_city",
               "uniqueCount": 19,
               "uniqueProportion": 0.2701732882,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region",
               "uniqueCount": 36,
               "uniqueProportion": 0.588168791,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region_code",
               "uniqueCount": 48,
               "uniqueProportion": 0.4528911076,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country_code",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -11727,211 +11727,211 @@
               "name": "derived_session_token",
               "uniqueCount": 36,
               "uniqueProportion": 0.336195998,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 28,
               "uniqueProportion": 0.4739714916,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_duration",
               "uniqueCount": 19,
               "uniqueProportion": 0.5744817038,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_pageviews",
               "uniqueCount": 46,
               "uniqueProportion": 0.2788957693,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_started_at",
               "uniqueCount": 45,
               "uniqueProportion": 0.937251,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_token",
               "uniqueCount": 41,
               "uniqueProportion": 0.2810435177,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_token",
               "uniqueCount": 2,
               "uniqueProportion": 0.2593465018,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "landing_page_url",
               "uniqueCount": 4,
               "uniqueProportion": 0.3510410083,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_path",
               "uniqueCount": 39,
               "uniqueProportion": 0.2894960005,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_url",
               "uniqueCount": 7,
               "uniqueProportion": 0.2547630752,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "referrer_tld",
               "uniqueCount": 32,
               "uniqueProportion": 0.4110863218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_browser",
               "uniqueCount": 15,
               "uniqueProportion": 0.1368357218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_raw",
               "uniqueCount": 34,
               "uniqueProportion": 0.6528436015,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_orders_completed",
               "uniqueCount": 47,
               "uniqueProportion": 0.2185756809,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "completed_first_order_at",
               "uniqueCount": 10,
               "uniqueProportion": 0.536535383,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "hit_first_checkout_at",
               "uniqueCount": 22,
               "uniqueProportion": 0.5537655182,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "started_first_checkout_at",
               "uniqueCount": 19,
               "uniqueProportion": 0.519391001,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_products_added_to_cart",
               "uniqueCount": 35,
               "uniqueProportion": 0.2591610934,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_product_variants_added_to_cart",
               "uniqueCount": 23,
               "uniqueProportion": 0.5388931626,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_error",
               "uniqueCount": 22,
               "uniqueProportion": 0.67035295,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_payment_error",
               "uniqueCount": 36,
               "uniqueProportion": 0.2429327282,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_out_of_stock_warning",
               "uniqueCount": 43,
               "uniqueProportion": 0.298778278,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_credit_card_info_error",
               "uniqueCount": 10,
               "uniqueProportion": 0.313471376,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_discount",
               "uniqueCount": 14,
               "uniqueProportion": 0.2123758734,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_free_shipping",
               "uniqueCount": 5,
               "uniqueProportion": 0.1133450776,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_city",
               "uniqueCount": 47,
               "uniqueProportion": 0.559404346,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region",
               "uniqueCount": 47,
               "uniqueProportion": 0.3787454124,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region_code",
               "uniqueCount": 36,
               "uniqueProportion": 0.6354123098,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country_code",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -11944,211 +11944,211 @@
               "name": "derived_session_token",
               "uniqueCount": 6,
               "uniqueProportion": 0.5743524436,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shop_id",
               "uniqueCount": 50,
               "uniqueProportion": 0.6085937123,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_duration",
               "uniqueCount": 33,
               "uniqueProportion": 0.1216335522,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_pageviews",
               "uniqueCount": 7,
               "uniqueProportion": 0.4860854512,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_started_at",
               "uniqueCount": 11,
               "uniqueProportion": 0.2709761857,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "session_token",
               "uniqueCount": 45,
               "uniqueProportion": 0.6521664,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "user_token",
               "uniqueCount": 7,
               "uniqueProportion": 0.65104552,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "landing_page_url",
               "uniqueCount": 3,
               "uniqueProportion": 0.2576120378,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_path",
               "uniqueCount": 41,
               "uniqueProportion": 0.4945043017,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "exit_page_url",
               "uniqueCount": 2,
               "uniqueProportion": 0.5011627434,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "referrer_tld",
               "uniqueCount": 44,
               "uniqueProportion": 0.542212894,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_browser",
               "uniqueCount": 28,
               "uniqueProportion": 0.34878114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_raw",
               "uniqueCount": 44,
               "uniqueProportion": 0.4879537976,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_orders_completed",
               "uniqueCount": 27,
               "uniqueProportion": 0.4609134841,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "completed_first_order_at",
               "uniqueCount": 22,
               "uniqueProportion": 0.1257138318,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "hit_first_checkout_at",
               "uniqueCount": 45,
               "uniqueProportion": 0.2320211758,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "started_first_checkout_at",
               "uniqueCount": 37,
               "uniqueProportion": 0.554473982,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_products_added_to_cart",
               "uniqueCount": 22,
               "uniqueProportion": 0.2061011165,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_product_variants_added_to_cart",
               "uniqueCount": 40,
               "uniqueProportion": 0.2329718096,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_error",
               "uniqueCount": 26,
               "uniqueProportion": 0.3342512759,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_payment_error",
               "uniqueCount": 15,
               "uniqueProportion": 0.636461656,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_out_of_stock_warning",
               "uniqueCount": 48,
               "uniqueProportion": 0.3903644928,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_credit_card_info_error",
               "uniqueCount": 24,
               "uniqueProportion": 0.2869745093,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_discount",
               "uniqueCount": 15,
               "uniqueProportion": 0.3816119087,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_free_shipping",
               "uniqueCount": 20,
               "uniqueProportion": 0.21255889,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_city",
               "uniqueCount": 22,
               "uniqueProportion": 0.2773134541,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region",
               "uniqueCount": 12,
               "uniqueProportion": 0.5725251922,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region_code",
               "uniqueCount": 20,
               "uniqueProportion": 0.5881850772,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country_code",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -12161,211 +12161,211 @@
               "name": "derived_session_token",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 12,
-              "missingPercentage": 0.5051158739
+              "distinctCount": 12,
+              "distinctProportion": 0.5051158739
             },
             {
               "name": "shop_id",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 20,
-              "missingPercentage": 0.4392737435
+              "distinctCount": 20,
+              "distinctProportion": 0.4392737435
             },
             {
               "name": "session_duration",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 46,
-              "missingPercentage": 0.211333415
+              "distinctCount": 46,
+              "distinctProportion": 0.211333415
             },
             {
               "name": "count_of_pageviews",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 41,
-              "missingPercentage": 0.523845794
+              "distinctCount": 41,
+              "distinctProportion": 0.523845794
             },
             {
               "name": "session_started_at",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.5035239596
+              "distinctCount": 9,
+              "distinctProportion": 0.5035239596
             },
             {
               "name": "session_token",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 42,
-              "missingPercentage": 0.2339934101
+              "distinctCount": 42,
+              "distinctProportion": 0.2339934101
             },
             {
               "name": "user_token",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 7,
-              "missingPercentage": 0.3713034
+              "distinctCount": 7,
+              "distinctProportion": 0.3713034
             },
             {
               "name": "landing_page_url",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 8,
-              "missingPercentage": 0.4928660268
+              "distinctCount": 8,
+              "distinctProportion": 0.4928660268
             },
             {
               "name": "exit_page_path",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 8,
-              "missingPercentage": 0.1182713053
+              "distinctCount": 8,
+              "distinctProportion": 0.1182713053
             },
             {
               "name": "exit_page_url",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 35,
-              "missingPercentage": 0.3816858866
+              "distinctCount": 35,
+              "distinctProportion": 0.3816858866
             },
             {
               "name": "referrer_tld",
               "uniqueCount": 32,
               "uniqueProportion": 0.4110863218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_browser",
               "uniqueCount": 15,
               "uniqueProportion": 0.1368357218,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "ua_raw",
               "uniqueCount": 34,
               "uniqueProportion": 0.6528436015,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_orders_completed",
               "uniqueCount": 47,
               "uniqueProportion": 0.2185756809,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "completed_first_order_at",
               "uniqueCount": 10,
               "uniqueProportion": 0.536535383,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "hit_first_checkout_at",
               "uniqueCount": 22,
               "uniqueProportion": 0.5537655182,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "started_first_checkout_at",
               "uniqueCount": 19,
               "uniqueProportion": 0.519391001,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_products_added_to_cart",
               "uniqueCount": 35,
               "uniqueProportion": 0.2591610934,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "count_of_distinct_product_variants_added_to_cart",
               "uniqueCount": 23,
               "uniqueProportion": 0.5388931626,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_error",
               "uniqueCount": 22,
               "uniqueProportion": 0.67035295,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_payment_error",
               "uniqueCount": 36,
               "uniqueProportion": 0.2429327282,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_out_of_stock_warning",
               "uniqueCount": 43,
               "uniqueProportion": 0.298778278,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_credit_card_info_error",
               "uniqueCount": 10,
               "uniqueProportion": 0.313471376,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_discount",
               "uniqueCount": 14,
               "uniqueProportion": 0.2123758734,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "had_free_shipping",
               "uniqueCount": 5,
               "uniqueProportion": 0.1133450776,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_city",
               "uniqueCount": 47,
               "uniqueProportion": 0.559404346,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region",
               "uniqueCount": 47,
               "uniqueProportion": 0.3787454124,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_region_code",
               "uniqueCount": 36,
               "uniqueProportion": 0.6354123098,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "location_country_code",
               "uniqueCount": 29,
               "uniqueProportion": 0.0639865,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         }
@@ -13022,71 +13022,71 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.49029275,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.4956064142,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 69,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 86,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -13099,71 +13099,71 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.29517076,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.579144201,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 77,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 13,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 3,
-              "missingPercentage": 0.1478114
+              "distinctCount": 3,
+              "distinctProportion": 0.1478114
             },
             {
               "name": "customer",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 11,
-              "missingPercentage": 0.6458016712
+              "distinctCount": 11,
+              "distinctProportion": 0.6458016712
             }
           ]
         },
@@ -13176,71 +13176,71 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.20773827,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.52453755,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 36,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 100,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -13253,71 +13253,71 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.5101715,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.4766464652,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 53,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 51,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -13330,71 +13330,71 @@
               "name": "comments",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.98812746
+              "distinctCount": 9,
+              "distinctProportion": 0.98812746
             },
             {
               "name": "creditcard",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 29,
-              "missingPercentage": 0.5071059764
+              "distinctCount": 29,
+              "distinctProportion": 0.5071059764
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 98,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 1,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "customer",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         }
@@ -14015,92 +14015,92 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.93902492,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.3763427824,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 11,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 93,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 16,
               "uniqueProportion": 0.1968912,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -14113,92 +14113,92 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.28790699,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.4753345995,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 25,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 52,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 3,
-              "missingPercentage": 0.1478114
+              "distinctCount": 3,
+              "distinctProportion": 0.1478114
             },
             {
               "name": "total_order_count",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 11,
-              "missingPercentage": 0.975844831
+              "distinctCount": 11,
+              "distinctProportion": 0.975844831
             },
             {
               "name": "total_order_value",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 16,
               "uniqueProportion": 0.1968912,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -14211,92 +14211,92 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.10619033,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.629503541,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 76,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 1,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 16,
               "uniqueProportion": 0.1968912,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -14309,92 +14309,92 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.96621272,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "creditcard",
               "uniqueCount": 29,
               "uniqueProportion": 0.2871860497,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 25,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 32,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 16,
               "uniqueProportion": 0.1968912,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -14407,92 +14407,92 @@
               "name": "comments",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.87192882
+              "distinctCount": 9,
+              "distinctProportion": 0.87192882
             },
             {
               "name": "creditcard",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 29,
-              "missingPercentage": 0.2868824227
+              "distinctCount": 29,
+              "distinctProportion": 0.2868824227
             },
             {
               "name": "membership",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "orders",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 58,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "preference",
               "uniqueCount": 52,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "shipping_date",
               "uniqueCount": 6,
               "uniqueProportion": 0.024072,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "transaction_date",
               "uniqueCount": 3,
               "uniqueProportion": 0.1478114,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_count",
               "uniqueCount": 11,
               "uniqueProportion": 0.1383472,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "total_order_value",
               "uniqueCount": 13,
               "uniqueProportion": 0.1601013,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 8,
               "uniqueProportion": 0.1297079,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 16,
               "uniqueProportion": 0.1968912,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         }
@@ -14875,50 +14875,50 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.17377999,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "products",
               "uniqueCount": 29,
               "uniqueProportion": 0.1434539832,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 78,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 48,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -14931,50 +14931,50 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.37206234,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "products",
               "uniqueCount": 29,
               "uniqueProportion": 0.3134219726,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 97,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 45,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -14987,50 +14987,50 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.10431863,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "products",
               "uniqueCount": 29,
               "uniqueProportion": 0.5493815001,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 100,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -15043,50 +15043,50 @@
               "name": "comments",
               "uniqueCount": 9,
               "uniqueProportion": 0.79231517,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "products",
               "uniqueCount": 29,
               "uniqueProportion": 0.4673861724,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "platform",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 96,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 53,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         },
@@ -15099,50 +15099,50 @@
               "name": "comments",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 9,
-              "missingPercentage": 0.5201938
+              "distinctCount": 9,
+              "distinctProportion": 0.5201938
             },
             {
               "name": "products",
               "uniqueCount": 0,
               "uniqueProportion": 0,
-              "missingCount": 29,
-              "missingPercentage": 0.617684783
+              "distinctCount": 29,
+              "distinctProportion": 0.617684783
             },
             {
               "name": "platform",
               "uniqueCount": 13,
               "uniqueProportion": 0.1327792,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 23,
               "uniqueProportion": 0.177126,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "store_address",
               "uniqueCount": 83,
               "uniqueProportion": 0.0396391,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "first_order_date",
               "uniqueCount": 46,
               "uniqueProportion": 0.0690369,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             },
             {
               "name": "last_order_date",
               "uniqueCount": 23,
               "uniqueProportion": 0.1210963,
-              "missingCount": 0,
-              "missingPercentage": 0
+              "distinctCount": 0,
+              "distinctProportion": 0
             }
           ]
         }

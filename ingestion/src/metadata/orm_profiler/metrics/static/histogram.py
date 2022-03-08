@@ -39,6 +39,10 @@ class Histogram(QueryMetric):
     def name(cls):
         return "histogram"
 
+    @property
+    def metric_type(self):
+        return dict
+
     def query(self, session: Optional[Session] = None):
         """
         Build the histogram query
