@@ -110,6 +110,32 @@ public class AirflowRESTClient {
     }
   }
 
+  public String deletePipeline(String pipelineName) {
+    try {
+      String token = authenticate();
+      String authToken = String.format(AUTH_TOKEN, token);
+      String triggerEndPoint = "%s/rest_api/api?api=delete_delete&dag_id=%s";
+      String triggerUrl = String.format(triggerEndPoint, url, pipelineName);
+      JSONObject requestPayload = new JSONObject();
+      requestPayload.put("workflow_name", pipelineName);
+      HttpRequest request =
+          HttpRequest.newBuilder(URI.create(triggerUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
+              .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
+              .build();
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() == 200) {
+        return response.body();
+      }
+
+      throw AirflowPipelineDeploymentException.byMessage(
+          pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
+    } catch (Exception e) {
+      throw AirflowPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+    }
+  }
+
   public String runPipeline(String pipelineName) {
     try {
       String token = authenticate();

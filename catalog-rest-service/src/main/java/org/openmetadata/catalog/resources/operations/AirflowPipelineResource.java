@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -57,6 +59,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
@@ -119,8 +122,13 @@ public class AirflowPipelineResource {
     }
   }
 
-  static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(AirflowPipeline.class);
+  static final String FIELDS = "owner,status";
+  public static final List<String> ALLOWED_FIELDS;
+
+  static {
+    List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
+    ALLOWED_FIELDS = Collections.unmodifiableList(list);
+  }
 
   @GET
   @Valid
@@ -429,6 +437,9 @@ public class AirflowPipelineResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
+    AirflowPipeline pipeline = dao.get(uriInfo, id, fields);
+    airflowRESTClient.deletePipeline(pipeline.getName());
     DeleteResponse<AirflowPipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
   }
