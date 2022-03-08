@@ -36,6 +36,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -70,7 +71,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
     entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : null);
     entity.setTags(fields.contains("tags") ? getTags(entity.getFullyQualifiedName()) : null);
+    entity.setUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : null);
     return entity;
+  }
+
+  private Integer getUsageCount(GlossaryTerm term) {
+    return daoCollection.tagDAO().getTagCount(Source.GLOSSARY.ordinal(), term.getFullyQualifiedName());
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
@@ -121,7 +127,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityUtil.populateEntityReferences(entity.getReviewers());
 
     // Set tags
-    entity.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), entity.getTags()));
+    entity.setTags(addDerivedTags(entity.getTags()));
   }
 
   @Override

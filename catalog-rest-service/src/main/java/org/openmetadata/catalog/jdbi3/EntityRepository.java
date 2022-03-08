@@ -17,6 +17,7 @@ import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.type.Include.DELETED;
+import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
@@ -65,7 +66,10 @@ import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
+import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -593,13 +597,89 @@ public abstract class EntityRepository<T> {
     }
   }
 
+  /** Validate given list of tags and add derived tags to it */
+  public final List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) throws IOException {
+    if (tagLabels == null || tagLabels.isEmpty()) {
+      return tagLabels;
+    }
+
+    List<TagLabel> updatedTagLabels = new ArrayList<>(tagLabels);
+    for (TagLabel tagLabel : tagLabels) {
+      if (tagLabel.getSource() != Source.TAG) {
+        // Related tags are not supported for Glossary yet
+        continue;
+      }
+      String json = daoCollection.tagDAO().findTag(tagLabel.getTagFQN());
+      if (json == null) {
+        // Invalid TagLabel
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
+      }
+      Tag tag = JsonUtils.readValue(json, Tag.class);
+
+      // Apply derived tags
+      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
+      EntityUtil.mergeTags(updatedTagLabels, derivedTags);
+    }
+    updatedTagLabels.sort(compareTagLabel);
+    return updatedTagLabels;
+  }
+
+  /** Get tags associated with a given set of tags */
+  private List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) throws IOException {
+    List<TagLabel> derivedTags = new ArrayList<>();
+    for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
+      String json = daoCollection.tagDAO().findTag(fqn);
+      if (json == null) {
+        // Invalid TagLabel
+        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), fqn));
+      }
+      Tag tempTag = JsonUtils.readValue(json, Tag.class);
+      derivedTags.add(
+          new TagLabel()
+              .withTagFQN(fqn)
+              .withState(tagLabel.getState())
+              .withDescription(tempTag.getDescription())
+              .withLabelType(LabelType.DERIVED));
+    }
+    return derivedTags;
+  }
+
   protected void applyTags(T entity) {
     if (supportsTags) {
       // Add entity level tags by adding tag to the entity relationship
       EntityInterface<T> entityInterface = getEntityInterface(entity);
-      EntityUtil.applyTags(daoCollection.tagDAO(), entityInterface.getTags(), entityInterface.getFullyQualifiedName());
+      applyTags(entityInterface.getTags(), entityInterface.getFullyQualifiedName());
       // Update tag to handle additional derived tags
       entityInterface.setTags(getTags(entityInterface.getFullyQualifiedName()));
+    }
+  }
+
+  /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
+  public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
+    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
+      String json = null;
+      if (tagLabel.getSource() == Source.TAG) {
+        json = daoCollection.tagDAO().findTag(tagLabel.getTagFQN());
+      } else if (tagLabel.getSource() == Source.GLOSSARY) {
+        json = daoCollection.glossaryTermDAO().findJsonByFqn(tagLabel.getTagFQN(), Include.NON_DELETED);
+      }
+
+      if (json == null) {
+        // Invalid TagLabel
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
+      }
+
+      // Apply tagLabel to targetFQN that identifies an entity or field
+      daoCollection
+          .tagDAO()
+          .applyTag(
+              tagLabel.getSource().ordinal(),
+              tagLabel.getTagFQN(),
+              targetFQN,
+              tagLabel.getLabelType().ordinal(),
+              tagLabel.getState().ordinal());
     }
   }
 
@@ -889,20 +969,16 @@ public abstract class EntityRepository<T> {
 
   public List<String> findFrom(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType, Boolean deleted) {
-    List<String> ret =
-        daoCollection
-            .relationshipDAO()
-            .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType, deleted);
-    return ret;
+    return daoCollection
+        .relationshipDAO()
+        .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType, deleted);
   }
 
   public List<String> findTo(
       UUID fromId, String fromEntityType, Relationship relationship, String toEntityType, Boolean deleted) {
-    List<String> ret =
-        daoCollection
-            .relationshipDAO()
-            .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType, deleted);
-    return ret;
+    return daoCollection
+        .relationshipDAO()
+        .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType, deleted);
   }
 
   public void deleteTo(UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
@@ -1066,7 +1142,8 @@ public abstract class EntityRepository<T> {
       }
 
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), fqn);
+      daoCollection.tagDAO().deleteTagsByPrefix(fqn);
+
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists
         EntityUtil.mergeTags(updatedTags, origTags);
@@ -1075,8 +1152,8 @@ public abstract class EntityRepository<T> {
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, EntityUtil.tagLabelMatch);
-      updatedTags.sort(EntityUtil.compareTagLabel);
-      EntityUtil.applyTags(daoCollection.tagDAO(), updatedTags, fqn);
+      updatedTags.sort(compareTagLabel);
+      applyTags(updatedTags, fqn);
     }
 
     public final boolean updateVersion(Double oldVersion) {

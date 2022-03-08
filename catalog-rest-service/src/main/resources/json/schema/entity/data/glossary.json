@@ -57,6 +57,10 @@
       "description": "Owner of this glossary.",
       "$ref": "../../type/entityReference.json"
     },
+    "usageCount": {
+      "description": "Count of how many times terms from this glossary are used.",
+      "type": "integer"
+    },
     "tags": {
       "description": "Tags for this glossary.",
       "type": "array",

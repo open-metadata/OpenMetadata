@@ -34,6 +34,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -67,14 +68,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     glossary.setOwner(fields.contains(FIELD_OWNER) ? getOwner(glossary) : null);
     glossary.setTags(fields.contains("tags") ? getTags(glossary.getName()) : null);
     glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
-    return glossary;
+    return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : null);
   }
 
   @Override
   public void prepare(Glossary glossary) throws IOException, ParseException {
     glossary.setOwner(helper(glossary).validateOwnerOrNull());
     validateUsers(glossary.getReviewers());
-    glossary.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), glossary.getTags()));
+    glossary.setTags(addDerivedTags(glossary.getTags()));
   }
 
   @Override
@@ -104,6 +105,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     for (EntityReference reviewer : listOrEmpty(glossary.getReviewers())) {
       addRelationship(reviewer.getId(), glossary.getId(), Entity.USER, Entity.GLOSSARY, Relationship.REVIEWS);
     }
+  }
+
+  private Integer getUsageCount(Glossary glossary) {
+    return daoCollection.tagDAO().getTagCount(Source.GLOSSARY.ordinal(), glossary.getName());
   }
 
   @Override

@@ -185,7 +185,7 @@ public class LocationRepository extends EntityRepository<Location> {
     location.setServiceType(storageService.getServiceType());
     location.setFullyQualifiedName(getFQN(location));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), location.getOwner()); // Validate owner
-    location.setTags(EntityUtil.addDerivedTags(daoCollection.tagDAO(), location.getTags()));
+    location.setTags(addDerivedTags(location.getTags()));
   }
 
   @Override

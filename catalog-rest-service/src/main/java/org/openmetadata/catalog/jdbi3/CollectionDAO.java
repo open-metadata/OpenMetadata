@@ -1050,21 +1050,23 @@ public interface CollectionDAO {
     String findTag(@Bind("fqn") String fqn);
 
     @SqlUpdate(
-        "INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN, :targetFQN, "
-            + ":labelType, :state)")
+        "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) "
+            + "VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)")
     void applyTag(
+        @Bind("source") int source,
         @Bind("tagFQN") String tagFQN,
         @Bind("targetFQN") String targetFQN,
         @Bind("labelType") int labelType,
         @Bind("state") int state);
 
     @SqlQuery(
-        "SELECT tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' AS description FROM tag_usage tu "
-            + "JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
+        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' "
+            + "AS description FROM tag_usage tu "
+            + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
-    @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%')")
-    int getTagCount(@Bind("fqnPrefix") String fqnPrefix);
+    @SqlQuery("SELECT COUNT(*) FROM tag_usage " + "WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
+    int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN")
     void deleteTags(@Bind("targetFQN") String targetFQN);
@@ -1076,6 +1078,7 @@ public interface CollectionDAO {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
         return new TagLabel()
+            .withSource(TagLabel.Source.values()[r.getInt("source")])
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"))

@@ -83,6 +83,8 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
+import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
@@ -253,7 +255,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         getColumn("column3", STRING, null)
             .withOrdinalPosition(3)
             .withDescription("column3")
-            .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL));
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
     columns = new ArrayList<>();
     columns.add(updateColumn1);
     columns.add(updateColumn2);
@@ -330,7 +332,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Column struct<a: int, b:char, c: struct<int: d>>>
     Column c2 =
-        getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>", USER_BANK_ACCOUNT_TAG_LABEL)
+        getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>", GLOSSARY1_TERM1_LABEL)
             .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
 
     // Test POST operation can create complex types
@@ -364,10 +366,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // struct<a:int, b:char, c:struct<d:int>>>
     // to
     // struct<-----, b:char, c:struct<d:int, e:char>, f:char>
-    c2_b.withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // Add new tag to c2.b tag
+    c2_b.withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // Add new tag to c2.b tag
     change
         .getFieldsAdded()
-        .add(new FieldChange().withName("columns.c2.b.tags").withNewValue(List.of(USER_BANK_ACCOUNT_TAG_LABEL)));
+        .add(new FieldChange().withName("columns.c2.b.tags").withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     Column c2_c_e = getColumn("e", INT, USER_ADDRESS_TAG_LABEL);
     c2_c.getChildren().add(c2_c_e); // Add c2.c.e
@@ -401,13 +403,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //
     String tableJson = JsonUtils.pojoToJson(table1);
     c1 = table1.getColumns().get(0);
-    c1.withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c1 tag changed
+    c1.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c1 tag changed
 
     c2 = table1.getColumns().get(1);
-    c2.withTags(Arrays.asList(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // c2 new tag added
+    c2.withTags(Arrays.asList(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // c2 new tag added
 
     c2_a = c2.getChildren().get(0);
-    c2_a.withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.a tag changed
+    c2_a.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c2.a tag changed
 
     c2_b = c2.getChildren().get(1);
     c2_b.withTags(new ArrayList<>()); // c2.b tag removed
@@ -416,7 +418,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     c2_c.withTags(new ArrayList<>()); // c2.c tag removed
 
     c2_c_d = c2_c.getChildren().get(0);
-    c2_c_d.setTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.c.d new tag added
+    c2_c_d.setTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c2.c.d new tag added
     table1 = patchEntity(table1.getId(), tableJson, table1, ADMIN_AUTH_HEADERS);
     assertColumns(Arrays.asList(c1, c2), table1.getColumns());
   }
@@ -517,7 +519,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void put_updateColumns_200(TestInfo test) throws IOException {
     int tagCategoryUsageCount = getTagCategoryUsageCount("user", TEST_AUTH_HEADERS);
     int addressTagUsageCount = getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS);
-    int bankTagUsageCount = getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS);
+    int glossaryTermUsageCount = getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS);
 
     //
     // Create a table with column c1, type BIGINT, description c1 and tag USER_ADDRESS_TAB_LABEL
@@ -534,25 +536,27 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Ensure tag category and tag usage counts are updated
     assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEquals(bankTagUsageCount, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
+    assertEquals(
+        glossaryTermUsageCount, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
     //
-    // Update the c1 tags to  USER_ADDRESS_TAB_LABEL, USER_BANK_ACCOUNT_TAG_LABEL (newly added)
+    // Update the c1 tags to  USER_ADDRESS_TAB_LABEL, GLOSSARY1_TERM1_LABEL (newly added)
     // Ensure description and previous tag is carried forward during update
     //
-    tags.add(USER_BANK_ACCOUNT_TAG_LABEL);
+    tags.add(GLOSSARY1_TERM1_LABEL);
     List<Column> updatedColumns = new ArrayList<>();
     updatedColumns.add(getColumn("c1", BIGINT, null).withTags(tags));
     ChangeDescription change = getChangeDescription(table.getVersion());
     change
         .getFieldsAdded()
-        .add(new FieldChange().withName("columns.c1.tags").withNewValue(List.of(USER_BANK_ACCOUNT_TAG_LABEL)));
+        .add(new FieldChange().withName("columns.c1.tags").withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated
-    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
+    assertEquals(
+        glossaryTermUsageCount + 1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
     //
     // Add a new column c2 using PUT
@@ -563,10 +567,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(c2)));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Ensure tag usage counts are updated - column c2 added both address and bank tags
-    assertEquals(tagCategoryUsageCount + 4, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    // Ensure tag usage counts are updated - column c2 added both address
+    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 2, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEquals(bankTagUsageCount + 2, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
+    assertEquals(
+        glossaryTermUsageCount + 2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
 
     //
     // Change the column c2 data length from 10 to 20. Increasing the data length is considered backward compatible
@@ -597,9 +602,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, table.getColumns().size());
 
     // Ensure tag usage counts are updated to reflect removal of column c2
-    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
-    assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
+    assertEquals(
+        glossaryTermUsageCount + 1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
   }
 
   @Test
@@ -1213,16 +1219,25 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable create =
         createRequest(test, 1)
             .withOwner(USER_OWNER1)
-            .withTags(singletonList(USER_ADDRESS_TAG_LABEL)) // 1 table tag - USER_ADDRESS
-            .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 USER_BANK_ACCOUNT
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)) // 2 table tags - USER_ADDRESS, g2t1
+            .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 g1t1
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Total 4 user tags  - 1 table 1 tag + 3 column tags
-    assertEquals(4, getTagCategoryUsageCount("user", ADMIN_AUTH_HEADERS));
-    // Total 3 USER_ADDRESS tags - 1 table 1 tag and 2 column tags
+    // Total 3 user tags  - 1 table tag + 2 column tags
+    assertEquals(3, getTagCategoryUsageCount("user", ADMIN_AUTH_HEADERS));
+
+    // Total 1 glossary1 tags  - 1 column
+    assertEquals(1, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
+
+    // Total 1 glossary2 tags  - 1 table
+    assertEquals(1, getGlossaryUsageCount("g2", ADMIN_AUTH_HEADERS));
+
+    // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
     assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
-    // Total 1 USER_BANK_ACCOUNT tags - 1 column level
-    assertEquals(1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    // Total 1 GLOSSARY1_TERM1 - 1 column level
+    assertEquals(1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    // Total 1 GLOSSARY1_TERM1 - 1 table level
+    assertEquals(1, getGlossaryTermUsageCount(GLOSSARY2_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     // Create a table test2 with 3 column tags
     CreateTable create1 =
@@ -1232,12 +1247,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 USER_BANK_ACCOUNT
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
-    // Additional 3 user tags - 3 column tags
-    assertEquals(7, getTagCategoryUsageCount("user", ADMIN_AUTH_HEADERS));
+    // Additional 2 user tags - 2 column tags
+    assertEquals(5, getTagCategoryUsageCount("user", ADMIN_AUTH_HEADERS));
     // Additional 2 USER_ADDRESS tags - 2 column tags
     assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
-    // Additional 2 USER_BANK_ACCOUNT tags - 1 column tags
-    assertEquals(2, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
+    // Additional 1 glossary tag - 1 column tags
+    assertEquals(2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
 
     ResultList<Table> tableList = listEntities(null, ADMIN_AUTH_HEADERS); // List tables
     assertEquals(2, tableList.getData().size());
@@ -1372,7 +1387,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<Column> columns = new ArrayList<>();
     columns.add(getColumn("c1", INT, USER_ADDRESS_TAG_LABEL).withDescription(null));
     columns.add(getColumn("c2", BIGINT, USER_ADDRESS_TAG_LABEL));
-    columns.add(getColumn("c3", FLOAT, USER_BANK_ACCOUNT_TAG_LABEL));
+    columns.add(getColumn("c3", FLOAT, GLOSSARY1_TERM1_LABEL));
 
     Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
 
@@ -1381,7 +1396,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns
         .get(0)
         .withDescription("new0") // Set new description
-        .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL));
+        .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
     change
         .getFieldsAdded()
         .add(
@@ -1391,7 +1406,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .add(
             new FieldChange()
                 .withName("columns.c1.tags")
-                .withNewValue(List.of(USER_BANK_ACCOUNT_TAG_LABEL))); //  Column c1 got new tags
+                .withNewValue(List.of(GLOSSARY1_TERM1_LABEL))); //  Column c1 got new tags
 
     columns
         .get(1)
@@ -1411,7 +1426,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .add(
             new FieldChange()
                 .withName("columns.c3.tags")
-                .withOldValue(List.of(USER_BANK_ACCOUNT_TAG_LABEL))); // Column c3 tags were removed
+                .withOldValue(List.of(GLOSSARY1_TERM1_LABEL))); // Column c3 tags were removed
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
@@ -1705,6 +1720,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TagResourceTest.getCategory(name, "usageCount", authHeaders).getUsageCount();
   }
 
+  private static int getGlossaryUsageCount(String name, Map<String, String> authHeaders) throws HttpResponseException {
+    return new GlossaryResourceTest().getEntityByName(name, "usageCount", authHeaders).getUsageCount();
+  }
+
+  private static int getGlossaryTermUsageCount(String name, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return new GlossaryTermResourceTest().getEntityByName(name, "usageCount", authHeaders).getUsageCount();
+  }
+
   private void verifyTableProfileData(List<TableProfile> actualProfiles, List<TableProfile> expectedProfiles) {
     assertEquals(actualProfiles.size(), expectedProfiles.size());
     Map<String, TableProfile> tableProfileMap = new HashMap<>();
@@ -1718,8 +1742,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
-  private void verifyTableTest(String tableName, List<TableTest> actualTests, List<CreateTableTest> expectedTests)
-      throws IOException {
+  private void verifyTableTest(String tableName, List<TableTest> actualTests, List<CreateTableTest> expectedTests) {
     assertEquals(expectedTests.size(), actualTests.size());
     Map<String, TableTest> tableTestMap = new HashMap<>();
     for (TableTest test : actualTests) {
@@ -1759,7 +1782,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
-  private void verifyColumnTest(Table table, Column column, List<CreateColumnTest> expectedTests) throws IOException {
+  private void verifyColumnTest(Table table, Column column, List<CreateColumnTest> expectedTests) {
     List<ColumnTest> actualTests = new ArrayList<>();
     for (Column c : table.getColumns()) {
       if (c.getName().equals(column.getName())) {
@@ -1818,7 +1841,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
-  private void verifyTestCaseResults(TestCaseResult expected, List<TestCaseResult> actual) throws IOException {
+  private void verifyTestCaseResults(TestCaseResult expected, List<TestCaseResult> actual) {
     Map<Long, TestCaseResult> actualResultMap = new HashMap<>();
     for (Object a : actual) {
       TestCaseResult result = JsonUtils.convertValue(a, TestCaseResult.class);
