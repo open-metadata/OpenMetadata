@@ -51,12 +51,12 @@
       "default": "select * from {}.{} limit 50"
     },
     "warehouse": {
-      "description": "Sample data extraction query.",
+      "description": "Optional Warehouse.",
       "type": "string",
       "default": null
     },
     "account": {
-      "description": "Sample data extraction query.",
+      "description": "Optional Account.",
       "type": "string",
       "default": null
     },
