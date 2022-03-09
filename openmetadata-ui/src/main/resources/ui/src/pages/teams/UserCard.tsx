@@ -125,7 +125,7 @@ const UserCard = ({
     <div
       className={classNames(
         'tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
-        { 'tw-py-5': isDataset }
+        { 'tw-py-5 tw-items-center': isDataset }
       )}
       data-testid="user-card-container">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
