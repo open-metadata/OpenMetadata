@@ -17,10 +17,12 @@ import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getTopPosition } from '../../utils/DropDownUtils';
+import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const DropDownList: FunctionComponent<DropDownListProp> = ({
   dropDownList,
+  isLoading = false,
   listGroups = [],
   horzPosRight,
   searchString = '',
@@ -30,6 +32,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   groupType = 'label',
   domPosition,
   className = '',
+  widthClass = 'tw-w-52',
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
   const isMounted = useRef<boolean>(false);
@@ -83,7 +86,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         key={index}
         role="menuitem"
         onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
-        <p className="tw-truncate tw-w-80" title={item.name as string}>
+        <p
+          className={classNames('tw-truncate', widthClass)}
+          title={item.name as string}>
           {item.name}
         </p>
       </div>
@@ -154,75 +159,83 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             data-testid="dropdown-list"
             role="menu"
             style={dropDownPosition}>
-            {showSearchBar && (
-              <div className="has-search tw-p-4 tw-pb-2">
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  data-testid="searchInputText"
-                  placeholder="Search..."
-                  type="text"
-                  onChange={(e) => {
-                    handleListSearch(e.target.value);
-                  }}
-                />
+            {isLoading ? (
+              <div className={widthClass}>
+                <Loader />
               </div>
-            )}
-
-            {groupType === 'tab' && (
-              <div className="tw-flex tw-justify-around tw-border-b tw-border-separator tw-mb-1">
-                {listGroups.map((grp, index) => {
-                  return (
-                    <button
-                      className={getTabClasses(index + 1, activeTab)}
-                      data-testid="tab"
-                      key={index}
-                      onClick={() => setActiveTab(index + 1)}>
-                      {grp}
-                      {getCountBadge(
-                        getSearchedListByGroup(grp).length,
-                        '',
-                        activeTab === index + 1
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="tw-py-1 tw-max-h-60 tw-overflow-y-auto" role="none">
-              {getSearchedListByGroup().map(
-                (item: DropDownListItem, index: number) =>
-                  getDropDownElement(item, index)
-              )}
-              {groupType === 'label' ? (
-                listGroups.map((grp, index) => {
-                  return (
-                    <div key={index}>
-                      {getSearchedListByGroup(grp).length > 0 && (
-                        <span className="tw-flex tw-my-1 tw-text-grey-muted">
-                          <hr className="tw-mt-2 tw-w-full " />
-                          <span className="tw-text-xs tw-px-0.5">
-                            {grp}
-                          </span>{' '}
-                          <hr className="tw-mt-2 tw-w-full" />
-                        </span>
-                      )}
-                      {getSearchedListByGroup(grp).map(
-                        (item: DropDownListItem, index: number) =>
-                          getDropDownElement(item, index)
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <>
-                  {getSearchedListByGroup(listGroups[activeTab - 1]).map(
+            ) : (
+              <>
+                {showSearchBar && (
+                  <div className="has-search tw-p-4 tw-pb-2">
+                    <input
+                      className="tw-form-inputs tw-px-3 tw-py-1"
+                      data-testid="searchInputText"
+                      placeholder="Search..."
+                      type="text"
+                      onChange={(e) => {
+                        handleListSearch(e.target.value);
+                      }}
+                    />
+                  </div>
+                )}
+                {groupType === 'tab' && (
+                  <div className="tw-flex tw-justify-around tw-border-b tw-border-separator tw-mb-1">
+                    {listGroups.map((grp, index) => {
+                      return (
+                        <button
+                          className={getTabClasses(index + 1, activeTab)}
+                          data-testid="tab"
+                          key={index}
+                          onClick={() => setActiveTab(index + 1)}>
+                          {grp}
+                          {getCountBadge(
+                            getSearchedListByGroup(grp).length,
+                            '',
+                            activeTab === index + 1
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div
+                  className="tw-py-1 tw-max-h-60 tw-overflow-y-auto"
+                  role="none">
+                  {getSearchedListByGroup().map(
                     (item: DropDownListItem, index: number) =>
                       getDropDownElement(item, index)
                   )}
-                </>
-              )}
-            </div>
+                  {groupType === 'label' ? (
+                    listGroups.map((grp, index) => {
+                      return (
+                        <div key={index}>
+                          {getSearchedListByGroup(grp).length > 0 && (
+                            <span className="tw-flex tw-my-1 tw-text-grey-muted">
+                              <hr className="tw-mt-2 tw-w-full " />
+                              <span className="tw-text-xs tw-px-0.5">
+                                {grp}
+                              </span>{' '}
+                              <hr className="tw-mt-2 tw-w-full" />
+                            </span>
+                          )}
+                          {getSearchedListByGroup(grp).map(
+                            (item: DropDownListItem, index: number) =>
+                              getDropDownElement(item, index)
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <>
+                      {getSearchedListByGroup(listGroups[activeTab - 1]).map(
+                        (item: DropDownListItem, index: number) =>
+                          getDropDownElement(item, index)
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

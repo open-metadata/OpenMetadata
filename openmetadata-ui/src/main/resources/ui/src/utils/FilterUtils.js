@@ -26,7 +26,10 @@ export const getFilterString = (
     filter.forEach((value) => {
       const modifiedKey =
         !restrictKeyModification && key === 'service' ? 'service type' : key;
-      modifiedFilter.push(`${modifiedKey.split(' ').join('_')}:${value}`);
+      const modifiedValue = key === 'tags' ? `"${value}"` : value;
+      modifiedFilter.push(
+        `${modifiedKey.split(' ').join('_')}:${modifiedValue}`
+      );
     });
     modifiedFilters[key] = modifiedFilter;
   }

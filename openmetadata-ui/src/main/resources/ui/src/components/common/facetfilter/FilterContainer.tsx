@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { getCountBadge } from '../../../utils/CommonUtils';
+import PopOver from '../popover/PopOver';
 import { FilterContainerProp } from './FacetTypes';
 const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   name,
@@ -24,6 +25,18 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   type = '',
   isDisabled = false,
 }: FilterContainerProp) => {
+  const getFilterName = (name = '') => {
+    const formattedName = name.startsWith('Tier.Tier')
+      ? name.split('.')[1]
+      : name;
+
+    return (
+      <PopOver position="top" title={formattedName} trigger="mouseenter">
+        <>{formattedName}</>
+      </PopOver>
+    );
+  };
+
   return (
     <div
       className="filter-group tw-justify-between tw-mb-2"
@@ -48,7 +61,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
             { 'tw-text-grey-muted': isDisabled }
           )}
           data-testid="checkbox-label">
-          {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
+          {getFilterName(name)}
         </div>
       </div>
       {!isNil(count) &&

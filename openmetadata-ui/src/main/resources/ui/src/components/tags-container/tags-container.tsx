@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, isNull } from 'lodash';
 import { EntityTags, FormatedGlossaryTermData, SearchResponse } from 'Models';
@@ -22,8 +21,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { getSuggestions, searchData } from '../../axiosAPIs/miscAPI';
-import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import { searchData } from '../../axiosAPIs/miscAPI';
+import { PAGE_SIZE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { withLoader } from '../../hoc/withLoader';
 import { formatSearchGlossaryTermResponse } from '../../utils/APIUtils';
@@ -57,6 +56,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const [glossaryList, setGlossaryList] = useState<FormatedGlossaryTermData[]>(
     []
   );
+  const [glossaryLoading, setGlossaryLoading] = useState<boolean>(false);
   // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
   // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
 
@@ -84,35 +84,35 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     }
   }, [newTag]);
 
-  const fetchGlossaryResults = useCallback((): Promise<
-    FormatedGlossaryTermData[]
-  > => {
+  const fetchGlossaryResults = (
+    searchText: string
+  ): Promise<FormatedGlossaryTermData[]> => {
     return new Promise<FormatedGlossaryTermData[]>((resolve, reject) => {
-      if (isEmpty(newTag)) {
-        searchData(WILD_CARD_CHAR, 1, 1, '', '', '', SearchIndex.GLOSSARY)
+      if (!isEmpty(searchText)) {
+        searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
           .then((res: SearchResponse) => {
-            const data = formatSearchGlossaryTermResponse(res.data.hits.hits);
-            resolve(data);
-          })
-          .catch(() => reject());
-      } else {
-        getSuggestions(newTag, SearchIndex.GLOSSARY)
-          .then((res: AxiosResponse) => {
             const data = formatSearchGlossaryTermResponse(
-              res.data.suggest['table-suggest'][0].options
+              res?.data?.hits?.hits || []
             );
             resolve(data);
           })
           .catch(() => reject());
       }
     });
-  }, [newTag]);
+  };
 
-  const getGlossaryResults = useCallback(() => {
-    if (allowGlossary) {
-      fetchGlossaryResults().then((res) => setGlossaryList(res));
-    }
-  }, [allowGlossary, fetchGlossaryResults]);
+  const getGlossaryResults = useCallback(
+    (searchText: string) => {
+      if (allowGlossary) {
+        fetchGlossaryResults(searchText)
+          .then((res) => setGlossaryList(res))
+          .finally(() => {
+            setGlossaryLoading(false);
+          });
+      }
+    },
+    [allowGlossary]
+  );
 
   const getTagList = () => {
     const newTags = tagList
@@ -206,20 +206,26 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     );
   };
 
-  const debouncedOnSearch = useCallback((): void => {
-    getGlossaryResults();
-  }, [getGlossaryResults]);
+  const debouncedOnSearch = useCallback(
+    (searchText: string): void => {
+      getGlossaryResults(searchText);
+    },
+    [getGlossaryResults]
+  );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 1500), [
+  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 500), [
     debouncedOnSearch,
   ]);
 
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
     const searchText = e.target.value;
     setNewTag(searchText);
-    // clearTimeout(typingTimer.current);
-    // typingTimer.current = setTimeout(() => {
-    debounceOnSearch();
+    if (allowGlossary && searchText) {
+      setGlossaryLoading(true);
+      debounceOnSearch(searchText);
+    } else {
+      setGlossaryLoading(false);
+    }
   };
 
   const handleClick = (e: MouseEvent) => {
@@ -246,10 +252,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       document.removeEventListener('mousedown', handleClick);
     };
   }, [editable]);
-
-  useEffect(() => {
-    getGlossaryResults();
-  }, []);
 
   return (
     <div
@@ -296,15 +298,17 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               //   }
               // }}
             />
-            {newTag && (
+            {newTag ? (
               <DropDownList
                 domPosition={inputDomRect}
                 dropDownList={getTagList()}
                 horzPosRight={dropDownHorzPosRight}
+                isLoading={glossaryLoading}
                 searchString={newTag}
+                widthClass="tw-w-80"
                 onSelect={handleTagSelection}
               />
-            )}
+            ) : null}
           </span>
         ) : (
           children

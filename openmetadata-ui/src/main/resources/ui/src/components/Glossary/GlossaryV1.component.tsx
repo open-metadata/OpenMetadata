@@ -42,6 +42,7 @@ import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 type Props = {
   assetData: GlossaryTermAssets;
   deleteStatus: LoadingState;
+  isSearchResultEmpty: boolean;
   isHasAccess: boolean;
   glossaryList: ModifiedGlossaryData[];
   selectedKey: string;
@@ -75,6 +76,7 @@ type ModifiedDataNode = DataNode & {
 const GlossaryV1 = ({
   assetData,
   deleteStatus = 'initial',
+  isSearchResultEmpty,
   isHasAccess,
   glossaryList,
   selectedKey,
@@ -205,15 +207,24 @@ Props) => {
                 typingInterval={500}
                 onSearch={handleSearchText}
               />
-
-              <TreeView
-                expandedKeys={expandedKey}
-                handleClick={handleTreeClick}
-                handleExpand={(key) => handleExpandedKey(key as string[])}
-                ref={treeRef}
-                selectedKeys={[selectedKey]}
-                treeData={treeData}
-              />
+              {isSearchResultEmpty ? (
+                <p className="tw-text-grey-muted tw-text-center">
+                  {searchText ? (
+                    <span>{`No Glossary found for "${searchText}"`}</span>
+                  ) : (
+                    <span>No Glossary found</span>
+                  )}
+                </p>
+              ) : (
+                <TreeView
+                  expandedKeys={expandedKey}
+                  handleClick={handleTreeClick}
+                  handleExpand={(key) => handleExpandedKey(key as string[])}
+                  ref={treeRef}
+                  selectedKeys={[selectedKey]}
+                  treeData={treeData}
+                />
+              )}
             </>
           ) : (
             <Loader />
