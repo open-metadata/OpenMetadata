@@ -202,7 +202,7 @@ Props) => {
                 showLoadingStatus
                 placeholder="Search term..."
                 searchValue={searchText}
-                typingInterval={1500}
+                typingInterval={500}
                 onSearch={handleSearchText}
               />
 
@@ -268,7 +268,7 @@ Props) => {
           {showActions && (
             <DropDownList
               horzPosRight
-              dropDownList={getActionsList(selectedData.name)}
+              dropDownList={getActionsList()}
               onSelect={handleSelectedAction}
             />
           )}

@@ -142,7 +142,7 @@ const ReviewerModal = ({
           <Searchbar
             placeholder="Search for user..."
             searchValue={searchText}
-            typingInterval={1500}
+            typingInterval={500}
             onSearch={handleSearchAction}
           />
           <div className="tw-min-h-256">
