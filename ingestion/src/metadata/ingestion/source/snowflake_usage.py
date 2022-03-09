@@ -27,7 +27,7 @@ from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.utils.helpers import get_start_and_end,ingest_lineage
+from metadata.utils.helpers import get_start_and_end, ingest_lineage
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
