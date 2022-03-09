@@ -102,7 +102,7 @@ public final class ChangeEventParser {
             } else if (item.getValueType() == ValueType.STRING) {
               // The string might be enclosed with double quotes
               // Check if has double quotes and strip trailing whitespaces
-              String label = item.toString().replaceAll("^\"|\"$", "");
+              String label = item.toString().replaceAll("(?:^\\\")|(?:\\\"$)", "");
               labels.add(label.strip());
             }
           }
