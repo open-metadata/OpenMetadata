@@ -39,6 +39,7 @@ enum DatasetType {
   TABLE = 'table',
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',
+  PIPELINE = 'pipeline',
 }
 
 const UserCard = ({
@@ -74,6 +75,10 @@ const UserCard = ({
         break;
       case DatasetType.DASHBOARD:
         icon = Icons.DASHBOARD;
+
+        break;
+      case DatasetType.PIPELINE:
+        icon = Icons.PIPELINE;
 
         break;
       case DatasetType.TABLE:
