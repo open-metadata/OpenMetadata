@@ -317,22 +317,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           noun="Conversations"
           onCancel={onCancel}
           onShowNewConversation={
-            threads.length > 0 ? onShowNewConversation : undefined
+            threads.length > 0 && isUndefined(selectedThread)
+              ? onShowNewConversation
+              : undefined
           }
         />
-        {showNewConversation || threads.length === 0 ? (
-          <div className="tw-pt-6">
-            <p className="tw-ml-9 tw-mr-2 tw-my-2">
-              You are starting a new conversation
-            </p>
-            <ActivityFeedEditor
-              buttonClass="tw-mr-4"
-              className="tw-ml-5 tw-mr-2"
-              placeHolder="Enter a message"
-              onSave={onPostThread}
-            />
-          </div>
-        ) : null}
+
         {!isUndefined(selectedThread) ? (
           <Fragment>
             <p
@@ -348,6 +338,19 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           </Fragment>
         ) : (
           <Fragment>
+            {showNewConversation || threads.length === 0 ? (
+              <div className="tw-pt-6">
+                <p className="tw-ml-9 tw-mr-2 tw-my-2">
+                  You are starting a new conversation
+                </p>
+                <ActivityFeedEditor
+                  buttonClass="tw-mr-4"
+                  className="tw-ml-5 tw-mr-2"
+                  placeHolder="Enter a message"
+                  onSave={onPostThread}
+                />
+              </div>
+            ) : null}
             <ActivityThreadList
               className="tw-py-6 tw-pl-5"
               postFeed={postFeed}
