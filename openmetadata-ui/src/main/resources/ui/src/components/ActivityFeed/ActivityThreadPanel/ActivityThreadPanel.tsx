@@ -305,7 +305,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-9999',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -317,9 +317,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           noun="Conversations"
           onCancel={onCancel}
           onShowNewConversation={
-            threads.length > 0 ? onShowNewConversation : undefined
+            threads.length > 0 && isUndefined(selectedThread)
+              ? onShowNewConversation
+              : undefined
           }
         />
+
         {!isUndefined(selectedThread) ? (
           <Fragment>
             <p
@@ -348,7 +351,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
                 />
               </div>
             ) : null}
-
             <ActivityThreadList
               className="tw-py-6 tw-pl-5"
               postFeed={postFeed}
