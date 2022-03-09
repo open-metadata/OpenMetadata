@@ -40,12 +40,14 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   private String publicKeyUri;
+  private String jwtEmail;
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
   public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
     this.publicKeyUri = authenticationConfiguration.getPublicKey();
+    this.jwtEmail = authenticationConfiguration.getJwtEmail();
   }
 
   @SneakyThrows
@@ -79,7 +81,9 @@ public class JwtFilter implements ContainerRequestFilter {
       throw new AuthenticationException("Invalid token");
     }
     String authorizedEmail;
-    if (jwt.getClaims().get("email") != null) {
+    if (jwt.getClaims().get(jwtEmail) != null) {
+      authorizedEmail = jwt.getClaim(jwtEmail).as(TextNode.class).asText();
+    } else if (jwt.getClaims().get("email") != null) {
       authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
     } else if (jwt.getClaims().get("preferred_username") != null) {
       authorizedEmail = jwt.getClaim("preferred_username").as(TextNode.class).asText();
