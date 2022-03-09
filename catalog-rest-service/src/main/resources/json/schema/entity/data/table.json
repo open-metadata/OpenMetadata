@@ -10,7 +10,14 @@
       "javaType": "org.openmetadata.catalog.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
       "type": "string",
-      "enum": ["Regular", "External", "View", "SecureView", "MaterializedView", "Iceberg"],
+      "enum": [
+        "Regular",
+        "External",
+        "View",
+        "SecureView",
+        "MaterializedView",
+        "Iceberg"
+      ],
       "javaEnums": [
         {
           "name": "Regular"
@@ -299,6 +306,14 @@
         },
         "nullProportion": {
           "description": "No.of null value proportion in columns.",
+          "type": "number"
+        },
+        "missingPercentage": {
+          "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
+          "type": "number"
+        },
+        "missingCount": {
+          "description": "Missing count is calculated by subtracting valuesCount - validCount.",
           "type": "number"
         },
         "uniqueCount": {
