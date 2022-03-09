@@ -283,9 +283,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
-      updateDatabaseConnectionConfig();
-    }
+    public void entitySpecificUpdate() throws IOException {}
 
     private void updateDatabaseConnectionConfig() throws JsonProcessingException {
       DatabaseConnection origConn = original.getEntity().getDatabaseConnection();
