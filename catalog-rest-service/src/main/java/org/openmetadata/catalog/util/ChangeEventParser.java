@@ -95,7 +95,15 @@ public final class ChangeEventParser {
               } else if (keys.contains("displayName")) {
                 // Entity Reference will have a displayName
                 labels.add(item.asJsonObject().getString("displayName"));
+              } else if (keys.contains("name")) {
+                // Glossary term references have only "name" field
+                labels.add(item.asJsonObject().getString("name"));
               }
+            } else if (item.getValueType() == ValueType.STRING) {
+              // The string might be enclosed with double quotes
+              // Check if has double quotes and strip trailing whitespaces
+              String label = item.toString().replaceAll("(?:^\\\")|(?:\\\"$)", "");
+              labels.add(label.strip());
             }
           }
           return String.join(", ", labels);
