@@ -27,7 +27,10 @@ import {
   getCurrentUserId,
   requiredField,
 } from '../../../utils/CommonUtils';
-import { isSupportedTest } from '../../../utils/EntityUtils';
+import {
+  filteredColumnTestOption,
+  isSupportedTest,
+} from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -120,10 +123,10 @@ const ColumnTestForm = ({
     setIsShowError({ ...isShowError, values: false });
   };
 
-  const setAllTestOption = (defaultSelected: boolean) => {
-    const newTest = Object.values(ColumnTestType);
+  const setAllTestOption = (datatype: string) => {
+    const newTest = filteredColumnTestOption(datatype);
     setTestTypeOptions(newTest);
-    setColumnTest(defaultSelected ? newTest[0] : ('' as ColumnTestType));
+    setColumnTest('' as ColumnTestType);
   };
 
   const handleTestTypeOptionChange = (name: string) => {
@@ -134,16 +137,16 @@ const ColumnTestForm = ({
           (d: ColumnTest) => d.testCase.columnTestType
         ) || [];
       if (existingTests.length) {
-        const newTest = Object.values(ColumnTestType).filter(
-          (d) => !existingTests.includes(d)
-        );
+        const newTest = filteredColumnTestOption(
+          selectedColumn?.dataType || ''
+        ).filter((d) => !existingTests.includes(d));
         setTestTypeOptions(newTest);
         setColumnTest(newTest[0]);
       } else {
-        setAllTestOption(true);
+        setAllTestOption(selectedColumn?.dataType || '');
       }
     } else {
-      setAllTestOption(false);
+      setAllTestOption('');
     }
   };
 
@@ -153,7 +156,7 @@ const ColumnTestForm = ({
         const selectedData = column.find((d) => d.name === selectedColumn);
         const allTestAdded =
           selectedData?.columnTests?.length ===
-          Object.values(ColumnTestType).length;
+          filteredColumnTestOption(selectedData?.dataType || '').length;
         const isSupported = isSupportedTest(selectedData?.dataType || '');
         setIsShowError({
           ...isShowError,
@@ -333,7 +336,7 @@ const ColumnTestForm = ({
         handleTestTypeOptionChange(value);
         errorMsg.allTestAdded =
           selectedColumn?.columnTests?.length ===
-          Object.values(ColumnTestType).length;
+          filteredColumnTestOption(selectedColumn?.dataType || '').length;
         errorMsg.columnName = false;
         errorMsg.testName = false;
         errorMsg.notSupported = isSupportedTest(selectedColumn?.dataType || '');
