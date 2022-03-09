@@ -22,6 +22,7 @@ import {
   getServiceDetailsPath,
   getTeamDetailsPath,
 } from '../constants/constants';
+import { ColumnTestType } from '../enums/columnTest.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -34,6 +35,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { getPartialNameFromFQN } from './CommonUtils';
 import SVGIcons from './SvgUtils';
 import {
+  getDataTypeString,
   getOwnerFromId,
   getTierFromTableTags,
   getUsagePercentile,
@@ -481,4 +483,42 @@ export const getEntityFeedLink: Function = (
 
 export const isSupportedTest = (dataType: string) => {
   return dataType === 'ARRAY' || dataType === 'STRUCT';
+};
+
+export const filteredColumnTestOption = (dataType: string) => {
+  switch (getDataTypeString(dataType)) {
+    case 'numeric':
+      return Object.values(ColumnTestType).filter(
+        (test) => test !== ColumnTestType.columnValueLengthsToBeBetween
+      );
+
+    case 'varchar':
+      return Object.values(ColumnTestType).filter(
+        (test) => test !== ColumnTestType.columnValuesToBeBetween
+      );
+
+    case 'timestamp': {
+      const excluded = [
+        ColumnTestType.columnValuesToBeNotInSet,
+        ColumnTestType.columnValueLengthsToBeBetween,
+      ];
+
+      return Object.values(ColumnTestType).filter(
+        (test) => !excluded.includes(test)
+      );
+    }
+    case 'boolean': {
+      const excluded = [
+        ColumnTestType.columnValuesToBeNotInSet,
+        ColumnTestType.columnValueLengthsToBeBetween,
+        ColumnTestType.columnValuesToBeBetween,
+      ];
+
+      return Object.values(ColumnTestType).filter(
+        (test) => !excluded.includes(test)
+      );
+    }
+    default:
+      return Object.values(ColumnTestType);
+  }
 };
