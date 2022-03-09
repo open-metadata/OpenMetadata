@@ -479,7 +479,10 @@ const ServicePage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id, configData)
         .then((res: AxiosResponse) => {
-          setServiceDetails(res.data);
+          setServiceDetails({
+            ...res.data,
+            owner: res.data?.owner ?? serviceDetails?.owner,
+          });
           resolve();
         })
         .catch((err: AxiosError) => {
@@ -814,21 +817,54 @@ const ServicePage: FunctionComponent = () => {
     setIsEdit(false);
   };
 
+  const getServiceSpecificData = (serviceDetails?: ServiceDataObj) => {
+    switch (serviceCategory) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return {
+          databaseConnection: serviceDetails?.databaseConnection ?? {},
+        };
+
+      case ServiceCategory.MESSAGING_SERVICES:
+        return {
+          brokers: serviceDetails?.brokers,
+          schemaRegistry: serviceDetails?.schemaRegistry,
+        };
+
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return {
+          dashboardUrl: serviceDetails?.dashboardUrl,
+          username: serviceDetails?.username,
+          password: serviceDetails?.password,
+        };
+
+      case ServiceCategory.PIPELINE_SERVICES:
+        return {
+          pipelineUrl: serviceDetails?.pipelineUrl,
+        };
+
+      default:
+        return {};
+    }
+  };
+
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
-      const { id, ...restDetails } = serviceDetails;
+      const { id } = serviceDetails;
 
       const updatedServiceDetails = {
-        databaseConnection: restDetails.databaseConnection,
-        name: restDetails.name,
-        serviceType: restDetails.serviceType,
+        ...getServiceSpecificData(serviceDetails),
+        name: serviceDetails.name,
+        serviceType: serviceDetails.serviceType,
         description: updatedHTML,
       };
 
       updateService(serviceName, id, updatedServiceDetails)
         .then(() => {
           setDescription(updatedHTML);
-          setServiceDetails(updatedServiceDetails);
+          setServiceDetails({
+            ...updatedServiceDetails,
+            owner: serviceDetails?.owner,
+          });
           setIsEdit(false);
           getEntityFeedCount();
         })
@@ -846,15 +882,9 @@ const ServicePage: FunctionComponent = () => {
 
   const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
     const updatedData = {
-      databaseConnection: serviceDetails?.databaseConnection,
+      ...getServiceSpecificData(serviceDetails),
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
-      brokers: serviceDetails?.brokers,
-      schemaRegistry: serviceDetails?.schemaRegistry,
-      dashboardUrl: serviceDetails?.dashboardUrl,
-      username: serviceDetails?.username,
-      password: serviceDetails?.password,
-      pipelineUrl: serviceDetails?.pipelineUrl,
       owner,
     };
 
@@ -864,13 +894,8 @@ const ServicePage: FunctionComponent = () => {
           setServiceDetails(res.data);
           reject();
         })
-        .catch((err: AxiosError) => {
+        .catch(() => {
           reject();
-          const msg = err.response?.data.message;
-          showToast({
-            variant: 'error',
-            body: msg ?? `Error while updating owner for ${serviceFQN}`,
-          });
         });
     });
   };
@@ -964,6 +989,9 @@ const ServicePage: FunctionComponent = () => {
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
+    }
+    if (servicePageTabs(getCountLabel())[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentServiceTab(tab));
     }
   }, [tab]);
 
