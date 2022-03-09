@@ -247,7 +247,7 @@ public final class EntityUtil {
   public static EntityReference populateEntityReference(EntityReference ref) throws IOException {
     // Note href to entity reference is not added here
     EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId());
-    return ref.withDescription(ref2.getDescription()).withName(ref2.getName());
+    return ref.withDescription(ref2.getDescription()).withName(ref2.getName()).withDisplayName(ref2.getDisplayName());
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
