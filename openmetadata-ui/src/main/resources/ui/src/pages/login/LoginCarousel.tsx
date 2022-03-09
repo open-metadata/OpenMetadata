@@ -26,7 +26,12 @@ const LoginCarousel = () => {
         {LOGIN_SLIDE.map((data) => (
           <div data-testid="slider-container" key={uniqueId()}>
             <div>
-              <img alt="slider" className="tw-w-full" src={data.image} />
+              <img
+                alt="slider"
+                className="tw-w-full"
+                loading="lazy"
+                src={data.image}
+              />
             </div>
             <div className="tw-mt-24 tw-mb-11">
               <p
