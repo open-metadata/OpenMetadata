@@ -19,11 +19,15 @@ import {
   FormatedUsersData,
 } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
-import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { TermReference } from '../../generated/entity/data/glossaryTerm';
-import { errorMsg, requiredField } from '../../utils/CommonUtils';
+import {
+  errorMsg,
+  isUrlFriendlyName,
+  isValidUrl,
+  requiredField,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
@@ -57,6 +61,7 @@ const AddGlossaryTerm = ({
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
     invalidName: false,
+    invalidReferences: false,
   });
 
   const [name, setName] = useState('');
@@ -158,12 +163,29 @@ const AddGlossaryTerm = ({
     const newFormValues = [...references];
     newFormValues[i][field] = value;
     setReferences(newFormValues);
+    setShowErrorMsg((prev) => {
+      return { ...prev, invalidReferences: false };
+    });
   };
 
-  const validateForm = () => {
+  const isValidReferences = (refs: TermReference[]): boolean => {
+    let retVal = true;
+    for (const ref of refs) {
+      if (!isValidUrl(ref.endpoint || '')) {
+        retVal = false;
+
+        break;
+      }
+    }
+
+    return retVal;
+  };
+
+  const validateForm = (refs: TermReference[]) => {
     const errMsg = {
       name: !name.trim(),
-      invalidName: UrlEntityCharRegEx.test(name.trim()),
+      invalidName: !isUrlFriendlyName(name.trim()),
+      invalidReferences: !isValidReferences(refs),
     };
     setShowErrorMsg(errMsg);
 
@@ -171,16 +193,19 @@ const AddGlossaryTerm = ({
   };
 
   const handleSave = () => {
-    const updatedReference = references.filter(
-      (ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name)
-    );
+    const updatedReference = references
+      .map((ref) => ({
+        name: ref.name?.trim(),
+        endpoint: ref.endpoint?.trim(),
+      }))
+      .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
     const updatedTerms = relatedTerms.map((term) => ({
       id: term.id,
       type: term.type,
     }));
 
-    if (validateForm()) {
+    if (validateForm(updatedReference)) {
       const data: CreateGlossaryTerm = {
         name,
         displayName: name,
@@ -382,6 +407,9 @@ const AddGlossaryTerm = ({
               </button>
             </div>
           ))}
+          {showErrorMsg.invalidReferences
+            ? errorMsg('Endpoints should be valid URL.')
+            : null}
         </div>
 
         <Field>

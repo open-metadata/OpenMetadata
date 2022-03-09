@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import { EntityTags, FormatedUsersData, GlossaryTermAssets } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import {
   LIST_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
@@ -102,7 +102,12 @@ const GlossaryTermsV1 = ({
       const oldReviewer = data.filter((d) => includes(reviewer, d));
       const newReviewer = data
         .filter((d) => !includes(reviewer, d))
-        .map((d) => ({ id: d.id, type: d.type }));
+        .map((d) => ({
+          id: d.id,
+          type: d.type,
+          displayName: d.displayName,
+          name: d.name,
+        }));
       updatedGlossaryTerm = {
         ...updatedGlossaryTerm,
         reviewers: [...oldReviewer, ...newReviewer],
@@ -384,36 +389,32 @@ const GlossaryTermsV1 = ({
             {references && references.length ? (
               <div className="tw-flex">
                 {references.map((d, i) => (
-                  <>
+                  <Fragment key={i}>
                     {i > 0 && <span className="tw-mr-2">,</span>}
                     <a
                       className="link-text tw-flex"
                       data-testid="owner-link"
                       href={d?.endpoint}
-                      key={i}
                       rel="noopener noreferrer"
                       target="_blank">
-                      <>
-                        <span
-                          className={classNames(
-                            'tw-mr-1 tw-inline-block tw-truncate',
-                            {
-                              'tw-w-52': (d?.name as string).length > 32,
-                            }
-                          )}
-                          title={d?.name as string}>
-                          {d?.name}
-                        </span>
-
-                        <SVGIcons
-                          alt="external-link"
-                          className="tw-align-middle"
-                          icon="external-link"
-                          width="12px"
-                        />
-                      </>
+                      <span
+                        className={classNames(
+                          'tw-mr-1 tw-inline-block tw-truncate',
+                          {
+                            'tw-w-52': (d?.name as string).length > 32,
+                          }
+                        )}
+                        title={d?.name as string}>
+                        {d?.name}
+                      </span>
+                      <SVGIcons
+                        alt="external-link"
+                        className="tw-align-middle"
+                        icon="external-link"
+                        width="12px"
+                      />
                     </a>
-                  </>
+                  </Fragment>
                 ))}
               </div>
             ) : (

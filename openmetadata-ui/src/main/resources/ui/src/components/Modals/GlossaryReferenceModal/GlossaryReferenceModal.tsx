@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { cloneDeep } from 'lodash';
 import React, { useState } from 'react';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
+import { errorMsg, isValidUrl } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import GlossaryReferences from '../../GlossaryReferences/GlossaryReferences';
 
@@ -30,11 +32,40 @@ const GlossaryReferenceModal = ({
   header,
 }: RelatedTermsModalProp) => {
   const [references, setReferences] = useState<TermReference[]>(
-    referenceList || []
+    cloneDeep(referenceList) || []
   );
+  const [errMsg, setErrMsg] = useState<string>();
 
   const handleReferenceFieldChange = (refs: TermReference[]) => {
     setReferences(refs);
+    setErrMsg('');
+  };
+
+  const isValid = (refs: TermReference[]): boolean => {
+    let retVal = true;
+    for (const ref of refs) {
+      if (!isValidUrl(ref.endpoint || '')) {
+        retVal = false;
+
+        break;
+      }
+    }
+
+    return retVal;
+  };
+
+  const handleSave = () => {
+    const refList = references
+      .map((item) => ({
+        name: item.name?.trim(),
+        endpoint: item.endpoint?.trim(),
+      }))
+      .filter((item) => item.name && item.endpoint);
+    if (isValid(refList)) {
+      onSave(references);
+    } else {
+      setErrMsg('Endpoints should be valid URL.');
+    }
   };
 
   return (
@@ -51,6 +82,7 @@ const GlossaryReferenceModal = ({
             referenceList={references}
             onReferenceFieldChange={handleReferenceFieldChange}
           />
+          {errMsg && errorMsg(errMsg)}
         </div>
         <div className="tw-modal-footer" data-testid="cta-container">
           <Button
@@ -66,7 +98,7 @@ const GlossaryReferenceModal = ({
             theme="primary"
             type="submit"
             variant="contained"
-            onClick={() => onSave(references)}>
+            onClick={handleSave}>
             Save
           </Button>
         </div>
