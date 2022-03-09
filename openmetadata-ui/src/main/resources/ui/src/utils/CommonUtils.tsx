@@ -30,6 +30,7 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
@@ -492,4 +493,8 @@ export const getRandomColor = (name: string) => {
     color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.6)',
     character: firstAlphabet.toUpperCase(),
   };
+};
+
+export const isUrlFriendlyName = (value: string) => {
+  return !UrlEntityCharRegEx.test(value);
 };
