@@ -27,11 +27,17 @@ import {
   AIRFLOW,
   arrServiceTypes,
   ATHENA,
+  AZURESQL,
   BIGQUERY,
+  CLICKHOUSE,
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
+  DATABRICK,
+  DRUID,
+  DYNAMODB,
   GLUE,
   HIVE,
+  IBMDB2,
   KAFKA,
   LOOKER,
   MARIADB,
@@ -47,6 +53,7 @@ import {
   REDASH,
   REDSHIFT,
   serviceTypes,
+  SINGLESTORE,
   SNOWFLAKE,
   SUPERSET,
   TABLEAU,
@@ -106,6 +113,27 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Vertica:
       return VERTICA;
+
+    case DatabaseServiceType.AzureSQL:
+      return AZURESQL;
+
+    case DatabaseServiceType.ClickHouse:
+      return CLICKHOUSE;
+
+    case DatabaseServiceType.Databricks:
+      return DATABRICK;
+
+    case DatabaseServiceType.Db2:
+      return IBMDB2;
+
+    case DatabaseServiceType.Druid:
+      return DRUID;
+
+    case DatabaseServiceType.DynamoDB:
+      return DYNAMODB;
+
+    case DatabaseServiceType.SingleStore:
+      return SINGLESTORE;
 
     case MessagingServiceType.Kafka:
       return KAFKA;
