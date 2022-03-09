@@ -27,7 +27,7 @@ from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import get_start_and_end,ingest_lineage
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 
@@ -126,6 +126,13 @@ class SnowflakeUsageSource(Source[TableQuery]):
             else:
                 self.report.scanned(f"{row['database_name']}")
             yield table_query
+            query_info = {
+                "sql": table_query.sql,
+                "from_type": "table",
+                "to_type": "table",
+                "service_name": self.config.service_name,
+            }
+            ingest_lineage(query_info, self.metadata_config)
 
     def get_report(self):
         """
