@@ -54,6 +54,8 @@ export type DropDownListProp = {
   setIsOpen?: (value: boolean) => void;
   groupType?: GroupType;
   domPosition?: DOMRect;
+  isLoading?: boolean;
+  widthClass?: string;
 };
 
 export type DropDownProp = {

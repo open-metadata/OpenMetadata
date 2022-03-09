@@ -28,7 +28,7 @@ const RecentlyViewed: FunctionComponent = () => {
       const formatedData = recentlyViewedData.map((data) => {
         return {
           serviceType: data.serviceType,
-          name: data.displayName || data.fqn.split('.')[1],
+          name: data.displayName || data.fqn.split('.').pop(),
           fullyQualifiedName: data.fqn,
           index: data.entityType,
         };
