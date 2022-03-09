@@ -68,7 +68,7 @@ const RelatedTermsModal = ({
 
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
-    getSuggestions(searchText, SearchIndex.USER)
+    getSuggestions(searchText, SearchIndex.GLOSSARY)
       .then((res: AxiosResponse) => {
         const data = formatSearchGlossaryTermResponse(
           res.data.suggest['table-suggest'][0].options
@@ -139,9 +139,9 @@ const RelatedTermsModal = ({
         </div>
         <div className="tw-modal-body">
           <Searchbar
-            placeholder="Search for user..."
+            placeholder="Search for a term..."
             searchValue={searchText}
-            typingInterval={1500}
+            typingInterval={500}
             onSearch={handleSearchAction}
           />
           <div className="tw-min-h-256">
@@ -153,7 +153,7 @@ const RelatedTermsModal = ({
               </div>
             ) : (
               <p className="tw-text-center tw-mt-10 tw-text-grey-muted tw-text-base">
-                No terms available
+                No terms found. Update the search query and try again.
               </p>
             )}
           </div>
