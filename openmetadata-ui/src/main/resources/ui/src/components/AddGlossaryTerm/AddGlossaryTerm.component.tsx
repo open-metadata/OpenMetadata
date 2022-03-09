@@ -467,7 +467,7 @@ const AddGlossaryTerm = ({
 
       {showRevieweModal && (
         <ReviewerModal
-          header="Add Reviewer"
+          header="Add Reviewers"
           reviewer={reviewer}
           onCancel={onReviewerModalCancel}
           onSave={handleReviewerSave}

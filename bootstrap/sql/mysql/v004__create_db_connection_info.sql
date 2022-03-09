@@ -44,17 +44,18 @@ CREATE TABLE IF NOT EXISTS glossary_term_entity (
 
 
 -- Set default as false for all existing roles except DataConsumer, to avoid unintended manipulation of roles during migration.
+ALTER TABLE role_entity
+    ADD COLUMN defaultRole BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.defaultRole')),
+ADD INDEX(defaultRole);
 
 UPDATE role_entity
-SET json = JSON_SET(json, '$.default', FALSE);
+SET json = JSON_SET(json, '$.defaultRole', FALSE);
 
 UPDATE role_entity
-SET json = JSON_SET(json, '$.default', TRUE)
+SET json = JSON_SET(json, '$.defaultRole', TRUE)
 WHERE name = 'DataConsumer';
 
-ALTER TABLE role_entity
-ADD COLUMN defaultRole BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.defaultRole')),
-ADD INDEX(defaultRole);
+
 
 -- Add tag label source
 ALTER TABLE tag_usage

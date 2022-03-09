@@ -183,6 +183,7 @@ public final class EntityUtil {
     if (owner.getType().equalsIgnoreCase("user")) {
       User ownerInstance = userDAO.findEntityById(id);
       owner.setName(ownerInstance.getName());
+      owner.setDisplayName(ownerInstance.getDisplayName());
       if (Optional.ofNullable(ownerInstance.getDeleted()).orElse(false)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
       }
@@ -190,6 +191,7 @@ public final class EntityUtil {
       Team ownerInstance = teamDAO.findEntityById(id);
       owner.setDescription(ownerInstance.getDescription());
       owner.setName(ownerInstance.getName());
+      owner.setDisplayName(ownerInstance.getDisplayName());
     } else {
       throw new IllegalArgumentException(String.format("Invalid ownerType %s", owner.getType()));
     }
