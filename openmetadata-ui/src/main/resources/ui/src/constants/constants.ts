@@ -341,14 +341,14 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
-  { name: 'Teams', to: '/teams', disabled: false },
-  { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
-  { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
-  { name: 'Tags', to: '/tags', disabled: false },
-  // { name: 'Store', to: '/store', disabled: false },
-  { name: 'Services', to: '/services', disabled: false },
-  { name: 'Webhooks', to: '/webhooks', disabled: false },
   { name: 'Glossaries', to: '/glossary', disabled: false },
+  { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
+  { name: 'Services', to: '/services', disabled: false },
+  { name: 'Tags', to: '/tags', disabled: false },
+  { name: 'Teams', to: '/teams', disabled: false },
+  { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
+  // { name: 'Store', to: '/store', disabled: false },
+  { name: 'Webhooks', to: '/webhooks', disabled: false },
   // { name: 'Ingestions', to: '/ingestion', disabled: false },
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },
