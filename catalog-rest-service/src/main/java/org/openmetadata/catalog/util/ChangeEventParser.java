@@ -95,7 +95,15 @@ public final class ChangeEventParser {
               } else if (keys.contains("displayName")) {
                 // Entity Reference will have a displayName
                 labels.add(item.asJsonObject().getString("displayName"));
+              } else if (keys.contains("name")) {
+                // Glossary term references have only "name" field
+                labels.add(item.asJsonObject().getString("name"));
               }
+            } else if (item.getValueType() == ValueType.STRING) {
+              // The string might be enclosed with double quotes
+              // Check if has double quotes and strip trailing whitespaces
+              String label = item.toString().replaceAll("(?:^\\\")|(?:\\\"$)", "");
+              labels.add(label.strip());
             }
           }
           return String.join(", ", labels);
@@ -105,6 +113,8 @@ public final class ChangeEventParser {
           Set<String> keys = jsonObject.asJsonObject().keySet();
           if (keys.contains("displayName")) {
             return jsonObject.asJsonObject().getString("displayName");
+          } else if (keys.contains("name")) {
+            return jsonObject.asJsonObject().getString("name");
           }
         }
       } catch (JsonParsingException ex) {
@@ -202,7 +212,10 @@ public final class ChangeEventParser {
 
     switch (changeType) {
       case ADD:
-        message = String.format("Added **%s**: `%s`", updatedField, getFieldValue(newFieldValue));
+        String fieldValue = getFieldValue(newFieldValue);
+        if (fieldValue != null && !fieldValue.isEmpty()) {
+          message = String.format("Added **%s**: `%s`", updatedField, fieldValue);
+        }
         break;
       case UPDATE:
         message = getUpdateMessage(updatedField, oldFieldValue, newFieldValue);

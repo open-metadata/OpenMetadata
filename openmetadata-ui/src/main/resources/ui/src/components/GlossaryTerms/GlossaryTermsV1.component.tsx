@@ -378,7 +378,7 @@ const GlossaryTermsV1 = ({
       </div>
 
       <div className="tw-flex tw-gap-5 tw-mb-2">
-        <div className="tw-font-medium">Reference</div>
+        <div className="tw-font-medium">References</div>
         <div className="tw-flex tw-group">
           <div>
             {references && references.length ? (

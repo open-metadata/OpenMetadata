@@ -52,7 +52,7 @@ jest.mock('../../IngestionStepper/IngestionStepper.component', () => {
 });
 
 jest.mock('../../../utils/ServiceUtils', () => ({
-  getIngestionTypeList: jest.fn().mockReturnValue(['bigquery']),
+  getAirflowPipelineTypes: jest.fn().mockReturnValue(['bigquery']),
   getIsIngestionEnable: jest
     .fn()
     .mockImplementation((service) => service === 'databaseServices'),
@@ -71,7 +71,7 @@ jest.mock('../../../utils/CommonUtils', () => ({
   requiredField: jest.fn(),
 }));
 
-describe.skip('Test AddServiceModal Component', () => {
+describe('Test AddServiceModal Component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <AddServiceModal

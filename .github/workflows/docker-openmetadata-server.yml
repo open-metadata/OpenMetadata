@@ -38,7 +38,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'release' }}
+          push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/server:0.6.0,openmetadata/server:latest'
+          tags: 'openmetadata/server:0.9.1,openmetadata/server:latest'
           file: ./docker/metadata/Dockerfile
