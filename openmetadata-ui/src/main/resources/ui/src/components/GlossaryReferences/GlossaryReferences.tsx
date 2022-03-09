@@ -75,7 +75,7 @@ const GlossaryReferences: FunctionComponent<Props> = ({
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
                 id={`name-${i}`}
-                name="key"
+                name="name"
                 placeholder="Name"
                 type="text"
                 value={value.name}
@@ -89,7 +89,7 @@ const GlossaryReferences: FunctionComponent<Props> = ({
                 className="tw-form-inputs tw-px-3 tw-py-1"
                 id={`url-${i}`}
                 name="endpoint"
-                placeholder="url"
+                placeholder="Endpoint"
                 type="text"
                 value={value.endpoint}
                 onChange={(e) =>

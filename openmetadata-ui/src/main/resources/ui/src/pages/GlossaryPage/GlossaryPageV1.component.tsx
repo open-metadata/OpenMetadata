@@ -322,7 +322,32 @@ const GlossaryPageV1 = () => {
   const updateGlossary = (updatedData: Glossary) => {
     saveUpdatedGlossaryData(updatedData)
       .then((res: AxiosResponse) => {
-        setSelectedData(res.data);
+        if (res?.data) {
+          const { data } = res;
+          setSelectedData(data);
+          setGlossaries((pre) => {
+            return pre.map((item) => {
+              if (item.name === data.name) {
+                const { children } = item;
+
+                return extend(cloneDeep(item), { ...data, children });
+              } else {
+                return item;
+              }
+            });
+          });
+          setGlossariesList((pre) => {
+            return pre.map((item) => {
+              if (item.name === data.name) {
+                const { children } = item;
+
+                return extend(cloneDeep(item), { ...data, children });
+              } else {
+                return item;
+              }
+            });
+          });
+        }
       })
       .catch((err: AxiosError) => {
         showToast({
