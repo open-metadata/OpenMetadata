@@ -50,7 +50,11 @@ import {
 } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
+import {
+  getActiveCatClass,
+  getCountBadge,
+  isUrlFriendlyName,
+} from '../../utils/CommonUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -131,6 +135,8 @@ const TeamsPage = () => {
         errData['name'] = 'Name already exists';
       } else if (data.name.length < 1 || data.name.length > 128) {
         errData['name'] = 'Name size must be between 1 and 128';
+      } else if (!isUrlFriendlyName(data.name.trim())) {
+        errData['name'] = 'Special characters are not allowed';
       }
       if (!data.displayName?.trim()) {
         errData['displayName'] = 'Display name is required';
