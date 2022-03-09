@@ -36,7 +36,7 @@ Sample Data, Tables, Usage, Users, Topics, and Dashboards.
 
 ```bash
 #Make sure the OpenMetadata Server is up and running
-cd openmetadata-0.6.0/ingestion
+cd openmetadata-0.8.4/ingestion
 metadata ingest -c ./pipelines/sample_data.json
 metadata ingest -c ./pipelines/sample_usage.json
 ```
@@ -57,6 +57,6 @@ Index sample data in ElasticSearch:
 
 ```bash
 #Make sure the OpenMetadata Server is up and running
-cd openmetadata-0.6.0/ingestion
+cd openmetadata-0.8.4/ingestion
 metadata ingest -c ./pipelines/metadata_to_es.json
 ```
