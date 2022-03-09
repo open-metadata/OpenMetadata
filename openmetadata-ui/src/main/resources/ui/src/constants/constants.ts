@@ -293,6 +293,10 @@ export const getUserPath = (username: string) => {
   return path;
 };
 
+export const getGlossaryPath = () => {
+  return ROUTES.GLOSSARY;
+};
+
 export const getGlossaryTermsPath = (
   glossaryName: string,
   glossaryTerm = ''
