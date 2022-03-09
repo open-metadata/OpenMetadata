@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EntityType } from '../../enums/entity.enum';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -41,6 +42,12 @@ const Users = ({ userData }: Props) => {
       position: 2,
     },
   ];
+
+  const getEntityDetails = (data: EntityReference[]) => {
+    const includedEntity = Object.values(EntityType);
+
+    return data.filter((d) => includedEntity.includes(d.type as EntityType));
+  };
 
   const fetchLeftPanel = () => {
     return (
@@ -135,14 +142,14 @@ const Users = ({ userData }: Props) => {
       <div>
         {activeTab === 1 &&
           getEntityData(
-            userData?.owns || [],
+            getEntityDetails(userData?.owns || []),
             `${
               userData?.displayName || userData?.name || 'User'
             } does not own anything yet`
           )}
         {activeTab === 2 &&
           getEntityData(
-            userData?.follows || [],
+            getEntityDetails(userData?.follows || []),
             `${
               userData?.displayName || userData?.name || 'User'
             } does not follow anything yet`
