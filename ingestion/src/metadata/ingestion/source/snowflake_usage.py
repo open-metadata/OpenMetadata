@@ -75,6 +75,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
         self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
+        self.metadata_config = metadata_config
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
             start_date=start, end_date=end
         )
