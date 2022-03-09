@@ -20,6 +20,7 @@ import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getEditWebhookPath,
   getGlossaryPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
@@ -220,6 +221,9 @@ export const getEntityLink = (
     case EntityType.MESSAGING_SERVICE:
     case EntityType.PIPELINE_SERVICE:
       return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
+
+    case EntityType.WEBHOOK:
+      return getEditWebhookPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

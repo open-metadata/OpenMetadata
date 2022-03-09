@@ -19,7 +19,7 @@ import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { getPartialNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -211,7 +211,11 @@ const FeedHeader: FC<FeedHeaderProp> = ({
                   to={`${getEntityLink(
                     entityType as string,
                     entityFQN as string
-                  )}/${TabSpecificField.ACTIVITY_FEED}`}>
+                  )}${
+                    entityType !== EntityType.WEBHOOK
+                      ? `/${TabSpecificField.ACTIVITY_FEED}`
+                      : ''
+                  }`}>
                   <button className="link-text" disabled={AppState.isTourOpen}>
                     {getPartialNameFromFQN(
                       entityFQN as string,

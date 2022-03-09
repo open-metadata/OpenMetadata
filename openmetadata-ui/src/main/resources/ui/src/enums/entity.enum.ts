@@ -24,6 +24,7 @@ export enum EntityType {
   MESSAGING_SERVICE = 'messagingService',
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
+  WEBHOOK = 'webhook',
 }
 
 export enum ChangeType {
