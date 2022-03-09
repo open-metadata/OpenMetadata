@@ -58,6 +58,8 @@ public final class AirflowUtils {
   public static final String INGESTION_CONNECTION_ARGS = "connect_args";
   public static final String INGESTION_USAGE_STAGE_FILE_PATH = "filename";
   public static final String INGESTION_STATUS = "status";
+  public static final String INGESTION_ACCOUNT = "account";
+  public static final String INGESTION_WAREHOUSE = "warehouse";
 
   private AirflowUtils() {}
 
@@ -97,6 +99,12 @@ public final class AirflowUtils {
       }
       if (databaseServiceMetadataPipeline.getTableFilterPattern() != null) {
         dbConfig.put(INGESTION_TABLE_FILTER_PATTERN, databaseServiceMetadataPipeline.getTableFilterPattern());
+      }
+      if (databaseServiceMetadataPipeline.getAccount() != null) {
+        dbConfig.put(INGESTION_ACCOUNT, databaseServiceMetadataPipeline.getAccount());
+      }
+      if (databaseServiceMetadataPipeline.getWarehouse() != null) {
+        dbConfig.put(INGESTION_WAREHOUSE, databaseServiceMetadataPipeline.getWarehouse());
       }
       dbConfig.put(INGESTION_MARK_DELETED_TABLES, databaseServiceMetadataPipeline.getMarkDeletedTables());
       dbConfig.put(INGESTION_DBT_CATALOG_FILE_PATH, databaseServiceMetadataPipeline.getDbtCatalogFilePath());

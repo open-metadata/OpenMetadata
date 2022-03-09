@@ -42,7 +42,10 @@ import {
 } from '../../../generated/api/operations/pipelines/createAirflowPipeline';
 import { DashboardServiceType } from '../../../generated/entity/services/dashboardService';
 // import { DashboardService } from '../../../generated/entity/services/dashboardService';
-import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import {
+  DatabaseService,
+  DatabaseServiceType,
+} from '../../../generated/entity/services/databaseService';
 import {
   MessagingService,
   MessagingServiceType,
@@ -336,6 +339,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     DynamicFormFieldType[]
   >(getKeyValuePair(data?.databaseConnection?.connectionArguments || {}) || []);
 
+  const [warehouse, setWarehouse] = useState('');
+  const [account, setAccount] = useState('');
+
   const markdownRef = useRef<EditorContentRef>();
 
   const getBrokerUrlPlaceholder = (): string => {
@@ -548,6 +554,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 pipelineConfig: {
                   schema: Schema.DatabaseServiceMetadataPipeline,
                   config: {
+                    warehouse: warehouse || undefined,
+                    account: account || undefined,
                     includeViews: value.includeView,
                     generateSampleData: value.ingestSampleData,
                     enableDataProfiler: value.enableDataProfiler,
@@ -870,6 +878,42 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           />
         </Field>
 
+        {/* optional filed for snowflik */}
+        {selectService === DatabaseServiceType.Snowflake && (
+          <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2">
+            <div>
+              <label className="tw-block tw-form-label" htmlFor="warehouse">
+                Warehouse:
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="warehouse"
+                id="warehouse"
+                name="warehouse"
+                placeholder="Warehouse name"
+                type="text"
+                value={warehouse}
+                onChange={(e) => setWarehouse(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="tw-block tw-form-label" htmlFor="account">
+                Account:
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="account"
+                id="account"
+                name="account"
+                placeholder="Account name"
+                type="text"
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
         <div data-testid="connection-options">
           <div className="tw-flex tw-items-center tw-mt-6">
             <p className="w-form-label tw-mr-3">Connection Options</p>
