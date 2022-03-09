@@ -210,11 +210,15 @@ export interface EntityReference {
  * OpenMetadata Pipeline Config.
  */
 export interface PipelineConfig {
-  config?: any[] | boolean | number | null | ConfigObject | string;
+  config?: any[] | boolean | ConfigClass | number | null | string;
   schema?: Schema;
 }
 
-export interface ConfigObject {
+export interface ConfigClass {
+  /**
+   * Sample data extraction query.
+   */
+  account?: string;
   /**
    * DBT catalog file to extract dbt models with their column schemas.
    */
@@ -252,6 +256,10 @@ export interface ConfigObject {
    * Regex exclude tables or databases that matches the pattern.
    */
   tableFilterPattern?: FilterPattern;
+  /**
+   * Sample data extraction query.
+   */
+  warehouse?: string;
   /**
    * Configuration to tune how far we want to look back in query logs to process usage data.
    */

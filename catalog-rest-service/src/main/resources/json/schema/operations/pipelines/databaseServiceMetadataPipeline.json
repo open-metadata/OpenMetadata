@@ -50,6 +50,16 @@
       "type": "string",
       "default": "select * from {}.{} limit 50"
     },
+    "warehouse": {
+      "description": "Optional Warehouse.",
+      "type": "string",
+      "default": null
+    },
+    "account": {
+      "description": "Optional Account.",
+      "type": "string",
+      "default": null
+    },
     "enableDataProfiler": {
       "description": "Run data profiler as part of this metadata ingestion to get table profile data.",
       "type": "boolean",
