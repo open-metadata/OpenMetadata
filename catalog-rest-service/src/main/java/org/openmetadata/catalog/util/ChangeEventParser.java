@@ -233,7 +233,9 @@ public final class ChangeEventParser {
   private static String getPlainTextUpdateMessage(String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(oldValue, newValue);
-    return diff.isEmpty() ? StringUtils.EMPTY : String.format("Updated **%s** : %s", updatedField, diff);
+    return diff == null || diff.isEmpty()
+        ? StringUtils.EMPTY
+        : String.format("Updated **%s** : %s", updatedField, diff);
   }
 
   private static String getObjectUpdateMessage(String updatedField, JsonObject oldJson, JsonObject newJson) {
