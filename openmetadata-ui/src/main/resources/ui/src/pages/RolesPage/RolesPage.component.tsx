@@ -53,7 +53,11 @@ import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getActiveCatClass, isEven } from '../../utils/CommonUtils';
+import {
+  getActiveCatClass,
+  isEven,
+  isUrlFriendlyName,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from '../teams/AddUsersModal';
 import Form from '../teams/Form';
@@ -111,6 +115,8 @@ const RolesPage = () => {
         errData['name'] = 'Name already exists';
       } else if (data.name.length < 1 || data.name.length > 128) {
         errData['name'] = 'Name size must be between 1 and 128';
+      } else if (!isUrlFriendlyName(data.name.trim())) {
+        errData['name'] = 'Special characters are not allowed';
       }
       if (!data.displayName?.trim()) {
         errData['displayName'] = 'Display name is required';

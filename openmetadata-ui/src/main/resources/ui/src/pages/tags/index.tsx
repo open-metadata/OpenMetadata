@@ -51,6 +51,7 @@ import {
   getActiveCatClass,
   getCountBadge,
   isEven,
+  isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
@@ -124,6 +125,8 @@ const TagsPage = () => {
         errData['name'] = 'Name already exists';
       } else if (data.name.length < 2 || data.name.length > 25) {
         errData['name'] = 'Name size must be between 2 and 25';
+      } else if (!isUrlFriendlyName(data.name.trim())) {
+        errData['name'] = 'Special characters are not allowed';
       }
       setErrorDataCategory(errData);
 
