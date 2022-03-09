@@ -199,7 +199,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
       </PopOver>
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
         {createdBy}
-        {entityFQN && entityType && entityFQN ? (
+        {entityFQN && entityType ? (
           <span className="tw-pl-1 tw-font-normal">
             posted on{' '}
             {isEntityFeed ? (
@@ -216,7 +216,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
                     {getPartialNameFromFQN(
                       entityFQN as string,
                       entityType === 'table' ? ['table'] : ['database']
-                    )}
+                    ) || entityFQN}
                   </button>
                 </Link>
               </Fragment>

@@ -20,7 +20,9 @@ import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getGlossaryPath,
   getPipelineDetailsPath,
+  getServiceDetailsPath,
   getTableDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
@@ -208,6 +210,16 @@ export const getEntityLink = (
 
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
+
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      return getGlossaryPath();
+
+    case EntityType.DATABASE_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+      return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
