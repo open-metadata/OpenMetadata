@@ -34,7 +34,7 @@ import {
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../axiosAPIs/glossaryAPI';
-import { getSuggestions, searchData } from '../../axiosAPIs/miscAPI';
+import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
@@ -79,6 +79,8 @@ const GlossaryPageV1 = () => {
   const [isGlossaryActive, setIsGlossaryActive] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [deleteStatus, setDeleteStatus] = useState<LoadingState>('initial');
+  const [isSearchResultEmpty, setIsSearchResultEmpty] =
+    useState<boolean>(false);
   const [assetData, setAssetData] = useState<GlossaryTermAssets>({
     data: [],
     total: 0,
@@ -135,12 +137,14 @@ const GlossaryPageV1 = () => {
       });
   };
 
-  const initSelectGlossary = (data: Glossary) => {
-    setSelectedData(data);
-    setSelectedKey(data.name);
+  const initSelectGlossary = (data: Glossary, noSetData = false) => {
+    if (!noSetData) {
+      setSelectedData(data);
+      setIsGlossaryActive(true);
+      setSelectedKey(data.name);
+    }
     setExpandedKey([data.name]);
     fetchGlossaryTermsData(data.id);
-    setIsGlossaryActive(true);
   };
 
   const fetchGlossaryList = (pagin = '') => {
@@ -254,11 +258,19 @@ const GlossaryPageV1 = () => {
   };
 
   const fetchSearchedTerms = useCallback(() => {
-    getSuggestions(searchText, SearchIndex.GLOSSARY).then(
-      (res: AxiosResponse) => {
+    if (searchText) {
+      searchData(
+        searchText,
+        1,
+        PAGE_SIZE,
+        '',
+        '',
+        '',
+        SearchIndex.GLOSSARY
+      ).then((res: AxiosResponse) => {
         if (res.data) {
           const searchedTerms: FormatedGlossarySuggestion[] =
-            res.data?.suggest['table-suggest'][0]?.options?.map(
+            res.data.hits?.hits?.map(
               (item: GlossarySuggestionHit) => item._source
             ) || [];
           if (searchedTerms.length) {
@@ -275,19 +287,25 @@ const GlossaryPageV1 = () => {
               const obj = glossariesList.find((item) => item.name === glossary);
               if (obj) {
                 searchedData.push(obj);
-                // newGlossaries.push(glossary);
               } else {
                 newGlossaries.push(glossary);
               }
             }
             getSearchedGlossaries(searchedData, newGlossaries, searchedTerms);
+            setIsSearchResultEmpty(false);
           } else if (glossaries.length) {
             setGlossariesList(glossaries);
-            initSelectGlossary(glossaries[0]);
+            setIsSearchResultEmpty(true);
           }
         }
+      });
+    } else {
+      setGlossariesList(glossaries);
+      if (glossaries.length) {
+        initSelectGlossary(glossaries[0], true);
       }
-    );
+      setIsSearchResultEmpty(false);
+    }
   }, [searchText]);
 
   const saveUpdatedGlossaryData = (
@@ -401,7 +419,7 @@ const GlossaryPageV1 = () => {
         '',
         forceReset ? 1 : assetData.currPage,
         PAGE_SIZE,
-        `(tags:${tagName})`,
+        `(tags:"${tagName}")`,
         '',
         '',
         myDataSearchIndex
@@ -499,6 +517,7 @@ const GlossaryPageV1 = () => {
           isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
           isHasAccess={!isAdminUser && !isAuthDisabled}
+          isSearchResultEmpty={isSearchResultEmpty}
           searchText={searchText}
           selectedData={selectedData as Glossary | GlossaryTerm}
           selectedKey={selectedKey}

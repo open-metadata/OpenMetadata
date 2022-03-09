@@ -3,17 +3,12 @@ import { GlossaryTermAssets } from 'Models';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { PAGE_SIZE } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { ServiceCategory } from '../../../enums/service.enum';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Database } from '../../../generated/entity/data/database';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Topic } from '../../../generated/entity/data/topic';
 import { isEven } from '../../../utils/CommonUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
+import { getEntityLink, getOwnerFromId } from '../../../utils/TableUtils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Pagination from '../../Pagination';
-import Tags from '../../tags/tags';
 
 interface Props {
   assetData: GlossaryTermAssets;
@@ -21,127 +16,20 @@ interface Props {
 }
 
 const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
-  const serviceName = ServiceCategory.DATABASE_SERVICES as ServiceCategory;
-
-  const getOptionalTableCells = (data: Database | Topic) => {
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        const table = data as Topic;
-
-        return (
-          <td className="tableBody-cell">
-            {table.tags && table.tags?.length > 0
-              ? table.tags?.map((tag, tagIndex) => (
-                  <Tags
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: tag.tagFQN?.startsWith('Tier.Tier')
-                        ? tag.tagFQN.split('.')[1]
-                        : tag.tagFQN,
-                    }}
-                    type="label"
-                  />
-                ))
-              : '--'}
-          </td>
-        );
-      }
-      case ServiceCategory.MESSAGING_SERVICES: {
-        const topic = data as Topic;
-
-        return (
-          <td className="tableBody-cell">
-            {topic.tags && topic.tags?.length > 0
-              ? topic.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
-          </td>
-        );
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        const dashboard = data as Dashboard;
-
-        return (
-          <td className="tableBody-cell">
-            {dashboard.tags && dashboard.tags?.length > 0
-              ? dashboard.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
-          </td>
-        );
-      }
-      case ServiceCategory.PIPELINE_SERVICES: {
-        const pipeline = data as Pipeline;
-
-        return (
-          <td className="tableBody-cell">
-            {pipeline.tags && pipeline.tags?.length > 0
-              ? pipeline.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
-          </td>
-        );
-      }
-      default:
-        return <></>;
-    }
-  };
-
-  const getLinkForFqn = (fqn: string) => {
-    switch (serviceName) {
-      case ServiceCategory.MESSAGING_SERVICES:
+  const getLinkForFqn = (fqn: string, entityType?: EntityType) => {
+    switch (entityType) {
+      case EntityType.TOPIC:
         return getEntityLink(SearchIndex.TOPIC, fqn);
 
-      case ServiceCategory.DASHBOARD_SERVICES:
+      case EntityType.DASHBOARD:
         return getEntityLink(SearchIndex.DASHBOARD, fqn);
 
-      case ServiceCategory.PIPELINE_SERVICES:
+      case EntityType.PIPELINE:
         return getEntityLink(SearchIndex.PIPELINE, fqn);
 
-      case ServiceCategory.DATABASE_SERVICES:
+      case EntityType.TABLE:
       default:
-        return getEntityLink(SearchIndex.DASHBOARD, fqn);
+        return getEntityLink(SearchIndex.TABLE, fqn);
     }
   };
 
@@ -156,7 +44,6 @@ const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
               <th className="tableHead-cell">Name</th>
               <th className="tableHead-cell">Description</th>
               <th className="tableHead-cell">Owner</th>
-              <th className="tableHead-cell">Tags</th>
             </tr>
           </thead>
           <tbody className="tableBody">
@@ -170,7 +57,11 @@ const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
                   data-testid="column"
                   key={index}>
                   <td className="tableBody-cell">
-                    <Link to={getLinkForFqn(dataObj.fullyQualifiedName || '')}>
+                    <Link
+                      to={getLinkForFqn(
+                        dataObj.fullyQualifiedName || '',
+                        dataObj.entityType as EntityType
+                      )}>
                       {dataObj.name}
                     </Link>
                   </td>
@@ -182,9 +73,8 @@ const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
                     )}
                   </td>
                   <td className="tableBody-cell">
-                    <p>{(dataObj as unknown as Topic)?.owner?.name || '--'}</p>
+                    <p>{getOwnerFromId(dataObj.owner)?.name || '--'}</p>
                   </td>
-                  {getOptionalTableCells(dataObj as unknown as Topic)}
                 </tr>
               ))
             ) : (
