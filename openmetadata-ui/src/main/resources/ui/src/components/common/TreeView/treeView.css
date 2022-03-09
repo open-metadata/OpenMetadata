@@ -8,3 +8,15 @@
 .rc-tree-switcher {
   background-image: none !important;
 }
+
+.rc-tree-node-content-wrapper {
+  margin-left: 3px !important;
+}
+
+.rc-tree-node-content-wrapper:hover {
+  color: rgb(113, 71, 232);
+}
+
+.rc-tree-node-content-wrapper:not(.rc-tree-node-selected):hover .rc-tree-title {
+  text-decoration: underline !important;
+}

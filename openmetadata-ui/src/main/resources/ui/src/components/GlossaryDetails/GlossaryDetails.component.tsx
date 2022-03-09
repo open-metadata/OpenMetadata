@@ -55,7 +55,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
 
   const tabs = [
     {
-      name: 'Reviewer',
+      name: 'Reviewers',
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -218,7 +218,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
       </div>
     ) : (
       <ErrorPlaceHolder>
-        <p className="tw-text-base tw-text-center">No Reviewer Added.</p>
+        <p className="tw-text-base tw-text-center">No Reviewers.</p>
         <p className="tw-text-lg tw-text-center tw-mt-2">{rightPosButton()}</p>
       </ErrorPlaceHolder>
     );

@@ -118,15 +118,11 @@ export const updateGlossaryListBySearchedTerms = (
   }, [] as ModifiedGlossaryData[]);
 };
 
-export const getActionsList = (name = '') => {
+export const getActionsList = () => {
   return [
     {
       name: 'Add Term',
       value: 'add_term',
-    },
-    {
-      name: `Delete ${name}`,
-      value: 'delete',
     },
   ];
 };
