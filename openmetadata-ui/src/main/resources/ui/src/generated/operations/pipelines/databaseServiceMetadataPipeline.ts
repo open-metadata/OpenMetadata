@@ -12,7 +12,11 @@
  *  limitations under the License.
  */
 
-export interface DatabaseServiceMetadataPipelineObject {
+export interface DatabaseServiceMetadataPipelineClass {
+  /**
+   * Sample data extraction query.
+   */
+  account?: string;
   /**
    * DBT catalog file to extract dbt models with their column schemas.
    */
@@ -50,6 +54,10 @@ export interface DatabaseServiceMetadataPipelineObject {
    * Regex exclude tables or databases that matches the pattern.
    */
   tableFilterPattern?: FilterPattern;
+  /**
+   * Sample data extraction query.
+   */
+  warehouse?: string;
 }
 
 /**
