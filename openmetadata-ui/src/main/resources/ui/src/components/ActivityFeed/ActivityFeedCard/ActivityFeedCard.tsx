@@ -19,7 +19,7 @@ import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { getPartialNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -199,7 +199,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
       </PopOver>
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
         {createdBy}
-        {entityFQN && entityType && entityFQN ? (
+        {entityFQN && entityType ? (
           <span className="tw-pl-1 tw-font-normal">
             posted on{' '}
             {isEntityFeed ? (
@@ -211,12 +211,16 @@ const FeedHeader: FC<FeedHeaderProp> = ({
                   to={`${getEntityLink(
                     entityType as string,
                     entityFQN as string
-                  )}/${TabSpecificField.ACTIVITY_FEED}`}>
+                  )}${
+                    entityType !== EntityType.WEBHOOK
+                      ? `/${TabSpecificField.ACTIVITY_FEED}`
+                      : ''
+                  }`}>
                   <button className="link-text" disabled={AppState.isTourOpen}>
                     {getPartialNameFromFQN(
                       entityFQN as string,
                       entityType === 'table' ? ['table'] : ['database']
-                    )}
+                    ) || entityFQN}
                   </button>
                 </Link>
               </Fragment>

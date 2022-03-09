@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
 import { isUndefined } from 'lodash';
 import { FormatedGlossaryTermData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
-import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import { searchData } from '../../../axiosAPIs/miscAPI';
+import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
@@ -53,26 +52,14 @@ const RelatedTermsModal = ({
     return [...selectedOption, ...data];
   };
 
-  const querySearch = () => {
-    setIsLoading(true);
-    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.GLOSSARY).then(
-      (res: SearchResponse) => {
-        const data = getSearchedTerms(
-          formatSearchGlossaryTermResponse(res.data.hits.hits)
-        );
-        setOptions(data);
-        setIsLoading(false);
-      }
-    );
-  };
-
   const suggestionSearch = (searchText = '') => {
     setIsLoading(true);
-    getSuggestions(searchText, SearchIndex.GLOSSARY)
-      .then((res: AxiosResponse) => {
-        const data = formatSearchGlossaryTermResponse(
-          res.data.suggest['table-suggest'][0].options
+    searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
+      .then((res: SearchResponse) => {
+        const termResult = formatSearchGlossaryTermResponse(
+          res?.data?.hits?.hits || []
         );
+        const data = !searchText ? getSearchedTerms(termResult) : termResult;
         setOptions(data);
       })
       .catch(() => {
@@ -83,11 +70,7 @@ const RelatedTermsModal = ({
 
   const handleSearchAction = (text: string) => {
     setSearchText(text);
-    if (text) {
-      suggestionSearch(text);
-    } else {
-      querySearch();
-    }
+    suggestionSearch(text);
   };
 
   const isIncludeInOptions = (id: string): boolean => {
@@ -125,7 +108,7 @@ const RelatedTermsModal = ({
     if (!isUndefined(relatedTerms) && relatedTerms.length) {
       setOptions(relatedTerms);
     }
-    querySearch();
+    suggestionSearch();
   }, []);
 
   return (
@@ -153,7 +136,9 @@ const RelatedTermsModal = ({
               </div>
             ) : (
               <p className="tw-text-center tw-mt-10 tw-text-grey-muted tw-text-base">
-                No terms found. Update the search query and try again.
+                {searchText
+                  ? `No terms found for "${searchText}"`
+                  : 'No terms found'}
               </p>
             )}
           </div>

@@ -18,6 +18,13 @@ export enum EntityType {
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
+  GLOSSARY = 'glossary',
+  GLOSSARY_TERM = 'glossaryTerm',
+  DATABASE_SERVICE = 'databaseService',
+  MESSAGING_SERVICE = 'messagingService',
+  DASHBOARD_SERVICE = 'dashboardService',
+  PIPELINE_SERVICE = 'pipelineService',
+  WEBHOOK = 'webhook',
 }
 
 export enum ChangeType {

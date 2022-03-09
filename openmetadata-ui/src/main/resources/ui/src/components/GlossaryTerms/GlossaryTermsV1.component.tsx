@@ -438,10 +438,11 @@ const GlossaryTermsV1 = ({
         </div>
       </div>
 
-      <div className="tw-flex tw-gap-11 tw-mb-2">
+      {/* TODO: Add this stat when supporting status updation  */}
+      {/* <div className="tw-flex tw-gap-11 tw-mb-2">
         <div className="tw-font-medium">Status</div>
         <div>{glossaryTerm.status}</div>
-      </div>
+      </div> */}
 
       <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
         {!isTagEditable && (

@@ -143,6 +143,13 @@ jest.mock('../../components/containers/PageContainer', () => {
 jest.mock('../../utils/ServiceUtils', () => ({
   getCurrentServiceTab: jest.fn().mockReturnValue(1),
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
+  servicePageTabs: jest.fn().mockReturnValue([
+    {
+      name: 'Activity Feed',
+      path: 'activity_feed',
+      field: 'activity_feed',
+    },
+  ]),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
   isRequiredDetailsAvailableForIngestion: jest.fn().mockReturnValue(true),

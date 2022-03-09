@@ -249,7 +249,7 @@ const ManageTab: FunctionComponent<Props> = ({
                 <p>You do not have permissions to update the owner.</p>
               </>
             }
-            isOwner={hasEditAccess || !currentUser}
+            isOwner={hasEditAccess}
             permission={Operation.UpdateOwner}
             position="left">
             <Button
@@ -257,10 +257,14 @@ const ManageTab: FunctionComponent<Props> = ({
                 'tw-opacity-40':
                   !userPermissions[Operation.UpdateOwner] &&
                   !isAuthDisabled &&
-                  !(hasEditAccess || !currentUser),
+                  !hasEditAccess,
               })}
               data-testid="owner-dropdown"
-              disabled={!listOwners.length}
+              disabled={
+                !userPermissions[Operation.UpdateOwner] &&
+                !isAuthDisabled &&
+                !hasEditAccess
+              }
               size="custom"
               theme="primary"
               variant="link"
