@@ -72,9 +72,10 @@ public final class ChangeEventParser {
       String newFieldValue = getFieldValue(field.getNewValue());
       String oldFieldValue = getFieldValue(field.getOldValue());
       EntityLink link = getEntityLink(fieldName, entity);
-      String message = getFormattedMessage(link, changeType, fieldName, oldFieldValue, newFieldValue);
-
-      messages.put(link, message);
+      if (!fieldName.equals("failureDetails")) {
+        String message = getFormattedMessage(link, changeType, fieldName, oldFieldValue, newFieldValue);
+        messages.put(link, message);
+      }
     }
     return messages;
   }
@@ -232,7 +233,9 @@ public final class ChangeEventParser {
   private static String getPlainTextUpdateMessage(String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(oldValue, newValue);
-    return String.format("Updated **%s** : %s", updatedField, diff);
+    return diff == null || diff.isEmpty()
+        ? StringUtils.EMPTY
+        : String.format("Updated **%s** : %s", updatedField, diff);
   }
 
   private static String getObjectUpdateMessage(String updatedField, JsonObject oldJson, JsonObject newJson) {
