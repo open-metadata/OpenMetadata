@@ -38,7 +38,7 @@ jest.mock(
       <div data-testid="PageContainer">{children}</div>
 );
 
-jest.mock('../../assets/img/login-bg.jpeg', () => 'login-bg.jpeg');
+jest.mock('../../assets/img/login-bg.png', () => 'login-bg.png');
 
 jest.mock('./LoginCarousel', () =>
   jest.fn().mockReturnValue(<p>LoginCarousel</p>)
