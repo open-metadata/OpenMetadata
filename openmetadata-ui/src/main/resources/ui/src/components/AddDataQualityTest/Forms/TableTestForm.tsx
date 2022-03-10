@@ -282,10 +282,7 @@ const TableTestForm = ({
         {isUndefined(data) ? 'Add' : 'Edit'} Table Test
       </p>
 
-      <form
-        className="tw-w-screen-sm"
-        data-testid="form"
-        onSubmit={(e) => e.preventDefault()}>
+      <div className="tw-w-screen-sm">
         <div className="tw-px-4 tw-mx-auto">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="tableTestType">
@@ -369,7 +366,7 @@ const TableTestForm = ({
             Save
           </Button>
         </Field>
-      </form>
+      </div>
     </Fragment>
   );
 };

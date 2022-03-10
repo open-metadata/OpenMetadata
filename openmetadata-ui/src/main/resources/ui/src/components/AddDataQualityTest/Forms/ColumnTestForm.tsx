@@ -471,11 +471,6 @@ const ColumnTestForm = ({
                     type="text"
                     value={value}
                     onChange={(e) => handlMatchFieldsChange(i, e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                      }
-                    }}
                   />
                 </Field>
               </div>
@@ -546,11 +541,6 @@ const ColumnTestForm = ({
                   type={isAcceptedTypeIsString.current ? 'text' : 'number'}
                   value={value}
                   onChange={(e) => handleValueFieldsChange(i, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                    }
-                  }}
                 />
               </Field>
             </div>
@@ -602,10 +592,7 @@ const ColumnTestForm = ({
       <p className="tw-font-medium tw-px-4">
         {isUndefined(data) ? 'Add' : 'Edit'} Column Test
       </p>
-      <form
-        className="tw-w-screen-sm"
-        data-testid="form"
-        onSubmit={(e) => e.preventDefault()}>
+      <div className="tw-w-screen-sm">
         <div className="tw-px-4 tw-mx-auto">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="columnName">
@@ -713,7 +700,7 @@ const ColumnTestForm = ({
             </Button>
           </Field>
         </Field>
-      </form>
+      </div>
     </div>
   );
 };
