@@ -29,6 +29,7 @@ const mockServiceList = [
     serviceType: 'Redshift',
   },
 ];
+const mockServiceType = 'Redshift';
 
 jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockReturnValue(<p>IngestionStepper</p>);
@@ -42,6 +43,7 @@ describe('Test Ingestion modal component', () => {
         ingestionList={[]}
         ingestionTypes={[]}
         serviceList={mockServiceList}
+        serviceType={mockServiceType}
         onCancel={mockFunction}
       />,
       {
@@ -81,6 +83,7 @@ describe('Test Ingestion modal component', () => {
         ingestionTypes={['metadata', 'queryUsage'] as PipelineType[]}
         service="bigquery_gcp"
         serviceList={[]}
+        serviceType={mockServiceType}
         onCancel={mockFunction}
       />,
       {

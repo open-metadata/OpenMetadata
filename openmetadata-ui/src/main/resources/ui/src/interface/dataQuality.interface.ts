@@ -27,7 +27,7 @@ export interface TestCaseConfigType {
   regex?: string;
   forbiddenValues?: Array<number | string>;
   missingCountValue?: number;
-  missingValueMatch?: string;
+  missingValueMatch?: Array<string>;
   columnValuesToBeUnique?: boolean;
   columnValuesToBeNotNull?: boolean;
 }
