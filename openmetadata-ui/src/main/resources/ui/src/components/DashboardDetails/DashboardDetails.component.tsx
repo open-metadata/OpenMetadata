@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { EntityTags } from 'Models';
+import { EntityTags, TagOption } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
@@ -50,6 +50,10 @@ import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDe
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../utils/GlossaryUtils';
 
 const DashboardDetails = ({
   entityName,
@@ -104,7 +108,8 @@ const DashboardDetails = ({
     chart: ChartType;
     index: number;
   }>();
-  const [tagList, setTagList] = useState<Array<string>>([]);
+  const [tagList, setTagList] = useState<Array<TagOption>>([]);
+  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
@@ -292,10 +297,7 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (
-    selectedTags?: Array<EntityTags>,
-    allTags?: Array<string>
-  ) => {
+  const handleChartTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags && editChartTags) {
       const prevTags = editChartTags.chart.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
@@ -310,7 +312,7 @@ const DashboardDetails = ({
         .map((tag) => ({
           labelType: 'Manual',
           state: 'Confirmed',
-          source: (allTags || []).includes(tag.tagFQN) ? 'Tag' : 'Glossary',
+          source: tag.source,
           tagFQN: tag.tagFQN,
         }));
 
@@ -330,11 +332,30 @@ const DashboardDetails = ({
     }
   };
 
-  const fetchTags = () => {
+  const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    getTagCategories()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
+    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+      .then((values) => {
+        let tagsAndTerms: TagOption[] = [];
+        if (values[0].data) {
+          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+            return { fqn: tag, source: 'Tag' };
+          });
+        }
+        if (values[1] && values[1].length > 0) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
+            (tag) => {
+              return { fqn: tag, source: 'Glossary' };
+            }
+          );
+          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+        }
+        setTagList(tagsAndTerms);
+        setTagFetchFailed(false);
+      })
+      .catch(() => {
+        setTagList([]);
+        setTagFetchFailed(true);
       })
       .finally(() => {
         setIsTagLoading(false);
@@ -505,7 +526,10 @@ const DashboardDetails = ({
                               className="tw-group tw-relative tableBody-cell"
                               onClick={() => {
                                 if (!editChartTags) {
-                                  fetchTags();
+                                  // Fetch tags and terms only once
+                                  if (tagList.length === 0 || tagFetchFailed) {
+                                    fetchTagsAndGlossaryTerms();
+                                  }
                                   handleEditChartTag(chart, index);
                                 }
                               }}>
@@ -532,7 +556,6 @@ const DashboardDetails = ({
                                   position="left"
                                   trigger="click">
                                   <TagsContainer
-                                    allowGlossary
                                     editable={editChartTags?.index === index}
                                     isLoading={
                                       isTagLoading &&
@@ -546,7 +569,7 @@ const DashboardDetails = ({
                                       handleChartTagSelection();
                                     }}
                                     onSelectionChange={(tags) => {
-                                      handleChartTagSelection(tags, tagList);
+                                      handleChartTagSelection(tags);
                                     }}>
                                     {chart.tags?.length ? (
                                       <button

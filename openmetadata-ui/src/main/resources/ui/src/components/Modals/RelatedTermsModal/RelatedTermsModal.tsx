@@ -12,7 +12,7 @@
  */
 
 import { isUndefined } from 'lodash';
-import { FormatedGlossaryTermData, SearchResponse } from 'Models';
+import { FormattedGlossaryTermData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { searchData } from '../../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../../constants/constants';
@@ -24,9 +24,9 @@ import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
 
 type RelatedTermsModalProp = {
-  relatedTerms?: Array<FormatedGlossaryTermData>;
+  relatedTerms?: Array<FormattedGlossaryTermData>;
   onCancel: () => void;
-  onSave: (terms: Array<FormatedGlossaryTermData>) => void;
+  onSave: (terms: Array<FormattedGlossaryTermData>) => void;
   header: string;
 };
 
@@ -38,14 +38,14 @@ const RelatedTermsModal = ({
 }: RelatedTermsModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [options, setOptions] = useState<FormatedGlossaryTermData[]>([]);
+  const [options, setOptions] = useState<FormattedGlossaryTermData[]>([]);
   const [selectedOption, setSelectedOption] = useState<
-    FormatedGlossaryTermData[]
+    FormattedGlossaryTermData[]
   >(relatedTerms ?? []);
 
-  const getSearchedTerms = (searchedData: FormatedGlossaryTermData[]) => {
+  const getSearchedTerms = (searchedData: FormattedGlossaryTermData[]) => {
     const currOptions = selectedOption.map((item) => item.fqdn || item.name);
-    const data = searchedData.filter((item: FormatedGlossaryTermData) => {
+    const data = searchedData.filter((item: FormattedGlossaryTermData) => {
       return !currOptions.includes(item.fqdn);
     });
 
@@ -81,8 +81,8 @@ const RelatedTermsModal = ({
     if (!isChecked) {
       setSelectedOption((pre) => pre.filter((option) => option.id !== id));
     } else {
-      const newOption: FormatedGlossaryTermData =
-        options.find((d) => d.id === id) || ({} as FormatedGlossaryTermData);
+      const newOption: FormattedGlossaryTermData =
+        options.find((d) => d.id === id) || ({} as FormattedGlossaryTermData);
       setSelectedOption([...selectedOption, newOption]);
     }
   };

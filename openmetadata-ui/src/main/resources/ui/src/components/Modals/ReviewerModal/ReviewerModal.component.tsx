@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { isUndefined } from 'lodash';
-import { FormatedUsersData, SearchResponse } from 'Models';
+import { FormattedUsersData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getSuggestions, searchData } from '../../../axiosAPIs/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -25,9 +25,9 @@ import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
 
 type ReviewerModalProp = {
-  reviewer?: Array<FormatedUsersData>;
+  reviewer?: Array<FormattedUsersData>;
   onCancel: () => void;
-  onSave: (reviewer: Array<FormatedUsersData>) => void;
+  onSave: (reviewer: Array<FormattedUsersData>) => void;
   header: string;
 };
 
@@ -39,14 +39,14 @@ const ReviewerModal = ({
 }: ReviewerModalProp) => {
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [options, setOptions] = useState<FormatedUsersData[]>([]);
-  const [selectedOption, setSelectedOption] = useState<FormatedUsersData[]>(
+  const [options, setOptions] = useState<FormattedUsersData[]>([]);
+  const [selectedOption, setSelectedOption] = useState<FormattedUsersData[]>(
     reviewer ?? []
   );
 
-  const getSearchedReviewers = (searchedData: FormatedUsersData[]) => {
+  const getSearchedReviewers = (searchedData: FormattedUsersData[]) => {
     const currOptions = selectedOption.map((item) => item.name);
-    const data = searchedData.filter((item: FormatedUsersData) => {
+    const data = searchedData.filter((item: FormattedUsersData) => {
       return !currOptions.includes(item.name);
     });
 
@@ -98,8 +98,8 @@ const ReviewerModal = ({
     if (!isChecked) {
       setSelectedOption((pre) => pre.filter((option) => option.id !== id));
     } else {
-      const newOption: FormatedUsersData =
-        options.find((d) => d.id === id) || ({} as FormatedUsersData);
+      const newOption: FormattedUsersData =
+        options.find((d) => d.id === id) || ({} as FormattedUsersData);
       setSelectedOption([...selectedOption, newOption]);
     }
   };

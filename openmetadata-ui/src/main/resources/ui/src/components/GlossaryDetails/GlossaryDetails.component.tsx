@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags, FormatedUsersData } from 'Models';
+import { EntityTags, FormattedUsersData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   LIST_SIZE,
@@ -50,7 +50,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
 
   const tabs = [
     {
@@ -70,7 +70,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (data: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (data: Array<FormattedUsersData>) => {
     if (!isEqual(data, reviewer)) {
       let updatedGlossary = cloneDeep(glossary);
       const oldReviewer = data.filter((d) => includes(reviewer, d));
@@ -171,7 +171,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     if (glossary.reviewers && glossary.reviewers.length) {
       setReviewer(
         glossary.reviewers.map((d) => ({
-          ...(d as FormatedUsersData),
+          ...(d as FormattedUsersData),
           type: 'user',
         }))
       );

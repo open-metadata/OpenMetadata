@@ -12,20 +12,10 @@
  */
 
 import classNames from 'classnames';
-import { debounce, isEmpty, isNull } from 'lodash';
-import { EntityTags, FormatedGlossaryTermData, SearchResponse } from 'Models';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { PAGE_SIZE } from '../../constants/constants';
-import { SearchIndex } from '../../enums/search.enum';
+import { isNull } from 'lodash';
+import { EntityTags } from 'Models';
+import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { withLoader } from '../../hoc/withLoader';
-import { formatSearchGlossaryTermResponse } from '../../utils/APIUtils';
 import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
 import Tags from '../tags/tags';
@@ -36,7 +26,6 @@ import { TagsContainerProps } from './tags-container.interface';
 // const INPUT_AUTO = 'auto';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
-  allowGlossary,
   children,
   editable,
   selectedTags,
@@ -53,10 +42,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const node = useRef<HTMLDivElement>(null);
   const [inputDomRect, setInputDomRect] = useState<DOMRect>();
-  const [glossaryList, setGlossaryList] = useState<FormatedGlossaryTermData[]>(
-    []
-  );
-  const [glossaryLoading, setGlossaryLoading] = useState<boolean>(false);
   // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
   // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
 
@@ -84,63 +69,20 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     }
   }, [newTag]);
 
-  const fetchGlossaryResults = (
-    searchText: string
-  ): Promise<FormatedGlossaryTermData[]> => {
-    return new Promise<FormatedGlossaryTermData[]>((resolve, reject) => {
-      if (!isEmpty(searchText)) {
-        searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
-          .then((res: SearchResponse) => {
-            const data = formatSearchGlossaryTermResponse(
-              res?.data?.hits?.hits || []
-            );
-            resolve(data);
-          })
-          .catch(() => reject());
-      }
-    });
-  };
-
-  const getGlossaryResults = useCallback(
-    (searchText: string) => {
-      if (allowGlossary) {
-        fetchGlossaryResults(searchText)
-          .then((res) => setGlossaryList(res))
-          .finally(() => {
-            setGlossaryLoading(false);
-          });
-      }
-    },
-    [allowGlossary]
-  );
-
   const getTagList = () => {
     const newTags = tagList
       .filter((tag) => {
-        return !tags.some((selectedTag) => selectedTag.tagFQN === tag);
+        return !tags.some((selectedTag) => selectedTag.tagFQN === tag.fqn);
       })
-      .filter((tag) => !tag.includes('Tier'))
+      .filter((tag) => !tag.fqn?.includes('Tier'))
       .map((tag) => {
         return {
-          name: tag,
-          value: tag,
+          name: tag.fqn,
+          value: tag.fqn,
         };
       });
 
-    const newGlossaries = glossaryList
-      .filter((glossary) => {
-        return !tags.some(
-          (selectedTag) => selectedTag.tagFQN === glossary.fqdn
-        );
-      })
-      .map((glossary) => {
-        return {
-          name: glossary.fqdn,
-          value: glossary.fqdn,
-        };
-      });
-
-    return allowGlossary ? [...newTags, ...newGlossaries] : newTags;
+    return newTags;
   };
 
   const handleTagSelection = (
@@ -151,13 +93,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     event.stopPropagation();
     if (selectedTag) {
       setTags((arrTags) => {
-        const tag =
-          arrTags.filter((tag) => tag.tagFQN === selectedTag)[0] || {};
-        if (!isEmpty(tag)) {
-          return [...arrTags, { ...tag, tagFQN: selectedTag }];
-        } else {
-          return [...arrTags, { tagFQN: selectedTag }];
-        }
+        const source = tagList.find((tag) => tag.fqn === selectedTag)?.source;
+
+        return [...arrTags, { tagFQN: selectedTag, source }];
       });
     }
     setNewTag('');
@@ -206,26 +144,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     );
   };
 
-  const debouncedOnSearch = useCallback(
-    (searchText: string): void => {
-      getGlossaryResults(searchText);
-    },
-    [getGlossaryResults]
-  );
-
-  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 500), [
-    debouncedOnSearch,
-  ]);
-
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
     const searchText = e.target.value;
     setNewTag(searchText);
-    if (allowGlossary && searchText) {
-      setGlossaryLoading(true);
-      debounceOnSearch(searchText);
-    } else {
-      setGlossaryLoading(false);
-    }
   };
 
   const handleClick = (e: MouseEvent) => {
@@ -262,7 +183,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         { 'tw-border-primary': hasFocus },
         { 'hover:tw-border-main': !hasFocus }
       )}
-      data-testid="tag-conatiner"
+      data-testid="tag-container"
       ref={node}
       onClick={(event) => {
         if (editable) {
@@ -303,7 +224,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 domPosition={inputDomRect}
                 dropDownList={getTagList()}
                 horzPosRight={dropDownHorzPosRight}
-                isLoading={glossaryLoading}
                 searchString={newTag}
                 widthClass="tw-w-80"
                 onSelect={handleTagSelection}
