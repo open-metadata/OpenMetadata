@@ -40,14 +40,14 @@ This schema <u>does not</u> accept additional properties.
 	 - When `true` indicates the thread has been resolved.
 	 - Type: `boolean`
 	 - Default: _false_
- - **message**
+ - **message** `required`
 	 - The main message of the thread in markdown format.
 	 - Type: `string`
  - **postsCount**
 	 - The total count of posts in the thread.
 	 - Type: `integer`
 	 - Default: `0`
- - **posts** `required`
+ - **posts**
 	 - Type: `array`
 		 - **Items**
 		 - $ref: [#/definitions/post](#post)
@@ -60,6 +60,9 @@ This schema <u>does not</u> accept additional properties.
  - Type: `object`
  - This schema <u>does not</u> accept additional properties.
  - **Properties**
+	 - **id** `required`
+		 - Unique identifier that identifies the post.
+		 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 	 - **message** `required`
 		 - Message in markdown format. See markdown support for more details.
 		 - Type: `string`
@@ -73,4 +76,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Wednesday, March 9, 2022_
