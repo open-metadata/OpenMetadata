@@ -53,7 +53,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
           id={name}
           type="checkbox"
           onChange={() => {
-            onSelect(!isSelected, name, type);
+            return;
           }}
         />
         <div
