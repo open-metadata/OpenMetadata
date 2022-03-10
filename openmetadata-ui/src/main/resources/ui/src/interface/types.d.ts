@@ -223,6 +223,7 @@ declare module 'Models' {
     fqdn: string;
     type: string;
     id: string;
+    description?: string;
   };
 
   export interface FormatedGlossarySuggestion {
