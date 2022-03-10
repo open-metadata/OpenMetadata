@@ -62,7 +62,7 @@ public class PipelineDetailsPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     actions = new Actions(webDriver);
     common = new Common(webDriver);
     pipelineDetails = new PipelineDetails(webDriver);
@@ -165,7 +165,7 @@ public class PipelineDetailsPageTest {
     String updatedDescription = faker.address().toString();
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);

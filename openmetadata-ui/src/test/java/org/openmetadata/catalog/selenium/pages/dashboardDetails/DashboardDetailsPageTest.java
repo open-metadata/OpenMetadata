@@ -159,7 +159,7 @@ public class DashboardDetailsPageTest {
     String updatedDescription = faker.address().toString();
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription())).perform();
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);

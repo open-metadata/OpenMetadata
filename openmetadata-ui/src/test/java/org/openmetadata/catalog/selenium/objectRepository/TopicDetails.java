@@ -20,4 +20,9 @@ public class TopicDetails {
   By config = By.xpath("(//button[@data-testid = \"tab\"])[2]");
   By manage = By.xpath("(//button[@data-testid = \"tab\"])[3]");
   By topicName = By.linkText("orders");
+  By ownerName = By.xpath("//div[@data-testid='list-item']");
+
+  public String getOwnerName() {
+    return webDriver.findElement(ownerName).getText();
+  }
 }
