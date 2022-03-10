@@ -209,7 +209,7 @@ declare module 'Models' {
     entityType?: string;
   };
 
-  export type FormatedUsersData = {
+  export type FormattedUsersData = {
     name: string;
     displayName: string;
     email: string;
@@ -217,7 +217,7 @@ declare module 'Models' {
     id: string;
   };
 
-  export type FormatedGlossaryTermData = {
+  export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;
     fqdn: string;
@@ -225,7 +225,12 @@ declare module 'Models' {
     id: string;
   };
 
-  export interface FormatedGlossarySuggestion {
+  export type TagOption = {
+    fqn: string;
+    source: string;
+  };
+
+  export interface FormattedGlossarySuggestion {
     deleted: boolean;
     description: string;
     display_name: string;
@@ -243,7 +248,7 @@ declare module 'Models' {
     _type?: string;
     _id?: string;
     _score?: number;
-    _source: FormatedGlossarySuggestion;
+    _source: FormattedGlossarySuggestion;
   }
 
   export interface GlossaryTermAssets {

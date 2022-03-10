@@ -13,7 +13,13 @@
 
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityFieldThreads, EntityTags, ExtraInfo, TableDetail } from 'Models';
+import {
+  EntityFieldThreads,
+  EntityTags,
+  ExtraInfo,
+  TableDetail,
+  TagOption,
+} from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
@@ -32,6 +38,10 @@ import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../../utils/GlossaryUtils';
 
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
@@ -85,7 +95,8 @@ const EntityPageInfo = ({
   const [entityFollowers, setEntityFollowers] =
     useState<Array<User>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
-  const [tagList, setTagList] = useState<Array<string>>([]);
+  const [tagList, setTagList] = useState<Array<TagOption>>([]);
+  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
@@ -105,7 +116,7 @@ const EntityPageInfo = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: tagList.includes(tag.tagFQN) ? 'Tag' : 'Glossary',
+          source: tag.source,
           tagFQN: tag.tagFQN,
         }));
       tagsHandler?.([...prevTags, ...newTags]);
@@ -206,11 +217,31 @@ const EntityPageInfo = ({
       </div>
     );
   };
-  const fetchTags = () => {
+
+  const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    getTagCategories()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
+    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+      .then((values) => {
+        let tagsAndTerms: TagOption[] = [];
+        if (values[0].data) {
+          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+            return { fqn: tag, source: 'Tag' };
+          });
+        }
+        if (values[1] && values[1].length > 0) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
+            (tag) => {
+              return { fqn: tag, source: 'Glossary' };
+            }
+          );
+          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+        }
+        setTagList(tagsAndTerms);
+        setTagFetchFailed(false);
+      })
+      .catch(() => {
+        setTagList([]);
+        setTagFetchFailed(true);
       })
       .finally(() => {
         setIsTagLoading(false);
@@ -392,11 +423,13 @@ const EntityPageInfo = ({
               <div
                 className="tw-inline-block"
                 onClick={() => {
-                  fetchTags();
+                  // Fetch tags and terms only once
+                  if (tagList.length === 0 || tagFetchFailed) {
+                    fetchTagsAndGlossaryTerms();
+                  }
                   setIsEditable(true);
                 }}>
                 <TagsContainer
-                  allowGlossary
                   editable={isEditable}
                   isLoading={isTagLoading}
                   selectedTags={getSelectedTags()}

@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags, FormatedUsersData, GlossaryTermAssets } from 'Models';
+import { EntityTags, FormattedUsersData, GlossaryTermAssets } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import {
   LIST_SIZE,
@@ -66,7 +66,7 @@ const GlossaryTermsV1 = ({
     glossaryTerm.synonyms?.join(',') || ''
   );
   const [references, setReferences] = useState(glossaryTerm.references || []);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
   const [relatedTerms, setRelatedTerms] = useState<
     {
       relatedTerms: string;
@@ -96,7 +96,7 @@ const GlossaryTermsV1 = ({
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (data: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (data: Array<FormattedUsersData>) => {
     if (!isEqual(data, reviewer)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
       const oldReviewer = data.filter((d) => includes(reviewer, d));
@@ -248,7 +248,7 @@ const GlossaryTermsV1 = ({
     if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
       setReviewer(
         glossaryTerm.reviewers.map((d) => ({
-          ...(d as FormatedUsersData),
+          ...(d as FormattedUsersData),
           type: 'user',
         }))
       );
