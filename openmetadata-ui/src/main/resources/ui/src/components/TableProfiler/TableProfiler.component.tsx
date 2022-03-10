@@ -290,14 +290,12 @@ const TableProfiler: FC<Props> = ({
                               position="bottom"
                               title={TITLE_FOR_NON_ADMIN_ACTION}>
                               <Button
-                                className={classNames(
-                                  'tw-px-2 tw-py-0.5 tw-rounded tw-border-grey-muted',
-                                  {
-                                    'tw-opacity-40':
-                                      !isAdminUser && !isAuthDisabled,
-                                  }
-                                )}
-                                size="custom"
+                                className={classNames({
+                                  'tw-opacity-40':
+                                    !isAdminUser && !isAuthDisabled,
+                                })}
+                                size="small"
+                                theme="primary"
                                 type="button"
                                 variant="outlined"
                                 onClick={() =>

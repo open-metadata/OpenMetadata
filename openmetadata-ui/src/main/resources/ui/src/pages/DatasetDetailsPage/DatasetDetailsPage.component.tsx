@@ -202,9 +202,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
     columnName?: string
   ) => {
     activeTabHandler(tabValue);
-    setTestMode(testMode as DatasetTestModeType);
-    setSelectedColumn(columnName);
-    setShowTestForm(true);
+    if (testMode && columnName) {
+      setTestMode(testMode as DatasetTestModeType);
+      setSelectedColumn(columnName);
+      setShowTestForm(true);
+    }
   };
 
   const getLineageData = () => {

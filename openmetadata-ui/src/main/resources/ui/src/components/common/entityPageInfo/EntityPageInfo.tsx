@@ -198,7 +198,7 @@ const EntityPageInfo = ({
           </button>
 
           <span
-            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
+            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
             data-testid="getversions">
             {parseFloat(version).toFixed(1)}
           </span>
