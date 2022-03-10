@@ -321,18 +321,23 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   };
 
   const validateEventFilters = () => {
-    let isValid = false;
+    const isValid = [];
     if (!isEmpty(createEvents)) {
-      isValid = Boolean(createEvents.entities?.length);
+      isValid.push(Boolean(createEvents.entities?.length));
     }
     if (!isEmpty(updateEvents)) {
-      isValid = Boolean(updateEvents.entities?.length);
+      isValid.push(Boolean(updateEvents.entities?.length));
     }
-    if (!isEmpty(deleteEvents) && deleteEvents.entities?.length) {
-      isValid = Boolean(deleteEvents.entities?.length);
+    if (!isEmpty(deleteEvents)) {
+      isValid.push(Boolean(deleteEvents.entities?.length));
     }
 
-    return isValid;
+    return (
+      isValid.length > 0 &&
+      isValid.reduce((prev, curr) => {
+        return prev && curr;
+      }, isValid[0])
+    );
   };
 
   const validateForm = () => {
