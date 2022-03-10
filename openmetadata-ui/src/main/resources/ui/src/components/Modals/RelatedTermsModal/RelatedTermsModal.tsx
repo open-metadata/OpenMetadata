@@ -44,7 +44,7 @@ const RelatedTermsModal = ({
   >(relatedTerms ?? []);
 
   const getSearchedTerms = (searchedData: FormatedGlossaryTermData[]) => {
-    const currOptions = selectedOption.map((item) => item.fqdn);
+    const currOptions = selectedOption.map((item) => item.fqdn || item.name);
     const data = searchedData.filter((item: FormatedGlossaryTermData) => {
       return !currOptions.includes(item.fqdn);
     });
