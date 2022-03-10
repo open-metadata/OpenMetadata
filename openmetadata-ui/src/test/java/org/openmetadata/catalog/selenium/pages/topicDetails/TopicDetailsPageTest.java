@@ -108,7 +108,7 @@ public class TopicDetailsPageTest {
       Events.click(webDriver, common.follow());
     }
     Events.click(webDriver, myDataPage.home());
-    if(!webDriver.getPageSource().contains(topic)){
+    if (!webDriver.getPageSource().contains(topic)) {
       Assert.fail(topic + "topic not found");
     } else {
       LOG.info("Passed");

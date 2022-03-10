@@ -301,9 +301,9 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
     Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
     Thread.sleep(2000);
-    try{
+    try {
       Events.click(webDriver, tableDetails.joinedTables());
-    } catch(NoSuchElementException | TimeoutException e){
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("No Frequently joined tables found");
     }
   }
@@ -316,9 +316,9 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
     Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
     Thread.sleep(2000);
-    try{
+    try {
       Events.click(webDriver, tableDetails.joinedColumns());
-    } catch (NoSuchElementException | TimeoutException e){
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("No Frequently joined columns found");
     }
   }
