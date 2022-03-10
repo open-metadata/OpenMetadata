@@ -95,6 +95,7 @@ export interface DatasetDetailsProps {
   columnsUpdateHandler: (updatedTable: Table) => void;
   descriptionUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
+  handleSelectedColumn: (value: string | undefined) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;

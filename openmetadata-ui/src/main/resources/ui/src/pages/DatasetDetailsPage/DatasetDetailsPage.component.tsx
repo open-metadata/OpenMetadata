@@ -176,6 +176,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setShowTestForm(value);
   };
 
+  const handleSelectedColumn = (value: string | undefined) => {
+    setSelectedColumn(value);
+  };
+
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (datasetTableTabs[currentTabIndex].path !== tab) {
@@ -686,6 +690,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         });
         setColumns(updatedColumns);
         handleShowTestForm(false);
+        setSelectedColumn(undefined);
         showToast({
           variant: 'success',
           body: `Test ${data.testCase.columnTestType} for ${data.columnName} has been added.`,
@@ -794,6 +799,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           handleAddTableTestCase={handleAddTableTestCase}
           handleRemoveColumnTest={handleRemoveColumnTest}
           handleRemoveTableTest={handleRemoveTableTest}
+          handleSelectedColumn={handleSelectedColumn}
           handleShowTestForm={handleShowTestForm}
           handleTestModeChange={handleTestModeChange}
           isLineageLoading={isLineageLoading}

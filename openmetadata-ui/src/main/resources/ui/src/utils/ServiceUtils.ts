@@ -62,7 +62,7 @@ import {
   VERTICA,
 } from '../constants/services.const';
 import { TabSpecificField } from '../enums/entity.enum';
-import { IngestionType, ServiceCategory } from '../enums/service.enum';
+import { ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
@@ -318,89 +318,30 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   return entityCounts;
 };
 
-export const getIngestionTypeList = (
-  serviceType: string,
-  onlyMetaData = false
-): Array<string> | undefined => {
-  let ingestionType: Array<string> | undefined;
-  switch (serviceType) {
-    case DatabaseServiceType.BigQuery:
-      ingestionType = onlyMetaData
-        ? [IngestionType.BIGQUERY]
-        : [IngestionType.BIGQUERY, IngestionType.BIGQUERY_USAGE];
-
-      break;
-    case DatabaseServiceType.Hive:
-      ingestionType = [IngestionType.HIVE];
-
-      break;
-
-    case DatabaseServiceType.Mssql:
-      ingestionType = [IngestionType.MSSQL];
-
-      break;
-
-    case DatabaseServiceType.MySQL:
-      ingestionType = [IngestionType.MYSQL];
-
-      break;
-
-    case DatabaseServiceType.Postgres:
-      ingestionType = [IngestionType.POSTGRES];
-
-      break;
-
-    case DatabaseServiceType.Redshift:
-      ingestionType = onlyMetaData
-        ? [IngestionType.REDSHIFT]
-        : [IngestionType.REDSHIFT, IngestionType.REDSHIFT_USAGE];
-
-      break;
-
-    case DatabaseServiceType.Trino:
-      ingestionType = [IngestionType.TRINO];
-
-      break;
-
-    case DatabaseServiceType.Snowflake:
-      ingestionType = onlyMetaData
-        ? [IngestionType.SNOWFLAKE]
-        : [IngestionType.SNOWFLAKE, IngestionType.SNOWFLAKE_USAGE];
-
-      break;
-
-    case DatabaseServiceType.Vertica:
-      ingestionType = [IngestionType.VERTICA];
-
-      break;
-
-    default:
-      break;
-  }
-
-  return ingestionType;
-};
-
 export const getAirflowPipelineTypes = (
   serviceType: string,
   onlyMetaData = false
 ): Array<PipelineType> | undefined => {
-  if (onlyMetaData) {
-    return [PipelineType.Metadata];
-  }
   switch (serviceType) {
     case DatabaseServiceType.Redshift:
     case DatabaseServiceType.BigQuery:
     case DatabaseServiceType.Snowflake:
-      return [PipelineType.Metadata, PipelineType.QueryUsage];
-
-    case DatabaseServiceType.Hive:
+    case DatabaseServiceType.ClickHouse:
     case DatabaseServiceType.Mssql:
+      return onlyMetaData
+        ? [PipelineType.Metadata]
+        : [PipelineType.Metadata, PipelineType.QueryUsage];
+
+    // need to add additional config feild to support trino
+    // case DatabaseServiceType.Trino:
+    case DatabaseServiceType.Hive:
     case DatabaseServiceType.MySQL:
     case DatabaseServiceType.Postgres:
-    case DatabaseServiceType.Trino:
     case DatabaseServiceType.Vertica:
     case DatabaseServiceType.MariaDB:
+    case DatabaseServiceType.SingleStore:
+    case DatabaseServiceType.SQLite:
+    case DatabaseServiceType.AzureSQL:
       return [PipelineType.Metadata];
 
     default:
