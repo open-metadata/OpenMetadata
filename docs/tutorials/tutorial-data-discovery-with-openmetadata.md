@@ -8,7 +8,7 @@ In this tutorial, we will explore key features of the OpenMetadata standard and 
 
 For this tutorial, we will assume the role of data analysts who have been asked to analyze product sales by region. We will use the OpenMetadata sandbox. The sandbox is an environment in which you can explore OpenMetadata in the context of data assets and the metadata with which a community of users has annotated these resources.
 
-![](../.gitbook/assets/sandbox.png)
+![](<../.gitbook/assets/sandbox (1).png>)
 
 ### **1. Log in to the OpenMetadata sandbox using a Google account**
 

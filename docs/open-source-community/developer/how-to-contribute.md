@@ -8,13 +8,13 @@ We ❤️ all contributions, big and small!
 
 Look for issues under [Github/issues tab](https://github.com/open-metadata/OpenMetadata/issues). If you have a feature request or found a bug please file an issue. This will help us track and will help the community overall as well.
 
-![./images/new-issue.png](../../.gitbook/assets/new-issue.png)
+![./images/new-issue.png](../../../.gitbook/assets/new-issue.png)
 
 ## Fork Github project
 
 OpenMetadata Github repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata).
 
-![./images/fork-github.png](<../../.gitbook/assets/fork-github (1) (1).png>)
+![./images/fork-github.png](<../../../.gitbook/assets/fork-github (1).png>)
 
 Create a local clone of your fork
 
@@ -36,7 +36,7 @@ git remote -v
 git checkout -b ISSUE-200
 ```
 
-Make changes. Follow the [Coding Style](docs/open-source-community/developer/backend/coding-style.md) Guide on best practices and [Build the code & run tests](build-code-run-tests.md) on how to set up IntelliJ, Maven.
+Make changes. Follow the [Coding Style](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/docs/open-source-community/developer/backend/coding-style.md) Guide on best practices and [Build the code & run tests](build-code-run-tests.md) on how to set up IntelliJ, Maven.
 
 ## Push your changes to Github
 
@@ -49,11 +49,11 @@ git push origin HEAD:refs/heads/issue-200
 ## Open a PR
 
 1. Go to [https://github.com/open-metadata/OpenMetadata/pulls](https://github.com/open-metadata/OpenMetadata/pulls)
-2. It should show an option to open a pull request. ![./images/pull-request-1.png](../../.gitbook/assets/pull-request-1.png)
+2. It should show an option to open a pull request. ![./images/pull-request-1.png](../../../.gitbook/assets/pull-request-1.png)
 3.  If not, click on "New Pull request"
 
-    ![./images/pull-request.png](../../.gitbook/assets/pull-request.png)
-4. Select your fork repository and branch ![./images/pull-request-2.png](../../.gitbook/assets/pull-request-2.png)
+    ![./images/pull-request.png](../../../.gitbook/assets/pull-request.png)
+4. Select your fork repository and branch ![./images/pull-request-2.png](../../../.gitbook/assets/pull-request-2.png)
 5. Click "Create pull request"
 
 ## We are here to help
