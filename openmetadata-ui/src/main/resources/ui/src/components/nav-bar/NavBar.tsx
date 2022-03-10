@@ -130,47 +130,35 @@ const NavBar = ({
               className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
               data-testid="whatsnew-modal"
               onClick={() => handleFeatureModal(true)}>
-              <PopOver
-                position="bottom"
-                title="What's new?"
-                trigger="mouseenter">
-                <SVGIcons
-                  alt="Doc icon"
-                  className="tw-align-middle tw-mr-1"
-                  icon={Icons.WHATS_NEW}
-                  width="20"
-                />
-              </PopOver>
+              <SVGIcons
+                alt="Doc icon"
+                className="tw-align-middle tw-mr-1"
+                icon={Icons.WHATS_NEW}
+                width="20"
+              />
             </button>
             <button
               className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
               data-testid="tour">
-              <PopOver
-                position="bottom"
-                title="Take a tour"
-                trigger="mouseenter">
-                <Link to={ROUTES.TOUR}>
-                  <SVGIcons
-                    alt="tour icon"
-                    className="tw-align-middle tw-mr-0.5"
-                    icon={Icons.TOUR}
-                    width="20"
-                  />
-                </Link>
-              </PopOver>
+              <Link to={ROUTES.TOUR}>
+                <SVGIcons
+                  alt="tour icon"
+                  className="tw-align-middle tw-mr-0.5"
+                  icon={Icons.TOUR}
+                  width="20"
+                />
+              </Link>
             </button>
             <div className="tw-flex-shrink-0">
               <DropDown
                 dropDownList={supportDropdown}
                 icon={
-                  <PopOver position="bottom" title="Help" trigger="mouseenter">
-                    <SVGIcons
-                      alt="Doc icon"
-                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                      icon={Icons.HELP_CIRCLE}
-                      width="20"
-                    />
-                  </PopOver>
+                  <SVGIcons
+                    alt="Doc icon"
+                    className="tw-align-middle tw-mt-0.5 tw-mr-1"
+                    icon={Icons.HELP_CIRCLE}
+                    width="20"
+                  />
                 }
                 isDropDownIconVisible={false}
                 isLableVisible={false}
