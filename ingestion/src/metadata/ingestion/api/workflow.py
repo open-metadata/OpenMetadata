@@ -170,8 +170,6 @@ class Workflow:
     def stop(self):
         if hasattr(self, "processor"):
             self.processor.close()
-        if hasattr(self, "stage"):
-            self.stage.close()
         if hasattr(self, "bulk_sink"):
             self.bulk_sink.close()
         if hasattr(self, "sink"):
