@@ -426,16 +426,18 @@ export const getInfoElements = (data: ExtraInfo) => {
         <span>
           {data.isLink ? (
             <a
-              className="link-text"
               data-testid="owner-link"
               href={data.value as string}
               rel="noopener noreferrer"
               target={data.openInNewTab ? '_blank' : '_self'}>
               <>
                 <span
-                  className={classNames('tw-mr-1 tw-inline-block tw-truncate', {
-                    'tw-w-52': (displayVal as string).length > 32,
-                  })}
+                  className={classNames(
+                    'tw-mr-1 tw-inline-block tw-truncate link-text',
+                    {
+                      'tw-w-52': (displayVal as string).length > 32,
+                    }
+                  )}
                   title={displayVal as string}>
                   {displayVal}
                 </span>

@@ -39,8 +39,9 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
 
   return (
     <div
-      className="filter-group tw-justify-between tw-mb-2"
-      data-testid={`filter-container-${name}`}>
+      className="filter-group tw-justify-between tw-mb-2 tw-cursor-pointer"
+      data-testid={`filter-container-${name}`}
+      onClick={() => onSelect(!isSelected, name, type)}>
       <div className="tw-flex">
         <input
           checked={isSelected}
