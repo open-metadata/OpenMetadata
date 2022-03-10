@@ -16,11 +16,6 @@ import { FormatedGlossaryTermData } from 'Models';
 import React, { ReactNode } from 'react';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
-// type RelationshipTableType = {
-//   relatedTerms: string;
-//   description: string;
-// };
-
 type Props = {
   data?: FormatedGlossaryTermData[];
   addButton?: ReactNode;

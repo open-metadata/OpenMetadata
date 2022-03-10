@@ -289,14 +289,6 @@ const GlossaryTermsV1 = ({
   useEffect(() => {
     if (glossaryTerm.relatedTerms?.length) {
       setRelatedTerms(glossaryTerm.relatedTerms as FormatedGlossaryTermData[]);
-      // setRelatedTerms(
-      //   glossaryTerm.relatedTerms.map((term) => {
-      //     return {
-      //       relatedTerms: (term.displayName || term.name) as string,
-      //       description: term.description ?? '',
-      //     };
-      //   })
-      // );
     }
   }, [glossaryTerm.relatedTerms]);
 
