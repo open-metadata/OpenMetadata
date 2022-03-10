@@ -16,7 +16,7 @@ import { observer } from 'mobx-react';
 import React from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
-import loginBG from '../../assets/img/login-bg.jpeg';
+import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import LoginButton from '../../components/LoginButton/LoginButton';
 import { ROUTES } from '../../constants/constants';
