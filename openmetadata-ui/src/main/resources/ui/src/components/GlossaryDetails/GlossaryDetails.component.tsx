@@ -25,7 +25,11 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import {
+  getTagCategories,
+  getTaglist,
+  getTagOptionsFromFQN,
+} from '../../utils/TagsUtils';
 import { Button } from '../buttons/Button/Button';
 import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
@@ -299,7 +303,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
               selectedTags={getSelectedTags()}
               showTags={false}
               size="small"
-              tagList={tagList}
+              tagList={getTagOptionsFromFQN(tagList)}
               type="label"
               onCancel={() => {
                 handleTagSelection();

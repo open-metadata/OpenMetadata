@@ -12,7 +12,6 @@
  */
 
 import React from 'react';
-import { TagOption } from 'Models';
 
 export enum DropDownType {
   LINK = 'link',
@@ -22,7 +21,7 @@ export enum DropDownType {
 
 export type DropDownListItem = {
   name: string | React.ReactElement;
-  value?: string | TagOption;
+  value?: string;
   group?: string;
   to?: string;
   disabled?: boolean;
