@@ -40,8 +40,8 @@ OpenMetadata has the following high-level core entities and relationships:
 [databaseservice.md](databaseservice.md)
 {% endcontent-ref %}
 
-{% content-ref url="dbtmodel.md" %}
-[dbtmodel.md](dbtmodel.md)
+{% content-ref url="https://github.com/open-metadata/OpenMetadata/blob/main/docs/openmetadata-apis/schemas/entities/dbtmodel.md" %}
+[https://github.com/open-metadata/OpenMetadata/blob/main/docs/openmetadata-apis/schemas/entities/dbtmodel.md](https://github.com/open-metadata/OpenMetadata/blob/main/docs/openmetadata-apis/schemas/entities/dbtmodel.md)
 {% endcontent-ref %}
 
 {% content-ref url="deleteaction.md" %}
@@ -53,11 +53,11 @@ OpenMetadata has the following high-level core entities and relationships:
 {% endcontent-ref %}
 
 {% content-ref url="glossary.md" %}
-[filters.md](glossary.md)
+[glossary.md](glossary.md)
 {% endcontent-ref %}
 
 {% content-ref url="glossaryterm.md" %}
-[filters.md](glossaryterm.md)
+[glossaryterm.md](glossaryterm.md)
 {% endcontent-ref %}
 
 {% content-ref url="location.md" %}
