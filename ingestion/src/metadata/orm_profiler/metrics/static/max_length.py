@@ -54,6 +54,7 @@ class MaxLength(StaticMetric):
     def name(cls):
         return "maxLength"
 
+    @property
     def metric_type(self):
         return int
 

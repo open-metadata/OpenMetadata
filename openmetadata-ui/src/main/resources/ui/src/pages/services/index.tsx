@@ -17,6 +17,7 @@ import { isNil } from 'lodash';
 import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
   deleteService,
@@ -94,7 +95,8 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const showToast = useToastContext();
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState({
@@ -413,7 +415,7 @@ const ServicesPage = () => {
               <label className="tw-mb-0">
                 {dashboardService.serviceType === DashboardServiceType.Tableau
                   ? 'Site URL:'
-                  : 'Dashboard URL:'}
+                  : 'URL:'}
               </label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {dashboardService.dashboardUrl}
@@ -531,37 +533,38 @@ const ServicesPage = () => {
                       <div
                         className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                         key={index}>
-                        <div className="tw-flex-auto">
-                          <Link
-                            to={getServiceDetailsPath(
-                              service.name,
-                              serviceName
-                            )}>
-                            <button>
-                              <h6
-                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                                data-testid={`service-name-${service.name}`}
-                                title={service.name}>
-                                {service.name}
-                              </h6>
-                            </button>
-                          </Link>
-                          <div
-                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                            data-testid="service-description">
-                            {service.description ? (
-                              <RichTextEditorPreviewer
-                                enableSeeMoreVariant={false}
-                                markdown={service.description}
-                              />
-                            ) : (
-                              <span className="tw-no-description">
-                                No description added
-                              </span>
-                            )}
+                        <div className="tw-flex-auto tw-flex tw-flex-col tw-justify-between">
+                          <div>
+                            <Link
+                              to={getServiceDetailsPath(
+                                service.name,
+                                serviceName
+                              )}>
+                              <button>
+                                <h6
+                                  className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                                  data-testid={`service-name-${service.name}`}
+                                  title={service.name}>
+                                  {service.name}
+                                </h6>
+                              </button>
+                            </Link>
+                            <div
+                              className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                              data-testid="service-description">
+                              {service.description ? (
+                                <RichTextEditorPreviewer
+                                  enableSeeMoreVariant={false}
+                                  markdown={service.description}
+                                />
+                              ) : (
+                                <span className="tw-no-description">
+                                  No description
+                                </span>
+                              )}
+                            </div>
+                            {getOptionalFields(service)}
                           </div>
-                          {getOptionalFields(service)}
-
                           <div className="" data-testid="service-type">
                             <label className="tw-mb-0">Type:</label>
                             <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
@@ -623,12 +626,14 @@ const ServicesPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="link-text tw-underline"
+                        <Button
                           data-testid="add-service-button"
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={handleAddService}>
                           Click here
-                        </button>
+                        </Button>
                       </NonAdminAction>{' '}
                       to add new {servicesDisplayName[serviceName]}
                     </p>

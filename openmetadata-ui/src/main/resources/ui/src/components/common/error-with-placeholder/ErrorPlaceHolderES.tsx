@@ -15,7 +15,7 @@ import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
 import AppState from '../../../AppState';
-import { useAuth } from '../../../hooks/authHooks';
+import { useAuthContext } from '../../../auth-provider/AuthProvider';
 
 type Props = {
   type: 'error' | 'noData';
@@ -54,7 +54,7 @@ const stepsData = [
 ];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
-  const { isAuthDisabled } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const getUserDisplayName = () => {
     return isAuthDisabled
       ? AppState.users?.length > 0

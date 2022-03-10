@@ -20,6 +20,7 @@ import { FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createTeam,
   getTeamByName,
@@ -49,7 +50,11 @@ import {
 } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
+import {
+  getActiveCatClass,
+  getCountBadge,
+  isUrlFriendlyName,
+} from '../../utils/CommonUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -57,7 +62,8 @@ import UserCard from './UserCard';
 const TeamsPage = () => {
   const { team } = useParams() as Record<string, string>;
   const history = useHistory();
-  const { isAuthDisabled, isAdminUser, userPermissions } = useAuth();
+  const { isAdminUser, userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [error, setError] = useState<string>('');
@@ -129,6 +135,8 @@ const TeamsPage = () => {
         errData['name'] = 'Name already exists';
       } else if (data.name.length < 1 || data.name.length > 128) {
         errData['name'] = 'Name size must be between 1 and 128';
+      } else if (!isUrlFriendlyName(data.name.trim())) {
+        errData['name'] = 'Special characters are not allowed';
       }
       if (!data.displayName?.trim()) {
         errData['displayName'] = 'Display name is required';
@@ -569,13 +577,16 @@ const TeamsPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className={classNames('link-text tw-underline', {
+                        <Button
+                          className={classNames({
                             'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                           })}
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={() => setIsAddingTeam(true)}>
                           Click here
-                        </button>
+                        </Button>
                       </NonAdminAction>
                       {' to add new Team'}
                     </div>

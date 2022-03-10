@@ -24,6 +24,18 @@ import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPip
 import Ingestion from './Ingestion.component';
 import { mockIngestionWorkFlow } from './Ingestion.mock';
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 const mockPaging = {
   after: 'after',
   before: 'befor',

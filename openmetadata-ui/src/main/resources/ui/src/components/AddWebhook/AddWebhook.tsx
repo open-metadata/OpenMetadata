@@ -439,23 +439,17 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Configure Your Webhook</h6>
+        <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
         <div className="tw-mb-5">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
-          <br />
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum.
+          OpenMetadata can be configured to automatically send out event
+          notifications to registered webhooks. Enter the webhook name, and an
+          Endpoint URL to receive the HTTP call back on. Use Event Filters to
+          only receive notifications based on events of interest, like when an
+          entity is created, updated, or deleted; and for the entities your
+          application is interested in. Add a description to help people
+          understand the purpose of the webhook and to keep track of the use
+          case. Use advanced configuration to set up a shared secret key to
+          verify the webhook events using HMAC signature.
         </div>
         {getDocButton('Read Webhook Doc', '', 'webhook-doc')}
       </>

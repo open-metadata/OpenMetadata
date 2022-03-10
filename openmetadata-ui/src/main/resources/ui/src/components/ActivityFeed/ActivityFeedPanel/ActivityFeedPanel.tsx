@@ -23,6 +23,8 @@ import React, {
 } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
+import { Button } from '../../buttons/Button/Button';
+import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -39,6 +41,7 @@ interface FeedPanelHeaderProp
     Pick<ActivityFeedPanelProp, 'onCancel'> {
   entityField: string;
   noun?: string;
+  onShowNewConversation?: (v: boolean) => void;
 }
 interface FeedPanelOverlayProp
   extends HTMLAttributes<HTMLButtonElement>,
@@ -53,6 +56,7 @@ export const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   entityField,
   className,
   noun,
+  onShowNewConversation,
 }) => {
   return (
     <header className={className}>
@@ -61,21 +65,41 @@ export const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
           {noun ? noun : 'Conversation'} on{' '}
           <span className="tw-heading">{entityField}</span>
         </p>
-        <svg
-          className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
-          data-testid="closeDrawer"
-          fill="none"
-          stroke="#6B7280"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-          onClick={onCancel}>
-          <path
-            d="M6 18L18 6M6 6l12 12"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          />
-        </svg>
+        <div className="tw-flex">
+          {onShowNewConversation ? (
+            <PopOver
+              position="bottom"
+              title="Start conversation"
+              trigger="mouseenter">
+              <Button
+                className={classNames('tw-h-7 tw-px-2')}
+                data-testid="add-teams"
+                size="small"
+                theme="primary"
+                variant="outlined"
+                onClick={() => {
+                  onShowNewConversation?.(true);
+                }}>
+                <i aria-hidden="true" className="fa fa-plus" />
+              </Button>
+            </PopOver>
+          ) : null}
+          <svg
+            className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
+            data-testid="closeDrawer"
+            fill="none"
+            stroke="#6B7280"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            onClick={onCancel}>
+            <path
+              d="M6 18L18 6M6 6l12 12"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
+          </svg>
+        </div>
       </div>
       <hr className="tw--mx-4" />
     </header>

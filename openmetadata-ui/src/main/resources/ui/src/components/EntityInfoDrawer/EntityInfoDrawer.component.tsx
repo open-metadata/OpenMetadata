@@ -230,9 +230,7 @@ const EntityInfoDrawer = ({
               {entityDetail.description?.trim() ? (
                 <RichTextEditorPreviewer markdown={entityDetail.description} />
               ) : (
-                <p className="tw-text-xs tw-text-grey-muted">
-                  No description added
-                </p>
+                <p className="tw-text-xs tw-text-grey-muted">No description</p>
               )}
             </div>
           </section>

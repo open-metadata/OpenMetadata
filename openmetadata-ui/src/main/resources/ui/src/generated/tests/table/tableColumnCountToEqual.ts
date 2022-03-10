@@ -18,7 +18,7 @@
  */
 export interface TableColumnCountToEqual {
   /**
-   * Expected number of columns to equal to a  {value}
+   * Expected number of columns to equal to a {value}
    */
-  value: number;
+  columnCount: number;
 }

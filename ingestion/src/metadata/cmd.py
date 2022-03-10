@@ -190,13 +190,20 @@ def report(config: str) -> None:
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(start, stop, pause, resume, clean, file_path) -> None:
+@click.option(
+    "-env-file",
+    "--env-file-path",
+    help="Path to env file containing the environment variables",
+    type=click.Path(exists=True, dir_okay=False),
+    required=False,
+)
+def docker(start, stop, pause, resume, clean, file_path, env_file_path) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
-    run_docker(start, stop, pause, resume, clean, file_path)
+    run_docker(start, stop, pause, resume, clean, file_path, env_file_path)
 
 
 @metadata.command()

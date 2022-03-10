@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric
 from metadata.orm_profiler.metrics.static.count import Count
-from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
 
 
 class DuplicateCount(ComposedMetric):
@@ -31,7 +31,7 @@ class DuplicateCount(ComposedMetric):
 
     @classmethod
     def required_metrics(cls) -> Tuple[str, ...]:
-        return Count.name(), UniqueCount.name()
+        return Count.name(), DistinctCount.name()
 
     @property
     def metric_type(self):
@@ -43,7 +43,7 @@ class DuplicateCount(ComposedMetric):
         results of other Metrics
         """
         count = res.get(Count.name())
-        unique_count = res.get(UniqueCount.name())
+        unique_count = res.get(DistinctCount.name())
 
         if count is not None and unique_count is not None:
             return count - unique_count

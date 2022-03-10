@@ -1,5 +1,5 @@
-import classNames from 'classnames';
 import React, { useState } from 'react';
+import { EntityType } from '../../enums/entity.enum';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -43,6 +43,12 @@ const Users = ({ userData }: Props) => {
     },
   ];
 
+  const getEntityDetails = (data: EntityReference[]) => {
+    const includedEntity = Object.values(EntityType);
+
+    return data.filter((d) => includedEntity.includes(d.type as EntityType));
+  };
+
   const fetchLeftPanel = () => {
     return (
       <div className="tw-pt-4">
@@ -65,17 +71,6 @@ const Users = ({ userData }: Props) => {
           <p className="tw-mt-4">
             <span className="tw-text-base tw-font-medium tw-mr-2">
               {userData.displayName || userData.name}
-            </span>
-            <span
-              className={classNames(
-                'tw-text-xs tw-border tw-px-1 tw-py-0.5 tw-rounded',
-                userData.deleted ? 'tw-border-grey-muted' : 'tw-border-success'
-              )}>
-              {userData.deleted ? (
-                <span className="tw-text-grey-muted">Inactive</span>
-              ) : (
-                <span className="tw-text-success">Active</span>
-              )}
             </span>
           </p>
           <p className="tw-mt-2">{userData.email}</p>
@@ -147,14 +142,14 @@ const Users = ({ userData }: Props) => {
       <div>
         {activeTab === 1 &&
           getEntityData(
-            userData?.owns || [],
+            getEntityDetails(userData?.owns || []),
             `${
               userData?.displayName || userData?.name || 'User'
             } does not own anything yet`
           )}
         {activeTab === 2 &&
           getEntityData(
-            userData?.follows || [],
+            getEntityDetails(userData?.follows || []),
             `${
               userData?.displayName || userData?.name || 'User'
             } does not follow anything yet`

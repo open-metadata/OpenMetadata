@@ -27,6 +27,10 @@ import {
   getCurrentUserId,
   requiredField,
 } from '../../../utils/CommonUtils';
+import {
+  filteredColumnTestOption,
+  isSupportedTest,
+} from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -34,6 +38,7 @@ import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 
 type Props = {
   data: ColumnTest;
+  selectedColumn: string;
   column: ModifiedTableColumn[];
   handleAddColumnTestCase: (data: ColumnTest) => void;
   onFormCancel: () => void;
@@ -50,6 +55,7 @@ export const Field = ({
 };
 
 const ColumnTestForm = ({
+  selectedColumn,
   data,
   column,
   handleAddColumnTestCase,
@@ -77,12 +83,15 @@ const ColumnTestForm = ({
     data?.testCase?.config?.forbiddenValues || ['']
   );
   const [isShowError, setIsShowError] = useState({
+    testName: false,
     columnName: false,
     regex: false,
     minOrMax: false,
     missingCountValue: false,
     values: false,
     minMaxValue: false,
+    allTestAdded: false,
+    notSupported: false,
   });
 
   const [columnName, setColumnName] = useState(data?.columnName);
@@ -114,36 +123,50 @@ const ColumnTestForm = ({
     setIsShowError({ ...isShowError, values: false });
   };
 
+  const setAllTestOption = (datatype: string) => {
+    const newTest = filteredColumnTestOption(datatype);
+    setTestTypeOptions(newTest);
+    setColumnTest('' as ColumnTestType);
+  };
+
   const handleTestTypeOptionChange = (name: string) => {
-    const selectedColumn = column.find((d) => d.name === name);
-    const existingTests =
-      selectedColumn?.columnTests?.map(
-        (d: ColumnTest) => d.testCase.columnTestType
-      ) || [];
-    if (existingTests.length) {
-      const newTest = Object.values(ColumnTestType).filter(
-        (d) => !existingTests.includes(d)
-      );
-      setTestTypeOptions(newTest);
-      setColumnTest(newTest[0]);
+    if (!isEmpty(name)) {
+      const selectedColumn = column.find((d) => d.name === name);
+      const existingTests =
+        selectedColumn?.columnTests?.map(
+          (d: ColumnTest) => d.testCase.columnTestType
+        ) || [];
+      if (existingTests.length) {
+        const newTest = filteredColumnTestOption(
+          selectedColumn?.dataType || ''
+        ).filter((d) => !existingTests.includes(d));
+        setTestTypeOptions(newTest);
+        setColumnTest(newTest[0]);
+      } else {
+        setAllTestOption(selectedColumn?.dataType || '');
+      }
     } else {
-      const newTest = Object.values(ColumnTestType);
-      setTestTypeOptions(newTest);
-      setColumnTest(newTest[0]);
+      setAllTestOption('');
     }
   };
 
   useEffect(() => {
     if (isUndefined(data)) {
-      const allOption = column.filter((value) => {
-        return (
-          value?.dataType !== 'STRUCT' &&
-          value.columnTests?.length !== Object.values(ColumnTestType).length
-        );
-      });
-      setColumnOptions(allOption);
-      setColumnName(allOption[0]?.name || '');
-      handleTestTypeOptionChange(allOption[0]?.name || '');
+      if (!isEmpty(selectedColumn)) {
+        const selectedData = column.find((d) => d.name === selectedColumn);
+        const allTestAdded =
+          selectedData?.columnTests?.length ===
+          filteredColumnTestOption(selectedData?.dataType || '').length;
+        const isSupported = isSupportedTest(selectedData?.dataType || '');
+        setIsShowError({
+          ...isShowError,
+          allTestAdded,
+          notSupported: isSupported,
+        });
+      }
+      setColumnOptions(column);
+      setColumnName(selectedColumn || '');
+      handleTestTypeOptionChange(selectedColumn || '');
     } else {
       setColumnOptions(column);
       setTestTypeOptions(Object.values(ColumnTestType));
@@ -154,6 +177,7 @@ const ColumnTestForm = ({
   const validateForm = () => {
     const errMsg = cloneDeep(isShowError);
     errMsg.columnName = isEmpty(columnName);
+    errMsg.testName = isEmpty(columnTest);
 
     switch (columnTest) {
       case ColumnTestType.columnValueLengthsToBeBetween:
@@ -191,16 +215,22 @@ const ColumnTestForm = ({
   const getTestConfi = () => {
     switch (columnTest) {
       case ColumnTestType.columnValueLengthsToBeBetween:
+        return {
+          minLength: !isEmpty(minValue) ? minValue : undefined,
+          maxLength: !isEmpty(maxValue) ? maxValue : undefined,
+        };
       case ColumnTestType.columnValuesToBeBetween:
         return {
-          minValue: minValue,
-          maxValue: maxValue,
+          minValue: !isEmpty(minValue) ? minValue : undefined,
+          maxValue: !isEmpty(maxValue) ? maxValue : undefined,
         };
 
       case ColumnTestType.columnValuesMissingCountToBeEqual:
         return {
           missingCountValue: missingCountValue,
-          missingValueMatch: missingValueMatch,
+          missingValueMatch: !isEmpty(missingValueMatch)
+            ? missingValueMatch
+            : undefined,
         };
 
       case ColumnTestType.columnValuesToBeNotInSet:
@@ -214,7 +244,13 @@ const ColumnTestForm = ({
         };
 
       case ColumnTestType.columnValuesToBeNotNull:
+        return {
+          columnValuesToBeNotNull: true,
+        };
       case ColumnTestType.columnValuesToBeUnique:
+        return {
+          columnValuesToBeUnique: true,
+        };
       default:
         return {};
     }
@@ -263,6 +299,7 @@ const ColumnTestForm = ({
         errorMsg.missingCountValue = false;
         errorMsg.values = false;
         errorMsg.minMaxValue = false;
+        errorMsg.testName = false;
 
         break;
       }
@@ -297,7 +334,12 @@ const ColumnTestForm = ({
         setForbiddenValues(['']);
         setColumnName(value);
         handleTestTypeOptionChange(value);
+        errorMsg.allTestAdded =
+          selectedColumn?.columnTests?.length ===
+          filteredColumnTestOption(selectedColumn?.dataType || '').length;
         errorMsg.columnName = false;
+        errorMsg.testName = false;
+        errorMsg.notSupported = isSupportedTest(selectedColumn?.dataType || '');
 
         break;
       }
@@ -528,6 +570,7 @@ const ColumnTestForm = ({
               name="columnName"
               value={columnName}
               onChange={handleValidation}>
+              <option value="">Select column name</option>
               {columnOptions.map((option) => (
                 <option key={option.name} value={option.name}>
                   {option.name}
@@ -535,6 +578,10 @@ const ColumnTestForm = ({
               ))}
             </select>
             {isShowError.columnName && errorMsg('Column name is required.')}
+            {isShowError.notSupported &&
+              errorMsg('Complex data type is not yet supported for test.')}
+            {isShowError.allTestAdded &&
+              errorMsg('All the tests have been added to the selected column.')}
           </Field>
 
           <Field>
@@ -550,6 +597,7 @@ const ColumnTestForm = ({
               name="columTestType"
               value={columnTest}
               onChange={handleValidation}>
+              <option value="">Select column test</option>
               {testTypeOptions &&
                 testTypeOptions.length > 0 &&
                 testTypeOptions.map((option) => (
@@ -558,6 +606,7 @@ const ColumnTestForm = ({
                   </option>
                 ))}
             </select>
+            {isShowError.testName && errorMsg('Column test is required.')}
           </Field>
 
           <Field>
@@ -605,6 +654,7 @@ const ColumnTestForm = ({
             </Button>
             <Button
               className="tw-w-16 tw-h-10"
+              disabled={isShowError.allTestAdded || isShowError.notSupported}
               size="regular"
               theme="primary"
               variant="contained"

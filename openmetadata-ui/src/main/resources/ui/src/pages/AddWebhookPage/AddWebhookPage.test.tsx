@@ -11,6 +11,18 @@ jest.mock('../../components/containers/PageContainerV1', () => {
     ));
 });
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 jest.mock('../../components/AddWebhook/AddWebhook', () => {
   return jest.fn().mockImplementation(() => <div>AddWebhookComponent</div>);
 });

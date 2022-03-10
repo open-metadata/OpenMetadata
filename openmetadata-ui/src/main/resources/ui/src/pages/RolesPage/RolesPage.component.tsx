@@ -19,6 +19,7 @@ import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createRole,
   getPolicy,
@@ -52,7 +53,11 @@ import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import { getActiveCatClass, isEven } from '../../utils/CommonUtils';
+import {
+  getActiveCatClass,
+  isEven,
+  isUrlFriendlyName,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from '../teams/AddUsersModal';
 import Form from '../teams/Form';
@@ -66,7 +71,8 @@ const getActiveTabClass = (tab: number, currentTab: number) => {
 const RolesPage = () => {
   const showToast = useToastContext();
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [currentRole, setCurrentRole] = useState<Role>();
   const [currentPolicy, setCurrentPolicy] = useState<Policy>();
   const [error, setError] = useState<string>('');
@@ -109,6 +115,8 @@ const RolesPage = () => {
         errData['name'] = 'Name already exists';
       } else if (data.name.length < 1 || data.name.length > 128) {
         errData['name'] = 'Name size must be between 1 and 128';
+      } else if (!isUrlFriendlyName(data.name.trim())) {
+        errData['name'] = 'Special characters are not allowed';
       }
       if (!data.displayName?.trim()) {
         errData['displayName'] = 'Display name is required';
@@ -169,7 +177,7 @@ const RolesPage = () => {
       .then((res: AxiosResponse) => {
         const { data } = res.data;
         setRoles(data);
-        setDefaultRole(data.find((role: Role) => role.default));
+        setDefaultRole(data.find((role: Role) => role.defaultRole));
         setCurrentRole(data[0]);
         AppState.updateUserRole(data);
       })
@@ -300,7 +308,7 @@ const RolesPage = () => {
 
   const onSetDefaultRole = () => {
     if (isSettingDefaultRole) {
-      const updatedRole = { ...currentRole, default: true };
+      const updatedRole = { ...currentRole, defaultRole: true };
       const jsonPatch = compare(currentRole as Role, updatedRole);
       updateRole(currentRole?.id as string, jsonPatch)
         .then((res: AxiosResponse) => {
@@ -309,7 +317,7 @@ const RolesPage = () => {
             setRoles((pre) => {
               return pre.map((role) => ({
                 ...role,
-                default: false,
+                defaultRole: false,
               }));
             });
           }
@@ -410,7 +418,7 @@ const RolesPage = () => {
     return (
       <span
         className={classNames(
-          'tw-border tw-border-grey-muted tw-rounded tw-px-1 tw-font-normal',
+          'tw-border tw-border-grey-muted tw-rounded tw-px-1 tw-font-normal tw-text-sm',
           className
         )}>
         Default
@@ -503,7 +511,7 @@ const RolesPage = () => {
                 title={role.displayName}>
                 <span>{role.displayName}</span>{' '}
               </p>
-              {role.default ? getDefaultBadge() : null}
+              {role.defaultRole ? getDefaultBadge() : null}
             </div>
           ))}
       </>
@@ -514,7 +522,7 @@ const RolesPage = () => {
     if (!rules.length) {
       return (
         <div className="tw-text-center tw-py-5">
-          <p className="tw-text-base">No Rules Added.</p>
+          <p className="tw-text-base">No rules.</p>
         </div>
       );
     }
@@ -735,12 +743,12 @@ const RolesPage = () => {
                         className="tw-heading tw-text-link tw-text-base"
                         data-testid="header-title">
                         {currentRole?.displayName}
-                        {currentRole?.default
+                        {currentRole?.defaultRole
                           ? getDefaultBadge('tw-ml-2')
                           : null}
                       </div>
                       <div className="tw-flex">
-                        {!currentRole?.default ? (
+                        {!currentRole?.defaultRole ? (
                           <NonAdminAction
                             position="bottom"
                             title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -818,14 +826,16 @@ const RolesPage = () => {
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <button
-                          className="link-text tw-underline"
+                        <Button
+                          size="small"
+                          theme="primary"
+                          variant="outlined"
                           onClick={() => {
                             setErrorData(undefined);
                             setIsAddingRole(true);
                           }}>
                           Click here
-                        </button>
+                        </Button>
                         {' to add new Role'}
                       </NonAdminAction>
                     </p>

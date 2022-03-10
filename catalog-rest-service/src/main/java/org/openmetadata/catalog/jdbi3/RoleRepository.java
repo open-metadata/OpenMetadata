@@ -330,19 +330,19 @@ public class RoleRepository extends EntityRepository<Role> {
 
     private void updateDefault(Role origRole, Role updatedRole) throws IOException, ParseException {
       long startTime = System.nanoTime();
-      if (Boolean.FALSE.equals(origRole.getDefault()) && Boolean.TRUE.equals(updatedRole.getDefault())) {
+      if (Boolean.FALSE.equals(origRole.getDefaultRole()) && Boolean.TRUE.equals(updatedRole.getDefaultRole())) {
         setDefaultToTrue(updatedRole);
       }
-      if (Boolean.TRUE.equals(origRole.getDefault()) && Boolean.FALSE.equals(updatedRole.getDefault())) {
+      if (Boolean.TRUE.equals(origRole.getDefaultRole()) && Boolean.FALSE.equals(updatedRole.getDefaultRole())) {
         setDefaultToFalse(updatedRole);
       }
-      recordChange("default", origRole.getDefault(), updatedRole.getDefault());
+      recordChange("default", origRole.getDefaultRole(), updatedRole.getDefaultRole());
       LOG.debug(
           "Took {} ns to update {} role field default from {} to {}",
           System.nanoTime() - startTime,
           updatedRole.getName(),
-          origRole.getDefault(),
-          updatedRole.getDefault());
+          origRole.getDefaultRole(),
+          updatedRole.getDefaultRole());
     }
 
     private void setDefaultToTrue(Role role) throws IOException, ParseException {
@@ -356,7 +356,7 @@ public class RoleRepository extends EntityRepository<Role> {
         }
         Role origDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), ROLE_PATCH_FIELDS);
         Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), ROLE_PATCH_FIELDS);
-        updatedDefaultRole = updatedDefaultRole.withDefault(false);
+        updatedDefaultRole = updatedDefaultRole.withDefaultRole(false);
         new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
       }
       List<User> users = getAllUsers();

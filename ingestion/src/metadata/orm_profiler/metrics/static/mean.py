@@ -55,6 +55,7 @@ class Mean(StaticMetric):
     def name(cls):
         return "mean"
 
+    @property
     def metric_type(self):
         return float
 

@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { ROUTES, TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
 import { Button } from '../buttons/Button/Button';
@@ -16,7 +17,8 @@ const Glossary: FunctionComponent<GlossaryProps> = ({
   paging,
   onPageChange,
 }: GlossaryProps) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
 
   const onAddGlossary = () => {

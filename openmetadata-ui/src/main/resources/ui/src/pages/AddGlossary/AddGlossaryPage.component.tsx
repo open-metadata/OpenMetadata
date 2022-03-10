@@ -2,6 +2,7 @@ import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -12,7 +13,8 @@ import useToastContext from '../../hooks/useToastContext';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const showToast = useToastContext();
   const [tagList, setTagList] = useState<Array<string>>([]);

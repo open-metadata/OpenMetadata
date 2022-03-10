@@ -15,6 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   addGlossaryTerm,
   getGlossariesByName,
@@ -35,7 +36,8 @@ const AddGlossaryTermPage = () => {
     useParams<{ [key: string]: string }>();
   const showToast = useToastContext();
   const history = useHistory();
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [status, setStatus] = useState<LoadingState>('initial');
   const [isLoading, setIsLoading] = useState(true);
   const [glossaryData, setGlossaryData] = useState<Glossary>();

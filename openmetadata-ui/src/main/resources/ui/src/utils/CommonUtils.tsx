@@ -30,6 +30,7 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
@@ -389,12 +390,16 @@ export const getSvgArrow = (isActive: boolean) => {
 };
 
 export const isValidUrl = (href: string) => {
-  const regex = new RegExp(
-    // eslint-disable-next-line no-useless-escape
-    /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g
-  );
+  if (!href) {
+    return false;
+  }
+  try {
+    const url = new URL(href);
 
-  return href.match(regex);
+    return Boolean(url.href);
+  } catch {
+    return false;
+  }
 };
 
 export const getFields = (defaultFields: string, tabSpecificField: string) => {
@@ -485,7 +490,11 @@ export const getRandomColor = (name: string) => {
   const b = num & 255;
 
   return {
-    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.3)',
+    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.6)',
     character: firstAlphabet.toUpperCase(),
   };
+};
+
+export const isUrlFriendlyName = (value: string) => {
+  return !UrlEntityCharRegEx.test(value);
 };

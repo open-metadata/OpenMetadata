@@ -54,6 +54,7 @@ class MinLength(StaticMetric):
     def name(cls):
         return "minLength"
 
+    @property
     def metric_type(self):
         return int
 

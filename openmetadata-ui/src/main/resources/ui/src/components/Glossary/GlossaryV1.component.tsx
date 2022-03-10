@@ -17,6 +17,7 @@ import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -41,6 +42,7 @@ import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 type Props = {
   assetData: GlossaryTermAssets;
   deleteStatus: LoadingState;
+  isSearchResultEmpty: boolean;
   isHasAccess: boolean;
   glossaryList: ModifiedGlossaryData[];
   selectedKey: string;
@@ -74,6 +76,7 @@ type ModifiedDataNode = DataNode & {
 const GlossaryV1 = ({
   assetData,
   deleteStatus = 'initial',
+  isSearchResultEmpty,
   isHasAccess,
   glossaryList,
   selectedKey,
@@ -96,7 +99,8 @@ const GlossaryV1 = ({
   onAssetPaginate,
 }: // handlePathChange,
 Props) => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const treeRef = useRef<RcTree<DataNode>>(null);
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<
@@ -200,18 +204,27 @@ Props) => {
                 showLoadingStatus
                 placeholder="Search term..."
                 searchValue={searchText}
-                typingInterval={1500}
+                typingInterval={500}
                 onSearch={handleSearchText}
               />
-
-              <TreeView
-                expandedKeys={expandedKey}
-                handleClick={handleTreeClick}
-                handleExpand={(key) => handleExpandedKey(key as string[])}
-                ref={treeRef}
-                selectedKeys={[selectedKey]}
-                treeData={treeData}
-              />
+              {isSearchResultEmpty ? (
+                <p className="tw-text-grey-muted tw-text-center">
+                  {searchText ? (
+                    <span>{`No Glossary found for "${searchText}"`}</span>
+                  ) : (
+                    <span>No Glossary found</span>
+                  )}
+                </p>
+              ) : (
+                <TreeView
+                  expandedKeys={expandedKey}
+                  handleClick={handleTreeClick}
+                  handleExpand={(key) => handleExpandedKey(key as string[])}
+                  ref={treeRef}
+                  selectedKeys={[selectedKey]}
+                  treeData={treeData}
+                />
+              )}
             </>
           ) : (
             <Loader />
@@ -266,7 +279,7 @@ Props) => {
           {showActions && (
             <DropDownList
               horzPosRight
-              dropDownList={getActionsList(selectedData.name)}
+              dropDownList={getActionsList()}
               onSelect={handleSelectedAction}
             />
           )}

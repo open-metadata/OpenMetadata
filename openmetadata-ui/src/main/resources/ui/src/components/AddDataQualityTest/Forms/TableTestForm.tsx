@@ -54,7 +54,7 @@ const TableTestForm = ({
 }: Props) => {
   const markdownRef = useRef<EditorContentRef>();
   const [tableTest, setTableTest] = useState<TableTestType | undefined>(
-    data?.testCase?.tableTestType
+    data?.testCase?.tableTestType || ('' as TableTestType)
   );
   const [description] = useState(data?.description || '');
   const [minValue, setMinValue] = useState<number | undefined>(
@@ -75,6 +75,8 @@ const TableTestForm = ({
     minOrMax: false,
     values: false,
     minMaxValue: false,
+    allTestAdded: false,
+    tableTest: false,
   });
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>();
 
@@ -86,8 +88,13 @@ const TableTestForm = ({
       const newTest = Object.values(TableTestType).filter(
         (d) => !existingTest.includes(d)
       );
+      const allTestAdded =
+        tableTestCase.length === Object.values(TableTestType).length;
+      setIsShowError({
+        ...isShowError,
+        allTestAdded,
+      });
       setTestTypeOptions(newTest);
-      setTableTest(newTest[0]);
     } else {
       const testValue = Object.values(TableTestType);
       setTestTypeOptions(testValue);
@@ -100,6 +107,8 @@ const TableTestForm = ({
 
     const isTableRowCountToBeBetweenTest =
       tableTest === TableTestType.TableRowCountToBeBetween;
+
+    errMsg.tableTest = isEmpty(tableTest);
 
     if (isTableRowCountToBeBetweenTest) {
       errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
@@ -115,20 +124,36 @@ const TableTestForm = ({
     return !Object.values(errMsg).includes(true);
   };
 
-  const handleSave = () => {
-    const isTableRowCountToBeBetweenTest =
-      tableTest === TableTestType.TableRowCountToBeBetween;
+  const getConfigValue = () => {
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+        return {
+          maxValue: isEmpty(maxValue) ? undefined : maxValue,
+          minValue: isEmpty(minValue) ? undefined : minValue,
+        };
 
+      case TableTestType.TableColumnCountToEqual:
+        return {
+          columnCount: isEmpty(value) ? undefined : value,
+        };
+
+      case TableTestType.TableRowCountToEqual:
+        return {
+          value: isEmpty(value) ? undefined : value,
+        };
+
+      default:
+        return {};
+    }
+  };
+
+  const handleSave = () => {
     if (validateForm()) {
       const createTest: CreateTableTest = {
         description: markdownRef.current?.getEditorContent() || undefined,
         executionFrequency: frequency,
         testCase: {
-          config: {
-            maxValue: isTableRowCountToBeBetweenTest ? maxValue : undefined,
-            minValue: isTableRowCountToBeBetweenTest ? minValue : undefined,
-            value: isTableRowCountToBeBetweenTest ? undefined : value,
-          },
+          config: getConfigValue(),
           tableTestType: tableTest,
         },
         owner: {
@@ -275,6 +300,7 @@ const TableTestForm = ({
               name="tableTestType"
               value={tableTest}
               onChange={handleValidation}>
+              <option value="">Select table test</option>
               {testTypeOptions &&
                 testTypeOptions.length > 0 &&
                 testTypeOptions.map((option) => (
@@ -283,6 +309,8 @@ const TableTestForm = ({
                   </option>
                 ))}
             </select>
+            {isShowError.allTestAdded &&
+              errorMsg('All the tests have been added to the table.')}
           </Field>
 
           <Field>
@@ -333,6 +361,7 @@ const TableTestForm = ({
           </Button>
           <Button
             className="tw-w-16 tw-h-10"
+            disabled={isShowError.allTestAdded}
             size="regular"
             theme="primary"
             variant="contained"

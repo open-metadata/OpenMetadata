@@ -52,7 +52,7 @@ jest.mock('../../IngestionStepper/IngestionStepper.component', () => {
 });
 
 jest.mock('../../../utils/ServiceUtils', () => ({
-  getIngestionTypeList: jest.fn().mockReturnValue(['bigquery']),
+  getAirflowPipelineTypes: jest.fn().mockReturnValue(['bigquery']),
   getIsIngestionEnable: jest
     .fn()
     .mockImplementation((service) => service === 'databaseServices'),

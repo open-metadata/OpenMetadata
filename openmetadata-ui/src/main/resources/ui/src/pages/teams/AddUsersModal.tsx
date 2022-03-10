@@ -101,10 +101,10 @@ const AddUsersModal = ({
         <div className="tw-modal-body">
           <Searchbar
             placeholder={
-              searchPlaceHolder ? searchPlaceHolder : 'Search for user...'
+              searchPlaceHolder ? searchPlaceHolder : 'Search for a user...'
             }
             searchValue={searchText}
-            typingInterval={1500}
+            typingInterval={500}
             onSearch={handleSearchAction}
           />
           <div className="tw-grid tw-grid-cols-3 tw-gap-4">

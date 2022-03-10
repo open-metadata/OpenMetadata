@@ -23,7 +23,7 @@ const mockItem = {
   email: 'string@email.com',
   isActiveUser: true,
   profilePhoto: '',
-  teamCount: 2,
+  teamCount: 'Cloud_Infra',
 };
 
 const mockRemove = jest.fn();

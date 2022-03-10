@@ -18,7 +18,7 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { User } from '../../../generated/entity/teams/user';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -53,7 +53,7 @@ type Props = {
   entityFieldThreads?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string) => void;
   followHandler?: () => void;
-  tagsHandler?: (selectedTags?: Array<string>) => void;
+  tagsHandler?: (selectedTags?: Array<EntityTags>) => void;
   versionHandler?: () => void;
 };
 
@@ -85,12 +85,33 @@ const EntityPageInfo = ({
   const [entityFollowers, setEntityFollowers] =
     useState<Array<User>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
-  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
-    tagsHandler?.(selectedTags?.map((tag) => tag.tagFQN));
-    setIsEditable(false);
-  };
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+
+  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const prevTags =
+        tags?.filter((tag) =>
+          selectedTags
+            .map((selTag) => selTag.tagFQN)
+            .includes(tag?.tagFQN as string)
+        ) || [];
+      const newTags = selectedTags
+        .filter((tag) => {
+          return !prevTags
+            ?.map((prevTag) => prevTag.tagFQN)
+            .includes(tag.tagFQN);
+        })
+        .map((tag) => ({
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          source: tagList.includes(tag.tagFQN) ? 'Tag' : 'Glossary',
+          tagFQN: tag.tagFQN,
+        }));
+      tagsHandler?.([...prevTags, ...newTags]);
+    }
+    setIsEditable(false);
+  };
 
   const getSelectedTags = () => {
     return tier?.tagFQN

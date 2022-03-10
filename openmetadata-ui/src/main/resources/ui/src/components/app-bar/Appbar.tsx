@@ -24,6 +24,7 @@ import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
   getTeamDetailsPath,
+  getUserPath,
   navLinkSettings,
   ROUTES,
 } from '../../constants/constants';
@@ -149,7 +150,10 @@ const Appbar: React.FC = (): JSX.Element => {
 
     return (
       <div data-testid="greeting-text">
-        <span className="tw-font-medium">{name}</span>
+        <Link to={getUserPath(currentUser?.name as string)}>
+          {' '}
+          <span className="tw-font-medium tw-cursor-pointer">{name}</span>
+        </Link>
         <hr className="tw-my-1.5" />
         {(roles?.length ?? 0) > 0 ? (
           <div>

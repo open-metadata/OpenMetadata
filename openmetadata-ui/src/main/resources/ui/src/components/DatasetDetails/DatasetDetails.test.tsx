@@ -27,6 +27,18 @@ import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import DatasetDetails from './DatasetDetails.component';
 import { DatasetOwner } from './DatasetDetails.interface';
 
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
+
 const mockUserTeam = [
   {
     description: 'description',
@@ -88,6 +100,7 @@ const DatasetDetailsProps = {
   testMode: 'table' as DatasetTestModeType,
   handleAddTableTestCase: jest.fn(),
   tableTestCase: [],
+  selectedColumn: '',
   handleAddColumnTestCase: jest.fn(),
   createThread: jest.fn(),
   handleShowTestForm: jest.fn(),

@@ -81,10 +81,7 @@ const UserList: FunctionComponent<Props> = ({
       default:
         setUsers(
           userList.filter(
-            (user) =>
-              !user.isAdmin &&
-              !user.isBot &&
-              isIncludes(user.displayName || user.name)
+            (user) => !user.isBot && isIncludes(user.displayName || user.name)
           )
         );
 
@@ -93,7 +90,7 @@ const UserList: FunctionComponent<Props> = ({
   };
 
   const setAllTabList = () => {
-    setUsers(userList.filter((user) => !user.isAdmin && !user.isBot));
+    setUsers(userList.filter((user) => !user.isBot));
     setAdmins(userList.filter((user) => user.isAdmin));
     setBots(userList.filter((user) => user.isBot));
   };
@@ -310,11 +307,19 @@ const UserList: FunctionComponent<Props> = ({
               email: user.email || '',
               isActiveUser: !user.deleted,
               profilePhoto: user.profile?.images?.image || '',
-              teamCount: user.teams?.length || 0,
+              teamCount:
+                user.teams
+                  ?.map((team) => team.displayName ?? team.name)
+                  ?.join(', ') ?? '',
             };
 
             return (
-              <UserDataCard item={User} key={index} onClick={selectUser} />
+              <div
+                className="tw-cursor-pointer"
+                key={index}
+                onClick={() => selectUser(User.id)}>
+                <UserDataCard item={User} onClick={selectUser} />
+              </div>
             );
           })}
         </div>

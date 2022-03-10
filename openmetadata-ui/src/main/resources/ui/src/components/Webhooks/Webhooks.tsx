@@ -12,10 +12,10 @@
  */
 
 import classNames from 'classnames';
-import { isNil, startCase } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import { cloneDeep, isNil, startCase } from 'lodash';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { Status } from '../../generated/entity/events/webhook';
+import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import { getDocButton } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
@@ -52,11 +52,34 @@ const statuses = [
 const Webhooks: FunctionComponent<WebhooksProps> = ({
   data = [],
   paging,
+  selectedStatus = [],
   onAddWebhook,
   onClickWebhook,
   onPageChange,
+  onStatusFilter,
 }: WebhooksProps) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
+  const [filteredData, setFilteredData] = useState<Array<Webhook>>(data);
+
+  const getFilteredWebhooks = () => {
+    return selectedStatus.length
+      ? data.filter(
+          (item) => item.status && selectedStatus.includes(item.status)
+        )
+      : data;
+  };
+
+  const handleStatusSelection = (status: Status) => {
+    const arrStatus = cloneDeep(selectedStatus);
+    if (arrStatus.includes(status)) {
+      const index = arrStatus.indexOf(status);
+      arrStatus.splice(index, 1);
+    } else {
+      arrStatus.push(status);
+    }
+
+    onStatusFilter(arrStatus);
+  };
 
   const fetchLeftPanel = () => {
     return (
@@ -78,9 +101,13 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
               key={index}>
               <div className="tw-flex">
                 <input
+                  checked={selectedStatus.includes(statusType.value)}
                   className="tw-mr-1 custom-checkbox"
                   data-testid="checkbox"
                   type="checkbox"
+                  onChange={() => {
+                    handleStatusSelection(statusType.value);
+                  }}
                 />
                 <div
                   className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
@@ -99,53 +126,20 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
     return (
       <>
         <div className="tw-mb-5 tw-mt-11">
-          Webhook allow external services to be notified when certain events
-          happen. When the special event happen, we’ll send a POST request to
-          each of the URLs you provide. Learn more in our Webhooks Guide .
+          The webhook allows external services to be notified of the metadata
+          change events happening in your organization through APIs. Register
+          callback URLs with webhook integration to receive metadata event
+          notifications. You can add, list, update, and delete webhooks.
         </div>
         {getDocButton('Webhooks Guide', '', 'webhook-doc')}
       </>
     );
   };
 
-  return data.length ? (
-    <PageLayout leftPanel={fetchLeftPanel()} rightPanel={fetchRightPanel()}>
-      <div className="">
-        <div className="tw-flex tw-justify-end tw-items-center">
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-webhook-button"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={onAddWebhook}>
-              Add Webhook
-            </Button>
-          </NonAdminAction>
-        </div>
-        {data.map((webhook, index) => (
-          <div className="tw-mb-3" key={index}>
-            <WebhookDataCard
-              description={webhook.description}
-              endpoint={webhook.endpoint}
-              name={webhook.name}
-              status={webhook.status}
-              onClick={onClickWebhook}
-            />
-          </div>
-        ))}
-        {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-          <NextPrevious paging={paging} pagingHandler={onPageChange} />
-        )}
-      </div>
-    </PageLayout>
-  ) : (
-    <PageLayout>
+  const fetchErrorPlaceHolder = (message: string) => {
+    return (
       <ErrorPlaceHolder>
-        <p className="tw-text-center">No webhooks found</p>
+        <p className="tw-text-center">{message}</p>
         <p className="tw-text-center">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
@@ -157,12 +151,62 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
               theme="primary"
               variant="contained"
               onClick={onAddWebhook}>
-              Add New Webhook
+              Add Webhook
             </Button>
           </NonAdminAction>
         </p>
       </ErrorPlaceHolder>
+    );
+  };
+
+  useEffect(() => {
+    setFilteredData(getFilteredWebhooks());
+  }, [data, selectedStatus]);
+
+  return data.length ? (
+    <PageLayout leftPanel={fetchLeftPanel()} rightPanel={fetchRightPanel()}>
+      <div>
+        {filteredData.length ? (
+          <>
+            <div className="tw-flex tw-justify-end tw-items-center">
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                    'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                  })}
+                  data-testid="add-webhook-button"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={onAddWebhook}>
+                  Add Webhook
+                </Button>
+              </NonAdminAction>
+            </div>
+            {filteredData.map((webhook, index) => (
+              <div className="tw-mb-3" key={index}>
+                <WebhookDataCard
+                  description={webhook.description}
+                  endpoint={webhook.endpoint}
+                  name={webhook.name}
+                  status={webhook.status}
+                  onClick={onClickWebhook}
+                />
+              </div>
+            ))}
+            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+              <NextPrevious paging={paging} pagingHandler={onPageChange} />
+            )}
+          </>
+        ) : (
+          fetchErrorPlaceHolder('No webhooks found for applied filters')
+        )}
+      </div>
     </PageLayout>
+  ) : (
+    <PageLayout>{fetchErrorPlaceHolder('No webhooks found')}</PageLayout>
   );
 };
 

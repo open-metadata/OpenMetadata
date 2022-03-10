@@ -225,8 +225,14 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   const [threads, setThreads] = useState<EntityThread[]>([]);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
+  const [showNewConversation, setShowNewConversation] =
+    useState<boolean>(false);
 
   const entityField = getEntityField(threadLink);
+
+  const onShowNewConversation = (value: boolean) => {
+    setShowNewConversation(value);
+  };
 
   const getThreads = () => {
     getAllFeeds(threadLink).then((res: AxiosResponse) => {
@@ -299,7 +305,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-9999',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -310,7 +316,13 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           entityField={entityField as string}
           noun="Conversations"
           onCancel={onCancel}
+          onShowNewConversation={
+            threads.length > 0 && isUndefined(selectedThread)
+              ? onShowNewConversation
+              : undefined
+          }
         />
+
         {!isUndefined(selectedThread) ? (
           <Fragment>
             <p
@@ -326,6 +338,19 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           </Fragment>
         ) : (
           <Fragment>
+            {showNewConversation || threads.length === 0 ? (
+              <div className="tw-pt-6">
+                <p className="tw-ml-9 tw-mr-2 tw-my-2">
+                  You are starting a new conversation
+                </p>
+                <ActivityFeedEditor
+                  buttonClass="tw-mr-4"
+                  className="tw-ml-5 tw-mr-2"
+                  placeHolder="Enter a message"
+                  onSave={onPostThread}
+                />
+              </div>
+            ) : null}
             <ActivityThreadList
               className="tw-py-6 tw-pl-5"
               postFeed={postFeed}
@@ -333,12 +358,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               threads={threads}
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}
-            />
-            <ActivityFeedEditor
-              buttonClass="tw-mr-4"
-              className="tw-ml-5 tw-mr-2 tw-mb-6"
-              placeHolder="Enter a message"
-              onSave={onPostThread}
             />
           </Fragment>
         )}

@@ -20,4 +20,7 @@ export const excludedMetrics = [
   'uniqueProportion',
   'rows',
   'histogram',
+  'missingCount',
+  'missingPercentage',
+  'distinctProportion',
 ];

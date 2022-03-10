@@ -144,7 +144,7 @@
     * [Stage](open-source-community/developer/build-a-connector/stage.md)
     * [BulkSink](open-source-community/developer/build-a-connector/bulksink.md)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
-  * [UI](docs/open-source-community/developer/ui/README.md)
+  * [UI](open-source-community/developer/ui/README.md)
   * [Solution Design](open-source-community/developer/solution-design.md)
   * [Python API](open-source-community/developer/python-api.md)
   * [Entities](open-source-community/developer/entities/README.md)

@@ -17,6 +17,7 @@ import { isUndefined, toLower } from 'lodash';
 import { EntityTags, FormErrorData } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createTag,
   createTagCategory,
@@ -50,13 +51,15 @@ import {
   getActiveCatClass,
   getCountBadge,
   isEven,
+  isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
 // import { Tag, TagsCategory } from './tagsTypes';
 const TagsPage = () => {
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
   const [currentCategory, setCurrentCategory] = useState<TagCategory>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
@@ -122,6 +125,8 @@ const TagsPage = () => {
         errData['name'] = 'Name already exists';
       } else if (data.name.length < 2 || data.name.length > 25) {
         errData['name'] = 'Name size must be between 2 and 25';
+      } else if (!isUrlFriendlyName(data.name.trim())) {
+        errData['name'] = 'Special characters are not allowed';
       }
       setErrorDataCategory(errData);
 
@@ -387,7 +392,7 @@ const TagsPage = () => {
                                       />
                                     ) : (
                                       <span className="tw-no-description">
-                                        No description added
+                                        No description
                                       </span>
                                     )}
                                   </div>

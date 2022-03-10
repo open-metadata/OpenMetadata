@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   deleteWebhook,
   getWebhookByName,
@@ -32,7 +33,8 @@ import useToastContext from '../../hooks/useToastContext';
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
-  const { isAuthDisabled, isAdminUser } = useAuth();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -49,7 +51,7 @@ const EditWebhookPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: err.message || 'Something went wrong!',
+          body: err.response?.data?.message || 'Something went wrong!',
         });
       })
       .finally(() => setIsLoading(false));
@@ -77,7 +79,7 @@ const EditWebhookPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: err.message || 'Something went wrong!',
+          body: err.response?.data?.message || 'Something went wrong!',
         });
         setStatus('initial');
       });
@@ -93,7 +95,7 @@ const EditWebhookPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: err.message || 'Something went wrong!',
+          body: err.response?.data?.message || 'Something went wrong!',
         });
         setDeleteStatus('initial');
       });

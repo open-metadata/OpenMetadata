@@ -286,7 +286,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                                 />
                               ) : (
                                 <span className="tw-no-description">
-                                  No description added
+                                  No description
                                 </span>
                               )}
                             </td>

@@ -159,7 +159,7 @@ const DashboardDetailsPage = () => {
   const saveUpdatedDashboardData = (
     updatedData: Dashboard
   ): Promise<AxiosResponse> => {
-    const jsonPatch = compare(DashboardDetails, updatedData);
+    const jsonPatch = compare(dashboardDetails, updatedData);
 
     return patchDashboardDetails(
       dashboardId,

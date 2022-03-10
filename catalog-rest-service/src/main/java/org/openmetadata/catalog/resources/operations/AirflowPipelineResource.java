@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -109,7 +111,7 @@ public class AirflowPipelineResource {
 
   public static class AirflowPipelineList extends ResultList<AirflowPipeline> {
     @SuppressWarnings("unused")
-    AirflowPipelineList() {
+    public AirflowPipelineList() {
       // Empty constructor needed for deserialization
     }
 
@@ -120,7 +122,14 @@ public class AirflowPipelineResource {
   }
 
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(AirflowPipeline.class);
+  public static final List<String> ALLOWED_FIELDS;
+
+  static {
+    List<String> list = new ArrayList<>();
+    list.addAll(Entity.getEntityFields(AirflowPipeline.class));
+    list.add("status"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
+    ALLOWED_FIELDS = Collections.unmodifiableList(list);
+  }
 
   @GET
   @Valid
@@ -429,6 +438,9 @@ public class AirflowPipelineResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
+    AirflowPipeline pipeline = dao.get(uriInfo, id, fields);
+    airflowRESTClient.deletePipeline(pipeline.getName());
     DeleteResponse<AirflowPipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
     return response.toResponse();
   }
