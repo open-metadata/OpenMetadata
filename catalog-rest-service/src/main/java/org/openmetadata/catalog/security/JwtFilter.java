@@ -81,6 +81,8 @@ public class JwtFilter implements ContainerRequestFilter {
     String authorizedEmail;
     if (jwt.getClaims().get("email") != null) {
       authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
+    } else if (jwt.getClaims().get("preferred_username") != null) {
+      authorizedEmail = jwt.getClaim("preferred_username").as(TextNode.class).asText();
     } else if (jwt.getClaim("sub") != null) {
       authorizedEmail = jwt.getClaim("sub").as(TextNode.class).asText();
     } else {

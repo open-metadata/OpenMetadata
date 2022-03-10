@@ -36,7 +36,7 @@ const CheckBoxDropDownList = ({
       <div
         aria-labelledby="menu-button"
         aria-orientation="vertical"
-        className="tw-origin-top-right tw-absolute tw-z-10
+        className="tw-origin-top-right tw-absolute tw-z-20
               tw-right-0 tw-w-full tw-mt-1 tw-shadow-lg tw-border tw-border-main
               tw-bg-white tw-rounded focus:tw-outline-none"
         role="menu">
