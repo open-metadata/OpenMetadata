@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { isNull } from 'lodash';
-import { EntityTags } from 'Models';
+import { EntityTags, TagOption } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { withLoader } from '../../hoc/withLoader';
 import { Button } from '../buttons/Button/Button';
@@ -70,7 +70,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   }, [newTag]);
 
   const getTagList = () => {
-    const newTags = tagList
+    const newTags = (tagList as TagOption[])
       .filter((tag) => {
         return !tags.some((selectedTag) => selectedTag.tagFQN === tag.fqn);
       })
@@ -93,7 +93,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     event.stopPropagation();
     if (selectedTag) {
       setTags((arrTags) => {
-        const source = tagList.find((tag) => tag.fqn === selectedTag)?.source;
+        const source = (tagList as TagOption[]).find(
+          (tag) => tag.fqn === selectedTag
+        )?.source;
 
         return [...arrTags, { tagFQN: selectedTag, source }];
       });
