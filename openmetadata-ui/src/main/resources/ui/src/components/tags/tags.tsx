@@ -31,6 +31,7 @@ const Tags: FunctionComponent<TagProps> = ({
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
   const textBaseStyle = tagStyles.text.base;
+  const textLayoutStyles = tagStyles.text[type] || tagStyles.text.default;
   const textEditStyles = editable ? tagStyles.text.editable : '';
 
   const getTagString = (tag: string) => {
@@ -42,7 +43,12 @@ const Tags: FunctionComponent<TagProps> = ({
       <span
         className={classNames(baseStyle, layoutStyles, className)}
         data-testid="tags">
-        <span className={classNames(textBaseStyle, textEditStyles)}>
+        <span
+          className={classNames(
+            textBaseStyle,
+            textLayoutStyles,
+            textEditStyles
+          )}>
           {`${startWith}${tag}`}
         </span>
         {editable && isRemovable && (
