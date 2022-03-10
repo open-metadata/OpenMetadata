@@ -40,6 +40,7 @@ This section will show you how to configure and run Data Profiling and Quality p
 ### Workflows
 
 The **Ingestion Framework** currently supports two types of workflows:
+* **Profiling:** Extracts metrics from SQL sources and configures and runs Data Quality tests. It requires previous executions of the Ingestion Pipeline.
 
 * **Ingestion:** Captures metadata from the sources and updates the Entities' instances. This is a lightweight process that can be scheduled to have fast feedback on metadata changes in our sources.
 * **Profiling:** Extracts metrics from SQL sources and sets up and runs Data Quality tests. It requires previous executions of the Ingestion Pipeline. This is a more time-consuming workflow that will run metrics and compare their result to the configured tests of both Tables and Columns.
