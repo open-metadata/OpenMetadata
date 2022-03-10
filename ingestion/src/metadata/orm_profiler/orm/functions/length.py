@@ -35,10 +35,6 @@ def _(element, compiler, **kw):
 
 @compiles(LenFn, DatabaseServiceType.SQLite.value.lower())
 @compiles(LenFn, DatabaseServiceType.Vertica.value.lower())
+@compiles(LenFn, DatabaseServiceType.Hive.value.lower().encode())  # For some reason hive's dialect is in bytes...
 def _(element, compiler, **kw):
-    """
-    This actually returns the squared STD, but as
-    it is only required for tests we can live with it.
-    """
-
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
