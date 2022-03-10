@@ -20,7 +20,7 @@
       "type": "string"
     },
     "source": {
-      "description": "Label is from Tags or Glossary",
+      "description": "Label is from Tags or Glossary.",
       "type": "string",
       "enum": ["Tag", "Glossary"],
       "default": "Tag"

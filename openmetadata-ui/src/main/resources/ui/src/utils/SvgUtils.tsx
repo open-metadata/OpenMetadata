@@ -128,6 +128,9 @@ import IconVersionBlack from '../assets/svg/version-black.svg';
 import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
+import IconWebhookGrey from '../assets/svg/webhook-grey.svg';
+import IconWebhookPrimary from '../assets/svg/webhook-primary.svg';
+import IconWebhook from '../assets/svg/webhook.svg';
 import IconWhatsNew from '../assets/svg/whatsNew.svg';
 
 type Props = {
@@ -255,6 +258,9 @@ export const Icons = {
   PAPER_PLANE_PRIMARY: 'icon-paper-plane-primary',
   COMMENT: 'icon-comment',
   COMMENT_PLUS: 'icon-comment-plus',
+  WEBHOOK: 'icon-webhook',
+  WEBHOOK_GREY: 'icon-webhook-grey',
+  WEBHOOK_PRIMARY: 'icon-webhook-primary',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -737,6 +743,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.COMMENT_PLUS:
       IconComponent = IconCommentPlus;
+
+      break;
+    case Icons.WEBHOOK:
+      IconComponent = IconWebhook;
+
+      break;
+    case Icons.WEBHOOK_GREY:
+      IconComponent = IconWebhookGrey;
+
+      break;
+    case Icons.WEBHOOK_PRIMARY:
+      IconComponent = IconWebhookPrimary;
 
       break;
 
