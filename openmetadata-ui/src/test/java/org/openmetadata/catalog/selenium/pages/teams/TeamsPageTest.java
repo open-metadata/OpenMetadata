@@ -60,7 +60,7 @@ public class TeamsPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     common = new Common(webDriver);
     teamsPage = new TeamsPage(webDriver);
