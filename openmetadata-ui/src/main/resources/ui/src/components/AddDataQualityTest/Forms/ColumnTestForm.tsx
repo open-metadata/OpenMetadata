@@ -95,8 +95,8 @@ const ColumnTestForm = ({
   });
 
   const [columnName, setColumnName] = useState(data?.columnName);
-  const [missingValueMatch, setMissingValueMatch] = useState<string>(
-    data?.testCase?.config?.missingValueMatch || ''
+  const [missingValueMatch, setMissingValueMatch] = useState<string[]>(
+    data?.testCase?.config?.missingValueMatch || ['']
   );
   const [missingCountValue, setMissingCountValue] = useState<
     number | undefined
@@ -121,6 +121,22 @@ const ColumnTestForm = ({
     newFormValues[i] = value;
     setForbiddenValues(newFormValues);
     setIsShowError({ ...isShowError, values: false });
+  };
+
+  const addMatchFields = () => {
+    setMissingValueMatch([...missingValueMatch, '']);
+  };
+
+  const removeMatchFields = (i: number) => {
+    const newFormValues = [...missingValueMatch];
+    newFormValues.splice(i, 1);
+    setMissingValueMatch(newFormValues);
+  };
+
+  const handlMatchFieldsChange = (i: number, value: string) => {
+    const newFormValues = [...missingValueMatch];
+    newFormValues[i] = value;
+    setMissingValueMatch(newFormValues);
   };
 
   const setAllTestOption = (datatype: string) => {
@@ -225,14 +241,18 @@ const ColumnTestForm = ({
           maxValue: !isEmpty(maxValue) ? maxValue : undefined,
         };
 
-      case ColumnTestType.columnValuesMissingCountToBeEqual:
+      case ColumnTestType.columnValuesMissingCountToBeEqual: {
+        const filterMatchValue = missingValueMatch.filter(
+          (value) => !isEmpty(value)
+        );
+
         return {
           missingCountValue: missingCountValue,
-          missingValueMatch: !isEmpty(missingValueMatch)
+          missingValueMatch: filterMatchValue.length
             ? missingValueMatch
             : undefined,
         };
-
+      }
       case ColumnTestType.columnValuesToBeNotInSet:
         return {
           forbiddenValues: forbiddenValues.filter((v) => !isEmpty(v)),
@@ -344,11 +364,6 @@ const ColumnTestForm = ({
         break;
       }
 
-      case 'missingValueMatch':
-        setMissingValueMatch(value);
-
-        break;
-
       case 'missingCountValue':
         setMissingCountValue(value as unknown as number);
         errorMsg.missingCountValue = false;
@@ -413,42 +428,67 @@ const ColumnTestForm = ({
   const getMissingCountToBeEqualFields = () => {
     return (
       <Fragment>
-        <div className="tw-flex tw-gap-4 tw-w-full">
-          <div className="tw-flex-1">
-            <label
-              className="tw-block tw-form-label"
-              htmlFor="missingCountValue">
-              {requiredField('Count:')}
-            </label>
-            <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="missingCountValue"
-              id="missingCountValue"
-              name="missingCountValue"
-              placeholder="Missing count value"
-              type="number"
-              value={missingCountValue}
-              onChange={handleValidation}
-            />
-            {isShowError.missingCountValue &&
-              errorMsg('Count value is required.')}
+        <Field>
+          <label className="tw-block tw-form-label" htmlFor="missingCountValue">
+            {requiredField('Count:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="missingCountValue"
+            id="missingCountValue"
+            name="missingCountValue"
+            placeholder="Missing count value"
+            type="number"
+            value={missingCountValue}
+            onChange={handleValidation}
+          />
+          {isShowError.missingCountValue &&
+            errorMsg('Count value is required.')}
+        </Field>
+
+        <div data-testid="missing-count-to-be-equal">
+          <div className="tw-flex tw-items-center tw-mt-6">
+            <p className="w-form-label tw-mr-3">Match:</p>
+            <Button
+              className="tw-h-5 tw-px-2"
+              size="x-small"
+              theme="primary"
+              variant="contained"
+              onClick={addMatchFields}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
           </div>
-          <div className="tw-flex-1">
-            <label
-              className="tw-block tw-form-label"
-              htmlFor="missingValueMatch">
-              Match:
-            </label>
-            <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="missingValueMatch"
-              id="missingValueMatch"
-              name="missingValueMatch"
-              placeholder="Missing value match"
-              value={missingValueMatch}
-              onChange={handleValidation}
-            />
-          </div>
+
+          {missingValueMatch.map((value, i) => (
+            <div className="tw-flex tw-items-center" key={i}>
+              <div className="tw-w-11/12">
+                <Field>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    id={`value-key-${i}`}
+                    name="key"
+                    placeholder="Missing value to be match"
+                    type="text"
+                    value={value}
+                    onChange={(e) => handlMatchFieldsChange(i, e.target.value)}
+                  />
+                </Field>
+              </div>
+              <button
+                className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
+                onClick={(e) => {
+                  e.preventDefault();
+                  removeMatchFields(i);
+                }}>
+                <SVGIcons
+                  alt="delete"
+                  icon="icon-delete"
+                  title="Delete"
+                  width="12px"
+                />
+              </button>
+            </div>
+          ))}
         </div>
       </Fragment>
     );
@@ -552,10 +592,7 @@ const ColumnTestForm = ({
       <p className="tw-font-medium tw-px-4">
         {isUndefined(data) ? 'Add' : 'Edit'} Column Test
       </p>
-      <form
-        className="tw-w-screen-sm"
-        data-testid="form"
-        onSubmit={(e) => e.preventDefault()}>
+      <div className="tw-w-screen-sm">
         <div className="tw-px-4 tw-mx-auto">
           <Field>
             <label className="tw-block tw-form-label" htmlFor="columnName">
@@ -663,7 +700,7 @@ const ColumnTestForm = ({
             </Button>
           </Field>
         </Field>
-      </form>
+      </div>
     </div>
   );
 };

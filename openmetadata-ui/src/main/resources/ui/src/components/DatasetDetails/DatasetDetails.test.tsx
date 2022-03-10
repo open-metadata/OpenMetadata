@@ -102,6 +102,7 @@ const DatasetDetailsProps = {
   tableTestCase: [],
   selectedColumn: '',
   handleAddColumnTestCase: jest.fn(),
+  handleSelectedColumn: jest.fn(),
   createThread: jest.fn(),
   handleShowTestForm: jest.fn(),
   handleRemoveTableTest: jest.fn(),

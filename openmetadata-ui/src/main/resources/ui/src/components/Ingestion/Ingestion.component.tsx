@@ -441,6 +441,7 @@ const Ingestion: React.FC<Props> = ({
             name: s.name,
             serviceType: s.serviceType,
           }))}
+          serviceType={serviceType}
           type=""
           onCancel={() => setIsAdding(false)}
         />
@@ -457,6 +458,7 @@ const Ingestion: React.FC<Props> = ({
             name: s.name,
             serviceType: s.serviceType,
           }))}
+          serviceType={serviceType}
           updateIngestion={(data, triggerIngestion) => {
             setIsUpdating(false);
             handleUpdateIngestion(data, triggerIngestion);

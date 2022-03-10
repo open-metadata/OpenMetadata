@@ -122,6 +122,7 @@ This schema <u>does not</u> accept additional properties.
 	 3. _"View"_
 	 4. _"SecureView"_
 	 5. _"MaterializedView"_
+	 6. _"Iceberg"_
 
 
 ### dataType
@@ -373,6 +374,9 @@ This schema <u>does not</u> accept additional properties.
 	 - **distinctCount**
 		 - Number of values that contain distinct values.
 		 - Type: `number`
+	 - **distinctProportion**
+		 - Proportion of distinct values in a column.
+		 - Type: `number`
 	 - **min**
 		 - Minimum value in a column.
 		 - Types: `number`, `integer`, `string`
@@ -492,4 +496,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Wednesday, March 9, 2022_

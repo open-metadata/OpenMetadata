@@ -42,6 +42,9 @@ This schema <u>does not</u> accept additional properties.
  - **owner**
 	 - Owner of this glossary.
 	 - $ref: [../../type/entityReference.json](../types/entityreference.md)
+ - **usageCount**
+	 - Count of how many times terms from this glossary are used.
+	 - Type: `integer`
  - **tags**
 	 - Tags for this glossary.
 	 - Type: `array`
@@ -66,4 +69,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Wednesday, March 9, 2022_

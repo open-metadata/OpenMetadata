@@ -910,7 +910,7 @@ const RolesPage = () => {
                         <span className="tw-font-medium">
                           {defaultRole?.displayName ?? defaultRole?.name}
                         </span>{' '}
-                        role.`
+                        role.
                       </Fragment>
                     }
                     cancelText="Cancel"

@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Define Concat function
+Define Length function
 """
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
@@ -24,27 +24,19 @@ from metadata.orm_profiler.utils import logger
 logger = logger()
 
 
-class ConcatFn(FunctionElement):
+class LenFn(FunctionElement):
     inherit_cache = CACHE
 
 
-@compiles(ConcatFn)
+@compiles(LenFn)
 def _(element, compiler, **kw):
-    return "CONCAT(%s)" % compiler.process(element.clauses, **kw)
+    return "LEN(%s)" % compiler.process(element.clauses, **kw)
 
 
-@compiles(ConcatFn, DatabaseServiceType.Redshift.value.lower())
-@compiles(ConcatFn, DatabaseServiceType.SQLite.value.lower())
-@compiles(ConcatFn, DatabaseServiceType.Vertica.value.lower())
+@compiles(LenFn, DatabaseServiceType.SQLite.value.lower())
+@compiles(LenFn, DatabaseServiceType.Vertica.value.lower())
+@compiles(
+    LenFn, DatabaseServiceType.Hive.value.lower().encode()
+)  # For some reason hive's dialect is in bytes...
 def _(element, compiler, **kw):
-    """
-    This actually returns the squared STD, but as
-    it is only required for tests we can live with it.
-    """
-
-    if len(element.clauses) < 2:
-        raise ValueError("We need to concat at least two elements")
-
-    concat = "||".join([compiler.process(elem, **kw) for elem in element.clauses])
-
-    return concat
+    return "LENGTH(%s)" % compiler.process(element.clauses, **kw)

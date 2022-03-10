@@ -316,7 +316,7 @@ const Explore: React.FC<ExploreProps> = ({
           <span className="tw-mr-2">Sort by:</span>
           <span className="tw-relative">
             <Button
-              className="hover:tw-no-underline focus:tw-no-underline"
+              className="focus:tw-no-underline"
               data-testid="sortBy"
               size="custom"
               theme="primary"
