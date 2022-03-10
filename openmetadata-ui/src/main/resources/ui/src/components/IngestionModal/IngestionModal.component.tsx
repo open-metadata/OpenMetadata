@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import { StepperStepType } from 'Models';
 import { utc } from 'moment';
 import React, { Fragment, ReactNode, useEffect, useState } from 'react';
+import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import {
   AirflowPipeline,
   ConfigObject,
@@ -94,6 +95,7 @@ const getIngestionName = (name: string) => {
 const IngestionModal: React.FC<IngestionModalProps> = ({
   isUpdating,
   header,
+  serviceType,
   service = '',
   ingestionTypes,
   ingestionList,
@@ -149,6 +151,9 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
   const [ingestionSchedule, setIngestionSchedule] = useState<string>(
     selectedIngestion?.scheduleInterval || '5 * * * *'
   );
+
+  const [warehouse, setWarehouse] = useState(pipelineConfig.warehouse);
+  const [account, setAccount] = useState(pipelineConfig.account);
 
   const [showErrorMsg, setShowErrorMsg] = useState<ValidationErrorMsg>({
     selectService: false,
@@ -283,6 +288,45 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               {showErrorMsg.ingestionType &&
                 errorMsg('Ingestion Type is required')}
             </Field>
+
+            {serviceType === DatabaseServiceType.Snowflake && (
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-4 tw-mt-6">
+                <div>
+                  <label className="tw-block" htmlFor="warehouse">
+                    Warehouse:
+                  </label>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="warehouse"
+                    id="warehouse"
+                    name="warehouse"
+                    placeholder="Warehouse"
+                    type="text"
+                    value={warehouse}
+                    onChange={(e) => {
+                      setWarehouse(e.target.value);
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="tw-block" htmlFor="account">
+                    Account:
+                  </label>
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="account"
+                    id="account"
+                    name="account"
+                    placeholder="Account"
+                    type="text"
+                    value={account}
+                    onChange={(e) => {
+                      setAccount(e.target.value);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             <Field>
               {getSeparator('Table Filter Pattern')}
