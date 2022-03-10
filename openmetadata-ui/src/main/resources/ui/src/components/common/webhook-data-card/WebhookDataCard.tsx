@@ -14,6 +14,7 @@
 import React, { FunctionComponent } from 'react';
 import { Status } from '../../../generated/entity/events/webhook';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import WebhookDataCardBody from './WebhookDataCardBody';
 
 type Props = {
@@ -41,7 +42,8 @@ const WebhookDataCard: FunctionComponent<Props> = ({
       data-testid="webhook-data-card">
       <div>
         <div className="tw-flex tw-items-center">
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
+          <SVGIcons alt="webhook" icon={Icons.WEBHOOK} width="16" />
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-1">
             <button
               className="tw-text-grey-body tw-font-medium"
               data-testid="webhook-link"
