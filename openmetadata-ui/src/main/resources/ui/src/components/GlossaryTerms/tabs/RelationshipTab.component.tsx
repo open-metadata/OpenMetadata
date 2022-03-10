@@ -12,12 +12,12 @@
  */
 
 import classNames from 'classnames';
-import { FormatedGlossaryTermData } from 'Models';
+import { FormattedGlossaryTermData } from 'Models';
 import React, { ReactNode } from 'react';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
-  data?: FormatedGlossaryTermData[];
+  data?: FormattedGlossaryTermData[];
   addButton?: ReactNode;
 };
 

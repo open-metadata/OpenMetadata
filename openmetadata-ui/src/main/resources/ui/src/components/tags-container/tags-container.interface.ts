@@ -20,7 +20,7 @@ export type TagsContainerProps = {
   editable?: boolean;
   dropDownHorzPosRight?: boolean;
   selectedTags: Array<EntityTags>;
-  tagList: Array<TagOption>;
+  tagList: Array<TagOption | string>;
   type?: TagProps['type'];
   showTags?: boolean;
   onSelectionChange: (selectedTags: Array<EntityTags>) => void;

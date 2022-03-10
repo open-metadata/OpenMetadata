@@ -31,7 +31,11 @@ import {
 import { LabelType, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import {
+  getTagCategories,
+  getTaglist,
+  getTagOptionsFromFQN,
+} from '../../utils/TagsUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -72,7 +76,7 @@ const GlossaryTermsV1 = ({
     glossaryTerm.synonyms?.join(',') || ''
   );
   const [references, setReferences] = useState(glossaryTerm.references || []);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
   const [relatedTerms, setRelatedTerms] = useState<FormattedGlossaryTermData[]>(
     []
   );
@@ -99,7 +103,7 @@ const GlossaryTermsV1 = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<FormatedGlossaryTermData>) => {
+  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
     if (!isEqual(terms, relatedTerms)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
       const oldTerms = terms.filter((d) => includes(relatedTerms, d));
@@ -288,7 +292,7 @@ const GlossaryTermsV1 = ({
 
   useEffect(() => {
     if (glossaryTerm.relatedTerms?.length) {
-      setRelatedTerms(glossaryTerm.relatedTerms as FormatedGlossaryTermData[]);
+      setRelatedTerms(glossaryTerm.relatedTerms as FormattedGlossaryTermData[]);
     }
   }, [glossaryTerm.relatedTerms]);
 
@@ -555,7 +559,7 @@ const GlossaryTermsV1 = ({
               selectedTags={getSelectedTags()}
               showTags={false}
               size="small"
-              tagList={tagList}
+              tagList={getTagOptionsFromFQN(tagList)}
               type="label"
               onCancel={() => {
                 handleTagSelection();
