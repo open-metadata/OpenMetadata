@@ -15,8 +15,8 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import {
   EditorContentRef,
-  FormatedGlossaryTermData,
-  FormatedUsersData,
+  FormattedGlossaryTermData,
+  FormattedUsersData,
 } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -68,16 +68,16 @@ const AddGlossaryTerm = ({
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
   const [relatedTerms, setRelatedTerms] = useState<
-    Array<FormatedGlossaryTermData>
+    Array<FormattedGlossaryTermData>
   >([]);
   const [synonyms, setSynonyms] = useState('');
   const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
-      setReviewer(glossaryData?.reviewers as FormatedUsersData[]);
+      setReviewer(glossaryData?.reviewers as FormattedUsersData[]);
     }
   }, [glossaryData]);
 
@@ -85,7 +85,7 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<FormatedGlossaryTermData>) => {
+  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
     setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };
@@ -94,7 +94,7 @@ const AddGlossaryTerm = ({
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };

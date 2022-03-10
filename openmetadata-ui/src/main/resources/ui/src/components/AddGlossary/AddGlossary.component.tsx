@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
-import { EditorContentRef, FormatedUsersData } from 'Models';
+import { EditorContentRef, FormattedUsersData } from 'Models';
 import React, { useRef, useState } from 'react';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -52,13 +52,13 @@ const AddGlossary = ({
   const [name, setName] = useState('');
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
