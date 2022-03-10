@@ -132,7 +132,7 @@ module.exports = {
         separator: mainSeparator,
       },
       fontFamily: {
-        sans: ['Inter', ...defaultTheme.fontFamily.sans],
+        sans: ['Inter_web', ...defaultTheme.fontFamily.sans],
       },
       fontSize: {
         h1: '2.5rem',
