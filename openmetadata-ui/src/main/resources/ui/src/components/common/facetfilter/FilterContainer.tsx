@@ -38,10 +38,9 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   };
 
   return (
-    <div
+    <label
       className="filter-group tw-justify-between tw-mb-2 tw-cursor-pointer"
-      data-testid={`filter-container-${name}`}
-      onClick={() => onSelect(!isSelected, name, type)}>
+      data-testid={`filter-container-${name}`}>
       <div className="tw-flex">
         <input
           checked={isSelected}
@@ -53,7 +52,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
           id={name}
           type="checkbox"
           onChange={() => {
-            return;
+            onSelect(!isSelected, name, type);
           }}
         />
         <div
@@ -67,7 +66,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
       </div>
       {!isNil(count) &&
         getCountBadge(count, classNames('tw-py-0 tw-px-0'), isSelected)}
-    </div>
+    </label>
   );
 };
 
