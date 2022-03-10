@@ -62,6 +62,9 @@ This schema <u>does not</u> accept additional properties.
  - **reviewers**
 	 - User names of the reviewers for this glossary.
 	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+ - **usageCount**
+	 - Count of how many times this and it's children glossary terms are used as labels.
+	 - Type: `integer`
  - **tags**
 	 - Tags for this glossary term.
 	 - Type: `array`
@@ -113,4 +116,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Wednesday, March 9, 2022_

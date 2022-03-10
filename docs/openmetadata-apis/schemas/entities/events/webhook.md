@@ -2,7 +2,7 @@
 
 This schema defines webhook for receiving events from OpenMetadata.
 
-<b id="https/open-metadata.org/schema/entity/events/webhook.json">&#36;id: https://open-metadata.org/schema/entity/events/webhook.json</b>
+**$id:** [**https://open-metadata.org/schema/entity/events/webhook.json**](https://open-metadata.org/schema/entity/events/webhook.json)
 
 Type: `object`
 
@@ -94,6 +94,6 @@ This schema <u>does not</u> accept additional properties.
 	 - When `true` indicates the entity has been soft deleted.
 	 - Type: `boolean`
 	 - Default: _false_
+g
 
-
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Wednesday, March 9, 2022_
