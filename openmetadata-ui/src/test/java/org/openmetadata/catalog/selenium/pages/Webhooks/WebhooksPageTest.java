@@ -5,7 +5,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.*;
 import org.openmetadata.catalog.selenium.objectRepository.*;
 import org.openmetadata.catalog.selenium.properties.*;
@@ -17,6 +20,8 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Order(20)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class WebhooksPageTest {
 
   static WebDriver webDriver;
@@ -46,6 +51,7 @@ public class WebhooksPageTest {
   }
 
   @Test
+  @Order(1)
   void openWebHookPage() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
@@ -53,6 +59,7 @@ public class WebhooksPageTest {
   }
 
   @Test
+  @Order(2)
   void addWebHook() throws InterruptedException {
     String name = faker.name().name();
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
@@ -61,7 +68,7 @@ public class WebhooksPageTest {
     Events.sendKeys(webDriver, webhooks.name(), name);
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
-    Events.sendKeys(webDriver, webhooks.endpoint(), "test.com");
+    Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
     Events.click(webDriver, webhooks.checkbox());
     Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.entityCreatedMenu());
@@ -75,6 +82,7 @@ public class WebhooksPageTest {
   }
 
   @Test
+  @Order(3)
   void checkDuplicateWebhookName() throws InterruptedException {
     String name = faker.name().name();
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
@@ -84,7 +92,7 @@ public class WebhooksPageTest {
       Events.sendKeys(webDriver, webhooks.name(), name);
       Events.click(webDriver, webhooks.descriptionBox());
       Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
-      Events.sendKeys(webDriver, webhooks.endpoint(), "test.com");
+      Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
       Events.click(webDriver, webhooks.checkbox());
       Events.click(webDriver, webhooks.entityCreatedMenu());
       Events.click(webDriver, webhooks.allEntities());
@@ -95,10 +103,11 @@ public class WebhooksPageTest {
     Thread.sleep(waitTime);
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertTrue(errorMessage.isDisplayed());
-    Assert.assertEquals(errorMessage.getText(), "Request failed with status code 409");
+    Assert.assertEquals(errorMessage.getText(), "Entity already exists");
   }
 
   @Test
+  @Order(4)
   void checkBlankName() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
@@ -120,6 +129,7 @@ public class WebhooksPageTest {
   }
 
   @Test
+  @Order(5)
   void checkBlankEndpoint() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
@@ -140,6 +150,7 @@ public class WebhooksPageTest {
   }
 
   @Test
+  @Order(6)
   void checkBlankEntityCheckbox() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();

@@ -85,6 +85,7 @@ public class Common {
   By tagsAdded = By.cssSelector("span[class='tw-no-underline hover:tw-no-underline tw-px-1']");
   By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
   By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p]");
+  By home = By.cssSelector("[data-testid='image']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
@@ -160,5 +161,17 @@ public class Common {
 
   public By selectTableLink(int index) {
     return By.xpath("(//button[@data-testid='table-link'])[" + index + "]");
+  }
+
+  public By followingTable(String table) {
+    return By.xpath("//div[@data-testid='Following data-" + table + "']");
+  }
+
+  public By recentlySearchedText(String text) {
+    return By.xpath("//div[@data-testid='Recently-Search- " + text + "']");
+  }
+
+  public By removeRecentlySearchedText(String text) {
+    return By.xpath("//div[@data-testid='Recently-Search- " + text + "']/div/button/img");
   }
 }

@@ -129,6 +129,8 @@ public class PaginationAndFilterTest {
     webDriver.navigate().refresh();
     Events.click(webDriver, common.headerItem("explore"));
     Events.click(webDriver, common.selectFilterExplore("BigQuery"));
+    Events.click(webDriver, common.home());
+    Events.click(webDriver, common.removeRecentlySearchedText("zzzz"));
   }
 
   @Test
