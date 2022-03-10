@@ -35,6 +35,8 @@ def _(element, compiler, **kw):
 
 @compiles(LenFn, DatabaseServiceType.SQLite.value.lower())
 @compiles(LenFn, DatabaseServiceType.Vertica.value.lower())
-@compiles(LenFn, DatabaseServiceType.Hive.value.lower().encode())  # For some reason hive's dialect is in bytes...
+@compiles(
+    LenFn, DatabaseServiceType.Hive.value.lower().encode()
+)  # For some reason hive's dialect is in bytes...
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
