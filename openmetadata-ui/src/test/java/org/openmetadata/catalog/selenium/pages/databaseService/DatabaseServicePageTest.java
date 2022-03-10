@@ -17,6 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -27,6 +28,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -35,6 +37,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(8)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DatabaseServicePageTest {
@@ -108,6 +111,9 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.saveServiceButton());
+    webDriver.navigate().refresh();
+    Events.click(webDriver, common.containsText(serviceName));
+    Thread.sleep(5000); // for data ingestion
   }
 
   @Test
@@ -138,6 +144,7 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.saveServiceButton());
 
+    webDriver.navigate().refresh();
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion
     Events.click(webDriver, common.saveEditedService());
   }
@@ -154,9 +161,13 @@ public class DatabaseServicePageTest {
     Events.sendKeys(webDriver, common.databaseName(), "1");
     Events.click(webDriver, common.saveConnectionConfig());
     Thread.sleep(2000);
-    WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
-    if (errorText.isDisplayed()) {
-      Assert.fail("Error while updating service");
+    try {
+      WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
+      if (errorText.isDisplayed()) {
+        Assert.fail("Error while updating service");
+      }
+    } catch (NoSuchElementException e) {
+      LOG.info("Success");
     }
   }
 
