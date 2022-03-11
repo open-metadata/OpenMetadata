@@ -36,6 +36,7 @@ class SnowflakeConfig(SQLConnectionConfig):
     account: str
     database: str
     warehouse: str
+    result_limit: int = 1000
     role: Optional[str]
     duration: Optional[int]
     service_type = DatabaseServiceType.Snowflake.value
