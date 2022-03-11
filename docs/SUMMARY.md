@@ -5,7 +5,8 @@
 * [Roadmap](roadmap.md)
 * [Try OpenMetadata](../try-openmetadata/README.md)
   * [Try OpenMetadata in our Public Sandbox](../try-openmetadata/take-it-for-a-spin.md)
-  * [Try OpenMetadata in Docker](../try-openmetadata/run-openmetadata.md)
+  * [Try OpenMetadata in Docker](try-openmetadata/run-openmetadata/README.md)
+    * [Enable Security](try-openmetadata/run-openmetadata/enable-security.md)
 * [Tutorials](tutorials/README.md)
   * [Tutorial: Data Discovery with OpenMetadata](tutorials/tutorial-data-discovery-with-openmetadata.md)
 

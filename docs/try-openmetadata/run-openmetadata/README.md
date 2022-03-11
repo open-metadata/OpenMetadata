@@ -31,7 +31,7 @@ docker --version
 If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/). You also need the latest `docker-compose` installed, please visit [Install Docker Compose](https://docs.docker.com/compose/install/).
 
 {% hint style="warning" %}
-Note: You must **allocate at least 4GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
+Note: You must **allocate at least 6GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
 
 Preferences -> Resources -> Advanced
 {% endhint %}
@@ -119,7 +119,7 @@ This will create a docker network and four containers for the following services
 * Apache Airflow which OpenMetadata uses for metadata ingestion
 * The OpenMetadata UI and API server
 
-After starting the Docker containers, you should see output similar to the following.
+After starting the Docker containers, you should see an output similar to the following.
 
 ```
 [2021-11-18 15:53:52,532] INFO     {metadata.cmd:202} - Running Latest Release Docker
@@ -173,7 +173,7 @@ Username: `admin`
 
 Password: `admin`
 
-![](../docs/.gitbook/assets/airflow-login.png)
+![](../../.gitbook/assets/airflow-login.png)
 
 ### 10. Begin using OpenMetadata
 
@@ -185,13 +185,13 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata server.
 
-![](../docs/.gitbook/assets/om-local-landing-page.png)
+![](../../.gitbook/assets/om-local-landing-page.png)
 
 ### Next Steps
 
-1. Visit the [Features](../docs/features.md) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
-3. Visit the [API](../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
+1. Visit the [Features](../../features.md) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](../../integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+3. Visit the [API](../../openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ### Troubleshooting
 
@@ -203,7 +203,7 @@ ERROR: Could not find a version that satisfies the requirement openmetadata-inge
 ERROR: No matching distribution found for openmetadata-ingestion[docker]
 ```
 
-If you see the above when attempting to install OpenMetadata, this can be due to using older version of Python and pip. Please check the [Requirements](run-openmetadata.md#requirements) section above and confirm that you have supported versions installed.
+If you see the above when attempting to install OpenMetadata, this can be due to using older version of Python and pip. Please check the [Requirements](./#requirements) section above and confirm that you have supported versions installed.
 
 If you need support please get in touch on Slack: [https://slack.open-metadata.org/](https://slack.open-metadata.org).
 
@@ -224,7 +224,7 @@ sudo apt upgrade
 sudo apt install python3-pip  python3-venv
 ```
 
-Follow the [OSX instructions](run-openmetadata.md#1.-create-a-directory-for-openmetadata)
+Follow the [OSX instructions](./#1.-create-a-directory-for-openmetadata)
 
 ## Upgrade OpenMetadata
 
@@ -232,7 +232,7 @@ If you would like to upgrade your OpenMetadata deployment installed following th
 
 ### 1. Ensure your Python virtual environment is activated
 
-The procedure for [installing OpenMetadata](run-openmetadata.md) asks you to create a new directory and Python virtual environment. The procedure then asks you to install the `openmetadata-ingestion[docker]` Python module in this virtual environment.
+The procedure for [installing OpenMetadata](./) asks you to create a new directory and Python virtual environment. The procedure then asks you to install the `openmetadata-ingestion[docker]` Python module in this virtual environment.
 
 In your command-line environment, please navigate to the directory where you installed `openmetadata-ingestion[docker]` and activate the virtual environment by running the following command.
 
