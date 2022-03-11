@@ -79,6 +79,14 @@
           "description": "SQL used in the task. Can be used to determine the lineage.",
           "$ref": "../../type/basic.json#/definitions/sqlQuery"
         },
+        "startDate": {
+          "description": "start date for the task.",
+          "type": "string"
+        },
+        "endDate": {
+          "description": "end date for the task.",
+          "type": "string"
+        },
         "tags": {
           "description": "Tags for this task.",
           "type": "array",

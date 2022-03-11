@@ -193,6 +193,7 @@ const TourPage = () => {
             handleAddTableTestCase={handleCountChange}
             handleRemoveColumnTest={handleCountChange}
             handleRemoveTableTest={handleCountChange}
+            handleSelectedColumn={handleCountChange}
             handleShowTestForm={handleCountChange}
             handleTestModeChange={handleCountChange}
             isNodeLoading={{

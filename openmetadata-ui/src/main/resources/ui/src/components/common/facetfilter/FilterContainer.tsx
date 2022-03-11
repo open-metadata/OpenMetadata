@@ -38,8 +38,8 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   };
 
   return (
-    <div
-      className="filter-group tw-justify-between tw-mb-2"
+    <label
+      className="filter-group tw-justify-between tw-mb-2 tw-cursor-pointer"
       data-testid={`filter-container-${name}`}>
       <div className="tw-flex">
         <input
@@ -66,7 +66,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
       </div>
       {!isNil(count) &&
         getCountBadge(count, classNames('tw-py-0 tw-px-0'), isSelected)}
-    </div>
+    </label>
   );
 };
 

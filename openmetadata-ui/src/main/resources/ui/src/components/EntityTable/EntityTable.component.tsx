@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
-import { EntityFieldThreads, EntityTags } from 'Models';
+import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
@@ -52,6 +52,10 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../utils/GlossaryUtils';
 
 type Props = {
   owner: Table['owner'];
@@ -141,16 +145,34 @@ const EntityTable = ({
     index: number;
   }>();
 
-  const [allTags, setAllTags] = useState<Array<string>>([]);
+  const [allTags, setAllTags] = useState<Array<TagOption>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const fetchTags = () => {
+  const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    getTagCategories()
-      .then((res) => {
-        if (res.data) {
-          setAllTags(getTaglist(res.data));
+    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+      .then((values) => {
+        let tagsAndTerms: TagOption[] = [];
+        if (values[0].data) {
+          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+            return { fqn: tag, source: 'Tag' };
+          });
         }
+        if (values[1] && values[1].length > 0) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
+            (tag) => {
+              return { fqn: tag, source: 'Glossary' };
+            }
+          );
+          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+        }
+        setAllTags(tagsAndTerms);
+        setTagFetchFailed(false);
+      })
+      .catch(() => {
+        setAllTags([]);
+        setTagFetchFailed(true);
       })
       .finally(() => {
         setIsTagLoading(false);
@@ -189,22 +211,24 @@ const EntityTable = ({
   const updateColumnTags = (
     tableCols: ModifiedTableColumn[],
     changedColName: string,
-    newColumnTags: Array<string>
+    newColumnTags: Array<TagOption>
   ) => {
     const getUpdatedTags = (column: Column) => {
       const prevTags = column?.tags?.filter((tag) => {
-        return newColumnTags.includes(tag?.tagFQN as string);
+        return newColumnTags
+          .map((tag) => tag.fqn)
+          .includes(tag?.tagFQN as string);
       });
 
       const newTags: Array<EntityTags> = newColumnTags
         .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
+          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag.fqn);
         })
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: allTags.includes(tag) ? 'Tag' : 'Glossary',
-          tagFQN: tag,
+          source: tag.source,
+          tagFQN: tag.fqn,
         }));
       const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
 
@@ -240,7 +264,11 @@ const EntityTable = ({
   };
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
-    const newSelectedTags = selectedTags?.map((tag) => tag.tagFQN);
+    const newSelectedTags: TagOption[] | undefined = selectedTags?.map(
+      (tag) => {
+        return { fqn: tag.tagFQN, source: tag.source };
+      }
+    );
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(tableCols, editColumnTag.column.name, newSelectedTags);
@@ -485,7 +513,10 @@ const EntityTable = ({
                               onClick={() => {
                                 if (!editColumnTag) {
                                   handleEditColumnTag(row.original, row.id);
-                                  fetchTags();
+                                  // Fetch tags and terms only once
+                                  if (allTags.length === 0 || tagFetchFailed) {
+                                    fetchTagsAndGlossaryTerms();
+                                  }
                                 }
                               }}>
                               <NonAdminAction
@@ -495,7 +526,6 @@ const EntityTable = ({
                                 position="left"
                                 trigger="click">
                                 <TagsContainer
-                                  allowGlossary
                                   editable={editColumnTag?.index === row.id}
                                   isLoading={
                                     isTagLoading &&

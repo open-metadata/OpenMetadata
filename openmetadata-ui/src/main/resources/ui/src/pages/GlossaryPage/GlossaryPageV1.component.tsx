@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, extend } from 'lodash';
 import {
-  FormatedGlossarySuggestion,
+  FormattedGlossarySuggestion,
   GlossarySuggestionHit,
   GlossaryTermAssets,
   LoadingState,
@@ -229,7 +229,7 @@ const GlossaryPageV1 = () => {
   const getSearchedGlossaries = (
     arrGlossaries: ModifiedGlossaryData[],
     newGlossaries: string[],
-    searchedTerms: FormatedGlossarySuggestion[]
+    searchedTerms: FormattedGlossarySuggestion[]
   ) => {
     if (newGlossaries.length) {
       let arrNewData: ModifiedGlossaryData[] = [];
@@ -269,7 +269,7 @@ const GlossaryPageV1 = () => {
         SearchIndex.GLOSSARY
       ).then((res: AxiosResponse) => {
         if (res.data) {
-          const searchedTerms: FormatedGlossarySuggestion[] =
+          const searchedTerms: FormattedGlossarySuggestion[] =
             res.data.hits?.hits?.map(
               (item: GlossarySuggestionHit) => item._source
             ) || [];

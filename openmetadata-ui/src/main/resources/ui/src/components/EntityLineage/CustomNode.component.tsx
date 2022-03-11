@@ -91,7 +91,7 @@ const CustomNode = (props: any) => {
           'tw-h-36 tw-overflow-y-auto': columns?.length,
         })}
         id="table-columns">
-        <div className="tw-flex tw-flex-col tw-gap-y-1">
+        <div className="tw-flex tw-flex-col tw-gap-y-1 tw-relative">
           {columns?.map(
             (c: { name: string; constraint: string }, i: number) => (
               <Fragment key={i}>

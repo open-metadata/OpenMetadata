@@ -206,6 +206,7 @@ export enum DatabaseServiceType {
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
+  SQLite = 'SQLite',
   SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',
