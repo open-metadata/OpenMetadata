@@ -223,6 +223,8 @@ Note: Using Kerberos authentication requires that a Kerberos ticket has been iss
 
 #### **LDAP authentication**
 
+a. Set `source.config.connect_args`
+
 If you need to use LDAP authentication, include the `source.config.connect_args` field as follows. This field is included in the configuration template JSON provided above.
 
 ```json
@@ -231,7 +233,30 @@ If you need to use LDAP authentication, include the `source.config.connect_args`
 } 
 ```
 
-These settings will instruct the connector to use LDAP to authenticate for this Hive service.&#x20;
+These settings will instruct the connector to use LDAP to authenticate for this Hive service.
+
+b. Set the value for `source.config.username` to identify your LDAP user.
+
+```javascript
+"connect_args": {
+  "auth": "LDAP",
+}
+"username": "username"
+```
+
+{% hint style="danger" %}
+**Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
+{% endhint %}
+
+c. Set the value for `source.config.password` with the password for your LDAP user.
+
+```javascript
+"connect_args": {
+  "auth": "LDAP",
+}
+"username": "username"
+"password": "strong_password"
+```
 
 ### **6. Enable/disable the data profiler**
 
