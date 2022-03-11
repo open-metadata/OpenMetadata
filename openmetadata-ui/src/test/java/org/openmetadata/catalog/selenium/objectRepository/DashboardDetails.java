@@ -12,7 +12,7 @@ public class DashboardDetails {
   @Nonnull WebDriver webDriver;
 
   By dashboard = By.xpath("(//button[@data-testid='tab'])[3]");
-  By editChartDescription = By.xpath("(//img[@data-testid='image']/parent::button)[3]");
+  By editChartDescription = By.xpath("//div[@data-testid='description']/span/span");
   By dashboardDescriptionBox = By.xpath("(//div[@data-testid='description']/div/span)[1]");
   By descriptionBox = By.xpath("(//div[@data-testid='description'])[2]");
   By addChartTag = By.xpath("(//span[@data-testid='tags'])[2]");

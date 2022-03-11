@@ -96,8 +96,7 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, myDataPage.searchBox(), tableName);
     Events.click(webDriver, myDataPage.tableName());
     Events.click(webDriver, tableDetails.profiler());
-    WebElement profilerColumn = tableDetails.profilerColumn().get(1);
-    Assert.assertTrue(profilerColumn.isDisplayed());
+    Assert.assertTrue(tableDetails.schemaTableIsDisplayed());
     Events.click(webDriver, tableDetails.lineage());
     WebElement lineage = tableDetails.lineageNodes().get(1);
     Assert.assertTrue(lineage.isDisplayed());
@@ -150,11 +149,15 @@ public class TableDetailsPageTest {
       Thread.sleep(2000);
       webDriver.navigate().refresh();
     }
-    String verifyDescription = webDriver.findElement(tableDetails.columnDescription()).getText();
-    if (!verifyDescription.contains(sendKeys)) {
-      Assert.fail("Description not updated");
-    } else {
-      LOG.info("Description Updated");
+    try {
+      String verifyDescription = webDriver.findElement(tableDetails.columnDescription()).getText();
+      if (!verifyDescription.contains(sendKeys)) {
+        Assert.fail("Description not updated");
+      } else {
+        LOG.info("Description Updated");
+      }
+    } catch (NoSuchElementException e) {
+      Assert.fail("Element column description not found");
     }
   }
 
@@ -211,15 +214,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.profiler());
-    List<WebElement> profilerColumn = tableDetails.profilerColumn();
-    List<WebElement> chart = tableDetails.chart();
-    for (WebElement e : profilerColumn) {
-      e.click();
-    }
-    for (WebElement c : chart) {
-      actions.moveToElement(c).build().perform();
-      Assert.assertTrue(c.isDisplayed());
-    }
+    Assert.assertTrue(tableDetails.schemaTableIsDisplayed());
   }
 
   @Test
@@ -264,17 +259,17 @@ public class TableDetailsPageTest {
     // Since after navigating back we are facing StaleElementException using try catch block.
     for (WebElement link : br) {
       try {
-        counter = counter + 1;
         link.click();
         Thread.sleep(1000);
         Assert.assertTrue(link.isDisplayed());
-        webDriver.navigate().back();
         Thread.sleep(1000);
       } catch (StaleElementReferenceException ex) {
+        webDriver.navigate().back();
+        Thread.sleep(1000);
+        Events.click(webDriver, By.xpath(xpath));
         Thread.sleep(2000);
-        WebElement breadcrumb_link = webDriver.findElement(By.xpath(xpath));
-        breadcrumb_link.click();
-        Assert.assertTrue(breadcrumb_link.isDisplayed());
+        Assert.assertTrue(webDriver.findElement(By.xpath(xpath)).isDisplayed());
+        break;
       }
     }
   }
@@ -306,7 +301,11 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
     Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
     Thread.sleep(2000);
-    Events.click(webDriver, tableDetails.joinedTables());
+    try {
+      Events.click(webDriver, tableDetails.joinedTables());
+    } catch (NoSuchElementException | TimeoutException e) {
+      Assert.fail("No Frequently joined tables found");
+    }
   }
 
   @Test
@@ -317,7 +316,11 @@ public class TableDetailsPageTest {
     Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
     Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
     Thread.sleep(2000);
-    Events.click(webDriver, tableDetails.joinedColumns());
+    try {
+      Events.click(webDriver, tableDetails.joinedColumns());
+    } catch (NoSuchElementException | TimeoutException e) {
+      Assert.fail("No Frequently joined columns found");
+    }
   }
 
   @AfterEach

@@ -29,7 +29,7 @@ public class TableDetails {
   By addTagTextBox = By.xpath("//input[@data-testid='associatedTagName']");
   By selectTag = By.xpath("//div[@data-testid=\"list-item\"][2]");
   By saveTag = By.xpath("//button[@data-testid=\"saveAssociatedTag\"]");
-  By tagName = By.xpath("(//div[@data-testid=\"tag-conatiner\"])[1]");
+  By tagName = By.xpath("(//div[@data-testid=\"tag-container\"])[1]");
   By removeTag = By.xpath("//span[@data-testid=\"remove\"]");
   By editDescriptionButton = By.xpath("//button[@data-testid= 'edit-description']");
   By editDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
@@ -44,13 +44,13 @@ public class TableDetails {
   By breadCrumb = By.xpath("//li[@data-testid=\"breadcrumb-link\"]");
   By sideDrawerLineage = By.xpath("//header[@class=\"tw-flex tw-justify-between\"]");
   By breadCrumbTier = By.xpath("//div[@class=\"tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap\"]");
-  By profilerDrawer = By.cssSelector("span[class = \"tw-mr-2 tw-cursor-pointer\"]");
+  By schemaTable = By.cssSelector("table[data-testid='schema-table']");
   By chart = By.xpath("//div[@class=\"recharts-wrapper\"]");
   By toolTip =
       By.xpath("//div[@class=\"recharts-tooltip-wrapper recharts-tooltip-wrapper-left recharts-tooltip-wrapper-top\"]");
-  By columnDescriptionButton = By.xpath("(//img[@data-testid='image'][parent::button])[3]");
+  By columnDescriptionButton = By.xpath("//div[@data-testid='description']/span/span");
   By columnDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
-  By columnDescription = By.cssSelector("div[data-testid='description'][id='column-description-2']");
+  By columnDescription = By.xpath("(//div[@id='column-description-3'])[1]");
   By joinedTables = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By joinedColumns = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By sampleDataTable = By.xpath("//table[@data-testid=\"sample-data-table\"]");
@@ -72,11 +72,11 @@ public class TableDetails {
     return webDriver.findElements(lineageComponents);
   }
 
-  public List<WebElement> profilerColumn() {
-    return webDriver.findElements(profilerDrawer);
-  }
-
   public List<WebElement> chart() {
     return webDriver.findElements(chart);
+  }
+
+  public boolean schemaTableIsDisplayed() {
+    return webDriver.findElement(schemaTable).isDisplayed();
   }
 }
