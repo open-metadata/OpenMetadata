@@ -11,6 +11,11 @@ repos:
       - id: isort
         args: ["--profile", "black"]
         exclude: ingestion/src/metadata/generated
+  - repo: https://github.com/hadialqattan/pycln
+    rev: v1.2.4
+    hooks:
+      - id: pycln
+        exclude: ingestion/src/metadata/generated
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v2.5.1
     hooks:
