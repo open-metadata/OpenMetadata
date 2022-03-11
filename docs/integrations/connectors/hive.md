@@ -41,7 +41,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 2. [Install the Python module for this connector](hive.md#2.-install-the-python-module-for-this-connector)
 3. [Create a configuration file using template JSON](hive.md#3.-create-a-configuration-file-using-template-json)
 4. [Configure service settings](hive.md#4.-configure-service-settings)
-5. [Configure authentication via identify provider (optional)](hive.md#5.-configure-authentication-via-an-identify-provider-optional)
+5. [Configure authentication via identify provider (optional)](hive.md#5.-configure-authentication-via-identify-provider-optional)
 6. [Enable/disable the data profiler](hive.md#5.-enable-disable-the-data-profiler)
 7. [Install the data profiler Python module (optional)](hive.md#6.-install-the-data-profiler-python-module-optional)
 8. [Configure data filters (optional)](hive.md#7.-configure-data-filters-optional)
@@ -225,15 +225,13 @@ Note: Using Kerberos authentication requires that a Kerberos ticket has been iss
 
 a. Set `source.config.connect_args`
 
-If you need to use LDAP authentication, include the `source.config.connect_args` field as follows. This field is included in the configuration template JSON provided above.
+If you need to use LDAP authentication, include the `source.config.connect_args` field as follows. This field is included in the configuration template JSON provided above. This setting will instruct the connector to use LDAP to authenticate for this Hive service.
 
 ```json
 "connect_args": {
   "auth": "LDAP",
 } 
 ```
-
-These settings will instruct the connector to use LDAP to authenticate for this Hive service.
 
 b. Set the value for `source.config.username` to identify your LDAP user.
 
