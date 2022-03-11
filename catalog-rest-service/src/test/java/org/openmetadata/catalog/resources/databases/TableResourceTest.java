@@ -878,9 +878,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable request = createRequest(test);
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("profileSample").withNewValue(0.8));
+    change.getFieldsAdded().add(new FieldChange().withName("profileSample").withNewValue(80.0));
 
-    updateAndCheckEntity(request.withProfileSample(0.8), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    updateAndCheckEntity(request.withProfileSample(80.0), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

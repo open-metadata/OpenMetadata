@@ -17,7 +17,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
-from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.orm import DeclarativeMeta, Query
 from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
@@ -57,16 +57,18 @@ class Profiler(Generic[MetricType]):
         self,
         *metrics: Type[MetricType],
         session: Session,
-        table,
+        table: DeclarativeMeta,
         profile_date: datetime = datetime.now(),
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
+        profile_sample: Optional[float] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
         :param session: Where to run the queries
         :param table: DeclarativeMeta containing table info
         :param ignore_cols: List of columns to ignore when computing the profile
+        :param profile_sample: % of rows to use for sampling column metrics
         """
 
         if not isinstance(table, DeclarativeMeta):
@@ -77,6 +79,7 @@ class Profiler(Generic[MetricType]):
         self._metrics = metrics
         self._ignore_cols = ignore_cols
         self._use_cols = use_cols
+        self._profile_sample = profile_sample
 
         self._profile_date = profile_date
 
@@ -115,6 +118,10 @@ class Profiler(Generic[MetricType]):
         and ignoring the specified ones.
         """
         return self._use_cols
+
+    @property
+    def profile_sample(self) -> Optional[float]:
+        return self._profile_sample
 
     @property
     def profile_date(self) -> datetime:
@@ -181,6 +188,19 @@ class Profiler(Generic[MetricType]):
                     f"We need {metric.required_metrics()} for {metric.name}, but only got {names} in the profiler"
                 )
 
+    def query_from(self, query: Query) -> Query:
+        """
+        Given a SQLAlchemy Query object, add the select_from
+        statement to it based on the data sampling.
+
+        :param query: Query to sample
+        :return: Sampled query
+        """
+        if self.profile_sample:
+            return query.where(func.random() > self.profile_sample)
+
+        return query
+
     def sql_col_run(self, col: Column):
         """
         Run the profiler and store its results
@@ -208,6 +228,10 @@ class Profiler(Generic[MetricType]):
     def sql_table_run(self):
         """
         Run Table Static metrics
+
+        Table metrics are always executed on the whole data.
+        We will only sample column metrics, as they are usually
+        the most expensive.
         """
         # Table metrics do not have column informed
         table_metrics = [
