@@ -85,7 +85,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), "dim_location");
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
+    //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
@@ -330,7 +330,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), tableName);
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
+    //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 8; i++) {
