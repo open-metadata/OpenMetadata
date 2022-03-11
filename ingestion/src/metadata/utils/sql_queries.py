@@ -22,7 +22,6 @@ REDSHIFT_SQL_STATEMENT = """
         ORDER BY ss.endtime DESC;
     """
 
-
 REDSHIFT_GET_ALL_RELATION_INFO = """
         SELECT
           c.relkind,
@@ -45,7 +44,6 @@ REDSHIFT_GET_ALL_RELATION_INFO = """
           AND n.nspname !~ '^pg_'
         ORDER BY c.relkind, n.oid, n.nspname;
         """
-
 
 REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
             SELECT
@@ -141,7 +139,7 @@ SNOWFLAKE_SQL_STATEMENT = """
         schema_name,start_time,end_time
         from table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz('{start_date}'),
-        end_time_range_end=>to_timestamp_ltz('{end_date}')));
+        end_time_range_end=>to_timestamp_ltz('{end_date}'),RESULT_LIMIT=>{result_limit}));
         """
 
 NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(

@@ -116,6 +116,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleRemoveTableTest,
   handleRemoveColumnTest,
   qualityTestFormHandler,
+  handleSelectedColumn,
   selectedColumn,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
@@ -182,7 +183,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: `Activity Feed (${feedCount})`,
+      name: 'Activity Feed',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -191,6 +192,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       },
       isProtected: false,
       position: 2,
+      count: feedCount,
     },
     {
       name: 'Sample Data',
@@ -643,6 +645,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 handleAddTableTestCase={handleAddTableTestCase}
                 handleRemoveColumnTest={handleRemoveColumnTest}
                 handleRemoveTableTest={handleRemoveTableTest}
+                handleSelectedColumn={handleSelectedColumn}
                 handleShowTestForm={handleShowTestForm}
                 handleTestModeChange={handleTestModeChange}
                 selectedColumn={selectedColumn}

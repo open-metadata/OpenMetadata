@@ -7,7 +7,9 @@
       "password": "strong_password",
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
+      "warehouse": "COMPUTE_WH",
       "service_name": "snowflake",
+      "result_limit": 1000,
       "duration": 2
     }
   },

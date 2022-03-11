@@ -13,32 +13,13 @@
 MIN_LENGTH Metric definition
 """
 from sqlalchemy import func
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
-from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.orm_profiler.orm.registry import is_concatenable, is_quantifiable
+from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.length import LenFn
+from metadata.orm_profiler.orm.registry import is_concatenable
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
-
-
-class MinLengthFn(FunctionElement):
-    name = __qualname__
-    inherit_cache = CACHE
-
-
-@compiles(MinLengthFn)
-def _(element, compiler, **kw):
-    return "MIN(LEN(%s))" % compiler.process(element.clauses, **kw)
-
-
-@compiles(MinLengthFn, DatabaseServiceType.SQLite.value.lower())
-def _(element, compiler, **kw):
-    return "MIN(LENGTH(%s))" % compiler.process(element.clauses, **kw)
 
 
 class MinLength(StaticMetric):
@@ -62,7 +43,7 @@ class MinLength(StaticMetric):
     def fn(self):
 
         if is_concatenable(self.col.type):
-            return MinLengthFn(self.col)
+            return func.min(LenFn(self.col))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"

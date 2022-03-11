@@ -64,7 +64,7 @@ class SampleUsageSource(Source[TableQuery]):
                 user_name="",
                 starttime="",
                 endtime="",
-                analysis_date=datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
+                analysis_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 database="shopify",
                 aborted=False,
                 sql=row["query"],

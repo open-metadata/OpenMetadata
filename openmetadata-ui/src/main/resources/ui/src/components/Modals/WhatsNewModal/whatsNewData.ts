@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 4;
+export const LATEST_VERSION_ID = 5;
 
-export const COOKIE_VERSION = 'VERSION_0_8_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_9_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -248,6 +248,49 @@ export const WHATS_NEW = [
       'Updates to Metadata Versioning': `- Version panel has been added for all the entities- Table, Topic, Pipeline, and Dashboard.\n- Previously, we were getting the change descriptions for a limited set of fields for the Topic entity; several other fields have now been included.`,
       'New Connectors': `- Supports [Delta Lake](https://delta.io/), an open source project that enables building a Lakehouse architecture on top of data lakes.\n- Worked on the refactor of SQL connectors to extract the lineage.\n- Connector API was refactored to capture the configs on the OpenMetadata side and to schedule the ingestion via UI.`,
       'Other Features': `- DataSource attribute has been added to the ML model entity.\n- Python API has been updated to add lineage for ML Model entities.\n- Supports the ingestion via environment variables to configure connectivity for both Elasticsearch and Airflow.\n- A new tab called ‘Bots’ has been added to group users with isBot set to true.\n- Support Application Default Credentials or a keyless, default service account in BigQuery data ingestion.\n- Improved usability of the metadata docker commands.\n- Includes a feature tour for new users.`,
+    },
+  },
+  {
+    id: 5,
+    version: 'v0.9.0',
+    description: 'Released on 9 Mar 2022.',
+    features: [
+      {
+        title: 'Release Feature Tour',
+        description:
+          'Collaboration is one of the founding principles behind OpenMetadata. The OpenMetadata 0.9 release focuses on Conversation Threads in the Activity Feed, Data Quality, and Glossary. We are iteratively building many important features based on community feedback.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/VbNurSHA5cc',
+      },
+      {
+        title: 'Profiler, metrics, and data quality tests',
+        description:
+          'For Data Quality, we previously shipped the profiler and standard metrics. In 0.9, we enable users to choose which tables should be profiled and define data quality tests at a table and column level.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/cKUhFlKOdoM',
+      },
+      {
+        title: 'Conversation threads for collaboration',
+        description:
+          'With Conversation Threads, users can track the data as it changes, comment on it, request changes, and ask questions without having to jump to another tool. Threaded discussions on data assets enable users to collaborate to improve the data within an organization.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/48CbISIGkGs',
+      },
+      {
+        title: 'Glossaries for shared and consistent descriptions of data',
+        description:
+          'OpenMetadata now enables you to build a Glossary - a Controlled Vocabulary to describe important concepts and terminologies related to data within your organization to foster a common and consistent understanding of data.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/xSSCoKdgZZ4',
+      },
+    ],
+    changeLogs: {
+      'Activity Feeds & Conversation Threads': `- A collaboration aspect has been built into Activity Feeds with conversation threads.\n- Users can ask questions, ask for a description, and comment on the change events.\n- Users can create conversations around data entities.\n- A chat icon is displayed next to all the data entities that have conversation threads.\n- Owners of assets, the followers and mentions, or users who created the thread will be part of the conversation.\n- Each data entity and its fields can have multiple threads.\n- A thread can have only one level of replies.\n- Currently, editing of posts is not supported.\n- Users will be able to tag the data entity or include users/teams in a conversation by using #mentions and @mentions.\n- In the Data Entity pages, 'Activity Feed' tab has been introduced to display all the activities related to that entity.\n- Feeds from conversation threads are included in the Activity Feeds.`,
+      'Data Quality and Writing Tests': `- The metadata extraction process and data profiling have been separated into two different jobs.\n- The ingestion job will extract the metadata from sources and update the entities' instances.\n- The profiling job will extract the metrics from SQL sources, and configure and run data quality tests.\n- Data Quality is supported only in the context of quality metrics.\n- Data profiling can be configured for specific tables.\n- Follow the same configuration as in the ingestion workflow to filter out specific tables and schemas.\n- The metadata ingestion as well as the profiling and testing workflows can be scheduled to run at a different cadence. \n- Data quality test support has been added with JSON Schemas and APIs.\n- Tests can be defined at the Table and Column levels from the UI or in the profiler workflow configuration.\n- To run the tests, users need to deploy the workflows on Airflow or use the CLI manually.\n- Table and Column profiling data are defined as a time series.\n- Table health can be tracked in the Data Quality tab.`,
+      Glossary: `- Glossary support has been introduced.\n- Glossaries are a controlled vocabulary in an organization used to define the concepts and terminologies specific to a particular domain.\n- OpenMetadata uses a Thesaurus to build a glossary.\n- The terms are organized hierarchically with equivalent and associative relationships.\n- Multiple glossaries can be built, like Business Glossary, Baking Glossary, etc.\n- A glossary has Terms, to define the data with a clear and unique definition.\n- Terms can have Synonyms, based on the different terms used in the organization.\n- Terms can have Associated Terms like parent or child terms.\n- Related Terms or concepts can be added to the glossary.\n- Terms have a life cycle status (e.g., Active, Deprecated).\n- Reviewers can accept or reject the suggested terms.\n- Terms from the glossary can be used for labeling and tagging.`,
+      Connectors: `- Twelve new connectors have been added: **Apache Atlas, Azure SQL, ClickHouse, ClickHouse Usage, Databricks, Delta Lake, DynamoDB, IBM Db2, Power BI, MSSQL Usage, SingleStore**\n- We support the ingestion of **Apache Iceberg** tables as a tableType. Iceberg tables are pulled in as part of the Hive or Glue ingestion and marked as external tables.\n- Added lineage support to fetch the upstreams and downstream from the queries for several connectors.\n- Lineage for Snowflake is supported via Usage as well as View definitions.\n- Lineage via View Definitions is supported for databases using SQLAlchemy, such as MySQL, Athena, AzureSQL, BigQuery, ClickHouse, Databricks, IBM Db2, Druid, Hive, MariaDB, MSSQL, Oracle, Postgres, Presto, Redshift, SingleStore, Snowflake, Trino, and Vertica.\n- Added lineage support for the dashboard connectors: Tableau, Metabase, and Superset.\n- The Tableau connector has been upgraded to support Personal access token name and Secret.\n- Application Default Credentials (ADC) have been implemented for BigQuery and BigQuery Usage connectors.\n- The Amundsen connector has been updated.`,
+      'UI Improvements': `- The Queries tab in the Table Details page displays the queries that run against a table.\n- The trendline on the UI displays the number of rows next to it.\n- Users can update teams based on updateTeams permission.\n- Admins can now remove users from Teams.\n- Users can delete their recently searched terms.`,
+      'Other Features': `- We support Azure SSO as a new integration in security.\n- Improvements have been made to the Single-Sign-On authentication from Okta and Google SSO.\n- We also accommodate the OAuthProxy handler, which authenticates the user and returns the user’s email address in HTTP headers to login to OpenMetadata.\n- Owner support has been added for all services and databases to ensure that all services have an owner. Databases can have an owner independent of the table it contains.\n- RBAC has been implemented for role-based permissions. \n- Permissions API integrated into the UI to get permissions for a logged-in user.\n- Authorization checks added to the UI based on the logged-in user permissions.\n- Admins can choose a default role to assign to users during sign-up.\n- Dataset level and column level lineage can be added manually.\n- Table entity page loads the data incrementally.`,
     },
   },
 ];

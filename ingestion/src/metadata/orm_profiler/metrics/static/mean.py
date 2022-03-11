@@ -13,32 +13,13 @@
 AVG Metric definition
 """
 from sqlalchemy import func
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
-from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.orm.functions.length import LenFn
 from metadata.orm_profiler.orm.registry import is_concatenable, is_quantifiable
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
-
-
-class ConcatAvgFn(FunctionElement):
-    name = __qualname__
-    inherit_cache = CACHE
-
-
-@compiles(ConcatAvgFn)
-def _(element, compiler, **kw):
-    return "AVG(LEN(%s))" % compiler.process(element.clauses, **kw)
-
-
-@compiles(ConcatAvgFn, DatabaseServiceType.SQLite.value.lower())
-def _(element, compiler, **kw):
-    return "AVG(LENGTH(%s))" % compiler.process(element.clauses, **kw)
 
 
 class Mean(StaticMetric):
@@ -65,7 +46,7 @@ class Mean(StaticMetric):
             return func.avg(self.col)
 
         if is_concatenable(self.col.type):
-            return ConcatAvgFn(self.col)
+            return func.avg(LenFn(self.col))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MEAN"

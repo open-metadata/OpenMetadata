@@ -8,7 +8,7 @@ description: >-
 
 ## Requirements
 
-This guide assumes you have access to a command-line environment or shell such as bash, zsh, etc. or Linux or Mac OS X or PowerShell on Microsoft Windows.&#x20;
+This guide assumes you have access to a command-line environment or shell such as bash, zsh, etc. on Linux or Mac OS X or PowerShell on Microsoft Windows.&#x20;
 
 This guide also assumes that your command-line environment has access to the `tar` utility.
 

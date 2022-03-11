@@ -15,7 +15,11 @@ import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import TagsContainer from './tags-container';
 
-const tagList = ['tag 1', 'tag 2', 'tag 3'];
+const tagList = [
+  { fqn: 'tag 1', source: 'Tag' },
+  { fqn: 'tag 2', source: 'Tag' },
+  { fqn: 'tag 3', source: 'Glossary' },
+];
 const onCancel = jest.fn();
 const onSelectionChange = jest.fn();
 
@@ -38,7 +42,7 @@ describe('Test TagsContainer Component', () => {
         onSelectionChange={onSelectionChange}
       />
     );
-    const TagContainer = getByTestId(container, 'tag-conatiner');
+    const TagContainer = getByTestId(container, 'tag-container');
 
     expect(TagContainer).toBeInTheDocument();
   });
