@@ -12,7 +12,7 @@
 MSSQL usage module
 """
 
-from typing import Any, Dict, Iterable, Iterator, Union
+from typing import Any, Dict, Iterable
 
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,

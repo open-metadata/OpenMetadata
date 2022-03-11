@@ -11,7 +11,6 @@
 
 # This import verifies that the dependencies are available.
 import logging
-import traceback
 from typing import Any, Dict, Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.databaseService import (

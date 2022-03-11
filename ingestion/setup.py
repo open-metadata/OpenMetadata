@@ -132,6 +132,7 @@ dev = {
     "botocore==1.23.14",
     "datamodel-code-generator==0.11.14",
     "black==21.12b0",  # required for datamodel-code-generator==0.11.14
+    "pycln",
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
