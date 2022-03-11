@@ -58,25 +58,25 @@ Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases
 
 For example, the release for version 0.6 is found in the Assets section at the link highlighted in the figure below.
 
-![](<../../docs/.gitbook/assets/image (1) (1).png>)
+![](<../../docs/.gitbook/assets/image (4).png>)
 
 ### 2. Untar the release download
 
 Once the tar file has download, run the following command, updated if necessary for the version of OpenMetadata that you downloaded.
 
 ```bash
-tar -zxvf openmetadata-0.6.0.tar.gz
+tar -zxvf openmetadata-0.9.0.tar.gz
 ```
 
 ### 3. Navigate to the directory created
 
 ```
-cd openmetadata-0.6.0
+cd openmetadata-0.9.0
 ```
 
 ### 4. Start OpenMetadata
 
-OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.6.0` directory.
+OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.9.0` directory.
 
 ```
 ./bin/openmetadata.sh start
