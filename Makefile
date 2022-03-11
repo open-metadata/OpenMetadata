@@ -37,7 +37,7 @@ lint: ## Run pylint on the Python sources to analyze the codebase
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
-	isort ingestion/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
+	isort ingestion/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --profile black --multi-line 3
 	black ingestion/ --extend-exclude $(PY_SOURCE)/metadata/generated
 
 .PHONY: py_format_check

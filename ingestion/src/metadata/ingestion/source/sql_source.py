@@ -625,7 +625,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 and "policy_tags" in column
                                 and column["policy_tags"]
                             ):
-                                self.metadata.create_primary_tag_category(
+                                self.metadata.create_tag_category(
                                     category=self.config.tag_category_name,
                                     data=Tag(
                                         name=column["policy_tags"], description=""

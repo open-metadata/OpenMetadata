@@ -84,6 +84,7 @@ class LookerSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.client = self.looker_client()
+        self.status = LookerDashboardSourceStatus()
         self.service = get_dashboard_service_or_create(
             service_name=config.service_name,
             dashboard_service_type=DashboardServiceType.Looker.name,
@@ -137,7 +138,7 @@ class LookerSource(Source[Entity]):
             id=uuid.uuid4(),
             name=dashboard_elements.id,
             displayName=dashboard_elements.id,
-            description=dashboard_elements.title,
+            description=dashboard_elements.title if dashboard_elements.title else "",
             chart_type=dashboard_elements.type,
             url=self.config.url,
             service=EntityReference(id=self.service.id, type="dashboardService"),
@@ -164,9 +165,8 @@ class LookerSource(Source[Entity]):
                 for iter_chart in dashboard.dashboard_elements:
                     chart = self._get_dashboard_elements(iter_chart)
                     if chart:
-                        charts.append(chart)
+                        charts.append(chart.name)
                 yield Dashboard(
-                    id=uuid.uuid4(),
                     name=dashboard.id,
                     displayName=dashboard.title,
                     description="temp",
