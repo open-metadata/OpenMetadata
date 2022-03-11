@@ -160,7 +160,7 @@ public class DashboardDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTableLink(1));
-    actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription())).perform();
+    // actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
     Thread.sleep(2000);

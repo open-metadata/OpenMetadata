@@ -62,7 +62,7 @@ public class PipelineDetailsPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     actions = new Actions(webDriver);
     common = new Common(webDriver);
     pipelineDetails = new PipelineDetails(webDriver);
@@ -171,17 +171,17 @@ public class PipelineDetailsPageTest {
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
+    Thread.sleep(2000);
     String checkDescription = pipelineDetails.getDescriptionBox().getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");

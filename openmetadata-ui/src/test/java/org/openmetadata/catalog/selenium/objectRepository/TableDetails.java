@@ -29,7 +29,7 @@ public class TableDetails {
   By addTagTextBox = By.xpath("//input[@data-testid='associatedTagName']");
   By selectTag = By.xpath("//div[@data-testid=\"list-item\"][2]");
   By saveTag = By.xpath("//button[@data-testid=\"saveAssociatedTag\"]");
-  By tagName = By.xpath("(//div[@data-testid=\"tag-conatiner\"])[1]");
+  By tagName = By.xpath("(//div[@data-testid=\"tag-container\"])[1]");
   By removeTag = By.xpath("//span[@data-testid=\"remove\"]");
   By editDescriptionButton = By.xpath("//button[@data-testid= 'edit-description']");
   By editDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
@@ -48,7 +48,7 @@ public class TableDetails {
   By chart = By.xpath("//div[@class=\"recharts-wrapper\"]");
   By toolTip =
       By.xpath("//div[@class=\"recharts-tooltip-wrapper recharts-tooltip-wrapper-left recharts-tooltip-wrapper-top\"]");
-  By columnDescriptionButton = By.xpath("(//img[@data-testid='image'][parent::button])[3]");
+  By columnDescriptionButton = By.xpath("//div[@data-testid='description']/span/span");
   By columnDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
   By columnDescription = By.xpath("(//div[@id='column-description-3'])[1]");
   By joinedTables = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");

@@ -60,7 +60,7 @@ public class TableDetailsPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     myDataPage = new MyDataPage(webDriver);
     userListPage = new UserListPage(webDriver);
     teamsPage = new TeamsPage(webDriver);
