@@ -13,9 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -23,18 +21,22 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
+@Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.ALLOWED_FIELDS, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.ALLOWED_FIELDS, "owner,tags");
@@ -62,11 +64,11 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void prepare(Chart chart) throws IOException, ParseException {
     EntityUtil.escapeReservedChars(getEntityInterface(chart));
-    DashboardService dashboardService = helper(chart).findEntity("service", DASHBOARD_SERVICE);
-    chart.setService(helper(dashboardService).toEntityReference());
+    DashboardService dashboardService = Entity.getEntity(chart.getService(), Fields.EMPTY_FIELDS, Include.ALL);
+    chart.setService(new DashboardServiceEntityInterface(dashboardService).getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
     chart.setFullyQualifiedName(getFQN(chart));
-    chart.setOwner(helper(chart).validateOwnerOrNull());
+    chart.setOwner(Entity.getEntityReference(chart.getOwner()));
     chart.setTags(addDerivedTags(chart.getTags()));
   }
 
@@ -118,8 +120,8 @@ public class ChartRepository extends EntityRepository<Chart> {
     return new ChartEntityInterface(entity);
   }
 
-  private EntityReference getService(Chart chart) throws IOException, ParseException {
-    return helper(chart).getContainer(DASHBOARD_SERVICE);
+  private EntityReference getService(Chart chart) throws IOException {
+    return getContainer(chart.getId(), Entity.CHART);
   }
 
   public static class ChartEntityInterface implements EntityInterface<Chart> {

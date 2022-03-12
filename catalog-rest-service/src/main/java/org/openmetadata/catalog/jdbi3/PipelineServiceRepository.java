@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
 import java.net.URI;
@@ -60,7 +59,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   @Override
   public void prepare(PipelineService entity) throws IOException, ParseException {
     // Check if owner is valid and set the relationship
-    entity.setOwner(helper(entity).validateOwnerOrNull());
+    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 

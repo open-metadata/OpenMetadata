@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 import java.io.IOException;
@@ -59,7 +58,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   @Override
   public void prepare(StorageService entity) throws IOException, ParseException {
     // Check if owner is valid and set the relationship
-    entity.setOwner(helper(entity).validateOwnerOrNull());
+    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
   }
 
   @Override

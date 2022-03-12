@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.airflow;
 
-import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 
 import java.io.IOException;
@@ -24,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.models.IngestionAirflowPipeline;
 import org.openmetadata.catalog.airflow.models.IngestionTaskConfig;
 import org.openmetadata.catalog.airflow.models.OpenMetadataIngestionComponent;
@@ -35,6 +34,8 @@ import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.operations.pipelines.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.operations.pipelines.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.catalog.type.DatabaseConnection;
+import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public final class AirflowUtils {
@@ -65,7 +66,7 @@ public final class AirflowUtils {
 
   public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(
       AirflowPipeline airflowPipeline, Boolean decrypt) throws IOException, ParseException {
-    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+    DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     PipelineConfig pipelineConfig = airflowPipeline.getPipelineConfig();
     Map<String, Object> dbConfig = new HashMap<>();

@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -130,6 +129,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Test
   void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException, ParseException {
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+    EntityReference serviceRef = new DatabaseServiceEntityInterface(service).getEntityReference();
 
     // Update database description and ingestion service that are null
     CreateDatabaseService update = createRequest(test).withDescription("description1");
@@ -159,7 +159,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
     AirflowPipelineResourceTest airflowPipelineResourceTest = new AirflowPipelineResourceTest();
     CreateAirflowPipeline createAirflowPipeline =
-        airflowPipelineResourceTest.createRequest(test).withService(helper(service).toEntityReference());
+        airflowPipelineResourceTest.createRequest(test).withService(serviceRef);
 
     DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
         new DatabaseServiceMetadataPipeline()
