@@ -37,6 +37,7 @@ import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import Tags from '../tags/tags';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Field = ({
   children,
@@ -252,7 +253,7 @@ const AddGlossaryTerm = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <i aria-hidden="true" className="fa fa-check" />
+            <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
           <Button
@@ -358,7 +359,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="contained"
               onClick={addReferenceFields}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
 
@@ -421,7 +422,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="contained"
               onClick={() => setShowRelatedTermsModal(true)}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
           <div className="tw-my-4">
@@ -450,7 +451,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="contained"
               onClick={() => setShowRevieweModal(true)}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
           <div className="tw-my-4">

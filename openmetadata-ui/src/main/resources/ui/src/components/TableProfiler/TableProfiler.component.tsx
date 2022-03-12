@@ -29,6 +29,7 @@ import { Button } from '../buttons/Button/Button';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
@@ -254,9 +255,15 @@ const TableProfiler: FC<Props> = ({
                                     (result) =>
                                       result.testCaseStatus === 'Success'
                                   ) ? (
-                                    <i className="fas fa-check-square tw-text-status-success" />
+                                    <FontAwesomeIcon
+                                      className="tw-text-status-success"
+                                      icon="check-square"
+                                    />
                                   ) : (
-                                    <i className="fas fa-times tw-text-status-failed" />
+                                    <FontAwesomeIcon
+                                      className="tw-text-status-failed"
+                                      icon="times"
+                                    />
                                   )}
                                 </p>
                                 <div>

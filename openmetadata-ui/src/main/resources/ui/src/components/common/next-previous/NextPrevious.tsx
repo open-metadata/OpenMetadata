@@ -15,6 +15,8 @@ import { Paging } from 'Models';
 import React from 'react';
 import { CursorType } from '../../../enums/pagination.enum';
 import { Button } from '../../buttons/Button/Button';
+import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Prop = {
   paging: Paging;
@@ -34,7 +36,10 @@ const NextPrevious = ({ paging, pagingHandler }: Prop) => {
         theme="primary"
         variant="outlined"
         onClick={() => pagingHandler(CursorType.BEFORE)}>
-        <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />{' '}
+        <FontAwesomeIcon
+          className="tw-text-sm tw-align-middle tw-pr-1.5"
+          icon={faArrowLeft}
+        />{' '}
         <span>Previous</span>
       </Button>
       <Button
@@ -46,7 +51,10 @@ const NextPrevious = ({ paging, pagingHandler }: Prop) => {
         variant="outlined"
         onClick={() => pagingHandler(CursorType.AFTER)}>
         <span> Next</span>{' '}
-        <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
+        <FontAwesomeIcon
+          className="tw-text-sm tw-align-middle tw-pl-1.5"
+          icon={faArrowRight}
+        />
       </Button>
     </div>
   );

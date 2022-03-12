@@ -38,6 +38,7 @@ import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   assetData: GlossaryTermAssets;
@@ -193,7 +194,7 @@ Props) => {
               theme="primary"
               variant="contained"
               onClick={handleAddGlossaryClick}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </NonAdminAction>
         </div>

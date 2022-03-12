@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, lowerCase, uniqueId, upperCase } from 'lodash';
@@ -698,9 +699,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                         {loading ? (
                           <Loader size="small" type="white" />
                         ) : status === 'success' ? (
-                          <i
-                            aria-hidden="true"
-                            className="fa fa-check tw-text-white"
+                          <FontAwesomeIcon
+                            className="tw-text-white"
+                            icon="check"
                           />
                         ) : (
                           <SVGIcons
@@ -753,7 +754,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 deletionState.loading ? (
                   <Loader size="small" type="white" />
                 ) : deletionState.status === 'success' ? (
-                  <i aria-hidden="true" className="fa fa-check tw-text-white" />
+                  <FontAwesomeIcon className="tw-text-white" icon="check" />
                 ) : (
                   'Confirm'
                 )

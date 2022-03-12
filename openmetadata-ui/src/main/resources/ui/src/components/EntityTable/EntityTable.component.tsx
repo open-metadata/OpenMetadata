@@ -56,6 +56,8 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 
 type Props = {
   owner: Table['owner'];
@@ -403,11 +405,9 @@ const EntityTable = ({
                           style={{
                             marginLeft: `${row.depth * 35}px`,
                           }}>
-                          {row.isExpanded ? (
-                            <i className="fas fa-caret-down" />
-                          ) : (
-                            <i className="fas fa-caret-right" />
-                          )}
+                          <FontAwesomeIcon
+                            icon={row.isExpanded ? faCaretDown : faCaretRight}
+                          />
                         </span>
                       ) : null}
 
@@ -418,7 +418,10 @@ const EntityTable = ({
                               {failingTests.length ? (
                                 <div className="tw-flex">
                                   <p className="tw-mr-2">
-                                    <i className="fas fa-times tw-text-status-failed" />
+                                    <FontAwesomeIcon
+                                      className="tw-text-status-failed"
+                                      icon="times"
+                                    />
                                   </p>
                                   <p>
                                     {`${failingTests.length}/${columnTestLength} tests failing`}
@@ -429,7 +432,10 @@ const EntityTable = ({
                                   {passingTests.length ? (
                                     <div className="tw-flex">
                                       <div className="tw-mr-2">
-                                        <i className="fas fa-check-square tw-text-status-success" />
+                                        <FontAwesomeIcon
+                                          className="tw-text-status-success"
+                                          icon="check-square"
+                                        />
                                       </div>
                                       <p>{`${passingTests.length} tests`}</p>
                                     </div>

@@ -42,6 +42,8 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../../utils/GlossaryUtils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
@@ -261,7 +263,10 @@ const EntityPageInfo = ({
             {deleted && (
               <>
                 <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2">
-                  <i className="fas fa-exclamation-circle tw-mr-1" />
+                  <FontAwesomeIcon
+                    className="tw-mr-1"
+                    icon={faExclamationCircle}
+                  />
                   Deleted
                 </div>
               </>
@@ -308,11 +313,11 @@ const EntityPageInfo = ({
                     }}>
                     {isFollowing ? (
                       <>
-                        <i className="fas fa-star" /> Unfollow
+                        <FontAwesomeIcon icon={faStar} /> Unfollow
                       </>
                     ) : (
                       <>
-                        <i className="far fa-star" /> Follow
+                        <FontAwesomeIcon icon={faStar} /> Follow
                       </>
                     )}
                   </button>

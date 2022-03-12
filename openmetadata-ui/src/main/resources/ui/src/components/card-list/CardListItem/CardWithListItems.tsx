@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
@@ -42,7 +43,9 @@ const CardListItem: FunctionComponent<Props> = ({
           </p>
         </div>
         <div data-testid="icon">
-          {isActive && <i className="fas fa-check-circle tw-text-h2" />}
+          {isActive && (
+            <FontAwesomeIcon className="tw-text-h2" icon="check-circle" />
+          )}
         </div>
       </div>
       <div
