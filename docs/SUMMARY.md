@@ -172,16 +172,42 @@
   * [Backup Metadata](../upgrade/upgrade-on-kubernetes/backup-metadata.md)
   * [Upgrade OpenMetadata on Kubernetes](../upgrade/upgrade-on-kubernetes/upgrade-openmetadata-on-kubernetes.md)
 
-## Metadata Ingestion
+## Data Discovery
 
-* [Metadata Ingestion Overview](../metadata-ingestion/metadata-ingestion.md)
-* [Ingest Sample Data](../metadata-ingestion/ingest-sample-data.md)
+* [Keyword Search](data-discovery/keyword-search.md)
+* [Discovery through Association](data-discovery/discovery-through-association.md)
+* [Advanced Search](data-discovery/advanced-search.md)
+* [Complex Data Types](data-discovery/complex-data-types.md)
+* [Deleted Entity Metadata](data-discovery/deleted-entity-metadata.md)
+
+## Data Collaboration
+
+* [Activity Feeds](data-collaboration/activity-feeds.md)
+* [Conversation Threads](data-collaboration/conversation-threads.md)
+* [Descriptions and Tags](data-collaboration/descriptions-and-tags.md)
+* [Data Importance](data-collaboration/data-importance.md)
+* [Data Ownership](data-collaboration/data-ownership.md)
+
+## Data Lineage
+
+* [Lineage Ingestion](data-lineage/lineage-ingestion.md)
+* [Edit Data Lineage Manually](data-lineage/edit-data-lineage-manually.md)
+* [DBT Integration](data-lineage/dbt-integration.md)
+
+## Controlled Vocabulary
+
+* [Glossaries](controlled-vocabulary/glossaries.md)
 
 ## Data Quality
 
 * [Data Quality Overview](../data-quality/data-quality-overview/README.md)
   * [Metrics](../data-quality/data-quality-overview/metrics.md)
   * [Tests](../data-quality/data-quality-overview/tests.md)
+
+## Metadata Ingestion
+
+* [Metadata Ingestion Overview](../metadata-ingestion/metadata-ingestion.md)
+* [Ingest Sample Data](../metadata-ingestion/ingest-sample-data.md)
 
 ## Open Source Community
 
