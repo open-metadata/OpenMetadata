@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { EntityThread, Post } from 'Models';
@@ -80,7 +81,7 @@ export const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
                 onClick={() => {
                   onShowNewConversation?.(true);
                 }}>
-                <i aria-hidden="true" className="fa fa-plus" />
+                <FontAwesomeIcon icon="plus" />
               </Button>
             </PopOver>
           ) : null}

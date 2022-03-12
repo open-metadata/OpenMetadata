@@ -20,6 +20,7 @@ import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 // const INPUT_COLLAPED = '1px';
 // const INPUT_EXPANDED = '150px';
@@ -245,7 +246,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             theme="primary"
             variant="contained"
             onMouseDown={handleCancel}>
-            <i aria-hidden="true" className="fa fa-times tw-w-3.5 tw-h-3.5" />
+            <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
           </Button>
           <Button
             className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -254,7 +255,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             theme="primary"
             variant="contained"
             onMouseDown={handleSave}>
-            <i aria-hidden="true" className="fa fa-check tw-w-3.5 tw-h-3.5" />
+            <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
           </Button>
         </div>
       )}

@@ -31,17 +31,12 @@ import React, {
 } from 'react';
 import { ONLY_NUMBER_REGEX } from '../../../constants/constants';
 import { serviceTypes } from '../../../constants/services.const';
-import {
-  // DashboardServiceType,
-  // MessagingServiceType,
-  ServiceCategory,
-} from '../../../enums/service.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import {
   CreateAirflowPipeline,
   Schema,
 } from '../../../generated/api/operations/pipelines/createAirflowPipeline';
 import { DashboardServiceType } from '../../../generated/entity/services/dashboardService';
-// import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import {
   DatabaseService,
   DatabaseServiceType,
@@ -68,13 +63,18 @@ import {
   getKeyValuePair,
 } from '../../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-// import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import CronEditor from '../../common/CronEditor/CronEditor';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import IngestionStepper from '../../IngestionStepper/IngestionStepper.component';
-// import { serviceType } from '../../../constants/services.const';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faEyeSlash,
+  faEye,
+  faArrowLeft,
+  faArrowRight,
+} from '@fortawesome/free-solid-svg-icons';
 
 export type DataObj = {
   id?: string;
@@ -923,7 +923,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               theme="primary"
               variant="contained"
               onClick={addConnectionOptionFields}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
 
@@ -990,7 +990,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               theme="primary"
               variant="contained"
               onClick={addConnectionArgumentFields}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
           {connectionArguments.map((value, i) => (
@@ -1399,15 +1399,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                     ? password
                     : ''.padStart(password.length, '*')}
                 </span>
-                <i
-                  className={classNames(
-                    'far tw-text-grey-body tw-ml-2',
-                    {
-                      'fa-eye-slash': isPasswordVisible,
-                    },
-
-                    { 'fa-eye ': !isPasswordVisible }
-                  )}
+                <FontAwesomeIcon
+                  className="far tw-text-grey-body tw-ml-2"
+                  icon={isPasswordVisible ? faEyeSlash : faEye}
                   onClick={() => setIsPasswordVisible((pre) => !pre)}
                 />
               </div>
@@ -1458,15 +1452,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         ? apiKey
                         : ''.padStart(apiKey.length, '*')}
                     </span>
-                    <i
-                      className={classNames(
-                        'far tw-text-grey-body tw-ml-2',
-                        {
-                          'fa-eye-slash': isApiKeyVisible,
-                        },
-
-                        { 'fa-eye ': !isApiKeyVisible }
-                      )}
+                    <FontAwesomeIcon
+                      className="far tw-text-grey-body tw-ml-2"
+                      icon={isApiKeyVisible ? faEyeSlash : faEye}
                       onClick={() => setisApiKeyVisible((pre) => !pre)}
                     />
                   </div>
@@ -1502,15 +1490,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         ? password
                         : ''.padStart(password.length, '*')}
                     </span>
-                    <i
-                      className={classNames(
-                        'far tw-text-grey-body tw-ml-2',
-                        {
-                          'fa-eye-slash': isPasswordVisible,
-                        },
-
-                        { 'fa-eye ': !isPasswordVisible }
-                      )}
+                    <FontAwesomeIcon
+                      className="far tw-text-grey-body tw-ml-2"
+                      icon={isPasswordVisible ? faEyeSlash : faEye}
                       onClick={() => setIsPasswordVisible((pre) => !pre)}
                     />
                   </div>
@@ -1554,15 +1536,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                         ? password
                         : ''.padStart(password.length, '*')}
                     </span>
-                    <i
-                      className={classNames(
-                        'far tw-text-grey-body tw-ml-2',
-                        {
-                          'fa-eye-slash': isPasswordVisible,
-                        },
-
-                        { 'fa-eye ': !isPasswordVisible }
-                      )}
+                    <FontAwesomeIcon
+                      className="far tw-text-grey-body tw-ml-2"
+                      icon={isPasswordVisible ? faEyeSlash : faEye}
                       onClick={() => setIsPasswordVisible((pre) => !pre)}
                     />
                   </div>
@@ -2263,7 +2239,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             theme="primary"
             variant="text"
             onClick={previousStepHandler}>
-            <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />{' '}
+            <FontAwesomeIcon
+              className="tw-text-sm tw-align-middle tw-pr-1.5"
+              icon={faArrowLeft}
+            />{' '}
             <span>Previous</span>
           </Button>
 
@@ -2288,7 +2267,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               variant="contained"
               onClick={() => forwardStepHandler(activeStepperStep)}>
               <span>Next</span>
-              <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
+              <FontAwesomeIcon
+                className="tw-text-sm tw-align-middle tw-pr-1.5"
+                icon={faArrowRight}
+              />
             </Button>
           )}
         </div>
