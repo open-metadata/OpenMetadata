@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
@@ -109,7 +108,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   @Override
   public void prepare(DatabaseService databaseService) throws IOException, ParseException {
     // Check if owner is valid and set the relationship
-    databaseService.setOwner(helper(databaseService).validateOwnerOrNull());
+    databaseService.setOwner(Entity.getEntityReference(databaseService.getOwner()));
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     if (fernet.isKeyDefined()
         && databaseConnection != null

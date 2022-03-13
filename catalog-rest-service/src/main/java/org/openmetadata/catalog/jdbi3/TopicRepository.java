@@ -14,8 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.MESSAGING_SERVICE;
-import static org.openmetadata.catalog.Entity.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -28,9 +26,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
@@ -70,11 +70,11 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void prepare(Topic topic) throws IOException, ParseException {
     EntityUtil.escapeReservedChars(getEntityInterface(topic));
-    MessagingService messagingService = helper(topic).findEntity("service", MESSAGING_SERVICE);
-    topic.setService(helper(messagingService).toEntityReference());
+    MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
+    topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
     topic.setFullyQualifiedName(getFQN(topic));
-    topic.setOwner(helper(topic).validateOwnerOrNull());
+    topic.setOwner(Entity.getEntityReference(topic.getOwner()));
     topic.setTags(addDerivedTags(topic.getTags()));
   }
 
@@ -120,8 +120,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     return new TopicEntityInterface(entity);
   }
 
-  private EntityReference getService(Topic topic) throws IOException, ParseException {
-    return helper(topic).getContainer(MESSAGING_SERVICE);
+  private EntityReference getService(Topic topic) throws IOException {
+    return getContainer(topic.getId(), Entity.TOPIC);
   }
 
   public void setService(Topic topic, EntityReference service) {

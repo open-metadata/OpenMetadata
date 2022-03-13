@@ -31,14 +31,12 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.EntityDAO;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public final class Entity {
@@ -128,44 +126,45 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReference(EntityReference ref) throws IOException {
-    return getEntityReferenceById(ref.getType(), ref.getId());
-  }
-
-  public static EntityReference getEntityReferenceById(@NonNull String entity, @NonNull UUID id) throws IOException {
-    EntityDAO<?> dao = DAO_MAP.get(entity);
-    if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
-    }
-    return dao.findEntityReferenceById(id);
-  }
-
-  public static EntityReference getEntityReferenceByName(@NonNull String entity, @NonNull String fqn)
-      throws IOException {
-    EntityDAO<?> dao = DAO_MAP.get(entity);
-    if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
-    }
-    return dao.findEntityReferenceByName(fqn);
-  }
-
-  public static EntityReference getEntityReferenceByName(@NonNull String entity, @NonNull String fqn, Include include)
-      throws IOException {
-    EntityDAO<?> dao = DAO_MAP.get(entity);
-    if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
-    }
-    return dao.findEntityReferenceByName(fqn, include);
+    return ref == null ? null : getEntityReferenceById(ref.getType(), ref.getId());
   }
 
   public static <T> EntityReference getEntityReference(T entity) {
     String entityType = getEntityTypeFromObject(entity);
+    return getEntityRepository(entityType).getEntityInterface(entity).getEntityReference();
+  }
 
-    @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
-    if (entityRepository == null) {
+  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id)
+      throws IOException {
+    return getEntityReferenceById(entityType, id, Include.NON_DELETED);
+  }
+
+  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
+      throws IOException {
+    EntityDAO<?> dao = DAO_MAP.get(entityType);
+    if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
-    return entityRepository.getEntityInterface(entity).getEntityReference();
+    return dao.findEntityReferenceById(id, include);
+  }
+
+  public static EntityReference getEntityReferenceByName(@NonNull String entityType, @NonNull String fqn)
+      throws IOException {
+    return getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+  }
+
+  public static EntityReference getEntityReferenceByName(
+      @NonNull String entityType, @NonNull String fqn, Include include) throws IOException {
+    EntityDAO<?> dao = DAO_MAP.get(entityType);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    return dao.findEntityReferenceByName(fqn, include);
+  }
+
+  public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException, ParseException {
+    EntityRepository<?> repository = getEntityRepository(reference.getType());
+    return repository.getOwner(reference.getId(), reference.getType());
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
@@ -177,10 +176,7 @@ public final class Entity {
       return null;
     }
     String entityType = ref.getType();
-    EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+    EntityRepository<?> entityRepository = getEntityRepository(entityType);
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     return ref.withHref(href);
   }
@@ -190,12 +186,7 @@ public final class Entity {
     return !entityType.equals(TEAM);
   }
 
-  /**
-   * Returns true if the change events of the given entity type should be published to the activity feed.
-   *
-   * @param entityType Type of the entity.
-   * @return true if change events of the entity should be published to activity feed, false otherwise
-   */
+  /** Returns true if the change events of the given entity type should be published to the activity feed. */
   public static boolean shouldDisplayEntityChangeOnFeed(@NonNull String entityType) {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
@@ -209,23 +200,13 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
-  /**
-   * Retrieve the entity using id from given entity reference and fields
-   *
-   * @return entity object eg: {@link org.openmetadata.catalog.entity.data.Table}, {@link
-   *     org.openmetadata.catalog.entity.data.Topic}, etc
-   */
+  /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields)
       throws IOException, ParseException {
     return getEntity(entityReference, fields, Include.NON_DELETED);
   }
 
-  /**
-   * Retrieve the entity using id from given entity reference and fields
-   *
-   * @return entity object eg: {@link org.openmetadata.catalog.entity.data.Table}, {@link
-   *     org.openmetadata.catalog.entity.data.Topic}, etc
-   */
+  /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields, Include include)
       throws IOException, ParseException {
     if (entityReference == null) {
@@ -242,12 +223,7 @@ public final class Entity {
     return entity;
   }
 
-  /**
-   * Retrieve the corresponding entity repository for a given entity name.
-   *
-   * @param entityType type of entity, eg: {@link Entity#TABLE}, {@link Entity#TOPIC}, etc
-   * @return entity repository corresponding to the entity name
-   */
+  /** Retrieve the corresponding entity repository for a given entity name. */
   public static <T> EntityRepository<T> getEntityRepository(@NonNull String entityType) {
     @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
@@ -259,50 +235,14 @@ public final class Entity {
 
   public static void deleteEntity(String updatedBy, String entityType, UUID entityId, boolean recursive)
       throws IOException, ParseException {
-    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+    EntityRepository<?> dao = getEntityRepository(entityType);
     dao.delete(updatedBy, entityId.toString(), recursive);
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId)
       throws IOException, ParseException {
-    EntityRepository<?> dao = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (dao == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+    EntityRepository<?> dao = getEntityRepository(entityType);
     dao.restoreEntity(updatedBy, entityType, entityId);
-  }
-
-  public static <T> EntityRepository<T> getEntityRepositoryForClass(@NonNull Class<T> clazz) {
-    @SuppressWarnings("unchecked")
-    EntityRepository<T> entityRepository = (EntityRepository<T>) CLASS_ENTITY_REPOSITORY_MAP.get(clazz);
-    if (entityRepository == null) {
-      throw new UnhandledServerException(
-          String.format(
-              "Class %s is not an Entity class and it doesn't have a EntityRepository companion",
-              clazz.getSimpleName()));
-    }
-    return entityRepository;
-  }
-
-  /**
-   * Utility method to create the decorator from an Entity or EntityReference instance. By Entity class we don't mean
-   * Entity.java but the entity classes generated from JSONSchema files like DatabaseService, Database, Table, and so
-   * on.
-   *
-   * @param object must be an Entity class instance with a companion EntityRepository or an EntityReference
-   * @param <T> must be the Entity class of this entity or object if multiple results are possible.
-   * @return the decorator
-   */
-  public static <T> EntityRepository<T>.EntityHelper helper(@NonNull Object object) throws IOException, ParseException {
-    T entity = (T) object;
-    if (object instanceof EntityReference) {
-      entity = getEntity((EntityReference) object, Fields.EMPTY_FIELDS);
-    }
-    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepositoryForClass(entity.getClass());
-    return entityRepository.getEntityHandler(entity);
   }
 
   public static <T> String getEntityTypeFromClass(Class<T> clz) {
