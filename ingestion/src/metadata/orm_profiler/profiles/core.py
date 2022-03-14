@@ -13,12 +13,13 @@
 Main Profile definition and queries to execute
 """
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, Tuple, Type
+from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
-from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlalchemy.orm import DeclarativeMeta, Query, aliased
 from sqlalchemy.orm.session import Session
+from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
 from metadata.orm_profiler.metrics.core import (
@@ -29,9 +30,9 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
 )
 from metadata.orm_profiler.metrics.static.row_count import RowCount
+from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.utils import logger
-from metadata.utils.helpers import datetime_to_ts
 
 logger = logger()
 
@@ -89,6 +90,9 @@ class Profiler(Generic[MetricType]):
 
         # We will get columns from the property
         self._columns: Optional[List[Column]] = None
+
+        # We will compute the sample from the property
+        self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
 
         self.validate_composed_metric()
 
@@ -175,6 +179,36 @@ class Profiler(Generic[MetricType]):
         """
         return [metric for metric in metrics if metric.is_col_metric()]
 
+    @property
+    def sample(self):
+        """
+        Either return a sampled CTE of table, or
+        the full table if no sampling is required.
+        """
+        if not self._sample:
+
+            if not self.profile_sample:
+                # Use the full table
+                self._sample = self.table
+
+            else:
+                # Add new RandomNumFn column
+                rnd = self.session.query(
+                    self.table, (RandomNumFn() % 100).label("random")
+                ).cte(f"{self.table.__tablename__}_rnd")
+
+                # Prepare sampled CTE
+                sampled = (
+                    self.session.query(rnd)
+                    .where(rnd.c.random > self.profile_sample)
+                    .cte(f"{self.table.__tablename__}_sample")
+                )
+
+                # Assign as an alias
+                self._sample = aliased(self.table, sampled)
+
+        return self._sample
+
     def validate_composed_metric(self) -> None:
         """
         Make sure that all composed metrics have
@@ -188,24 +222,13 @@ class Profiler(Generic[MetricType]):
                     f"We need {metric.required_metrics()} for {metric.name}, but only got {names} in the profiler"
                 )
 
-    def query_from(self, query: Query) -> Query:
-        """
-        Given a SQLAlchemy Query object, add the select_from
-        statement to it based on the data sampling.
-
-        :param query: Query to sample
-        :return: Sampled query
-        """
-        if self.profile_sample:
-            return query.where(func.random() > self.profile_sample)
-
-        return query
-
     def sql_col_run(self, col: Column):
         """
         Run the profiler and store its results
 
         This should only execute column metrics.
+
+        If needed, we run on a random data sample.
         """
         logger.debug(f"Running SQL Profiler for {col.name}")
 
@@ -215,7 +238,9 @@ class Profiler(Generic[MetricType]):
             return
 
         try:
-            query = self.session.query(*[metric(col).fn() for metric in col_metrics])
+            query = self.session.query(
+                *[metric(col).fn() for metric in col_metrics]
+            ).select_from(self.sample)
 
             row = query.first()
             self._column_results[col.name].update(dict(row))
@@ -258,7 +283,9 @@ class Profiler(Generic[MetricType]):
             logger.debug(f"Running query metric {metric.name()} for {col.name}")
             try:
                 col_metric = metric(col)
-                metric_query = col_metric.query(session=self.session)
+                metric_query = col_metric.query(
+                    sample=self.sample, session=self.session
+                )
 
                 # We might not compute some metrics based on the column type.
                 # In those cases, the `query` function returns None
