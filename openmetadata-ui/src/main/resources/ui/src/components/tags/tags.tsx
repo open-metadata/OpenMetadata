@@ -18,6 +18,7 @@ import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Tags: FunctionComponent<TagProps> = ({
   className,
@@ -60,7 +61,7 @@ const Tags: FunctionComponent<TagProps> = ({
               e.stopPropagation();
               removeTag && removeTag(e, getTagString(tag));
             }}>
-            <i aria-hidden="true" className="fa fa-times tw-text-grey-300" />
+            <FontAwesomeIcon className="tw-text-grey-300" icon="times" />
           </span>
         )}
       </span>

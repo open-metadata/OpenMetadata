@@ -23,6 +23,11 @@ import React, {
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faChevronLeft,
+  faChevronRight,
+} from '@fortawesome/free-solid-svg-icons';
 
 export type SampleColumns = { name: string; dataType: string };
 
@@ -72,14 +77,20 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
         <button
           className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
           onClick={() => scrollHandler(-50)}>
-          <i className="fas fa-chevron-left tw-text-grey-muted" />
+          <FontAwesomeIcon
+            className="tw-text-grey-muted"
+            icon={faChevronLeft}
+          />
         </button>
       ) : null}
       {scrollHandle.right ? (
         <button
           className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
           onClick={() => scrollHandler(50)}>
-          <i className="fas fa-chevron-right tw-text-grey-muted" />
+          <FontAwesomeIcon
+            className="tw-text-grey-muted"
+            icon={faChevronRight}
+          />
         </button>
       ) : null}
 

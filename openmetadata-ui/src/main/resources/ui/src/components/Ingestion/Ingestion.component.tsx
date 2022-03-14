@@ -35,6 +35,8 @@ import IngestionModal from '../IngestionModal/IngestionModal.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { Props } from './ingestion.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 
 const Ingestion: React.FC<Props> = ({
   serviceType = '',
@@ -257,7 +259,7 @@ const Ingestion: React.FC<Props> = ({
         <div className="tw-flex">
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
-              <i className="fas fa-exclamation-circle" />
+              <FontAwesomeIcon icon={faExclamationCircle} />
               <p> {noConnectionMsg} </p>
             </div>
           )}
@@ -359,7 +361,7 @@ const Ingestion: React.FC<Props> = ({
                             }>
                             {currTriggerId.id === ingestion.id ? (
                               currTriggerId.state === 'success' ? (
-                                <i aria-hidden="true" className="fa fa-check" />
+                                <FontAwesomeIcon icon="check" />
                               ) : (
                                 <Loader size="small" type="default" />
                               )
@@ -374,7 +376,7 @@ const Ingestion: React.FC<Props> = ({
                             onClick={() => handleUpdate(ingestion)}>
                             {updateSelection.id === ingestion.id ? (
                               updateSelection.state === 'success' ? (
-                                <i aria-hidden="true" className="fa fa-check" />
+                                <FontAwesomeIcon icon="check" />
                               ) : (
                                 <Loader size="small" type="default" />
                               )
@@ -393,7 +395,7 @@ const Ingestion: React.FC<Props> = ({
                             }>
                             {deleteSelection.id === ingestion.id ? (
                               deleteSelection.state === 'success' ? (
-                                <i aria-hidden="true" className="fa fa-check" />
+                                <FontAwesomeIcon icon="check" />
                               ) : (
                                 <Loader size="small" type="default" />
                               )
@@ -475,7 +477,7 @@ const Ingestion: React.FC<Props> = ({
             deleteSelection.state === 'waiting' ? (
               <Loader size="small" type="white" />
             ) : deleteSelection.state === 'success' ? (
-              <i aria-hidden="true" className="fa fa-check" />
+              <FontAwesomeIcon icon="check" />
             ) : (
               'Delete'
             )

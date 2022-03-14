@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -204,8 +203,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return new PipelineUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(Pipeline pipeline) throws IOException, ParseException {
-    return helper(pipeline).getContainer(PIPELINE_SERVICE);
+  private EntityReference getService(Pipeline pipeline) throws IOException {
+    return getContainer(pipeline.getId(), Entity.PIPELINE);
   }
 
   private void populateService(Pipeline pipeline) throws IOException {

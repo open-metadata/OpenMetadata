@@ -13,9 +13,13 @@
 
 import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
-// import { stringToDOMElement } from '../../../utils/StringsUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import {
+  faWindowMinimize,
+  faWindowMaximize,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -72,11 +76,9 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
                 size="small"
                 variant="text"
                 onClick={() => setExpanded((value) => !value)}>
-                {expanded ? (
-                  <i aria-hidden="true" className="fa fa-window-minimize" />
-                ) : (
-                  <i aria-hidden="true" className="far fa-window-maximize" />
-                )}
+                <FontAwesomeIcon
+                  icon={expanded ? faWindowMinimize : faWindowMaximize}
+                />
               </Button>
               <svg
                 className="tw-w-6 tw-h-6 tw-ml-1 tw-cursor-pointer"

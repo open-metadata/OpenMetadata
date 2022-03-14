@@ -17,6 +17,12 @@ import BGConfetti from '../../../assets/img/confetti-bg.jpeg';
 import { urlGithubRepo, urlJoinSlack } from '../../../constants/url.const';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
+import {
+  faAngleDoubleRight,
+  faArrowLeft,
+  faArrowRight,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   onSave: () => void;
@@ -112,7 +118,10 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
             theme="primary"
             variant="text"
             onClick={previousClick}>
-            <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />{' '}
+            <FontAwesomeIcon
+              className="tw-text-sm tw-align-middle tw-pr-1.5"
+              icon={faArrowLeft}
+            />{' '}
             <span>Previous</span>
           </Button>
           {lastSlide ? (
@@ -124,7 +133,10 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
                 variant="text"
                 onClick={onCancel}>
                 <span>Skip</span>
-                <i className="fas fa-angle-double-right tw-text-sm tw-align-middle tw-pl-1.5" />
+                <FontAwesomeIcon
+                  className="tw-text-sm tw-align-middle tw-pl-1.5"
+                  icon={faAngleDoubleRight}
+                />
               </Button>
               <Button
                 className="tw-bg-primary-active tw-text-white"
@@ -145,7 +157,10 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
               variant="text"
               onClick={nextClick}>
               <span>Next</span>
-              <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
+              <FontAwesomeIcon
+                className="tw-text-sm tw-align-middle tw-pl-1.5"
+                icon={faArrowRight}
+              />
             </Button>
           )}
         </div>

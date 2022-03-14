@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import 'tailwindcss/tailwind.css';
 import './fonts.css';
 import './myDataDetailsTemp.css';

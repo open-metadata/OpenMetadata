@@ -60,7 +60,8 @@ import {
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
 import Form from './Form';
-// import { Tag, TagsCategory } from './tagsTypes';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 const TagsPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -268,7 +269,7 @@ const TagsPage = () => {
                 setIsAddingCategory((prevState) => !prevState);
                 setErrorDataCategory(undefined);
               }}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </NonAdminAction>
         </div>

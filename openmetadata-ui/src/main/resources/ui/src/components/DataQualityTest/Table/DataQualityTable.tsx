@@ -29,6 +29,7 @@ import { isEven } from '../../../utils/CommonUtils';
 import NonAdminAction from '../../common/non-admin-action/NonAdminAction';
 import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   testCase: TableTestDataType[];
@@ -178,7 +179,7 @@ const DataQualityTable = ({
                         onClick={() => confirmDelete(column)}>
                         {deleteSelection.data?.id === column.id ? (
                           deleteSelection.state === 'success' ? (
-                            <i aria-hidden="true" className="fa fa-check" />
+                            <FontAwesomeIcon icon="check" />
                           ) : (
                             <Loader size="small" type="default" />
                           )
@@ -207,7 +208,7 @@ const DataQualityTable = ({
             deleteSelection.state === 'waiting' ? (
               <Loader size="small" type="white" />
             ) : deleteSelection.state === 'success' ? (
-              <i aria-hidden="true" className="fa fa-check" />
+              <FontAwesomeIcon icon="check" />
             ) : (
               'Delete'
             )

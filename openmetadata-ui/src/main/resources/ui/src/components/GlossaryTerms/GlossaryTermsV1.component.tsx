@@ -48,6 +48,7 @@ import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
@@ -395,10 +396,7 @@ const GlossaryTermsV1 = ({
                   theme="primary"
                   variant="contained"
                   onMouseDown={() => setIsSynonymsEditing(false)}>
-                  <i
-                    aria-hidden="true"
-                    className="fa fa-times tw-w-3.5 tw-h-3.5"
-                  />
+                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
                 </Button>
                 <Button
                   className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -407,10 +405,7 @@ const GlossaryTermsV1 = ({
                   theme="primary"
                   variant="contained"
                   onMouseDown={handleSynonymsSave}>
-                  <i
-                    aria-hidden="true"
-                    className="fa fa-check tw-w-3.5 tw-h-3.5"
-                  />
+                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
                 </Button>
               </div>
             </div>
