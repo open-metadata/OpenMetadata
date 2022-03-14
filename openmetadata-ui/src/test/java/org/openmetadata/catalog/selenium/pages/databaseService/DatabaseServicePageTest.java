@@ -148,8 +148,6 @@ public class DatabaseServicePageTest {
     }
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, databaseServicePage.selectInterval());
-    Events.click(webDriver, databaseServicePage.ingestionInterval("day"));
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.saveServiceButton());
 

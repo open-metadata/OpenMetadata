@@ -99,8 +99,8 @@ public class WebhooksPageTest {
       actions.click();
       actions.perform();
       Events.click(webDriver, webhooks.saveWebhook());
+      Thread.sleep(2000);
     }
-    Thread.sleep(waitTime);
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Entity already exists");
