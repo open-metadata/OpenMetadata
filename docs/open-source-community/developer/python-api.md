@@ -13,6 +13,106 @@ In the [Solution Design](solution-design.md), we have been dissecting the intern
 
 This means that whenever we need to interact with the metadata system or develop a new connector or logic, we have to make sure that we pass the proper inputs and handle the types of outputs.
 
+## Upgrading to 0.9
+
+If you were already using the Python API and you are upgrading the service to version 0.9, consider the following changes:
+
+### Create class naming
+
+All `Create` classes have now a simplified naming. E.g., from `CreateTableEntityRequest` to `CreateTableRequest`. In general, the change is from `Create<EntityName>EntityRequest` to `Create<EntityName>Request`
+
+### Create Database Service JDBC
+
+The `jdbc` field in `CreateDatabaseServiceRequest` has been updating in favor of `databaseConnection`. E.g., from:
+
+{% code title="old_style.py" %}
+```python
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceEntityRequest,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.type.jdbcConnection import JdbcInfo
+
+
+create_service = CreateDatabaseServiceEntityRequest(
+    name="test-service-table",
+    serviceType=DatabaseServiceType.MySQL,
+    jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+)
+```
+{% endcode %}
+
+to:
+
+{% code title="new_style.py" %}
+```python
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+    DatabaseConnection,
+)
+
+
+create_service = CreateDatabaseServiceRequest(
+    name="test-service-table",
+    serviceType=DatabaseServiceType.MySQL,
+    databaseConnection=DatabaseConnection(hostPort="localhost:0000"),
+)
+```
+{% endcode %}
+
+### Table Database Reference
+
+Before, when creating a `Table`, we needed to pass the `Database` ID in the Create request. We have now standardized the process and you can run the creation passing an `EntityReference`. E.g., from:
+
+{% code title="old_style.py" %}
+```python
+from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
+    Table,
+)
+
+create_table = CreateTableEntityRequest(
+    name="test",
+    database=db_entity.id,
+    columns=[Column(name="id", dataType=DataType.BIGINT)],
+)
+```
+{% endcode %}
+
+to:
+
+{% code title="new_style.py" %}
+```python
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
+    Table,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
+
+
+db_reference = EntityReference(
+            id=<database-entity-instance>.id, type="database"
+        )
+
+create_table = CreateTableRequest(
+    name="test",
+    database=db_reference,
+    columns=[Column(name="id", dataType=DataType.BIGINT)],
+)
+```
+{% endcode %}
+
 ## Introducing the Python API
 
 Let's suppose that we have our local OpenMetadata server running at `http:localhost:8585`. We can play with it with simple `cURL` or `httpie` commands, and if we just want to take a look at the Entity instances we have lying around, that might probably be enough.
@@ -80,7 +180,7 @@ This API wrapper helps developers and consumers in:
 Thanks to the recursive model setting of `pydantic` the example above can be rewritten using only Python classes, and thus being able to get help from IDEs and the Python interpreter. We can rewrite the previous JSON as:
 
 ```python
-from metadata.generated.schema.api.data.createMlModel import CreateMlModelEntityRequest
+from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
@@ -91,7 +191,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
 )
 
-model = CreateMlModelEntityRequest(
+model = CreateMlModelRequest(
     name="test-model-properties",
     algorithm="algo",
     mlFeatures=[
@@ -185,18 +285,18 @@ Let's imagine that we are defining a MySQL:
 
 ```python
 from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
+    CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
+    DatabaseConnection,
 )
-from metadata.generated.schema.type.jdbcConnection import JdbcInfo
 
-create_service = CreateDatabaseServiceEntityRequest(
+create_service = CreateDatabaseServiceRequest(
     name="test-service-table",
     serviceType=DatabaseServiceType.MySQL,
-    jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
+    databaseConnection=DatabaseConnection(hostPort="localhost:0000"),
 )
 ```
 
@@ -230,7 +330,7 @@ service_entity.json()
 We can now repeat the process to create a `Database` Entity. However, if we review the definition of the `CreateDatabaseEntityRequest` model...
 
 ```python
-class CreateDatabaseEntityRequest(BaseModel):
+class CreateDatabaseRequest(BaseModel):
     name: database.DatabaseName = Field(
         ..., description='Name that identifies this database instance uniquely.'
     )
@@ -246,7 +346,7 @@ class CreateDatabaseEntityRequest(BaseModel):
     )
 ```
 
-Note how the only non-optional fields are `name` and `service`. The type of `service,` however, is `EntityReference`. This is expected, as in there we need to pass the information of an existing Entity. In our case, the `DatabaseService` we just created.
+Note how the only non-optional fields are `name` and `service`. The type of `service`, however, is `EntityReference`. This is expected, as in there we need to pass the information of an existing Entity. In our case, the `DatabaseService` we just created.
 
 Repeating the exercise and reviewing the required fields to instantiate an `EntityReference` we notice how we need to pass an `id: uuid.UUID` and `type: str`. Here we need to specify the `id` and `type` of our `DatabaseService`.
 
@@ -266,11 +366,11 @@ Let's now pass the `DatabaseService` id to instantiate the `EntityReference`. We
 
 ```python
 from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
+    CreateDatabaseRequest,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 
-create_db = CreateDatabaseEntityRequest(
+create_db = CreateDatabaseRequest(
     name="test-db",
     service=EntityReference(id=service_entity.id, type="databaseService"),
 )
@@ -283,16 +383,20 @@ db_entity = metadata.create_or_update(create_db)
 Now that we have all the preparations ready, we can just reuse the same steps to create the `Table`:
 
 ```python
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
     Table,
 )
 
-create_table = CreateTableEntityRequest(
+db_reference = EntityReference(
+            id=db_entity.id, type="database"
+        )
+
+create_table = CreateTableRequest(
     name="test",
-    database=db_entity.id,
+    database=db_reference,
     columns=[Column(name="id", dataType=DataType.BIGINT)],
 )
 
@@ -313,10 +417,10 @@ print(table_entity.owner)
 Now, create a `User`:
 
 ```python
-from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 
 user = metadata.create_or_update(
-    data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
+    data=CreateUserRequest(name="random-user", email="random@user.com"),
 )
 ```
 
