@@ -356,7 +356,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -380,7 +380,7 @@ You can exclude the collection of sample data by adding the following key-value 
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -441,7 +441,7 @@ metadata ingest -c ./bigquery_usage.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from BigQuery Usage, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the BigQuery Usage service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../.gitbook/assets/next\_steps (1).png>)
+![](<../../../.gitbook/assets/next\_steps (1).png>)
 
 ## **Troubleshooting**
 

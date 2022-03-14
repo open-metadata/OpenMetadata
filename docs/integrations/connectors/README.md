@@ -4,10 +4,13 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Database Services
 
+* Apache Druid
 * [Athena](athena.md)
 * [Azure SQL](azure-sql.md)
 * [BigQuery](bigquery/)
-* [BigQuery Usage](bigquery-usage.md)
+* [BigQuery Usage](bigquery/bigquery-usage.md)
+* ClickHouse
+* ClickHouse Usage
 * [Databricks](databricks.md)
 * [Delta Lake](delta-lake.md)
 * [DynamoDB](dynamodb.md)
@@ -22,11 +25,11 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Postgres](postgres/)
 * [Presto](presto.md)
 * [Redshift](redshift/)
-* [Redshift Usage](redshift-usage.md)
+* [Redshift Usage](redshift/redshift-usage.md)
 * [Salesforce](salesforce.md)
 * [SingleStore](singlestore.md)
 * [Snowflake](snowflake/)
-* [Snowflake Usage](snowflake-usage.md)
+* [Snowflake Usage](snowflake/snowflake-usage.md)
 * [Trino](trino.md)
 * [Vertica](vertica.md)
 
@@ -34,6 +37,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 * [Looker](looker.md)
 * [Metabase](metabase.md)
+* Power BI
 * [Redash](redash.md)
 * [Superset](superset.md)
 * [Tableau](tableau.md)
