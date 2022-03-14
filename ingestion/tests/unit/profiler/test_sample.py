@@ -147,6 +147,18 @@ class SampleTest(TestCase):
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
+        profiler = Profiler(
+            hist,
+            session=self.session,
+            table=User,
+            profile_sample=100.0,
+            use_cols=[User.id],
+        )
+        res = profiler.execute()._column_results
+
+        # The sum of all frequencies should be sampled
+        assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 30.0
+
     def test_random_sample_unique_count(self):
         """
         Unique count should run correctly
@@ -164,3 +176,16 @@ class SampleTest(TestCase):
         # As we repeat data, we expect 0 unique counts.
         # This tests might very rarely, fail, depending on the sampled random data.
         assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] <= 1
+
+        profiler = Profiler(
+            hist,
+            session=self.session,
+            table=User,
+            profile_sample=100.0,
+            use_cols=[User.name],
+        )
+        res = profiler.execute()._column_results
+
+        # As we repeat data, we expect 0 unique counts.
+        # This tests might very rarely, fail, depending on the sampled random data.
+        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 0
