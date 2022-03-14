@@ -18,7 +18,7 @@ public class UserPage {
   By adminFilterCount = By.xpath("//button[@data-testid='assets'][1]//span[@data-testid='filter-count']");
   By userListSearchBar = By.cssSelector("[data-testid='searchbar']");
   By userListSearchResult =
-      By.xpath("//div[@data-testid='user-card-container']/div[@data-testid='user-card-container']");
+      By.xpath("//div[@data-testid='user-card-container']/div/div[@data-testid='user-card-container']");
   By closeCheckBoxDropDown = By.cssSelector("[data-testid='close-dropdown']");
 
   public By selectRole(String role) {

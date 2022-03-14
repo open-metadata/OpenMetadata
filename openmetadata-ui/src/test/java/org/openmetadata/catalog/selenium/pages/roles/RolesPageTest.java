@@ -36,8 +36,6 @@ public class RolesPageTest {
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
   String xpath = "//p[@title = '" + roleDisplayName + "']";
-  static String pageLoadStatus = null;
-  JavascriptExecutor js;
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -228,7 +226,7 @@ public class RolesPageTest {
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
-      Assert.assertEquals(errorMessage.getText(), "Operation is required");
+      Assert.assertEquals(errorMessage.getText(), "Operation is required.");
     } catch (TimeoutException | NoSuchElementException e) {
       Assert.fail("Error message not displayed");
     }

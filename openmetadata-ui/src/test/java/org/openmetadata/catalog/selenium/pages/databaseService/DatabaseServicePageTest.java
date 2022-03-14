@@ -29,6 +29,7 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -142,7 +143,7 @@ public class DatabaseServicePageTest {
       if (runIngestion.isDisplayed()) {
         Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
       }
-    } catch (NoSuchElementException e) {
+    } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Ingestion is not created");
     }
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion

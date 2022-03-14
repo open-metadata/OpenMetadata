@@ -158,7 +158,7 @@ public class WebhooksPageTest {
     Events.sendKeys(webDriver, webhooks.name(), "test");
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
-    Events.sendKeys(webDriver, webhooks.endpoint(), "test.com");
+    Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.test.com");
     Events.click(webDriver, webhooks.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
