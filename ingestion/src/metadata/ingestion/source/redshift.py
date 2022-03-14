@@ -267,7 +267,7 @@ def _get_args_and_kwargs(charlen, attype, format_type):
     return args, kwargs
 
 
-def _update_default(default, schema, coltype):
+def _update_default_and_autoincrement(default, schema, coltype, autoincrement):
     match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
     if match is not None:
         if issubclass(coltype._type_affinity, sqltypes.Integer):
@@ -281,6 +281,7 @@ def _update_default(default, schema, coltype):
             default = (
                 match.group(1) + ('"%s"' % sch) + "." + match.group(2) + match.group(3)
             )
+    return default, autoincrement
 
 
 def _update_coltype(coltype, args, kwargs, attype, name, is_array):
@@ -300,6 +301,13 @@ def _update_computed_and_default(generated, default):
         computed = dict(sqltext=default, persisted=generated in ("s", b"s"))
         default = None
     return computed, default
+
+
+def _get_charlen(format_type):
+    charlen = re.search(r"\(([\d,]+)\)", format_type)
+    if charlen:
+        charlen = charlen.group(1)
+    return charlen
 
 
 @reflection.cache
@@ -327,11 +335,10 @@ def _get_column_info(
     enum_or_domain_key = tuple(util.quoted_token_parser(attype))
 
     nullable = not notnull
-
-    charlen = re.search(r"\(([\d,]+)\)", format_type)
-    if charlen:
-        charlen = charlen.group(1)
+    charlen = _get_charlen(format_type)
     args, kwargs = _get_args_and_kwargs(charlen, attype, format_type)
+    if attype.startswith("interval"):
+        attype = "interval"
     while True:
         # looping here to suit nested domains
         if attype in ischema_names:
@@ -372,7 +379,9 @@ def _get_column_info(
     # adjust the default value
     autoincrement = False
     if default is not None:
-        default = _update_default(default, schema, coltype)
+        default, autoincrement = _update_default_and_autoincrement(
+            default, schema, coltype, autoincrement
+        )
 
     column_info = dict(
         name=name,
