@@ -168,10 +168,10 @@ public class Common {
   }
 
   public By recentlySearchedText(String text) {
-    return By.xpath("//div[@data-testid='Recently-Search- " + text + "']");
+    return By.xpath("//div[@data-testid='Recently-Search-" + text + "']");
   }
 
   public By removeRecentlySearchedText(String text) {
-    return By.xpath("//div[@data-testid='Recently-Search- " + text + "']/div/button/img");
+    return By.xpath("//div[@data-testid='Recently-Search-" + text + "']/div/div/button/img");
   }
 }
