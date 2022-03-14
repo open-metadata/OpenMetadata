@@ -36,7 +36,13 @@ import Avatar from '../../common/avatar/Avatar';
 import PopOver from '../../common/popover/PopOver';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 
+interface ConfirmState {
+  state: boolean;
+  threadId: string | undefined;
+  postId: string | undefined;
+}
 interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   feed: Post;
   entityLink?: string;
@@ -47,6 +53,7 @@ interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   lastReplyTimeStamp?: number;
   isFooterVisible?: boolean;
   onThreadSelect?: (id: string) => void;
+  deletePostHandler?: (threadId: string, postId: string) => void;
 }
 interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,
@@ -57,8 +64,13 @@ interface FeedHeaderProp
   entityFQN: string;
   entityField: string;
 }
-interface FeedBodyProp extends HTMLAttributes<HTMLDivElement> {
+interface FeedBodyProp
+  extends HTMLAttributes<HTMLDivElement>,
+    Pick<ActivityFeedCardProp, 'deletePostHandler'> {
   message: string;
+  postId: string;
+  threadId: string;
+  onConfirmation: (data: ConfirmState) => void;
 }
 interface FeedFooterProp
   extends HTMLAttributes<HTMLDivElement>,
@@ -230,15 +242,31 @@ const FeedHeader: FC<FeedHeaderProp> = ({
   );
 };
 
-const FeedBody: FC<FeedBodyProp> = ({ message, className }) => {
+const FeedBody: FC<FeedBodyProp> = ({
+  message,
+  className,
+  threadId,
+  postId,
+  deletePostHandler,
+  onConfirmation,
+}) => {
   return (
-    <div className={className}>
-      <RichTextEditorPreviewer
-        className="activity-feed-card-text"
-        enableSeeMoreVariant={false}
-        markdown={getFrontEndFormat(message)}
-      />
-    </div>
+    <Fragment>
+      <div className={className}>
+        <RichTextEditorPreviewer
+          className="activity-feed-card-text"
+          enableSeeMoreVariant={false}
+          markdown={getFrontEndFormat(message)}
+        />
+        {threadId && postId && deletePostHandler ? (
+          <span
+            className="tw-opacity-0 hover:tw-opacity-100 tw-cursor-pointer"
+            onClick={() => onConfirmation({ state: true, postId, threadId })}>
+            <SVGIcons alt="delete" icon={Icons.DELETE} width="12px" />
+          </span>
+        ) : null}
+      </div>
+    </Fragment>
   );
 };
 
@@ -296,10 +324,36 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   lastReplyTimeStamp,
   onThreadSelect,
   isFooterVisible = false,
+  deletePostHandler,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
   const entityField = getEntityField(entityLink as string);
+
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
+    state: false,
+    threadId: undefined,
+    postId: undefined,
+  });
+
+  const onCancel = () => {
+    setConfirmationState({
+      state: false,
+      threadId: undefined,
+      postId: undefined,
+    });
+  };
+
+  const onDelete = () => {
+    if (confirmationState.postId && confirmationState.threadId) {
+      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+    }
+    onCancel();
+  };
+
+  const onConfirmation = (data: ConfirmState) => {
+    setConfirmationState(data);
+  };
 
   return (
     <div className={classNames(className)}>
@@ -312,8 +366,12 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         timeStamp={feed.postTs}
       />
       <FeedBody
-        className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all"
+        className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
+        deletePostHandler={deletePostHandler}
         message={feed.message}
+        postId={feed.id}
+        threadId={threadId as string}
+        onConfirmation={onConfirmation}
       />
       <FeedFooter
         className="tw-ml-9 tw-mt-3"
@@ -324,6 +382,18 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         threadId={threadId}
         onThreadSelect={onThreadSelect}
       />
+      {confirmationState.state && (
+        <ConfirmationModal
+          bodyClassName="tw-h-18"
+          bodyText="Are you sure you want to permanently remove this post?"
+          cancelText="Cancel"
+          className="tw-w-auto"
+          confirmText="Delete"
+          header="Delete Post?"
+          onCancel={onCancel}
+          onConfirm={onDelete}
+        />
+      )}
     </div>
   );
 };

@@ -108,4 +108,5 @@ export interface DatasetDetailsProps {
     columnName: string,
     testType: ColumnTestType
   ) => void;
+  deletePostHandler: (threadId: string, postId: string) => void;
 }

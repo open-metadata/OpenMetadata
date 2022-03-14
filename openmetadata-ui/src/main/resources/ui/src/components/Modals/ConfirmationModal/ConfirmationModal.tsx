@@ -17,6 +17,7 @@ import React, { ReactNode } from 'react';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 type Props = {
+  className?: string;
   loadingState?: LoadingState;
   cancelText: string | ReactNode;
   confirmText: string | ReactNode;
@@ -43,9 +44,12 @@ const ConfirmationModal = ({
   onConfirm,
   onCancel,
   bodyText,
+  className,
 }: Props) => {
   return (
-    <dialog className="tw-modal" data-testid="confirmation-modal">
+    <dialog
+      className={classNames('tw-modal', className)}
+      data-testid="confirmation-modal">
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-w-120">
         <div className={classNames('tw-modal-header', headerClassName)}>

@@ -35,6 +35,7 @@ interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
   open?: boolean;
   onCancel: () => void;
   postFeed: (value: string) => void;
+  deletePostHandler?: (threadId: string, postId: string) => void;
 }
 
 interface FeedPanelHeaderProp
@@ -47,7 +48,9 @@ interface FeedPanelHeaderProp
 interface FeedPanelOverlayProp
   extends HTMLAttributes<HTMLButtonElement>,
     Pick<ActivityFeedPanelProp, 'onCancel'> {}
-interface FeedPanelBodyProp extends HTMLAttributes<HTMLDivElement> {
+interface FeedPanelBodyProp
+  extends HTMLAttributes<HTMLDivElement>,
+    Pick<ActivityFeedPanelProp, 'deletePostHandler'> {
   threadData: EntityThread;
   isLoading: boolean;
 }
@@ -118,12 +121,14 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   threadData,
   className,
   isLoading,
+  deletePostHandler,
 }) => {
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
     message: threadData.message,
     from: threadData.createdBy,
     postTs: threadData.threadTs,
+    id: threadData.id,
   };
 
   return (
@@ -151,8 +156,10 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                 <ActivityFeedCard
                   isEntityFeed
                   className="tw-mb-3"
+                  deletePostHandler={deletePostHandler}
                   feed={reply}
                   key={key}
+                  threadId={threadData.id}
                 />
               ))}
             </Fragment>
@@ -169,6 +176,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   onCancel,
   className,
   postFeed,
+  deletePostHandler,
 }) => {
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -204,6 +212,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
 
         <FeedPanelBody
           className="tw-p-4 tw-pl-8 tw-mb-3"
+          deletePostHandler={deletePostHandler}
           isLoading={isLoading}
           threadData={threadData as EntityThread}
         />

@@ -179,6 +179,7 @@ const TourPage = () => {
             columnsUpdateHandler={handleCountChange}
             createThread={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
+            deletePostHandler={handleCountChange}
             description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
             entityFieldThreadCount={[]}

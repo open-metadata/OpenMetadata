@@ -74,3 +74,10 @@ export const postFeedById: Function = (
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/feed/${id}/posts`, data);
 };
+
+export const deletePostById: Function = (
+  threadId: string,
+  postId: string
+): Promise<AxiosResponse> => {
+  return APIClient.delete(`/feed/${threadId}/posts/${postId}`);
+};
