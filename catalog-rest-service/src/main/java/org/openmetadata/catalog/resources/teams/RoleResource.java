@@ -347,11 +347,18 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @PathParam("id") String id)
       throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    return delete(uriInfo, securityContext, id, true, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, true, hardDelete, ADMIN | BOT);
   }
 
   private Role getRole(CreateRole cr, SecurityContext securityContext) {

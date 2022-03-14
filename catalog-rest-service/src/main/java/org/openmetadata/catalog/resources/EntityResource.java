@@ -111,10 +111,16 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
     return response.toResponse();
   }
 
-  public Response delete(UriInfo uriInfo, SecurityContext securityContext, String id, boolean recursive, int checkFlags)
+  public Response delete(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String id,
+      boolean recursive,
+      boolean hardDelete,
+      int checkFlags)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, checkFlags);
-    DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
+    DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

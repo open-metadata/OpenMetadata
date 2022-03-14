@@ -311,6 +311,9 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getEntityVersion(@Bind("id") String id, @Bind("extension") String extension);
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
+    int deleteAll(@Bind("id") String id);
   }
 
   class EntityVersionPair {
@@ -758,15 +761,14 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    default void deleteAllByPrefix(String fqnPrefix, int relation) {
+    default void deleteAllByPrefix(String fqnPrefix) {
       String prefix = String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR);
-      String cond =
-          String.format("WHERE (toFQN LIKE %s OR fromFQN LIKE %s) AND relation = %s)", prefix, prefix, relation);
-      deleteAllByPrefix(cond);
+      String cond = String.format("WHERE (toFQN LIKE '%s' OR fromFQN LIKE '%s')", prefix, prefix);
+      deleteAllByPrefixInternal(cond);
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")
-    void deleteAllByPrefix(@Define("cond") String cond);
+    void deleteAllByPrefixInternal(@Define("cond") String cond);
 
     class ToFieldMapper implements RowMapper<List<String>> {
       @Override
@@ -1194,7 +1196,7 @@ public interface CollectionDAO {
       return listChildrenTagsInternal(String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR));
     }
 
-    @SqlQuery("SELECT json FROM tag " + "WHERE fullyQualifiedName LIKE :fqnPrefix " + "ORDER BY fullyQualifiedName")
+    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE :fqnPrefix " + "ORDER BY fullyQualifiedName")
     List<String> listChildrenTagsInternal(@Bind("fqnPrefix") String fqnPrefix);
 
     @SqlQuery("SELECT json FROM tag_category WHERE name = :name")
@@ -1222,7 +1224,7 @@ public interface CollectionDAO {
             + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
-    @SqlQuery("SELECT COUNT(*) FROM tag_usage " + "WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
+    @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
     int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN")
