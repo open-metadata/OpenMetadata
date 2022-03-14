@@ -22,6 +22,7 @@ import sqlalchemy as sa
 from packaging.version import Version
 from sqlalchemy import inspect, util
 from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect
+from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
@@ -42,6 +43,9 @@ from metadata.utils.sql_queries import (
 sa_version = Version(sa.__version__)
 
 logger = logging.getLogger(__name__)
+
+ischema_names = pg_ischema_names
+ischema_names.update({"binary varying": sqltypes.VARBINARY})
 
 
 @reflection.cache
@@ -210,6 +214,94 @@ RedshiftDialectMixin._get_schema_column_info = (
 )
 
 
+def _handle_array_type(attype):
+    return (
+        # strip '[]' from integer[], etc.
+        re.sub(r"\[\]$", "", attype),
+        attype.endswith("[]"),
+    )
+
+
+def _get_args_and_kwargs(charlen, attype, format_type):
+    kwargs = {}
+    args = re.search(r"\((.*)\)", format_type)
+    if args and args.group(1):
+        args = tuple(re.split(r"\s*,\s*", args.group(1)))
+    else:
+        args = ()
+    if attype == "numeric" and charlen:
+        prec, scale = charlen.split(",")
+        args = (int(prec), int(scale))
+
+    elif attype == "double precision":
+        args = (53,)
+
+    elif attype in ("timestamp with time zone", "time with time zone"):
+        kwargs["timezone"] = True
+        if charlen:
+            kwargs["precision"] = int(charlen)
+
+    elif attype in (
+        "timestamp without time zone",
+        "time without time zone",
+        "time",
+    ):
+        kwargs["timezone"] = False
+        if charlen:
+            kwargs["precision"] = int(charlen)
+
+    elif attype == "bit varying":
+        kwargs["varying"] = True
+        if charlen:
+            args = (int(charlen),)
+
+    elif attype.startswith("interval"):
+        field_match = re.match(r"interval (.+)", attype, re.I)
+        if charlen:
+            kwargs["precision"] = int(charlen)
+        if field_match:
+            kwargs["fields"] = field_match.group(1)
+        attype = "interval"
+    elif charlen:
+        args = (int(charlen),)
+    return args, kwargs
+
+
+def _update_default(default, schema, coltype):
+    match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
+    if match is not None:
+        if issubclass(coltype._type_affinity, sqltypes.Integer):
+            autoincrement = True
+        # the default is related to a Sequence
+        sch = schema
+        if "." not in match.group(2) and sch is not None:
+            # unconditionally quote the schema name.  this could
+            # later be enhanced to obey quoting rules /
+            # "quote schema"
+            default = (
+                match.group(1) + ('"%s"' % sch) + "." + match.group(2) + match.group(3)
+            )
+
+
+def _update_coltype(coltype, args, kwargs, attype, name, is_array):
+    if coltype:
+        coltype = coltype(*args, **kwargs)
+        if is_array:
+            coltype = ischema_names["_array"](coltype)
+    else:
+        util.warn("Did not recognize type '%s' of column '%s'" % (attype, name))
+        coltype = sqltypes.NULLTYPE
+    return coltype
+
+
+def _update_computed_and_default(generated, default):
+    computed = None
+    if generated not in (None, "", b"\x00"):
+        computed = dict(sqltext=default, persisted=generated in ("s", b"s"))
+        default = None
+    return computed, default
+
+
 @reflection.cache
 def _get_column_info(
     self,
@@ -224,13 +316,6 @@ def _get_column_info(
     generated,
     identity,
 ):
-    def _handle_array_type(attype):
-        return (
-            # strip '[]' from integer[], etc.
-            re.sub(r"\[\]$", "", attype),
-            attype.endswith("[]"),
-        )
-
     # strip (*) from character varying(5), timestamp(5)
     # with time zone, geometry(POLYGON), etc.
     attype = re.sub(r"\(.*\)", "", format_type)
@@ -246,55 +331,7 @@ def _get_column_info(
     charlen = re.search(r"\(([\d,]+)\)", format_type)
     if charlen:
         charlen = charlen.group(1)
-    args = re.search(r"\((.*)\)", format_type)
-    if args and args.group(1):
-        args = tuple(re.split(r"\s*,\s*", args.group(1)))
-    else:
-        args = ()
-    kwargs = {}
-
-    if attype == "numeric":
-        if charlen:
-            prec, scale = charlen.split(",")
-            args = (int(prec), int(scale))
-        else:
-            args = ()
-    elif attype == "double precision":
-        args = (53,)
-    elif attype == "integer":
-        args = ()
-    elif attype in ("timestamp with time zone", "time with time zone"):
-        kwargs["timezone"] = True
-        if charlen:
-            kwargs["precision"] = int(charlen)
-        args = ()
-    elif attype in (
-        "timestamp without time zone",
-        "time without time zone",
-        "time",
-    ):
-        kwargs["timezone"] = False
-        if charlen:
-            kwargs["precision"] = int(charlen)
-        args = ()
-    elif attype == "bit varying":
-        kwargs["varying"] = True
-        if charlen:
-            args = (int(charlen),)
-        else:
-            args = ()
-    elif attype.startswith("interval"):
-        field_match = re.match(r"interval (.+)", attype, re.I)
-        if charlen:
-            kwargs["precision"] = int(charlen)
-        if field_match:
-            kwargs["fields"] = field_match.group(1)
-        attype = "interval"
-        args = ()
-    elif charlen:
-        args = (int(charlen),)
-    ischema_names = self.ischema_names
-    ischema_names.update({"binary varying": sqltypes.VARBINARY})
+    args, kwargs = _get_args_and_kwargs(charlen, attype, format_type)
     while True:
         # looping here to suit nested domains
         if attype in ischema_names:
@@ -321,48 +358,21 @@ def _get_column_info(
                 # It can, however, override the default
                 # value, but can't set it to null.
                 default = domain["default"]
-            continue
         else:
             coltype = None
             break
 
-    if coltype:
-        coltype = coltype(*args, **kwargs)
-        if is_array:
-            coltype = ischema_names["_array"](coltype)
-    else:
-        util.warn("Did not recognize type '%s' of column '%s'" % (attype, name))
-        coltype = sqltypes.NULLTYPE
+    coltype = _update_coltype(coltype, args, kwargs, attype, name, is_array)
 
     # If a zero byte or blank string depending on driver (is also absent
     # for older PG versions), then not a generated column. Otherwise, s =
     # stored. (Other values might be added in the future.)
-    if generated not in (None, "", b"\x00"):
-        computed = dict(sqltext=default, persisted=generated in ("s", b"s"))
-        default = None
-    else:
-        computed = None
+    computed, default = _update_computed_and_default(generated, default)
 
     # adjust the default value
     autoincrement = False
     if default is not None:
-        match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
-        if match is not None:
-            if issubclass(coltype._type_affinity, sqltypes.Integer):
-                autoincrement = True
-            # the default is related to a Sequence
-            sch = schema
-            if "." not in match.group(2) and sch is not None:
-                # unconditionally quote the schema name.  this could
-                # later be enhanced to obey quoting rules /
-                # "quote schema"
-                default = (
-                    match.group(1)
-                    + ('"%s"' % sch)
-                    + "."
-                    + match.group(2)
-                    + match.group(3)
-                )
+        default = _update_default(default, schema, coltype)
 
     column_info = dict(
         name=name,
