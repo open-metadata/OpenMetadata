@@ -58,6 +58,7 @@ import {
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const TeamsPage = () => {
   const { team } = useParams() as Record<string, string>;
@@ -409,7 +410,7 @@ const TeamsPage = () => {
                 setErrorData(undefined);
                 setIsAddingTeam(true);
               }}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </NonAdminAction>
         </div>

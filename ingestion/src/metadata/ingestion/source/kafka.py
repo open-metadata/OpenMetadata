@@ -12,7 +12,7 @@
 # This import verifies that the dependencies are available.
 
 import concurrent.futures
-from dataclasses import Field, dataclass, field
+from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 import confluent_kafka
@@ -24,7 +24,7 @@ from confluent_kafka.schema_registry.schema_registry_client import (
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import SchemaType, Topic
+from metadata.generated.schema.entity.data.topic import SchemaType
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
 )

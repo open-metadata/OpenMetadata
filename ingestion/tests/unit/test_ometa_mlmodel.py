@@ -20,7 +20,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
-from metadata.generated.schema.entity.data.mlmodel import MlFeature, MlModel
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 

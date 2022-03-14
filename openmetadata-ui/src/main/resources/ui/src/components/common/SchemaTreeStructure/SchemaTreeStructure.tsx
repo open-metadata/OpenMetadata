@@ -13,6 +13,8 @@
 
 import React, { CSSProperties, useCallback, useState } from 'react';
 import './SchemaTreeStructure.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlusCircle, faMinusCircle } from '@fortawesome/free-solid-svg-icons';
 
 type Props = {
   positions?: Array<number>;
@@ -79,9 +81,9 @@ const SchemaTreeStructure = ({
     return (
       flag &&
       (showChildren ? (
-        <i className="fas fa-minus-circle" />
+        <FontAwesomeIcon icon={faMinusCircle} />
       ) : (
-        <i className="fas fa-plus-circle" />
+        <FontAwesomeIcon icon={faPlusCircle} />
       ))
     );
   };

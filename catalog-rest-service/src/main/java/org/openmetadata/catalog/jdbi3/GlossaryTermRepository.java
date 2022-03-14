@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.GLOSSARY_TERM;
 import static org.openmetadata.catalog.util.EntityUtil.stringMatch;
 import static org.openmetadata.catalog.util.EntityUtil.termReferenceMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -52,7 +53,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
         GlossaryTermResource.COLLECTION_PATH,
-        Entity.GLOSSARY_TERM,
+        GLOSSARY_TERM,
         GlossaryTerm.class,
         dao.glossaryTermDAO(),
         dao,
@@ -81,27 +82,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
     List<String> ids =
-        findFrom(
-            entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
-    return ids.size() == 1 ? Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
+        findFrom(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM, entity.getDeleted());
+    return ids.size() == 1 ? Entity.getEntityReferenceById(GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
     List<String> ids =
-        findTo(entity.getId(), Entity.GLOSSARY_TERM, Relationship.PARENT_OF, Entity.GLOSSARY_TERM, entity.getDeleted());
-    return EntityUtil.populateEntityReferences(ids, Entity.GLOSSARY_TERM);
+        findTo(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM, entity.getDeleted());
+    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
     List<String> ids =
-        findBoth(
-            entity.getId(), Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM, entity.getDeleted());
-    return EntityUtil.populateEntityReferences(ids, Entity.GLOSSARY_TERM);
+        findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM, entity.getDeleted());
+    return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
-    List<String> ids =
-        findFrom(entity.getId(), Entity.GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
+    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
@@ -167,22 +165,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void storeRelationships(GlossaryTerm entity) {
     addRelationship(
-        entity.getGlossary().getId(), entity.getId(), Entity.GLOSSARY, Entity.GLOSSARY_TERM, Relationship.CONTAINS);
+        entity.getGlossary().getId(), entity.getId(), Entity.GLOSSARY, GLOSSARY_TERM, Relationship.CONTAINS);
     if (entity.getParent() != null) {
-      addRelationship(
-          entity.getParent().getId(),
-          entity.getId(),
-          Entity.GLOSSARY_TERM,
-          Entity.GLOSSARY_TERM,
-          Relationship.PARENT_OF);
+      addRelationship(entity.getParent().getId(), entity.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.PARENT_OF);
     }
     for (EntityReference relTerm : listOrEmpty(entity.getRelatedTerms())) {
       // Make this bidirectional relationship
-      addRelationship(
-          entity.getId(), relTerm.getId(), Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, true);
+      addRelationship(entity.getId(), relTerm.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.RELATED_TO, true);
     }
     for (EntityReference reviewer : listOrEmpty(entity.getReviewers())) {
-      addRelationship(reviewer.getId(), entity.getId(), Entity.USER, Entity.GLOSSARY_TERM, Relationship.REVIEWS);
+      addRelationship(reviewer.getId(), entity.getId(), Entity.USER, GLOSSARY_TERM, Relationship.REVIEWS);
     }
 
     applyTags(entity);
@@ -195,12 +187,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
-    // TODO check deleted
-    List<String> refs = findFrom(term.getId(), Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY, null);
-    if (refs.size() != 1) {
-      LOG.warn(
-          "Possible database issues - multiple owners found for entity {} with type {}", term.getId(), Entity.GLOSSARY);
-    }
+    List<String> refs = findFrom(term.getId(), GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY, null);
+    ensureSingleRelationship(GLOSSARY_TERM, term.getId(), refs, "glossaries", true);
     return getGlossary(refs.get(0));
   }
 
@@ -297,7 +285,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.GLOSSARY_TERM);
+          .withType(GLOSSARY_TERM);
     }
 
     @Override
@@ -401,10 +389,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       List<EntityReference> updatedRelated = listOrEmpty(updatedTerm.getRelatedTerms());
       updateToRelationships(
           "relatedTerms",
-          Entity.GLOSSARY_TERM,
+          GLOSSARY_TERM,
           origTerm.getId(),
           Relationship.RELATED_TO,
-          Entity.GLOSSARY_TERM,
+          GLOSSARY_TERM,
           origRelated,
           updatedRelated,
           true);
@@ -419,7 +407,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           origReviewers,
           updatedReviewers,
           Relationship.REVIEWS,
-          Entity.GLOSSARY_TERM,
+          GLOSSARY_TERM,
           origTerm.getId());
     }
   }

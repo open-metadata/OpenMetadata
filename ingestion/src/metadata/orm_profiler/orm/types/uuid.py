@@ -12,7 +12,6 @@
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
-from typing import Tuple
 from uuid import UUID
 
 from sqlalchemy.sql.sqltypes import String, TypeDecorator

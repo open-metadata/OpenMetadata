@@ -15,6 +15,8 @@ import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
@@ -43,7 +45,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                     {link.name}
                   </Link>
                   <span className="tw-px-2">
-                    <i className="fas fa-angle-right tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                    <FontAwesomeIcon
+                      className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
+                      icon={faAngleRight}
+                    />
                   </span>
                 </>
               ) : link.url ? (
@@ -62,7 +67,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   </span>
                   {noLink && index < titleLinks.length - 1 && (
                     <span className="tw-px-2">
-                      <i className="fas fa-angle-right tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
+                      <FontAwesomeIcon
+                        className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
+                        icon={faAngleRight}
+                      />
                     </span>
                   )}
                 </>

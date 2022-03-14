@@ -24,19 +24,11 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
-from metadata.generated.schema.tests.columnTest import (
-    ColumnTest,
-    ColumnTestCase,
-    ColumnTestType,
-)
+from metadata.generated.schema.tests.columnTest import ColumnTestCase, ColumnTestType
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
-from metadata.generated.schema.tests.tableTest import (
-    TableTest,
-    TableTestCase,
-    TableTestType,
-)
+from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig

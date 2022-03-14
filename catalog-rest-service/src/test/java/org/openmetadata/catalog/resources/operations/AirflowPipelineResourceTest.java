@@ -19,8 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.airflow.AirflowUtils.INGESTION_CONNECTION_ARGS;
 import static org.openmetadata.catalog.airflow.AirflowUtils.INGESTION_DATABASE;
 import static org.openmetadata.catalog.airflow.AirflowUtils.INGESTION_HOST_PORT;
@@ -78,7 +76,9 @@ import org.openmetadata.catalog.type.ConnectionOptions;
 import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -385,7 +385,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     validateGeneratedAirflowPipelineConfig(airflowPipeline);
 
     // Update and connector orgs and options to database connection
-    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+    DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     ConnectionArguments connectionArguments =
         new ConnectionArguments()
@@ -545,7 +545,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
       throws IOException, ParseException {
     IngestionAirflowPipeline ingestionPipeline =
         AirflowUtils.toIngestionPipeline(airflowPipeline, AIRFLOW_CONFIG, true);
-    DatabaseService databaseService = helper(airflowPipeline).findEntity("service", DATABASE_SERVICE);
+    DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     DatabaseServiceMetadataPipeline metadataPipeline =
         JsonUtils.convertValue(airflowPipeline.getPipelineConfig().getConfig(), DatabaseServiceMetadataPipeline.class);

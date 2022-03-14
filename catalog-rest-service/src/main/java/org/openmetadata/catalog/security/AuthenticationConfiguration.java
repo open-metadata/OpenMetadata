@@ -22,6 +22,7 @@ public class AuthenticationConfiguration {
   @Getter @Setter private String authority;
   @Getter @Setter private String clientId;
   @Getter @Setter private String callbackUrl;
+  @Getter @Setter private String jwtEmail = "email";
 
   @Override
   public String toString() {

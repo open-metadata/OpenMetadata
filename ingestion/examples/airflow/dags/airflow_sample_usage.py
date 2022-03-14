@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import pathlib
 from datetime import timedelta
 
 from airflow import DAG
@@ -22,7 +21,6 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
-from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 
 default_args = {

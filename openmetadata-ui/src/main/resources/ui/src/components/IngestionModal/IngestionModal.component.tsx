@@ -35,6 +35,8 @@ import {
   IngestionModalProps,
   ValidationErrorMsg,
 } from './IngestionModal.interface';
+import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const errorMsg = (value: string) => {
   return (
@@ -723,7 +725,10 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
             theme="primary"
             variant="text"
             onClick={() => setActiveStep((pre) => (pre > 1 ? pre - 1 : pre))}>
-            <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />{' '}
+            <FontAwesomeIcon
+              className="tw-text-sm tw-align-middle tw-pr-1.5"
+              icon={faArrowLeft}
+            />{' '}
             <span>Previous</span>
           </Button>
 
@@ -748,7 +753,10 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
               variant="contained"
               onClick={() => forwardStepHandler(activeStep)}>
               <span>Next</span>
-              <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
+              <FontAwesomeIcon
+                className="tw-text-sm tw-align-middle tw-pl-1.5"
+                icon={faArrowRight}
+              />
             </Button>
           )}
         </div>

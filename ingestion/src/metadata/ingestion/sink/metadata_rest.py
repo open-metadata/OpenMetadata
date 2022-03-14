@@ -11,7 +11,7 @@
 
 import logging
 import traceback
-from typing import TypeVar, Union
+from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -29,8 +29,6 @@ from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequ
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline

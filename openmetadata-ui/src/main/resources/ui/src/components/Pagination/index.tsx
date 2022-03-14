@@ -16,6 +16,8 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Paginations from 'react-js-pagination';
 import './Pagination.css';
+import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 const Pagination: React.FC<PaginationProps> = ({
   sizePerPage,
   totalNumberOfValues,
@@ -34,13 +36,19 @@ const Pagination: React.FC<PaginationProps> = ({
         nextPageText={
           <>
             Next{' '}
-            <i className="fas fa-arrow-right tw-text-sm tw-align-middle tw-pl-1.5" />
+            <FontAwesomeIcon
+              className="tw-text-sm tw-align-middle tw-pr-1.5"
+              icon={faArrowRight}
+            />
           </>
         }
         pageRangeDisplayed={-1}
         prevPageText={
           <>
-            <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />
+            <FontAwesomeIcon
+              className="tw-text-sm tw-align-middle tw-pr-1.5"
+              icon={faArrowLeft}
+            />
             Previous{' '}
           </>
         }
