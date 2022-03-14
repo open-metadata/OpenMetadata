@@ -17,8 +17,6 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
-from metadata.generated.schema.tests.columnTest import ColumnTest
-from metadata.generated.schema.tests.tableTest import TableTest
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import REST
 

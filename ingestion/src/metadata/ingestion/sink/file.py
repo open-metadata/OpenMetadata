@@ -11,7 +11,6 @@
 
 import logging
 import pathlib
-from typing import Generic
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity, WorkflowContext

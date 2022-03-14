@@ -12,7 +12,7 @@
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, List, Optional, TypeVar
 
 from pydantic import BaseModel
 

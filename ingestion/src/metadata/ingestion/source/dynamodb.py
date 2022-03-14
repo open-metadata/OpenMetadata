@@ -1,7 +1,7 @@
 import logging
 import traceback
 import uuid
-from typing import Any, Generic, Iterable, List
+from typing import Iterable
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table

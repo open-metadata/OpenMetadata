@@ -14,7 +14,7 @@ OpenMetadata Airflow Lineage Backend
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from airflow.configuration import conf
 

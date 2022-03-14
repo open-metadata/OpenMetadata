@@ -12,7 +12,6 @@
 """
 Profiler File Sink
 """
-import json
 from pathlib import Path
 
 from metadata.config.common import ConfigModel
