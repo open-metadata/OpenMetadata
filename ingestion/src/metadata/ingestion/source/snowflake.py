@@ -10,9 +10,11 @@
 #  limitations under the License.
 import logging
 import os
-import traceback
 from typing import Optional
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import dsa, rsa
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
@@ -26,10 +28,6 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.asymmetric import dsa
-from cryptography.hazmat.primitives import serialization
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -44,7 +42,6 @@ class SnowflakeConfig(SQLConnectionConfig):
     database: str
     warehouse: str
     result_limit: int = 1000
-    private_key: Optional[str]
     role: Optional[str]
     duration: Optional[int]
     service_type = DatabaseServiceType.Snowflake.value
@@ -64,6 +61,21 @@ class SnowflakeConfig(SQLConnectionConfig):
 
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
+        if config.connect_args:
+            private_key = config.connect_args["private_key"]
+            if private_key != None:
+                p_key = serialization.load_pem_private_key(
+                    bytes(private_key, "utf-8"),
+                    password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
+                    backend=default_backend(),
+                )
+                pkb = p_key.private_bytes(
+                    encoding=serialization.Encoding.DER,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption(),
+                )
+                connect_args = {"private_key": pkb}
+                config.connect_args = connect_args
         super().__init__(config, metadata_config, ctx)
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
@@ -87,24 +99,7 @@ class SnowflakeSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
-        config: SQLConnectionConfig = SnowflakeConfig.parse_obj(config_dict)
-        
-        if config.private_key != None:
-            p_key= serialization.load_pem_private_key(
-                bytes(config.private_key,'utf-8'),
-                password=os.environ['SNOWFLAKE_PRIVATE_KEY_PASSPHRASE'].encode(),
-                backend=default_backend()
-            )
-            pkb = p_key.private_bytes(
-                encoding=serialization.Encoding.DER,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
-            connect_args = {
-                "private_key": pkb
-            }
-            config.connect_args = connect_args
-        
+        config = SnowflakeConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
 
