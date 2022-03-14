@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import { EntityTags, TableDetail } from 'Models';
@@ -36,7 +37,6 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
@@ -295,6 +295,8 @@ export const getDataTypeString = (dataType: string): string => {
     case DataType.Timestamp:
     case DataType.Time:
       return 'timestamp';
+    case DataType.Date:
+      return 'date';
     case DataType.Int:
     case DataType.Float:
     case DataType.Smallint:
