@@ -14,13 +14,7 @@
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
-import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  useEffect,
-  useState,
-} from 'react';
+import React, { FC, Fragment, useEffect, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard, {
@@ -29,34 +23,11 @@ import ActivityFeedCard, {
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
-
-interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
-  feedList: EntityThread[];
-  withSidePanel?: boolean;
-  isEntityFeed?: boolean;
-  entityName?: string;
-  postFeedHandler?: (value: string, id: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
-}
-interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
-  relativeDay: string;
-}
-
-interface FeedListBodyProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<FeedListSeparatorProp, 'relativeDay'>,
-    Pick<
-      ActivityFeedListProp,
-      'isEntityFeed' | 'withSidePanel' | 'deletePostHandler'
-    > {
-  updatedFeedList: Array<EntityThread & { relativeDay: string }>;
-  selctedThreadId: string;
-  onThreadIdSelect: (value: string) => void;
-  onThreadIdDeselect: () => void;
-  onThreadSelect: (value: string) => void;
-  postFeed: (value: string) => void;
-  onViewMore: () => void;
-}
+import {
+  ActivityFeedListProp,
+  FeedListBodyProp,
+  FeedListSeparatorProp,
+} from './ActivityFeedList.interface';
 
 export const FeedListSeparator: FC<FeedListSeparatorProp> = ({
   className,

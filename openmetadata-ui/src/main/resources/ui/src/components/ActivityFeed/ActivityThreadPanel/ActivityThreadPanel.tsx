@@ -15,16 +15,9 @@ import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread, Post } from 'Models';
-import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  useEffect,
-  useState,
-} from 'react';
+import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
@@ -39,31 +32,11 @@ import {
   FeedPanelHeader,
   FeedPanelOverlay,
 } from '../ActivityFeedPanel/ActivityFeedPanel';
-
-interface ActivityThreadPanelProp extends HTMLAttributes<HTMLDivElement> {
-  threadLink: string;
-  open?: boolean;
-  postFeedHandler: (value: string, id: string) => void;
-  onCancel: () => void;
-  createThread: (data: CreateThread) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
-}
-
-interface ActivityThreadListProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler'> {
-  threads: EntityThread[];
-  selectedThreadId: string;
-  postFeed: (value: string) => void;
-  onThreadIdSelect: (value: string) => void;
-  onThreadSelect: (value: string) => void;
-}
-interface ActivityThreadProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler'> {
-  selectedThread: EntityThread;
-  postFeed: (value: string) => void;
-}
+import {
+  ActivityThreadListProp,
+  ActivityThreadPanelProp,
+  ActivityThreadProp,
+} from './ActivityThreadPanel.interface';
 
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
   className,

@@ -14,8 +14,7 @@
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
-import { Post } from 'Models';
-import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
+import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
@@ -37,52 +36,13 @@ import PopOver from '../../common/popover/PopOver';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
-
-interface ConfirmState {
-  state: boolean;
-  threadId: string | undefined;
-  postId: string | undefined;
-}
-interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
-  feed: Post;
-  entityLink?: string;
-  repliedUsers?: Array<string>;
-  replies?: number;
-  isEntityFeed?: boolean;
-  threadId?: string;
-  lastReplyTimeStamp?: number;
-  isFooterVisible?: boolean;
-  onThreadSelect?: (id: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
-}
-interface FeedHeaderProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'isEntityFeed'> {
-  createdBy: string;
-  timeStamp: number;
-  entityType: string;
-  entityFQN: string;
-  entityField: string;
-}
-interface FeedBodyProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'deletePostHandler'> {
-  message: string;
-  postId: string;
-  threadId: string;
-  onConfirmation: (data: ConfirmState) => void;
-}
-interface FeedFooterProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<
-      ActivityFeedCardProp,
-      | 'replies'
-      | 'repliedUsers'
-      | 'threadId'
-      | 'onThreadSelect'
-      | 'lastReplyTimeStamp'
-      | 'isFooterVisible'
-    > {}
+import {
+  ActivityFeedCardProp,
+  ConfirmState,
+  FeedBodyProp,
+  FeedFooterProp,
+  FeedHeaderProp,
+} from './ActivityFeedCard.interface';
 
 const FeedHeader: FC<FeedHeaderProp> = ({
   className,
