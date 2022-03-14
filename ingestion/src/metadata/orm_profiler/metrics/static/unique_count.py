@@ -51,9 +51,10 @@ class UniqueCount(QueryMetric):
 
         only_once = (
             session.query(func.count(col))
+            .select_from(sample)
             .group_by(col)
             .having(func.count(col) == 1)  # Values that appear only once
-        ).select_from(sample)
+        )
 
         only_once_cte = only_once.cte("only_once")
 
