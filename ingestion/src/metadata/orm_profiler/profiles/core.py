@@ -200,7 +200,7 @@ class Profiler(Generic[MetricType]):
                 # Prepare sampled CTE
                 sampled = (
                     self.session.query(rnd)
-                    .where(rnd.c.random > self.profile_sample)
+                    .where(rnd.c.random <= self.profile_sample)
                     .cte(f"{self.table.__tablename__}_sample")
                 )
 

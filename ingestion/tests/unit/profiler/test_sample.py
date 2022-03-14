@@ -17,7 +17,6 @@ from unittest import TestCase
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
-from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiles.core import Profiler
 from metadata.utils.engines import create_and_bind_session
@@ -121,6 +120,16 @@ class SampleTest(TestCase):
         res = profiler.execute()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
 
+        profiler = Profiler(
+            count,
+            session=self.session,
+            table=User,
+            profile_sample=100.0,
+            use_cols=[User.name],
+        )
+        res = profiler.execute()._column_results
+        assert res.get(User.name.name)[Metrics.COUNT.name] == 30
+
     def test_random_sample_histogram(self):
         """
         Histogram should run correctly
@@ -137,3 +146,21 @@ class SampleTest(TestCase):
 
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
+
+    def test_random_sample_unique_count(self):
+        """
+        Unique count should run correctly
+        """
+        hist = Metrics.UNIQUE_COUNT.value
+        profiler = Profiler(
+            hist,
+            session=self.session,
+            table=User,
+            profile_sample=50.0,
+            use_cols=[User.name],
+        )
+        res = profiler.execute()._column_results
+
+        # As we repeat data, we expect 0 unique counts.
+        # This tests might very rarely, fail, depending on the sampled random data.
+        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] <= 1
