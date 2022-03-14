@@ -126,6 +126,7 @@ class ProfilerWorkflowTest(TestCase):
                     "tests": [
                         {
                             "table": "test_sqlite.main.users",  # FQDN
+                            "profile_sample": 80,
                             "table_tests": [
                                 {
                                     "testCase": {

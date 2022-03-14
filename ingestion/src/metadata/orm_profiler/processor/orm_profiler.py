@@ -111,14 +111,27 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return cls(ctx, config, metadata_config, session=session)
 
-    def build_profiler(self, orm: DeclarativeMeta) -> Profiler:
+    def build_profiler(self, orm: DeclarativeMeta, table: Table) -> Profiler:
         """
-        Given a column from the entity, build the profiler
+        Given a column from the entity, build the profiler.
 
-        table is of type DeclarativeMeta
+        :param orm: Declarative Meta
+        :param table: Table record being processed
+        :return: Initialised Profiler
         """
+
+        profile_sample = table.profileSample
+        if self.config.test_suite:
+            # If the processed table has information about the profile_sample,
+            # use that instead of the Entity stored profileSample
+            my_record_tests = self.get_record_test_def(table)
+            if my_record_tests and my_record_tests.profile_sample:
+                profile_sample = my_record_tests.profile_sample
+
         if not self.config.profiler:
-            return DefaultProfiler(session=self.session, table=orm)
+            return DefaultProfiler(
+                session=self.session, table=orm, profile_sample=profile_sample
+            )
 
         # Here we will need to add the logic to pass kwargs to the metrics
         metrics = [Metrics.get(name) for name in self.config.profiler.metrics]
@@ -128,6 +141,7 @@ class OrmProfilerProcessor(Processor[Table]):
             session=self.session,
             table=orm,
             profile_date=self.execution_date,
+            profile_sample=profile_sample,
         )
 
     def profile_entity(self, orm: DeclarativeMeta, table: Table) -> TableProfile:
@@ -142,7 +156,7 @@ class OrmProfilerProcessor(Processor[Table]):
             raise ValueError(f"Entity {orm} should be a DeclarativeMeta.")
 
         # Prepare the profilers for all table columns
-        profiler = self.build_profiler(orm)
+        profiler = self.build_profiler(orm, table=table)
 
         logger.info(f"Executing profilers for {table.fullyQualifiedName}...")
         profiler.execute()
@@ -281,17 +295,8 @@ class OrmProfilerProcessor(Processor[Table]):
 
         logger.info(f"Checking validations for {table.fullyQualifiedName}...")
 
-        test_suite: TestSuite = self.config.test_suite
-
         # Check if I have tests for the table I am processing
-        my_record_tests = next(
-            iter(
-                test
-                for test in test_suite.tests
-                if test.table == table.fullyQualifiedName
-            ),
-            None,
-        )
+        my_record_tests = self.get_record_test_def(table)
 
         if not my_record_tests:
             return None
@@ -318,6 +323,24 @@ class OrmProfilerProcessor(Processor[Table]):
             if test_case_result:
                 column_test.result = test_case_result
 
+        return my_record_tests
+
+    def get_record_test_def(self, table: Table) -> Optional[TestDef]:
+        """
+        Fetch a record from the Workflow JSON config
+        if the processed table is informed there.
+
+        :param table: Processed table
+        :return: Test definition
+        """
+        my_record_tests = next(
+            iter(
+                test
+                for test in self.config.test_suite.tests
+                if test.table == table.fullyQualifiedName
+            ),
+            None,
+        )
         return my_record_tests
 
     def validate_entity_tests(
