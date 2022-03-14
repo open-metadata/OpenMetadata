@@ -34,6 +34,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -135,8 +136,15 @@ public class DatabaseServicePageTest {
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.serviceDetailsTabs("ingestions"));
-    Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
-
+    try {
+      WebElement runIngestion =
+          wait.until(ExpectedConditions.presenceOfElementLocated(databaseServicePage.runIngestion()));
+      if (runIngestion.isDisplayed()) {
+        Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
+      }
+    } catch (NoSuchElementException e) {
+      Assert.fail("Ingestion is not created");
+    }
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, databaseServicePage.selectInterval());
