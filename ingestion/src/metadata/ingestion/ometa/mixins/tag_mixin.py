@@ -12,7 +12,6 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.ingestion.ometa.client import APIError
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name

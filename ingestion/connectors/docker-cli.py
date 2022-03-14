@@ -4,7 +4,6 @@ all the connectors
 """
 import io
 import logging
-import os
 import sys
 from distutils.core import run_setup
 

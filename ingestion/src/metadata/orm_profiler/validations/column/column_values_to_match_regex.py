@@ -26,7 +26,6 @@ from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
 )
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.utils import run_col_metric
 

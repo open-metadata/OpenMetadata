@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useState } from 'react';
@@ -27,9 +28,9 @@ import {
 } from '../../../interface/dataQuality.interface';
 import { isEven } from '../../../utils/CommonUtils';
 import NonAdminAction from '../../common/non-admin-action/NonAdminAction';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   testCase: TableTestDataType[];
@@ -96,6 +97,7 @@ const DataQualityTable = ({
         <thead>
           <tr className="tableHead-row">
             <th className="tableHead-cell">Test Case</th>
+            <th className="tableHead-cell">Description</th>
             <th className="tableHead-cell">Config</th>
             <th className="tableHead-cell">Last Run</th>
             <th className="tableHead-cell">Value</th>
@@ -119,6 +121,13 @@ const DataQualityTable = ({
                       ? column.testCase.tableTestType
                       : column.testCase.columnTestType}
                   </span>
+                </td>
+                <td className="tableBody-cell tw-w-3/12">
+                  {column.description?.trim() ? (
+                    <RichTextEditorPreviewer markdown={column.description} />
+                  ) : (
+                    <span className="tw-no-description">No description</span>
+                  )}
                 </td>
                 <td className="tableBody-cell tw-w-2/12">
                   {getConfigInfo(column.testCase?.config || {})}
@@ -146,14 +155,14 @@ const DataQualityTable = ({
                     '--'
                   )}
                 </td>
-                <td className="tableBody-cell tw-w-4/12">
+                <td className="tableBody-cell tw-w-2/12">
                   <span>
                     {column.results && column.results.length > 0
                       ? column.results[0].result || '--'
                       : '--'}
                   </span>
                 </td>
-                <td className="tableBody-cell tw-w-2/12">
+                <td className="tableBody-cell tw-w-1/12">
                   <div className="tw-flex tw-items-center">
                     <NonAdminAction
                       position="left"

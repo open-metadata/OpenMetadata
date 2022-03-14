@@ -24,8 +24,6 @@ from datetime import timedelta
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
 
-from metadata.ingestion.models.table_metadata import TableFQDN
-
 default_args = {
     "owner": "openmetadata_airflow_example",
     "depends_on_past": False,

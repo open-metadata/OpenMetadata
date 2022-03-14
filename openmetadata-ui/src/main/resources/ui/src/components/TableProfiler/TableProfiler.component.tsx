@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
@@ -29,7 +30,6 @@ import { Button } from '../buttons/Button/Button';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
@@ -290,7 +290,7 @@ const TableProfiler: FC<Props> = ({
                           `No tests available`
                         )}
                         <div className="tw-self-center tw-ml-5">
-                          {col.name.colType.length > 25 ? (
+                          {col.name.colType.includes('struct') ? (
                             <span>Not supported</span>
                           ) : (
                             <NonAdminAction

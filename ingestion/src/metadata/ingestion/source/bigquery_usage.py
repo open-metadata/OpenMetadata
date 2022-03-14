@@ -14,7 +14,6 @@ import collections
 # This import verifies that the dependencies are available.
 import logging as log
 import os
-import traceback
 from datetime import datetime
 from typing import Iterable
 
@@ -25,7 +24,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus

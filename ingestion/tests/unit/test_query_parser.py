@@ -12,14 +12,10 @@
 """
 Query parser utils tests
 """
-import csv
 import json
-from datetime import datetime
 from unittest import TestCase
 
 from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.processor.query_parser import QueryParserProcessor
 
 config = """
 {
