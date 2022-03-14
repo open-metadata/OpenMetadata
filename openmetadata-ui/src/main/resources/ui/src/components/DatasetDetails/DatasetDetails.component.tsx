@@ -118,6 +118,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   qualityTestFormHandler,
   handleSelectedColumn,
   selectedColumn,
+  deletePostHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -565,6 +566,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 {threadLink ? (
                   <ActivityThreadPanel
                     createThread={createThread}
+                    deletePostHandler={deletePostHandler}
                     open={Boolean(threadLink)}
                     postFeedHandler={postFeedHandler}
                     threadLink={threadLink}
@@ -595,6 +597,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   isEntityFeed
                   withSidePanel
                   className=""
+                  deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
                   isLoading={isentityThreadLoading}

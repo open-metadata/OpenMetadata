@@ -15,16 +15,9 @@ import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread, Post } from 'Models';
-import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  useEffect,
-  useState,
-} from 'react';
+import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
@@ -39,26 +32,11 @@ import {
   FeedPanelHeader,
   FeedPanelOverlay,
 } from '../ActivityFeedPanel/ActivityFeedPanel';
-
-interface ActivityThreadPanelProp extends HTMLAttributes<HTMLDivElement> {
-  threadLink: string;
-  open?: boolean;
-  postFeedHandler: (value: string, id: string) => void;
-  onCancel: () => void;
-  createThread: (data: CreateThread) => void;
-}
-
-interface ActivityThreadListProp extends HTMLAttributes<HTMLDivElement> {
-  threads: EntityThread[];
-  selectedThreadId: string;
-  postFeed: (value: string) => void;
-  onThreadIdSelect: (value: string) => void;
-  onThreadSelect: (value: string) => void;
-}
-interface ActivityThreadProp extends HTMLAttributes<HTMLDivElement> {
-  selectedThread: EntityThread;
-  postFeed: (value: string) => void;
-}
+import {
+  ActivityThreadListProp,
+  ActivityThreadPanelProp,
+  ActivityThreadProp,
+} from './ActivityThreadPanel.interface';
 
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
   className,
@@ -67,6 +45,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   postFeed,
   onThreadIdSelect,
   onThreadSelect,
+  deletePostHandler,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -87,6 +66,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   message: thread.message,
                   postTs: thread.threadTs,
                   from: thread.createdBy,
+                  id: thread.id,
                 };
                 const postLength = thread.posts.length;
                 const replies = thread.postsCount - 1;
@@ -123,7 +103,9 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         <ActivityFeedCard
                           isEntityFeed
                           className="tw-mb-6 tw-ml-9"
+                          deletePostHandler={deletePostHandler}
                           feed={lastPost}
+                          threadId={thread.id}
                         />
                         <p
                           className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
@@ -161,6 +143,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   className,
   selectedThread,
   postFeed,
+  deletePostHandler,
 }) => {
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
@@ -168,6 +151,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
     message: threadData.message,
     from: threadData.createdBy,
     postTs: threadData.threadTs,
+    id: threadData.id,
   };
 
   useEffect(() => {
@@ -198,8 +182,10 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               <ActivityFeedCard
                 isEntityFeed
                 className="tw-mb-3"
+                deletePostHandler={deletePostHandler}
                 feed={reply}
                 key={key}
+                threadId={threadData.id}
               />
             ))}
           </Fragment>
@@ -221,6 +207,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   open,
   postFeedHandler,
   createThread,
+  deletePostHandler,
 }) => {
   const [threads, setThreads] = useState<EntityThread[]>([]);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
@@ -271,6 +258,13 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       about: threadLink,
     };
     createThread(data);
+    setTimeout(() => {
+      getThreads();
+    }, 500);
+  };
+
+  const onPostDelete = (threadId: string, postId: string) => {
+    deletePostHandler?.(threadId, postId);
     setTimeout(() => {
       getThreads();
     }, 500);
@@ -332,6 +326,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             </p>
             <ActivityThread
               className="tw-pb-6 tw-pl-5"
+              deletePostHandler={onPostDelete}
               postFeed={postFeed}
               selectedThread={selectedThread}
             />
@@ -353,6 +348,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             ) : null}
             <ActivityThreadList
               className="tw-py-6 tw-pl-5"
+              deletePostHandler={onPostDelete}
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}
