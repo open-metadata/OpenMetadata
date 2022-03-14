@@ -55,6 +55,7 @@ import {
   serviceTypes,
   SINGLESTORE,
   SNOWFLAKE,
+  SQLITE,
   SUPERSET,
   TABLEAU,
   TOPIC_DEFAULT,
@@ -134,6 +135,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.SingleStore:
       return SINGLESTORE;
+
+    case DatabaseServiceType.SQLite:
+      return SQLITE;
 
     case MessagingServiceType.Kafka:
       return KAFKA;

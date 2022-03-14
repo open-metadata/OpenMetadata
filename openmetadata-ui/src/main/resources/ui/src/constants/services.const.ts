@@ -41,6 +41,7 @@ import redshift from '../assets/img/service-icon-redshift.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import mysql from '../assets/img/service-icon-sql.png';
+import sqlite from '../assets/img/service-icon-sqlite.png';
 import superset from '../assets/img/service-icon-superset.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
@@ -56,6 +57,7 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 
 export const NoDataFoundPlaceHolder = noDataFound;
 export const MYSQL = mysql;
+export const SQLITE = sqlite;
 export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
