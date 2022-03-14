@@ -514,3 +514,21 @@ class OMetaTableTest(TestCase):
             id_test_res.columnTests[0].results[0].testCaseStatus
             == TestCaseStatus.Success
         )
+
+    def test_update_profile_sample(self):
+        """
+        We can safely update the profile sample %
+        """
+
+        table = self.metadata.create_or_update(data=self.create)
+        assert table.profileSample is None
+
+        updated = self.metadata.update_profile_sample(
+            fqdn=table.fullyQualifiedName, profile_sample=50.0
+        )
+        assert updated.profileSample == 50.0
+
+        stored = self.metadata.get_by_name(
+            entity=Table, fqdn=table.fullyQualifiedName, fields=["profileSample"]
+        )
+        assert stored.profileSample == 50.0
