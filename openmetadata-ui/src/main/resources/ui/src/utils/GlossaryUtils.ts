@@ -11,17 +11,45 @@
  *  limitations under the License.
  */
 
-import { FormatedGlossarySuggestion } from 'Models';
+import {
+  FormattedGlossarySuggestion,
+  FormattedGlossaryTermData,
+  SearchResponse,
+} from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
 import { getNameFromFQN } from './CommonUtils';
+import { searchData } from '../axiosAPIs/miscAPI';
+import { SearchIndex } from '../enums/search.enum';
+import { formatSearchGlossaryTermResponse } from './APIUtils';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { AxiosError } from 'axios';
 
 export interface GlossaryTermTreeNode {
   children?: GlossaryTermTreeNode[];
   fullyQualifiedName: string;
   name: string;
 }
+
+export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
+  return new Promise<FormattedGlossaryTermData[]>((resolve, reject) => {
+    searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY)
+      .then((res: SearchResponse) => {
+        const data = formatSearchGlossaryTermResponse(
+          res?.data?.hits?.hits || []
+        );
+        resolve(data);
+      })
+      .catch((error: AxiosError) => reject(error.response));
+  });
+};
+
+export const getGlossaryTermlist = (
+  terms: Array<FormattedGlossaryTermData> = []
+): Array<string> => {
+  return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
+};
 
 export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
   return data.map((d) => {
@@ -87,7 +115,7 @@ const optimiseGlossaryTermTree = (treeNodes?: GlossaryTermTreeNode[]) => {
 };
 
 export const getSearchedGlossaryTermTree = (
-  searchedTerms: FormatedGlossarySuggestion[]
+  searchedTerms: FormattedGlossarySuggestion[]
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
@@ -102,7 +130,7 @@ export const getSearchedGlossaryTermTree = (
 
 export const updateGlossaryListBySearchedTerms = (
   glossaries: ModifiedGlossaryData[],
-  searchedTerms: FormatedGlossarySuggestion[]
+  searchedTerms: FormattedGlossarySuggestion[]
 ) => {
   const searchedTermTree = getSearchedGlossaryTermTree(searchedTerms);
 

@@ -1,10 +1,8 @@
 import json
 import logging
-import traceback
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from re import L
 from typing import Any, Dict, Iterable, List
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest

@@ -35,6 +35,7 @@ def _(element, compiler, **kw):
 
 @compiles(ConcatFn, DatabaseServiceType.Redshift.value.lower())
 @compiles(ConcatFn, DatabaseServiceType.SQLite.value.lower())
+@compiles(ConcatFn, DatabaseServiceType.Vertica.value.lower())
 def _(element, compiler, **kw):
     """
     This actually returns the squared STD, but as

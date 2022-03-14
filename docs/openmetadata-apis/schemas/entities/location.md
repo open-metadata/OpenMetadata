@@ -81,8 +81,9 @@ This schema <u>does not</u> accept additional properties.
 	 2. _"Prefix"_
 	 3. _"Database"_
 	 4. _"Table"_
+	 5. _"Iceberg"_
 
 
 
 
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Wednesday, March 9, 2022_

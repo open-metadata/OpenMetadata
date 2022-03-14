@@ -18,7 +18,7 @@ and run the validations.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta, Session
 
@@ -27,8 +27,8 @@ from metadata.generated.schema.api.tests.createTableTest import CreateTableTestR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.columnTest import ColumnTest, ColumnTestCase
-from metadata.generated.schema.tests.tableTest import TableTest, TableTestCase
+from metadata.generated.schema.tests.columnTest import ColumnTestCase
+from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

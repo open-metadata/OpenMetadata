@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags, FormatedUsersData } from 'Models';
+import { EntityTags, FormattedUsersData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
   LIST_SIZE,
@@ -25,11 +25,14 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import {
+  getTagCategories,
+  getTaglist,
+  getTagOptionsFromFQN,
+} from '../../utils/TagsUtils';
 import { Button } from '../buttons/Button/Button';
 import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -51,7 +54,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
 
   const tabs = [
     {
@@ -71,7 +74,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (data: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (data: Array<FormattedUsersData>) => {
     if (!isEqual(data, reviewer)) {
       let updatedGlossary = cloneDeep(glossary);
       const oldReviewer = data.filter((d) => includes(reviewer, d));
@@ -172,7 +175,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     if (glossary.reviewers && glossary.reviewers.length) {
       setReviewer(
         glossary.reviewers.map((d) => ({
-          ...(d as FormatedUsersData),
+          ...(d as FormattedUsersData),
           type: 'user',
         }))
       );
@@ -181,7 +184,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     }
   }, [glossary.reviewers]);
 
-  const rightPosButton = () => {
+  const AddReviewerButton = () => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
         <Button
@@ -217,10 +220,10 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         ))}
       </div>
     ) : (
-      <ErrorPlaceHolder>
-        <p className="tw-text-base tw-text-center">No Reviewers.</p>
-        <p className="tw-text-lg tw-text-center tw-mt-2">{rightPosButton()}</p>
-      </ErrorPlaceHolder>
+      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main">
+        <p className="tw-mb-3">No reviewers assigned</p>
+        <p>{AddReviewerButton()}</p>
+      </div>
     );
   };
 
@@ -300,7 +303,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
               selectedTags={getSelectedTags()}
               showTags={false}
               size="small"
-              tagList={tagList}
+              tagList={getTagOptionsFromFQN(tagList)}
               type="label"
               onCancel={() => {
                 handleTagSelection();
@@ -353,7 +356,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
             glossary.reviewers &&
             glossary.reviewers.length > 0 &&
             activeTab === 1
-              ? rightPosButton()
+              ? AddReviewerButton()
               : undefined
           }
           setActiveTab={setActiveTabHandler}

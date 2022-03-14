@@ -1199,20 +1199,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void get_TableWithDeleteLocation(TestInfo test) throws HttpResponseException {
-    CreateTable create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    // Create first time using POST
-    Table table = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
-    Table tableBeforeDeletion = getEntity(table.getId(), TableResource.FIELDS, ADMIN_AUTH_HEADERS);
-    // delete both
-    new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), ADMIN_AUTH_HEADERS);
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", "all");
-    Table tableAfterDeletion = getEntity(table.getId(), queryParams, TableResource.FIELDS, ADMIN_AUTH_HEADERS);
-    assertNull(tableAfterDeletion.getLocation());
-  }
-
-  @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
   void get_tableListWithDifferentFields_200_OK(TestInfo test) throws IOException {
     // Create a table test1 with 1 table tag and 3 column tags

@@ -13,7 +13,15 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { EditorState, Modifier, SelectionState } from 'draft-js';
+import {
+  faLink,
+  faListUl,
+  faListOl,
+  faItalic,
+  faInfoCircle,
+} from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import PopOver from '../popover/PopOver';
@@ -136,7 +144,7 @@ export class Link extends Component {
           size="small"
           title="Add link"
           trigger="mouseenter">
-          <i className="fas fa-link" />
+          <FontAwesomeIcon icon={faLink} />
         </PopOver>
       </div>
     );
@@ -184,7 +192,7 @@ export class Italic extends Component {
           size="small"
           title="Add italic text"
           trigger="mouseenter">
-          <i className="fas fa-italic" />
+          <FontAwesomeIcon icon={faItalic} />
         </PopOver>
       </div>
     );
@@ -267,7 +275,7 @@ export class ULLIST extends Component {
           size="small"
           title="Add unordered list"
           trigger="mouseenter">
-          <i className="fas fa-list-ul " />
+          <FontAwesomeIcon icon={faListUl} />
         </PopOver>
       </div>
     );
@@ -327,7 +335,7 @@ export class OLLIST extends Component {
           size="small"
           title="Add unordered list"
           trigger="mouseenter">
-          <i className="fas fa-list-ol" />
+          <FontAwesomeIcon icon={faListOl} />
         </PopOver>
       </div>
     );
@@ -362,7 +370,7 @@ export class Info extends Component {
           position="left"
           size="small"
           trigger="mouseenter">
-          <i className="fas fa-info-circle" />
+          <FontAwesomeIcon icon={faInfoCircle} />
         </PopOver>
       </div>
     );

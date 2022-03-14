@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -139,7 +138,7 @@ public class UserRepository extends EntityRepository<User> {
     return user;
   }
 
-  private List<EntityReference> getOwns(User user) throws IOException, ParseException {
+  private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
         daoCollection
@@ -152,11 +151,7 @@ public class UserRepository extends EntityRepository<User> {
       ownedEntities.addAll(
           daoCollection
               .relationshipDAO()
-              .findTo(
-                  team.getId().toString(),
-                  Entity.TEAM,
-                  Relationship.OWNS.ordinal(),
-                  toBoolean(helper(team).isDeleted())));
+              .findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal(), user.getDeleted()));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);

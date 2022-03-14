@@ -35,6 +35,7 @@ export interface IngestionModalProps {
   schedule?: string;
   connectorConfig?: ConnectorConfig;
   selectedIngestion?: AirflowPipeline;
+  serviceType: string;
   addIngestion?: (data: AirflowPipeline, triggerIngestion?: boolean) => void;
   updateIngestion?: (data: AirflowPipeline, triggerIngestion?: boolean) => void;
   onCancel: () => void;

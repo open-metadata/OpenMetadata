@@ -63,6 +63,7 @@ import AddUsersModal from '../teams/AddUsersModal';
 import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
 import { Policy } from './policy.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const getActiveTabClass = (tab: number, currentTab: number) => {
   return tab === currentTab ? 'active' : '';
@@ -492,7 +493,7 @@ const RolesPage = () => {
                 setErrorData(undefined);
                 setIsAddingRole(true);
               }}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </NonAdminAction>
         </div>
@@ -910,7 +911,7 @@ const RolesPage = () => {
                         <span className="tw-font-medium">
                           {defaultRole?.displayName ?? defaultRole?.name}
                         </span>{' '}
-                        role.`
+                        role.
                       </Fragment>
                     }
                     cancelText="Cancel"

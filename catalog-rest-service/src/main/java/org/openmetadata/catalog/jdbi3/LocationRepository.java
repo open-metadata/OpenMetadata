@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
-import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
 import java.net.URI;
@@ -220,8 +219,8 @@ public class LocationRepository extends EntityRepository<Location> {
     return new LocationUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(Location location) throws IOException, ParseException {
-    return helper(location).getContainer(STORAGE_SERVICE);
+  private EntityReference getService(Location location) throws IOException {
+    return getContainer(location.getId(), Entity.LOCATION);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {

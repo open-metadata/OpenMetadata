@@ -13,7 +13,13 @@
 
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityFieldThreads, EntityTags, ExtraInfo, TableDetail } from 'Models';
+import {
+  EntityFieldThreads,
+  EntityTags,
+  ExtraInfo,
+  TableDetail,
+  TagOption,
+} from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
@@ -32,6 +38,12 @@ import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../../utils/GlossaryUtils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
@@ -85,7 +97,8 @@ const EntityPageInfo = ({
   const [entityFollowers, setEntityFollowers] =
     useState<Array<User>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
-  const [tagList, setTagList] = useState<Array<string>>([]);
+  const [tagList, setTagList] = useState<Array<TagOption>>([]);
+  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
@@ -105,7 +118,7 @@ const EntityPageInfo = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: tagList.includes(tag.tagFQN) ? 'Tag' : 'Glossary',
+          source: tag.source,
           tagFQN: tag.tagFQN,
         }));
       tagsHandler?.([...prevTags, ...newTags]);
@@ -198,7 +211,7 @@ const EntityPageInfo = ({
           </button>
 
           <span
-            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
+            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
             data-testid="getversions">
             {parseFloat(version).toFixed(1)}
           </span>
@@ -206,11 +219,31 @@ const EntityPageInfo = ({
       </div>
     );
   };
-  const fetchTags = () => {
+
+  const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    getTagCategories()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
+    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+      .then((values) => {
+        let tagsAndTerms: TagOption[] = [];
+        if (values[0].data) {
+          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+            return { fqn: tag, source: 'Tag' };
+          });
+        }
+        if (values[1] && values[1].length > 0) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
+            (tag) => {
+              return { fqn: tag, source: 'Glossary' };
+            }
+          );
+          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+        }
+        setTagList(tagsAndTerms);
+        setTagFetchFailed(false);
+      })
+      .catch(() => {
+        setTagList([]);
+        setTagFetchFailed(true);
       })
       .finally(() => {
         setIsTagLoading(false);
@@ -230,7 +263,10 @@ const EntityPageInfo = ({
             {deleted && (
               <>
                 <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2">
-                  <i className="fas fa-exclamation-circle tw-mr-1" />
+                  <FontAwesomeIcon
+                    className="tw-mr-1"
+                    icon={faExclamationCircle}
+                  />
                   Deleted
                 </div>
               </>
@@ -277,11 +313,11 @@ const EntityPageInfo = ({
                     }}>
                     {isFollowing ? (
                       <>
-                        <i className="fas fa-star" /> Unfollow
+                        <FontAwesomeIcon icon={faStar} /> Unfollow
                       </>
                     ) : (
                       <>
-                        <i className="far fa-star" /> Follow
+                        <FontAwesomeIcon icon={faStar} /> Follow
                       </>
                     )}
                   </button>
@@ -392,11 +428,13 @@ const EntityPageInfo = ({
               <div
                 className="tw-inline-block"
                 onClick={() => {
-                  fetchTags();
+                  // Fetch tags and terms only once
+                  if (tagList.length === 0 || tagFetchFailed) {
+                    fetchTagsAndGlossaryTerms();
+                  }
                   setIsEditable(true);
                 }}>
                 <TagsContainer
-                  allowGlossary
                   editable={isEditable}
                   isLoading={isTagLoading}
                   selectedTags={getSelectedTags()}

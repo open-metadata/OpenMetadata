@@ -15,8 +15,8 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import {
   EditorContentRef,
-  FormatedGlossaryTermData,
-  FormatedUsersData,
+  FormattedGlossaryTermData,
+  FormattedUsersData,
 } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -37,6 +37,7 @@ import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import Tags from '../tags/tags';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Field = ({
   children,
@@ -68,16 +69,16 @@ const AddGlossaryTerm = ({
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
   const [relatedTerms, setRelatedTerms] = useState<
-    Array<FormatedGlossaryTermData>
+    Array<FormattedGlossaryTermData>
   >([]);
   const [synonyms, setSynonyms] = useState('');
   const [references, setReferences] = useState<TermReference[]>([]);
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
-      setReviewer(glossaryData?.reviewers as FormatedUsersData[]);
+      setReviewer(glossaryData?.reviewers as FormattedUsersData[]);
     }
   }, [glossaryData]);
 
@@ -85,7 +86,7 @@ const AddGlossaryTerm = ({
     setShowRelatedTermsModal(false);
   };
 
-  const handleRelatedTermsSave = (terms: Array<FormatedGlossaryTermData>) => {
+  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
     setRelatedTerms(terms);
     onRelatedTermsModalCancel();
   };
@@ -94,7 +95,7 @@ const AddGlossaryTerm = ({
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
@@ -252,7 +253,7 @@ const AddGlossaryTerm = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <i aria-hidden="true" className="fa fa-check" />
+            <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
           <Button
@@ -358,7 +359,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="contained"
               onClick={addReferenceFields}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
 
@@ -421,7 +422,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="contained"
               onClick={() => setShowRelatedTermsModal(true)}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
           <div className="tw-my-4">
@@ -450,7 +451,7 @@ const AddGlossaryTerm = ({
               theme="primary"
               variant="contained"
               onClick={() => setShowRevieweModal(true)}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
           <div className="tw-my-4">

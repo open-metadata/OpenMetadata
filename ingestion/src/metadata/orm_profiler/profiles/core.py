@@ -31,7 +31,6 @@ from metadata.orm_profiler.metrics.core import (
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.utils import logger
-from metadata.utils.helpers import datetime_to_ts
 
 logger = logger()
 

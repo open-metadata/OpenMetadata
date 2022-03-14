@@ -1,8 +1,8 @@
-# Tag Label
+# TagLabel
 
 This schema defines the type for labeling an entity with a Tag.
 
-**$id:**[**https://open-metadata.org/schema/type/tagLabel.json**](https://open-metadata.org/schema/type/tagLabel.json)
+<b id="https/open-metadata.org/schema/type/taglabel.json">&#36;id: https://open-metadata.org/schema/type/tagLabel.json</b>
 
 Type: `object`
 
@@ -14,6 +14,13 @@ This schema <u>does not</u> accept additional properties.
  - **description**
 	 - Unique name of the tag category.
 	 - Type: `string`
+ - **source** `required`
+	 - Label is from Tags or Glossary.
+	 - Type: `string`
+	 - The value is restricted to the following: 
+		 1. _"Tag"_
+		 2. _"Glossary"_
+	 - Default: _"Tag"_
  - **labelType** `required`
 	 - Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.
 	 - Type: `string`
@@ -44,4 +51,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Monday, March 7, 2022_
+_This document was updated on: Wednesday, March 9, 2022_

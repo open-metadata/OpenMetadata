@@ -18,14 +18,12 @@ from unittest import TestCase
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 

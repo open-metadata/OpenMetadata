@@ -54,9 +54,14 @@ import {
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import {
+  getTagCategories,
+  getTaglist,
+  getTagOptionsFromFQN,
+} from '../../utils/TagsUtils';
 import Form from './Form';
-// import { Tag, TagsCategory } from './tagsTypes';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 const TagsPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -73,9 +78,11 @@ const TagsPage = () => {
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
 
   const getTags = useCallback(() => {
-    return getTaglist(categories).filter(
+    const filteredTags = getTaglist(categories).filter(
       (tag) => editTag?.fullyQualifiedName !== tag
     );
+
+    return getTagOptionsFromFQN(filteredTags);
   }, [currentCategory, editTag]);
 
   const fetchCategories = () => {
@@ -262,7 +269,7 @@ const TagsPage = () => {
                 setIsAddingCategory((prevState) => !prevState);
                 setErrorDataCategory(undefined);
               }}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </NonAdminAction>
         </div>

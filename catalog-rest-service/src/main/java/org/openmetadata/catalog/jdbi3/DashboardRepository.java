@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -102,8 +101,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withId(original.getId());
   }
 
-  private EntityReference getService(Dashboard dashboard) throws IOException, ParseException {
-    return helper(dashboard).getContainer(Entity.DASHBOARD_SERVICE);
+  private EntityReference getService(Dashboard dashboard) throws IOException {
+    return getContainer(dashboard.getId(), Entity.DASHBOARD);
   }
 
   private void populateService(Dashboard dashboard) throws IOException {

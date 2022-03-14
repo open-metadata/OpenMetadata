@@ -47,19 +47,11 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
-from metadata.generated.schema.tests.columnTest import (
-    ColumnTest,
-    ColumnTestCase,
-    ColumnTestType,
-)
+from metadata.generated.schema.tests.columnTest import ColumnTestCase, ColumnTestType
 from metadata.generated.schema.tests.table.tableRowCountToEqual import (
     TableRowCountToEqual,
 )
-from metadata.generated.schema.tests.tableTest import (
-    TableTest,
-    TableTestCase,
-    TableTestType,
-)
+from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import APIError

@@ -136,7 +136,7 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: `Activity Feed (${feedCount})`,
+      name: 'Activity Feed',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -145,6 +145,7 @@ const DatabaseDetails: FunctionComponent = () => {
       },
       isProtected: false,
       position: 2,
+      count: feedCount,
     },
     {
       name: 'Manage',

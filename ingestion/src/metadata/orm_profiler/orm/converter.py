@@ -14,7 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 from functools import singledispatch
-from typing import Type, Union
+from typing import Union
 
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeMeta, declarative_base

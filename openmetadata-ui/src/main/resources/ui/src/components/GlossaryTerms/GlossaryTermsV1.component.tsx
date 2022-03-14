@@ -13,7 +13,12 @@
 
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags, FormatedUsersData, GlossaryTermAssets } from 'Models';
+import {
+  EntityTags,
+  FormattedGlossaryTermData,
+  FormattedUsersData,
+  GlossaryTermAssets,
+} from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import {
   LIST_SIZE,
@@ -26,19 +31,24 @@ import {
 import { LabelType, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import {
+  getTagCategories,
+  getTaglist,
+  getTagOptionsFromFQN,
+} from '../../utils/TagsUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import TabsPane from '../common/TabsPane/TabsPane';
 import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
+import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
@@ -60,19 +70,17 @@ const GlossaryTermsV1 = ({
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [activeTab, setActiveTab] = useState(1);
   const [showRevieweModal, setShowRevieweModal] = useState(false);
+  const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [isSynonymsEditing, setIsSynonymsEditing] = useState(false);
   const [isReferencesEditing, setIsReferencesEditing] = useState(false);
   const [synonyms, setSynonyms] = useState(
     glossaryTerm.synonyms?.join(',') || ''
   );
   const [references, setReferences] = useState(glossaryTerm.references || []);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
-  const [relatedTerms, setRelatedTerms] = useState<
-    {
-      relatedTerms: string;
-      description: string;
-    }[]
-  >([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const [relatedTerms, setRelatedTerms] = useState<FormattedGlossaryTermData[]>(
+    []
+  );
 
   const tabs = [
     {
@@ -92,11 +100,37 @@ const GlossaryTermsV1 = ({
     },
   ];
 
+  const onRelatedTermsModalCancel = () => {
+    setShowRelatedTermsModal(false);
+  };
+
+  const handleRelatedTermsSave = (terms: Array<FormattedGlossaryTermData>) => {
+    if (!isEqual(terms, relatedTerms)) {
+      let updatedGlossaryTerm = cloneDeep(glossaryTerm);
+      const oldTerms = terms.filter((d) => includes(relatedTerms, d));
+      const newTerms = terms
+        .filter((d) => !includes(relatedTerms, d))
+        .map((d) => ({
+          id: d.id,
+          type: d.type,
+          displayName: d.displayName,
+          name: d.name,
+        }));
+      updatedGlossaryTerm = {
+        ...updatedGlossaryTerm,
+        relatedTerms: [...oldTerms, ...newTerms],
+      };
+      setRelatedTerms(terms);
+      handleGlossaryTermUpdate(updatedGlossaryTerm);
+    }
+    onRelatedTermsModalCancel();
+  };
+
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (data: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (data: Array<FormattedUsersData>) => {
     if (!isEqual(data, reviewer)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
       const oldReviewer = data.filter((d) => includes(reviewer, d));
@@ -248,7 +282,7 @@ const GlossaryTermsV1 = ({
     if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
       setReviewer(
         glossaryTerm.reviewers.map((d) => ({
-          ...(d as FormatedUsersData),
+          ...(d as FormattedUsersData),
           type: 'user',
         }))
       );
@@ -258,19 +292,12 @@ const GlossaryTermsV1 = ({
   }, [glossaryTerm.reviewers]);
 
   useEffect(() => {
-    if (glossaryTerm.relatedTerms && glossaryTerm.relatedTerms.length) {
-      setRelatedTerms(
-        glossaryTerm.relatedTerms.map((term) => {
-          return {
-            relatedTerms: (term.displayName || term.name) as string,
-            description: term.description ?? '',
-          };
-        })
-      );
+    if (glossaryTerm.relatedTerms?.length) {
+      setRelatedTerms(glossaryTerm.relatedTerms as FormattedGlossaryTermData[]);
     }
-  }, [glossaryTerm]);
+  }, [glossaryTerm.relatedTerms]);
 
-  const rightPosButton = () => {
+  const AddReviewerButton = () => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
         <Button
@@ -283,6 +310,24 @@ const GlossaryTermsV1 = ({
           variant="contained"
           onClick={() => setShowRevieweModal(true)}>
           Add Reviewer
+        </Button>
+      </NonAdminAction>
+    );
+  };
+
+  const AddRelatedTermButton = () => {
+    return (
+      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+        <Button
+          className={classNames('tw-h-8 tw-rounded', {
+            'tw-opacity-40': isHasAccess,
+          })}
+          data-testid="add-new-tag-button"
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={() => setShowRelatedTermsModal(true)}>
+          Add Related Term
         </Button>
       </NonAdminAction>
     );
@@ -306,11 +351,24 @@ const GlossaryTermsV1 = ({
         ))}
       </div>
     ) : (
-      <ErrorPlaceHolder>
-        <p className="tw-text-base tw-text-center">No Reviewers.</p>
-        <p className="tw-text-lg tw-text-center tw-mt-2">{rightPosButton()}</p>
-      </ErrorPlaceHolder>
+      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main">
+        <p className="tw-mb-3">No reviewers assigned</p>
+        <p>{AddReviewerButton()}</p>
+      </div>
     );
+  };
+
+  const getTabPaneButton = () => {
+    switch (activeTab) {
+      case 1: {
+        return relatedTerms.length ? AddRelatedTermButton() : undefined;
+      }
+      case 3: {
+        return glossaryTerm.reviewers?.length ? AddReviewerButton() : undefined;
+      }
+      default:
+        return;
+    }
   };
 
   return (
@@ -338,10 +396,7 @@ const GlossaryTermsV1 = ({
                   theme="primary"
                   variant="contained"
                   onMouseDown={() => setIsSynonymsEditing(false)}>
-                  <i
-                    aria-hidden="true"
-                    className="fa fa-times tw-w-3.5 tw-h-3.5"
-                  />
+                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
                 </Button>
                 <Button
                   className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -350,10 +405,7 @@ const GlossaryTermsV1 = ({
                   theme="primary"
                   variant="contained"
                   onMouseDown={handleSynonymsSave}>
-                  <i
-                    aria-hidden="true"
-                    className="fa fa-check tw-w-3.5 tw-h-3.5"
-                  />
+                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
                 </Button>
               </div>
             </div>
@@ -502,7 +554,7 @@ const GlossaryTermsV1 = ({
               selectedTags={getSelectedTags()}
               showTags={false}
               size="small"
-              tagList={tagList}
+              tagList={getTagOptionsFromFQN(tagList)}
               type="label"
               onCancel={() => {
                 handleTagSelection();
@@ -551,19 +603,18 @@ const GlossaryTermsV1 = ({
         <TabsPane
           activeTab={activeTab}
           className="tw-flex-initial"
-          rightPosButton={
-            glossaryTerm.reviewers &&
-            glossaryTerm.reviewers.length > 0 &&
-            activeTab === 3
-              ? rightPosButton()
-              : undefined
-          }
+          rightPosButton={getTabPaneButton()}
           setActiveTab={activeTabHandler}
           tabs={tabs}
         />
 
         <div className="tw-flex-grow tw-py-4">
-          {activeTab === 1 && <RelationshipTab data={relatedTerms} />}
+          {activeTab === 1 && (
+            <RelationshipTab
+              addButton={<>{AddRelatedTermButton()}</>}
+              data={relatedTerms}
+            />
+          )}
           {activeTab === 2 && (
             <AssetsTabs
               assetData={assetData}
@@ -573,6 +624,14 @@ const GlossaryTermsV1 = ({
           {activeTab === 3 && getReviewerTabData()}
         </div>
 
+        {showRelatedTermsModal && (
+          <RelatedTermsModal
+            header="Add Related Terms"
+            relatedTerms={relatedTerms}
+            onCancel={onRelatedTermsModalCancel}
+            onSave={handleRelatedTermsSave}
+          />
+        )}
         {showRevieweModal && (
           <ReviewerModal
             header="Add Reviewer"

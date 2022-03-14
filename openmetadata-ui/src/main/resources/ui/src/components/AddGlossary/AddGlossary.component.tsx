@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
-import { EditorContentRef, FormatedUsersData } from 'Models';
+import { EditorContentRef, FormattedUsersData } from 'Models';
 import React, { useRef, useState } from 'react';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -30,6 +30,7 @@ import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import Tags from '../tags/tags';
 import { AddGlossaryProps } from './AddGlossary.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -52,13 +53,13 @@ const AddGlossary = ({
   const [name, setName] = useState('');
   const [description] = useState<string>('');
   const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<FormatedUsersData>>([]);
+  const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
   };
 
-  const handleReviewerSave = (reviewer: Array<FormatedUsersData>) => {
+  const handleReviewerSave = (reviewer: Array<FormattedUsersData>) => {
     setReviewer(reviewer);
     onReviewerModalCancel();
   };
@@ -140,7 +141,7 @@ const AddGlossary = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <i aria-hidden="true" className="fa fa-check" />
+            <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
           <Button
@@ -228,7 +229,7 @@ const AddGlossary = ({
               theme="primary"
               variant="contained"
               onClick={() => setShowRevieweModal(true)}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
           <div className="tw-my-4">

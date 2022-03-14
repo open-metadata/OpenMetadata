@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.MLMODEL;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
@@ -195,12 +196,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModel != null) {
       List<String> ids =
           findTo(mlModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD, toBoolean(toInclude(mlModel)));
-      if (ids.size() > 1) {
-        LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, mlModel.getId());
-      }
-      if (!ids.isEmpty()) {
-        return daoCollection.dashboardDAO().findEntityReferenceById(UUID.fromString(ids.get(0)));
-      }
+      ensureSingleRelationship(MLMODEL, mlModel.getId(), ids, "dashboards", false);
+      return ids.isEmpty() ? null : daoCollection.dashboardDAO().findEntityReferenceById(UUID.fromString(ids.get(0)));
     }
     return null;
   }

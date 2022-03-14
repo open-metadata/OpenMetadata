@@ -186,7 +186,7 @@ const ServicePage: FunctionComponent = () => {
       count: instanceCount,
     },
     {
-      name: `Activity Feed (${feedCount})`,
+      name: 'Activity Feed',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -195,6 +195,7 @@ const ServicePage: FunctionComponent = () => {
       },
       isProtected: false,
       position: 2,
+      count: feedCount,
     },
     {
       name: 'Ingestions',

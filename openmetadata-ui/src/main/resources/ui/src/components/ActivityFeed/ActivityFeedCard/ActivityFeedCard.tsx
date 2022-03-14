@@ -97,7 +97,6 @@ const FeedHeader: FC<FeedHeaderProp> = ({
   };
 
   const getUserData = () => {
-    const image = userData.profile?.images?.image512;
     const displayName = userData.displayName ?? '';
     const name = userData.name ?? '';
     const teams = userData.teams;
@@ -115,11 +114,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
               <div>
                 <div className="tw-flex">
                   <div className="tw-mr-2">
-                    {image ? (
-                      <img src={image} width="30px" />
-                    ) : (
-                      <Avatar name={createdBy} type="square" width="30" />
-                    )}
+                    <Avatar name={createdBy} type="square" width="30" />
                   </div>
                   <div className="tw-self-center">
                     <p>

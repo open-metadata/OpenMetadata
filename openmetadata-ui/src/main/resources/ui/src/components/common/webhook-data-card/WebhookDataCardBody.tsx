@@ -33,7 +33,7 @@ const WebhookDataCardBody: FunctionComponent<Props> = ({
         <span className="tw-flex tw-items-center">
           <div
             className={classNames(
-              'tw-w-3 tw-h-3 tw-rounded-full',
+              'tw-w-3 tw-h-3 tw-rounded-full tw-mx-0.5',
               `tw-bg-${status}`
             )}
           />

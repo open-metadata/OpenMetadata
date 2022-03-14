@@ -11,5 +11,8 @@
  *  limitations under the License.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.css');
+@font-face {
+    font-family: "Inter";
+    src: url("../fonts/Inter/Inter-VariableFont_slnt,wght.ttf") format("truetype");
+    font-weight: normal;
+}

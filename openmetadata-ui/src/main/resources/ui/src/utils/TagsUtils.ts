@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { flatten } from 'lodash';
-import { EntityTags, TableColumn } from 'Models';
+import { EntityTags, TableColumn, TagOption } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
 
@@ -85,4 +85,12 @@ export const getTableTags = (
   });
 
   return uniqueTags;
+};
+
+export const getTagOptionsFromFQN = (
+  tagFQNs: Array<string>
+): Array<TagOption> => {
+  return tagFQNs.map((tag) => {
+    return { fqn: tag, source: 'Tag' };
+  });
 };

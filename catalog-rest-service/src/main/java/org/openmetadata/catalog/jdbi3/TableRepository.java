@@ -14,12 +14,10 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DATABASE;
-import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
@@ -46,11 +44,12 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.TableTest;
@@ -62,6 +61,7 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.SQLQuery;
@@ -101,8 +101,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public Table setFields(Table table, Fields fields) throws IOException, ParseException {
-    table.setDatabase(getDatabase(table));
-    table.setService(getService(table));
+    setDefaultFields(table);
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains(FIELD_OWNER) ? getOwner(table) : null);
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
@@ -119,6 +118,12 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
     getColumnTests(fields.contains("tests"), table);
     return table;
+  }
+
+  private void setDefaultFields(Table table) throws IOException, ParseException {
+    EntityReference databaseRef = getContainer(table.getId(), TABLE);
+    Database database = Entity.getEntity(databaseRef, Fields.EMPTY_FIELDS, Include.ALL);
+    table.withDatabase(databaseRef).withService(database.getService());
   }
 
   @Override
@@ -461,18 +466,17 @@ public class TableRepository extends EntityRepository<Table> {
     EntityUtil.escapeReservedChars(getEntityInterface(table));
     EntityUtil.escapeReservedChars(table.getColumns());
     EntityUtil.escapeReservedChars(table.getTableConstraints());
-    Database database = helper(table).findEntity("database", DATABASE);
-    table.setDatabase(helper(database).toEntityReference());
-    DatabaseService databaseService = helper(database).findEntity("service", DATABASE_SERVICE);
-    table.setService(helper(databaseService).toEntityReference());
-    table.setServiceType(databaseService.getServiceType());
+    Database database = Entity.getEntity(table.getDatabase(), Fields.EMPTY_FIELDS, Include.ALL);
+    table.setDatabase(new DatabaseEntityInterface(database).getEntityReference());
+    table.setService(database.getService());
+    table.setServiceType(database.getServiceType());
 
     // Set data in table entity based on database relationship
     table.setFullyQualifiedName(getFQN(table));
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
-    table.setOwner(helper(table).validateOwnerOrNull());
+    table.setOwner(Entity.getEntityReference(table.getOwner()));
 
     // Validate table tags and add derived tags to the list
     table.setTags(addDerivedTags(table.getTags()));
@@ -481,19 +485,10 @@ public class TableRepository extends EntityRepository<Table> {
     addDerivedColumnTags(table.getColumns());
   }
 
-  private EntityReference getDatabase(Table table) throws IOException, ParseException {
-    return helper(table).getContainer(DATABASE);
-  }
-
-  // It must be called after getDatabase.
-  private EntityReference getService(Table table) throws IOException, ParseException {
-    Database database = helper(table).findEntity("database");
-    DatabaseService databaseService = helper(database).findEntity("service");
-    return helper(databaseService).toEntityReference();
-  }
-
-  private EntityReference getLocation(Table table) throws IOException, ParseException {
-    return helper(table).getHasOrNull(LOCATION);
+  private EntityReference getLocation(Table table) throws IOException {
+    List<String> refs = findTo(table.getId(), TABLE, Relationship.HAS, LOCATION, null);
+    ensureSingleRelationship(TABLE, table.getId(), refs, "location", false);
+    return refs.isEmpty() ? null : Entity.getEntityReferenceById(LOCATION, UUID.fromString(refs.get(0)), Include.ALL);
   }
 
   @Override
@@ -560,7 +555,6 @@ public class TableRepository extends EntityRepository<Table> {
         .withChildren(children);
   }
 
-  // TODO remove this
   private void applyTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {

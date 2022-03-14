@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import logging
-import traceback
 from typing import Optional
 
 from snowflake.sqlalchemy.custom_types import VARIANT
@@ -36,6 +35,7 @@ class SnowflakeConfig(SQLConnectionConfig):
     account: str
     database: str
     warehouse: str
+    result_limit: int = 1000
     role: Optional[str]
     duration: Optional[int]
     service_type = DatabaseServiceType.Snowflake.value

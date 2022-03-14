@@ -23,7 +23,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion-core==0.8.0",
+    "openmetadata-ingestion-core==0.9.0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1",
@@ -132,6 +132,7 @@ dev = {
     "botocore==1.23.14",
     "datamodel-code-generator==0.11.14",
     "black==21.12b0",  # required for datamodel-code-generator==0.11.14
+    "pycln",
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",

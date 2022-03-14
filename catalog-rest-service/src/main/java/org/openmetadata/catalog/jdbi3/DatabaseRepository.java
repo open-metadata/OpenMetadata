@@ -14,9 +14,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
@@ -153,8 +151,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
   }
 
-  private EntityReference getService(Database database) throws IOException, ParseException {
-    return helper(database).getContainer(DATABASE_SERVICE);
+  private EntityReference getService(Database database) throws IOException {
+    return getContainer(database.getId(), Entity.DATABASE);
   }
 
   private void populateService(Database database) throws IOException {

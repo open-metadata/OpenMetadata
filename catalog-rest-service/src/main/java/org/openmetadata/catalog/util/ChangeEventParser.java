@@ -257,6 +257,11 @@ public final class ChangeEventParser {
   }
 
   private static String getUpdateMessage(String updatedField, Object oldValue, Object newValue) {
+    // New value should not be null in any case for an update
+    if (newValue == null) {
+      return StringUtils.EMPTY;
+    }
+
     if (oldValue == null || oldValue.toString().isEmpty()) {
       return String.format("Updated **%s** to %s", updatedField, getFieldValue(newValue));
     } else if (updatedField.contains("tags") || updatedField.contains("owner")) {
@@ -265,37 +270,39 @@ public final class ChangeEventParser {
     // if old value is not empty, and is of type array or object, the updates can be across multiple keys
     // Example: [{name: "col1", dataType: "varchar", dataLength: "20"}]
 
-    try {
-      // Check if field value is a json string
-      JsonValue newJson = JsonUtils.readJson(newValue.toString());
-      JsonValue oldJson = JsonUtils.readJson(oldValue.toString());
-      if (newJson.getValueType() == ValueType.ARRAY) {
-        JsonArray newJsonArray = newJson.asJsonArray();
-        JsonArray oldJsonArray = oldJson.asJsonArray();
-        if (newJsonArray.size() == 1 && oldJsonArray.size() == 1) {
-          // if there is only one item in the array, it can be safely considered as an update
-          JsonValue newItem = newJsonArray.get(0);
-          JsonValue oldItem = oldJsonArray.get(0);
-          if (newItem.getValueType() == ValueType.OBJECT) {
-            JsonObject newJsonItem = newItem.asJsonObject();
-            JsonObject oldJsonItem = oldItem.asJsonObject();
-            return getObjectUpdateMessage(updatedField, oldJsonItem, newJsonItem);
+    if (!newValue.toString().isEmpty()) {
+      try {
+        // Check if field value is a json string
+        JsonValue newJson = JsonUtils.readJson(newValue.toString());
+        JsonValue oldJson = JsonUtils.readJson(oldValue.toString());
+        if (newJson.getValueType() == ValueType.ARRAY) {
+          JsonArray newJsonArray = newJson.asJsonArray();
+          JsonArray oldJsonArray = oldJson.asJsonArray();
+          if (newJsonArray.size() == 1 && oldJsonArray.size() == 1) {
+            // if there is only one item in the array, it can be safely considered as an update
+            JsonValue newItem = newJsonArray.get(0);
+            JsonValue oldItem = oldJsonArray.get(0);
+            if (newItem.getValueType() == ValueType.OBJECT) {
+              JsonObject newJsonItem = newItem.asJsonObject();
+              JsonObject oldJsonItem = oldItem.asJsonObject();
+              return getObjectUpdateMessage(updatedField, oldJsonItem, newJsonItem);
+            } else {
+              return getPlainTextUpdateMessage(updatedField, newItem.toString(), oldItem.toString());
+            }
           } else {
-            return getPlainTextUpdateMessage(updatedField, newItem.toString(), oldItem.toString());
+            return getPlainTextUpdateMessage(updatedField, getFieldValue(oldValue), getFieldValue(newValue));
           }
-        } else {
-          return getPlainTextUpdateMessage(updatedField, getFieldValue(oldValue), getFieldValue(newValue));
+        } else if (newJson.getValueType() == ValueType.OBJECT) {
+          JsonObject newJsonObject = newJson.asJsonObject();
+          JsonObject oldJsonObject = oldJson.asJsonObject();
+          return getObjectUpdateMessage(updatedField, oldJsonObject, newJsonObject);
         }
-      } else if (newJson.getValueType() == ValueType.OBJECT) {
-        JsonObject newJsonObject = newJson.asJsonObject();
-        JsonObject oldJsonObject = oldJson.asJsonObject();
-        return getObjectUpdateMessage(updatedField, oldJsonObject, newJsonObject);
+      } catch (JsonParsingException ex) {
+        // update is of type String
+        // ignore this exception and process update message for plain text
       }
-    } catch (JsonParsingException ex) {
-      // update is of String type
-      return getPlainTextUpdateMessage(updatedField, oldValue.toString(), newValue.toString());
     }
-    return StringUtils.EMPTY;
+    return getPlainTextUpdateMessage(updatedField, oldValue.toString(), newValue.toString());
   }
 
   private static String getPlaintextDiff(String oldValue, String newValue) {

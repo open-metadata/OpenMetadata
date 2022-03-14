@@ -11,7 +11,8 @@
 """
 Snowflake usage module
 """
-
+import logging
+import traceback
 from typing import Any, Dict, Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -29,6 +30,8 @@ from metadata.ingestion.source.sql_alchemy_helper import (
 )
 from metadata.utils.helpers import get_start_and_end, ingest_lineage
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class SnowflakeUsageSource(Source[TableQuery]):
@@ -77,7 +80,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
         self.analysis_date = start
         self.metadata_config = metadata_config
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
-            start_date=start, end_date=end
+            start_date=start, end_date=end, result_limit=self.config.result_limit
         )
         self.alchemy_helper = SQLAlchemyHelper(
             config, metadata_config, ctx, "Snowflake", self.sql_stmt
@@ -111,29 +114,33 @@ class SnowflakeUsageSource(Source[TableQuery]):
         :return:
         """
         for row in self._get_raw_extract_iter():
-            table_query = TableQuery(
-                query=row["query_type"],
-                user_name=row["user_name"],
-                starttime=str(row["start_time"]),
-                endtime=str(row["end_time"]),
-                analysis_date=self.analysis_date,
-                aborted="1969" in str(row["end_time"]),
-                database=row["database_name"],
-                sql=row["query_text"],
-                service_name=self.config.service_name,
-            )
-            if row["schema_name"] is not None:
-                self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
-            else:
-                self.report.scanned(f"{row['database_name']}")
-            yield table_query
-            query_info = {
-                "sql": table_query.sql,
-                "from_type": "table",
-                "to_type": "table",
-                "service_name": self.config.service_name,
-            }
-            ingest_lineage(query_info, self.metadata_config)
+            try:
+                table_query = TableQuery(
+                    query=row["query_type"],
+                    user_name=row["user_name"],
+                    starttime=str(row["start_time"]),
+                    endtime=str(row["end_time"]),
+                    analysis_date=self.analysis_date,
+                    aborted="1969" in str(row["end_time"]),
+                    database=row["database_name"],
+                    sql=row["query_text"],
+                    service_name=self.config.service_name,
+                )
+                if row["schema_name"] is not None:
+                    self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
+                else:
+                    self.report.scanned(f"{row['database_name']}")
+                yield table_query
+                query_info = {
+                    "sql": table_query.sql,
+                    "from_type": "table",
+                    "to_type": "table",
+                    "service_name": self.config.service_name,
+                }
+                ingest_lineage(query_info, self.metadata_config)
+            except Exception as err:
+                logger.debug(traceback.print_exc())
+                logger.debug(repr(err))
 
     def get_report(self):
         """

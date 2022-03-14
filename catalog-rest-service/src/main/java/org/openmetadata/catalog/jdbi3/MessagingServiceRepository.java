@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -63,8 +62,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   @Override
   public void prepare(MessagingService entity) throws IOException, ParseException {
     // Check if owner is valid and set the relationship
-    entity.setOwner(helper(entity).validateOwnerOrNull());
-
+    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 

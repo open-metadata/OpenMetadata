@@ -13,15 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
-import static org.openmetadata.catalog.Entity.DATABASE_SERVICE;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.helper;
 
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -80,12 +76,10 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   @Override
   public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
     EntityUtil.escapeReservedChars(getEntityInterface(airflowPipeline));
-    EntityReference entityReference =
-        helper(helper(airflowPipeline).findEntity("service", List.of(DATABASE_SERVICE, DASHBOARD_SERVICE)))
-            .toEntityReference();
+    EntityReference entityReference = Entity.getEntityReference(airflowPipeline.getService());
     airflowPipeline.setService(entityReference);
     airflowPipeline.setFullyQualifiedName(getFQN(airflowPipeline));
-    airflowPipeline.setOwner(helper(airflowPipeline).validateOwnerOrNull());
+    airflowPipeline.setOwner(Entity.getEntityReference(airflowPipeline.getOwner()));
   }
 
   @Override
@@ -117,8 +111,8 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     return new AirflowPipelineUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(AirflowPipeline airflowPipeline) throws IOException, ParseException {
-    return helper(airflowPipeline).getContainer(List.of(Entity.DATABASE_SERVICE, Entity.DASHBOARD_SERVICE));
+  private EntityReference getService(AirflowPipeline airflowPipeline) throws IOException {
+    return getContainer(airflowPipeline.getId(), Entity.AIRFLOW_PIPELINE);
   }
 
   public static class AirflowPipelineEntityInterface implements EntityInterface<AirflowPipeline> {

@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.helper;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -81,7 +80,7 @@ public class FeedRepository {
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
 
     // Get owner for the addressed to Entity
-    EntityReference owner = helper(aboutRef).getOwnerOrNull();
+    EntityReference owner = Entity.getOwner(aboutRef);
 
     // Add entity id to thread
     thread.withEntityId(aboutRef.getId());
@@ -378,7 +377,7 @@ public class FeedRepository {
     return threads;
   }
 
-  private List<String> getThreadIdsByOwner(String userId) throws IOException {
+  private List<String> getThreadIdsByOwner(String userId) {
     List<String> threadIds = new ArrayList<>();
     // add threads on user or team owned entities
     List<String> teamIds =
@@ -416,7 +415,7 @@ public class FeedRepository {
             .listUserThreadsFromFR(user.getName(), teamNames, Entity.THREAD, Relationship.MENTIONED_IN.ordinal()));
   }
 
-  private List<String> getThreadIdsByFollows(String userId) throws IOException {
+  private List<String> getThreadIdsByFollows(String userId) {
     return dao.feedDAO().listUserThreadsFromER(userId, List.of(StringUtils.EMPTY), Relationship.FOLLOWS.ordinal());
   }
 }
