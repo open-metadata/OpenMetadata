@@ -212,7 +212,11 @@ public class TagsPageTest {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
-    Events.click(webDriver, tagsPage.tableLink());
+    try {
+      Events.click(webDriver, tagsPage.tableLink());
+    } catch (TimeoutException e) {
+      Assert.fail("Table is not present for the selected tag filter");
+    }
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
@@ -262,7 +266,11 @@ public class TagsPageTest {
 
     Events.click(webDriver, common.containsText("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(2));
-    Events.click(webDriver, tagsPage.tableLink());
+    try {
+      Events.click(webDriver, tagsPage.tableLink());
+    } catch (TimeoutException e) {
+      Assert.fail("Table is not present for the selected tag filter");
+    }
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());

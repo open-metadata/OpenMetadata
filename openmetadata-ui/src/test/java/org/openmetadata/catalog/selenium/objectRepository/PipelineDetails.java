@@ -18,7 +18,7 @@ public class PipelineDetails {
   By editTaskDescription = By.xpath("//div[@data-testid='description']/span/span");
   By descriptionBox = By.xpath("(//div[@data-testid='description'])[2]");
   By lineage = By.xpath("//button[@data-testid='tab'][@id='lineage']");;
-  By lineageComponents = By.xpath("//span[@data-testid='lineage-entity']");
+  By lineageComponents = By.xpath("//div[@class=\"tw-relative nowheel \"]");
   By sideDrawerLineage = By.xpath("//header[@class=\"tw-flex tw-justify-between\"]");
 
   public List<WebElement> lineageNodes() {
