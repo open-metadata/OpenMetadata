@@ -12,7 +12,7 @@
 """
 MIN_LENGTH Metric definition
 """
-from sqlalchemy import func
+from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
@@ -43,7 +43,7 @@ class MinLength(StaticMetric):
     def fn(self):
 
         if is_concatenable(self.col.type):
-            return func.min(LenFn(self.col))
+            return func.min(LenFn(column(self.col.name)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"

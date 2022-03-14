@@ -12,7 +12,7 @@
 """
 Distinct Count Metric definition
 """
-from sqlalchemy import distinct, func
+from sqlalchemy import column, distinct, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
@@ -34,4 +34,4 @@ class DistinctCount(StaticMetric):
 
     @_label
     def fn(self):
-        return func.count(distinct(self.col))
+        return func.count(distinct(column(self.col.name)))
