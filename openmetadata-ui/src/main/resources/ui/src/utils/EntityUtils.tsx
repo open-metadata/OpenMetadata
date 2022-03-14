@@ -499,7 +499,8 @@ export const filteredColumnTestOption = (dataType: string) => {
         (test) => test !== ColumnTestType.columnValuesToBeBetween
       );
 
-    case 'timestamp': {
+    case 'timestamp':
+    case 'date': {
       const excluded = [
         ColumnTestType.columnValuesToBeNotInSet,
         ColumnTestType.columnValueLengthsToBeBetween,
