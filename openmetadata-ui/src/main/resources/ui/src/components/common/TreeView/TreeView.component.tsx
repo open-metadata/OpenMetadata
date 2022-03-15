@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
+import { debounce } from 'lodash';
 import RcTree from 'rc-tree';
 import 'rc-tree/assets/index.css';
-import { DataNode, IconType } from 'rc-tree/lib/interface';
+import { DataNode, EventDataNode, IconType } from 'rc-tree/lib/interface';
 import React, { ForwardedRef, forwardRef } from 'react';
 import { normalLink } from '../../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../../utils/svgconstant';
@@ -27,13 +29,23 @@ const TreeView = forwardRef(
       selectedKeys,
       expandedKeys,
       defaultExpandAll = false,
-      showIcon = false,
+      showIcon = true,
       handleClick,
       handleExpand,
     } = props;
 
+    const treeRef = React.createRef<RcTree>();
+
+    // Need to disable below rule to support only non-null value for treeRef.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    React.useImperativeHandle(ref, () => treeRef.current as RcTree<DataNode>);
+
     const getIcon: IconType = (props): React.ReactNode => {
       const { data, expanded } = props;
+      // TODO: Uncomment in case of showing loader icon
+      // if (loadingKey?.includes(data?.key as string)) {
+      //   return <Loader size="small" type="default" />;
+      // } else
       if (data?.children) {
         return expanded ? (
           <DropdownIcon
@@ -56,17 +68,53 @@ const TreeView = forwardRef(
       return;
     };
 
+    const expandFolderNode = (
+      event: React.MouseEvent<HTMLElement, MouseEvent>,
+      node: EventDataNode
+    ) => {
+      const { isLeaf } = node;
+
+      if (isLeaf || event.shiftKey || event.metaKey || event.ctrlKey) {
+        return;
+      }
+
+      // Call internal rc-tree expand function
+      // https://github.com/ant-design/ant-design/issues/12567
+      if (treeRef && treeRef?.current) {
+        treeRef.current.onNodeExpand(
+          event as React.MouseEvent<HTMLDivElement, MouseEvent>,
+          node
+        );
+      }
+    };
+
+    const onDebounceExpand = debounce(expandFolderNode, 200, {
+      leading: true,
+    });
+
+    const onClick = (
+      event: React.MouseEvent<HTMLElement, MouseEvent>,
+      node: EventDataNode
+    ) => {
+      onDebounceExpand(event, node);
+      handleClick?.(event, node);
+    };
+
     return (
       <div>
         <RcTree
+          className={classNames({
+            //  This class will show switcher element
+            'show-switcher': !showIcon,
+          })}
           defaultExpandAll={defaultExpandAll}
           expandedKeys={expandedKeys}
-          ref={ref}
+          icon={getIcon}
+          ref={treeRef}
           selectedKeys={selectedKeys}
           showIcon={showIcon}
-          switcherIcon={getIcon}
           treeData={treeData}
-          onClick={handleClick}
+          onClick={onClick}
           onExpand={handleExpand}
         />
       </div>

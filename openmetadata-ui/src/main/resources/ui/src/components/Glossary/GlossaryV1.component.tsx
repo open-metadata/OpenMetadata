@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
@@ -38,7 +39,6 @@ import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   assetData: GlossaryTermAssets;
@@ -48,8 +48,9 @@ type Props = {
   glossaryList: ModifiedGlossaryData[];
   selectedKey: string;
   expandedKey: string[];
+  loadingKey: string[];
   handleExpandedKey: (key: string[]) => void;
-  handleSelectedKey: (key: string) => void;
+  handleSelectedKey?: (key: string) => void;
   searchText: string;
   selectedData: Glossary | GlossaryTerm;
   isGlossaryActive: boolean;
@@ -57,7 +58,11 @@ type Props = {
   handleAddGlossaryTermClick: () => void;
   updateGlossary: (value: Glossary) => void;
   handleGlossaryTermUpdate: (value: GlossaryTerm) => void;
-  handleSelectedData: (data: Glossary | GlossaryTerm, pos: string) => void;
+  handleSelectedData: (
+    data: Glossary | GlossaryTerm,
+    pos: string,
+    key: string
+  ) => void;
   handleChildLoading: (status: boolean) => void;
   handleSearchText: (text: string) => void;
   onGlossaryDelete: (id: string) => void;
@@ -82,8 +87,8 @@ const GlossaryV1 = ({
   glossaryList,
   selectedKey,
   expandedKey,
+  loadingKey,
   handleExpandedKey,
-  handleSelectedKey,
   searchText,
   selectedData,
   isGlossaryActive,
@@ -155,17 +160,17 @@ Props) => {
     _event: React.MouseEvent<HTMLElement, MouseEvent>,
     node: EventDataNode
   ) => {
-    handleChildLoading(true);
     const key = node.key as string;
-    const breadCrumbData = (treeRef.current?.state.keyEntities[key].nodes ||
-      []) as ModifiedDataNode[];
-    const pos = treeRef.current?.state.keyEntities[key].pos;
-    handleSelectedData(
-      breadCrumbData[breadCrumbData.length - 1].data,
-      pos as string
-    );
+    if (selectedKey !== key) {
+      handleChildLoading(true);
+      const breadCrumbData = (treeRef.current?.state.keyEntities[key].nodes ||
+        []) as ModifiedDataNode[];
+      const selData = breadCrumbData[breadCrumbData.length - 1].data;
+      const pos = treeRef.current?.state.keyEntities[key].pos;
+      handleSelectedData(selData, pos as string, key);
+    }
     // handlePathChange(key.split('.')[0], key);
-    handleSelectedKey(key);
+    // handleSelectedKey(key);
   };
 
   useEffect(() => {
@@ -221,6 +226,7 @@ Props) => {
                   expandedKeys={expandedKey}
                   handleClick={handleTreeClick}
                   handleExpand={(key) => handleExpandedKey(key as string[])}
+                  loadingKey={loadingKey}
                   ref={treeRef}
                   selectedKeys={[selectedKey]}
                   treeData={treeData}
