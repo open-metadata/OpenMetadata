@@ -10,16 +10,6 @@ import click
 import requests as requests
 
 logger = logging.getLogger(__name__)
-
-logging.getLogger("urllib3").setLevel(logging.WARN)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter(
-        "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
-    )
-)
-logger.addHandler(handler)
-
 calc_gb = 1024 * 1024 * 1000
 min_memory_limit = 6 * calc_gb
 
