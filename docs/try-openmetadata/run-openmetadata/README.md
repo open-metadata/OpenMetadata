@@ -28,7 +28,7 @@ To check what version of Docker you have, please use the following command.
 docker --version
 ```
 
-If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/). You also need the latest `docker-compose` installed, please visit [Install Docker Compose](https://docs.docker.com/compose/install/).
+If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).&#x20;
 
 {% hint style="warning" %}
 Note: You must **allocate at least 6GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
@@ -36,11 +36,29 @@ Note: You must **allocate at least 6GB of memory to Docker** in order to run Ope
 Preferences -> Resources -> Advanced
 {% endhint %}
 
-### docker-compose (version v1.29.2 or greater)
+### `compose` command for Docker (version v2.1.1 or greater)
 
-The docker-compose tool enables you to define and run multi-container Docker applications. The packages you will install in this guide use docker-compose to deploy OpenMetadata.
+The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.&#x20;
 
-To install `docker-compose`, please follow the instructions at [Install Docker Compose](https://docs.docker.com/compose/install/).
+**MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.&#x20;
+
+**Linux**: To install compose on Linux systems, please visit the [Docker CLI command documentation](https://docs.docker.com/compose/cli-command/#install-on-linux) and follow the instructions.
+
+To verify that the `docker compose` command is installed and accessible on your system, run the following command.
+
+```bash
+docker compose version
+```
+
+Upon running this command you should see output similar to the following.
+
+```bash
+Docker Compose version v2.1.1
+```
+
+{% hint style="info" %}
+Note: In previous releases of Docker compose functions were delivered with the `docker-compose` tool. OpenMetadata uses Compose V2. Please see the paragraphs above for instructions on installing Compose V2.
+{% endhint %}
 
 ## Procedure
 
