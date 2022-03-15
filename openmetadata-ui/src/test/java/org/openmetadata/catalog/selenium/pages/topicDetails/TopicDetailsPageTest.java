@@ -143,7 +143,7 @@ public class TopicDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Object count = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     Events.click(webDriver, topicDetails.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
