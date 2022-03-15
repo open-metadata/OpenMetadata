@@ -763,7 +763,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
             return pre.map((thread) => {
               const posts = thread.posts.filter((post) => post.id !== id);
 
-              return { ...thread, posts: posts, postsCount: posts.length };
+              return {
+                ...thread,
+                posts: posts,
+                postsCount: thread.postsCount - 1,
+              };
             });
           });
           getEntityFeedCount();
