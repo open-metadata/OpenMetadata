@@ -18,7 +18,7 @@ export enum ConstraintTypes {
   UNIQUE = 'UNIQUE',
 }
 
-export enum TestSupportedDataTypes {
+export enum PrimaryTableDataTypes {
   VARCHAR = 'varchar',
   TIMESTAMP = 'timestamp',
   DATE = 'date',
