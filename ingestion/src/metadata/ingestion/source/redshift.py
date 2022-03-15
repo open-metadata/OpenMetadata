@@ -261,7 +261,6 @@ def _get_args_and_kwargs(charlen, attype, format_type):
             kwargs["precision"] = int(charlen)
         if field_match:
             kwargs["fields"] = field_match.group(1)
-        attype = "interval"
     elif charlen:
         args = (int(charlen),)
     return args, kwargs
