@@ -146,7 +146,11 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, common.selectTableLink(1));
     Object count = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     Events.click(webDriver, topicDetails.addTag());
-    Events.click(webDriver, common.removeAssociatedTag());
+    try {
+      Events.click(webDriver, common.removeAssociatedTag());
+    } catch (TimeoutException e) {
+      Assert.fail("Tag not found");
+    }
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(2000);
     webDriver.navigate().refresh();

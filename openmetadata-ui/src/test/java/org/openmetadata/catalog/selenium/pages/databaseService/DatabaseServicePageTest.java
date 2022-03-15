@@ -146,9 +146,18 @@ public class DatabaseServicePageTest {
     } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Ingestion is not created");
     }
+    webDriver.navigate().refresh();
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.nextButton());
+    try {
+      WebElement nextButton = wait.until(ExpectedConditions.presenceOfElementLocated(common.nextButton()));
+      Thread.sleep(2000);
+      if (nextButton.isDisplayed()) {
+        nextButton.click();
+      }
+    } catch (TimeoutException | NoSuchElementException e) {
+      Assert.fail("Next button not found");
+    }
     Events.click(webDriver, common.saveServiceButton());
 
     webDriver.navigate().refresh();
