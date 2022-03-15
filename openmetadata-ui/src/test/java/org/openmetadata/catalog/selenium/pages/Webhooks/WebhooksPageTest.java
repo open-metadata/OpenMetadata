@@ -17,6 +17,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -76,7 +77,7 @@ public class WebhooksPageTest {
     actions.click();
     actions.perform();
     Events.click(webDriver, webhooks.saveWebhook());
-    WebElement checkName = webDriver.findElement(webhooks.checkWebhook());
+    WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook()));
     Assert.assertTrue(checkName.isDisplayed());
     Assert.assertEquals(checkName.getText(), name);
   }

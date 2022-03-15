@@ -224,8 +224,12 @@ class Explore {
     Events.click(webDriver, explorePage.lastWeekSortDesc());
     Events.click(webDriver, explorePage.lastWeekSortAesc());
     Thread.sleep(2000);
-    WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
-    Assert.assertEquals(sendKeys, descriptionCheck.getText());
+    try {
+      WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
+      Assert.assertEquals(sendKeys, descriptionCheck.getText());
+    } catch (NoSuchElementException e) {
+      Assert.fail("Description not updated || Not sorting according to last updated");
+    }
   }
 
   @Test
