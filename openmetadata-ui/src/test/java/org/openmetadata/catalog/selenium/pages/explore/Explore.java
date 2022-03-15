@@ -221,8 +221,8 @@ class Explore {
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());
-    Events.click(webDriver, explorePage.lastWeekSortDesc());
-    Events.click(webDriver, explorePage.lastWeekSortAesc());
+    Events.click(webDriver, explorePage.lastUpdatedSort());
+    Events.click(webDriver, explorePage.lastUpdatedSort());
     Thread.sleep(2000);
     try {
       WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());

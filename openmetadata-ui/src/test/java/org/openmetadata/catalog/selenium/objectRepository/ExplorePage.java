@@ -35,8 +35,7 @@ public class ExplorePage {
   By tierText = By.xpath("//h6[contains(text(),'Tier')]");
   By databaseText = By.xpath("//h6[contains(text(),'Database')]");
   By tagText = By.xpath("//h6[contains(text(),'Tags')]");
-  By lastWeekSortDesc = By.xpath("//i[@data-testid=\"last-updated\"]");
-  By lastWeekSortAesc = By.xpath("//i[@data-testid=\"last-updated\"]");
+  By lastUpdatedSort = By.cssSelector("[data-testid='last-updated']");
   By updatedDescription = By.xpath("(//div[@data-testid=\"description-text\"])[1]");
   By shopifyCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"shopify\"]");
   By tagSpecialCategoryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"PersonalData.SpecialCategory\"]");
