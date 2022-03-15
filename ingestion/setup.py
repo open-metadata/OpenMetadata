@@ -109,7 +109,7 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         "GeoAlchemy2",
     },
-    "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
+    "snowflake": {"snowflake-sqlalchemy<=1.3.2", "cryptography"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},

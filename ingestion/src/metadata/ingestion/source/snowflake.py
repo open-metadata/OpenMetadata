@@ -9,8 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import logging
+import os
 from typing import Optional
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import dsa, rsa
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
@@ -57,6 +61,19 @@ class SnowflakeConfig(SQLConnectionConfig):
 
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
+        if config.connect_args.get("private_key"):
+            private_key = config.connect_args["private_key"]
+            p_key = serialization.load_pem_private_key(
+                bytes(private_key, "utf-8"),
+                password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
+                backend=default_backend(),
+            )
+            pkb = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            config.connect_args["private_key"] = pkb
         super().__init__(config, metadata_config, ctx)
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
