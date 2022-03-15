@@ -373,6 +373,7 @@ class OrmProfilerProcessor(Processor[Table]):
         record_tests = (
             TestDef(
                 table=config_tests.table,
+                profile_sample=config_tests.profile_sample,
                 table_tests=config_tests.table_tests
                 if config_tests.table_tests
                 else [],
