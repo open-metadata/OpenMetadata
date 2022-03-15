@@ -524,7 +524,7 @@ const PipelineDetailsPage = () => {
             return pre.map((thread) => {
               const posts = thread.posts.filter((post) => post.id !== id);
 
-              return { ...thread, posts: posts };
+              return { ...thread, posts: posts, postsCount: posts.length };
             });
           });
           getEntityFeedCount();
