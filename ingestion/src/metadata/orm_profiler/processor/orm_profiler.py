@@ -39,7 +39,7 @@ from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.core import Profiler
 from metadata.orm_profiler.profiles.default import DefaultProfiler
 from metadata.orm_profiler.validations.core import validate
-from metadata.orm_profiler.validations.models import TestDef, TestSuite
+from metadata.orm_profiler.validations.models import TestDef
 
 logger = logging.getLogger("ORM Profiler Workflow")
 
