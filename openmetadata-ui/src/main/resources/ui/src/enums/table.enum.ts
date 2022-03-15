@@ -18,10 +18,10 @@ export enum ConstraintTypes {
   UNIQUE = 'UNIQUE',
 }
 
-export enum SupportedDatatypeForTest {
-  varchar = 'varchar',
-  timestamp = 'timestamp',
-  date = 'date',
-  numeric = 'numeric',
-  boolean = 'boolean',
+export enum TestSupportedDataTypes {
+  VARCHAR = 'varchar',
+  TIMESTAMP = 'timestamp',
+  DATE = 'date',
+  NUMERIC = 'numeric',
+  BOOLEAN = 'boolean',
 }
