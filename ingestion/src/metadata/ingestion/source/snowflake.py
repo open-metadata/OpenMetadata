@@ -61,20 +61,19 @@ class SnowflakeConfig(SQLConnectionConfig):
 
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
-        if config.connect_args:
+        if config.connect_args.get("private_key"):
             private_key = config.connect_args["private_key"]
-            if private_key:
-                p_key = serialization.load_pem_private_key(
-                    bytes(private_key, "utf-8"),
-                    password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
-                    backend=default_backend(),
-                )
-                pkb = p_key.private_bytes(
-                    encoding=serialization.Encoding.DER,
-                    format=serialization.PrivateFormat.PKCS8,
-                    encryption_algorithm=serialization.NoEncryption(),
-                )
-                config.connect_args = {"private_key": pkb}
+            p_key = serialization.load_pem_private_key(
+                bytes(private_key, "utf-8"),
+                password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
+                backend=default_backend(),
+            )
+            pkb = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            config.connect_args = {"private_key": pkb}
 
         super().__init__(config, metadata_config, ctx)
 
