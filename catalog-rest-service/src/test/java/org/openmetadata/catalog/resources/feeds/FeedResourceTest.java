@@ -483,6 +483,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Check if get posts API returns the post
     PostList postList = listPosts(thread.getId().toString(), AUTH_HEADERS);
     assertTrue(postList.getData().isEmpty());
+
+    // validate posts count
+    Thread getThread = getThread(thread.getId(), AUTH_HEADERS);
+    assertEquals(0, getThread.getPostsCount());
   }
 
   @Test
