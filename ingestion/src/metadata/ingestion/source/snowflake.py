@@ -63,7 +63,7 @@ class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         if config.connect_args:
             private_key = config.connect_args["private_key"]
-            if private_key != None:
+            if private_key:
                 p_key = serialization.load_pem_private_key(
                     bytes(private_key, "utf-8"),
                     password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
@@ -74,8 +74,8 @@ class SnowflakeSource(SQLSource):
                     format=serialization.PrivateFormat.PKCS8,
                     encryption_algorithm=serialization.NoEncryption(),
                 )
-                connect_args = {"private_key": pkb}
-                config.connect_args = connect_args
+                config.connect_args = {"private_key": pkb}
+
         super().__init__(config, metadata_config, ctx)
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:

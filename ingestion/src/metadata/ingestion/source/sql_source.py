@@ -74,13 +74,12 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
 
 def _get_private_key_config(config: SQLConnectionConfig) -> SQLConnectionConfig:
     new_config = copy.deepcopy(config)
-    if "private_key" in new_config.connect_args.keys() and type(
-        new_config.connect_args["private_key"] == bytes
-    ):
+    if new_config.connect_args.get("private_key"):
         new_config.connect_args["private_key"] = str(
             new_config.connect_args["private_key"]
         )
-    return new_config
+        return new_config
+    return config
 
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
@@ -99,8 +98,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
-        new_config = _get_private_key_config(config)
-        self.service = get_database_service_or_create(new_config, metadata_config)
+        self.service = get_database_service_or_create(
+            _get_private_key_config(config), metadata_config
+        )
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
