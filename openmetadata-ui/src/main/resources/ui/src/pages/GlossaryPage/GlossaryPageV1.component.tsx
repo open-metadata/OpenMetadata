@@ -109,9 +109,9 @@ const GlossaryPageV1 = () => {
     setExpandedKey([data.name]);
   };
 
-  const fetchGlossaryList = (pagin = '') => {
+  const fetchGlossaryList = (paging = '') => {
     setIsLoading(true);
-    getGlossariesWithRootTerms(pagin, 100, ['owner', 'tags', 'reviewers'])
+    getGlossariesWithRootTerms(paging, 100, ['owner', 'tags', 'reviewers'])
       .then((data: ModifiedGlossaryData[]) => {
         if (data?.length) {
           setGlossaries(data);
