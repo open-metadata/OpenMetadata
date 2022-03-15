@@ -204,7 +204,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
 };
 
 const FeedBody: FC<FeedBodyProp> = ({
-  author,
+  isAuthor,
   message,
   className,
   threadId,
@@ -212,9 +212,6 @@ const FeedBody: FC<FeedBodyProp> = ({
   deletePostHandler,
   onConfirmation,
 }) => {
-  const { isAdminUser } = useAuth();
-  const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
   return (
     <Fragment>
       <div className={className}>
@@ -223,10 +220,7 @@ const FeedBody: FC<FeedBodyProp> = ({
           enableSeeMoreVariant={false}
           markdown={getFrontEndFormat(message)}
         />
-        {threadId &&
-        postId &&
-        deletePostHandler &&
-        (currentUser === author || isAdminUser) ? (
+        {threadId && postId && deletePostHandler && isAuthor ? (
           <span
             className="tw-opacity-0 hover:tw-opacity-100 tw-cursor-pointer"
             onClick={() => onConfirmation({ state: true, postId, threadId })}>
@@ -298,6 +292,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const entityFQN = getEntityFQN(entityLink as string);
   const entityField = getEntityField(entityLink as string);
 
+  const { isAdminUser } = useAuth();
+  const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
   const [confirmationState, setConfirmationState] = useState<ConfirmState>({
     state: false,
     threadId: undefined,
@@ -334,9 +331,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         timeStamp={feed.postTs}
       />
       <FeedBody
-        author={feed.from}
         className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
         deletePostHandler={deletePostHandler}
+        isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
         message={feed.message}
         postId={feed.id}
         threadId={threadId as string}
