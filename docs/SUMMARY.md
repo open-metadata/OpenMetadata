@@ -22,6 +22,7 @@
     * [BigQuery Metadata Extraction](integrations/connectors/bigquery/bigquery-metadata-extraction.md)
     * [BigQuery Usage](integrations/connectors/bigquery/bigquery-usage.md)
   * [Databricks](integrations/connectors/databricks.md)
+  * [DBT](integrations/connectors/dbt.md)
   * [Delta Lake](integrations/connectors/delta-lake.md)
   * [DynamoDB](integrations/connectors/dynamodb.md)
   * [Elasticsearch](integrations/connectors/elastic-search.md)
