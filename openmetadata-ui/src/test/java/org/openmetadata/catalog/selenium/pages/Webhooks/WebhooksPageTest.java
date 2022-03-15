@@ -77,6 +77,7 @@ public class WebhooksPageTest {
     actions.click();
     actions.perform();
     Events.click(webDriver, webhooks.saveWebhook());
+    Thread.sleep(2000);
     WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook()));
     Assert.assertTrue(checkName.isDisplayed());
     Assert.assertEquals(checkName.getText(), name);
