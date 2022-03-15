@@ -50,6 +50,7 @@ const MyData: React.FC<MyDataProps> = ({
   feedFilterHandler,
   isFeedLoading,
   postFeedHandler,
+  deletePostHandler,
 }: MyDataProps): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
@@ -177,6 +178,7 @@ const MyData: React.FC<MyDataProps> = ({
               <ActivityFeedList
                 withSidePanel
                 className=""
+                deletePostHandler={deletePostHandler}
                 feedList={feedData}
                 isLoading={isFeedLoading}
                 postFeedHandler={postFeedHandler}

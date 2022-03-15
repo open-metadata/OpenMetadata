@@ -158,6 +158,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const onThreadIdSelect = (id: string) => {
     setSelctedThreadId(id);
+    setSelectedThread(undefined);
   };
 
   const onThreadIdDeselect = () => {

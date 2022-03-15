@@ -24,7 +24,11 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
-import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  deletePostById,
+  getFeedsWithFilter,
+  postFeedById,
+} from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -176,6 +180,29 @@ const MyDataPage = () => {
       });
   };
 
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePostById(threadId, postId)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              const posts = thread.posts.filter((post) => post.id !== id);
+
+              return { ...thread, posts: posts };
+            });
+          });
+          showToast({
+            variant: 'success',
+            body: 'Post got deleted successfully',
+          });
+        }
+      })
+      .catch(() => {
+        showToast({ variant: 'error', body: 'Error while deleting post' });
+      });
+  };
+
   useEffect(() => {
     fetchData(true);
   }, []);
@@ -202,6 +229,7 @@ const MyDataPage = () => {
       !isLoading ? (
         <MyData
           countServices={countServices}
+          deletePostHandler={deletePostHandler}
           entityCounts={entityCounts}
           error={error}
           feedData={entityThread || []}
