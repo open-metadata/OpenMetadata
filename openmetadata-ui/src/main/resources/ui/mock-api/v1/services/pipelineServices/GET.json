@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "id": "db99cef2-7618-4a36-a5cc-0c13b0c1adfc",
+      "name": "sample_airflow",
+      "serviceType": "Airflow",
+      "description": "Airflow service",
+      "version": 0.1,
+      "updatedAt": 1646772050776,
+      "updatedBy": "anonymous",
+      "pipelineUrl": "http://localhost:8080",
+      "href": "http://localhost:8585/api/v1/services/pipelineServices/db99cef2-7618-4a36-a5cc-0c13b0c1adfc",
+      "deleted": false
+    }
+  ],
+  "paging": {
+    "total": 1
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "data": [
+    {
+      "collection": {
+        "name": "databaseServices",
+        "documentation": "Database service collection",
+        "href": "http://localhost:3000/api/v1/services/databaseServices"
+      }
+    },
+    {
+      "collection": {
+        "name": "dashboardServices",
+        "documentation": "Dashboard service collection",
+        "href": "http://localhost:3000/api/v1/services/dashboardServices"
+      }
+    },
+    {
+      "collection": {
+        "name": "messagingServices",
+        "documentation": "Messaging service collection",
+        "href": "http://localhost:3000/api/v1/services/messagingServices"
+      }
+    },
+    {
+      "collection": {
+        "name": "pipelineServices",
+        "documentation": "Pipeline service collection",
+        "href": "http://localhost:3000/api/v1/services/pipelineServices"
+      }
+    },
+    {
+      "collection": {
+        "name": "storageServices",
+        "documentation": "Storage service collection",
+        "href": "http://localhost:3000/api/v1/services/storageServices"
+      }
+    }
+  ]
+}

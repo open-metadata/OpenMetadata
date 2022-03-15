@@ -1,0 +1,51 @@
+{
+  "data": [
+    {
+      "id": "683d96e5-a8d3-4bbd-815c-08d3b15e542e",
+      "name": "bigquery_gcp",
+      "serviceType": "BigQuery",
+      "databaseConnection": {
+        "username": "user",
+        "password": "meta",
+        "hostPort": "localhost:9999",
+        "database": "warehouse",
+        "connectionOptions": {},
+        "connectionArguments": {}
+      },
+      "version": 0.3,
+      "updatedAt": 1646810254417,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/services/databaseServices/683d96e5-a8d3-4bbd-815c-08d3b15e542e",
+      "changeDescription": {
+        "fieldsAdded": [],
+        "fieldsUpdated": [
+          {
+            "name": "databaseConnection",
+            "oldValue": "{\"username\":\"user\",\"password\":\"password\",\"hostPort\":\"localhost:9999\",\"database\":\"warehouse\",\"connectionOptions\":{},\"connectionArguments\":{}}",
+            "newValue": "{\"username\":\"user\",\"password\":\"meta\",\"hostPort\":\"localhost:9999\",\"database\":\"warehouse\",\"connectionOptions\":{},\"connectionArguments\":{}}"
+          }
+        ],
+        "fieldsDeleted": [],
+        "previousVersion": 0.2
+      },
+      "deleted": false
+    },
+    {
+      "id": "cedc92a4-8095-425f-818f-1893304db1bc",
+      "name": "glue",
+      "serviceType": "Glue",
+      "description": "Glue service used for table with location",
+      "databaseConnection": {
+        "hostPort": "localhost:8000"
+      },
+      "version": 0.1,
+      "updatedAt": 1646772050639,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/services/databaseServices/cedc92a4-8095-425f-818f-1893304db1bc",
+      "deleted": false
+    }
+  ],
+  "paging": {
+    "total": 2
+  }
+}
