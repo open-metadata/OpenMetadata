@@ -46,6 +46,7 @@ export interface FeedBodyProp
   message: string;
   postId: string;
   threadId: string;
+  author: string;
   onConfirmation: (data: ConfirmState) => void;
 }
 export interface FeedFooterProp

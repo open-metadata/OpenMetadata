@@ -165,7 +165,9 @@ const DatabaseDetails: FunctionComponent = () => {
       key: 'Owner',
       value:
         database?.owner?.type === 'team'
-          ? getTeamDetailsPath(database?.owner?.type || '')
+          ? getTeamDetailsPath(
+              database?.owner?.displayName || database?.owner?.name || ''
+            )
           : database?.owner?.displayName || database?.owner?.name || '',
       placeholderText:
         database?.owner?.displayName || database?.owner?.name || '',

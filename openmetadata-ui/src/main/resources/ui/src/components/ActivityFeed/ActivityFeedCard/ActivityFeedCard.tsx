@@ -20,6 +20,7 @@ import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
+import { useAuth } from '../../../hooks/authHooks';
 import { getPartialNameFromFQN } from '../../../utils/CommonUtils';
 import {
   getEntityField,
@@ -203,6 +204,7 @@ const FeedHeader: FC<FeedHeaderProp> = ({
 };
 
 const FeedBody: FC<FeedBodyProp> = ({
+  author,
   message,
   className,
   threadId,
@@ -210,6 +212,9 @@ const FeedBody: FC<FeedBodyProp> = ({
   deletePostHandler,
   onConfirmation,
 }) => {
+  const { isAdminUser } = useAuth();
+  const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
   return (
     <Fragment>
       <div className={className}>
@@ -218,7 +223,10 @@ const FeedBody: FC<FeedBodyProp> = ({
           enableSeeMoreVariant={false}
           markdown={getFrontEndFormat(message)}
         />
-        {threadId && postId && deletePostHandler ? (
+        {threadId &&
+        postId &&
+        deletePostHandler &&
+        (currentUser === author || isAdminUser) ? (
           <span
             className="tw-opacity-0 hover:tw-opacity-100 tw-cursor-pointer"
             onClick={() => onConfirmation({ state: true, postId, threadId })}>
@@ -326,6 +334,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         timeStamp={feed.postTs}
       />
       <FeedBody
+        author={feed.from}
         className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
         deletePostHandler={deletePostHandler}
         message={feed.message}
