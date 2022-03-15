@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { getFrontEndFormat } from '../../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -28,7 +29,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
 }) => {
   return (
     <Fragment>
-      <div className={className}>
+      <div className={classNames('tw-group', className)}>
         <RichTextEditorPreviewer
           className="activity-feed-card-text"
           enableSeeMoreVariant={false}
@@ -36,7 +37,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
         />
         {threadId && postId && deletePostHandler && isAuthor ? (
           <span
-            className="tw-opacity-0 hover:tw-opacity-100 tw-cursor-pointer"
+            className="tw-opacity-0 group-hover:tw-opacity-100 tw-cursor-pointer"
             data-testid="delete-button"
             onClick={() => onConfirmation({ state: true, postId, threadId })}>
             <SVGIcons alt="delete" icon={Icons.DELETE} width="12px" />
