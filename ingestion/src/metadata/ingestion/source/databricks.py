@@ -47,15 +47,19 @@ class MAP(String):
 _type_map.update({"struct": STRUCT, "array": ARRAY, "map": MAP})
 
 
+def _get_column_rows(self, connection, table_name, schema):
+    # get columns and strip whitespace
+    table_columns = self._get_table_columns(connection, table_name, schema)
+    column_rows = [
+        [col.strip() if col else None for col in row] for row in table_columns
+    ]
+    # Filter out empty rows and comment
+    return [row for row in column_rows if row[0] and row[0] != "# col_name"]
+
+
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
-    # override to get columns properly; the reason is because databricks
-    # presents the partition information differently from oss hive
-    rows = self._get_table_columns(connection, table_name, schema)
-    # Strip whitespace
-    rows = [[col.strip() if col else None for col in row] for row in rows]
-    # Filter out empty rows and comment
-    rows = [row for row in rows if row[0] and row[0] != "# col_name"]
+    rows = _get_column_rows(self, connection, table_name, schema)
     result = []
     for (col_name, col_type, _comment) in rows:
         # Handle both oss hive and Databricks' hive partition header, respectively
@@ -80,7 +84,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "nullable": True,
             "default": None,
         }
-        if col_type in ["array", "struct", "map"]:
+        if col_type in {"array", "struct", "map"}:
             col_info["raw_data_type"] = raw_data_type
         result.append(col_info)
     return result
