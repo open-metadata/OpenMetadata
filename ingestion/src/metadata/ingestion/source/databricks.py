@@ -27,23 +27,28 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class STRUCT(String):
+    #  This class is added to support STRUCT datatype
     """The SQL STRUCT type."""
 
     __visit_name__ = "STRUCT"
 
 
 class ARRAY(String):
+    #  This class is added to support ARRAY datatype
     """The SQL ARRAY type."""
 
     __visit_name__ = "ARRAY"
 
 
 class MAP(String):
+    #  This class is added to support MAP datatype
     """The SQL MAP type."""
 
     __visit_name__ = "MAP"
 
 
+# overriding pyhive.sqlalchemy_hive._type_map
+# mapping struct, array & map to custom classed instead of sqltypes.String
 _type_map.update({"struct": STRUCT, "array": ARRAY, "map": MAP})
 
 
@@ -59,6 +64,8 @@ def _get_column_rows(self, connection, table_name, schema):
 
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
+    # This function overrides the sqlalchemy_databricks._dialect.DatabricksDialect.get_columns
+    # to add support for struct, array & map datatype
     rows = _get_column_rows(self, connection, table_name, schema)
     result = []
     for (col_name, col_type, _comment) in rows:
