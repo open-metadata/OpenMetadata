@@ -99,6 +99,4 @@ def _get_table_comment(self, connection, table_name, schema=None, **kw):
     return cursor.fetchone()  # pylint: disable=protected-access
 
 
-SnowflakeDialect._get_table_comment = (
-    _get_table_comment  # pylint: disable=protected-access
-)
+SnowflakeDialect._get_table_comment = _get_table_comment
