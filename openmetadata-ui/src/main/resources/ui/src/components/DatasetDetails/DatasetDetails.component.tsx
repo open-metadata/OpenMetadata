@@ -633,6 +633,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     constraint: col.constraint as string,
                     colName: col.name,
                     colType: col.dataTypeDisplay as string,
+                    dataType: col.dataType as string,
                     colTests: col.columnTests,
                   }))}
                   qualityTestFormHandler={qualityTestFormHandler}
