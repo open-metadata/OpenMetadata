@@ -599,7 +599,7 @@ From the Database Service UI, click the _Add New Service_ button to add your Sno
 
 Select Snowflake as the service type.
 
-![](<../../../.gitbook/assets/image (60).png>)
+![](<../../../.gitbook/assets/image (60) (1).png>)
 
 
 
