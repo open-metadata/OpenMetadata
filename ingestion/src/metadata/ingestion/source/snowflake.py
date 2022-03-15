@@ -12,7 +12,9 @@ import logging
 from typing import Optional
 
 from snowflake.sqlalchemy.custom_types import VARIANT
-from snowflake.sqlalchemy.snowdialect import ischema_names
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy.engine import reflection
+from sqlalchemy.sql import text
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.databaseService import (
@@ -81,3 +83,20 @@ class SnowflakeSource(SQLSource):
         config = SnowflakeConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
+
+
+@reflection.cache
+def _get_table_comment(self, connection, table_name, schema=None, **kw):
+    """
+    Returns comment of table.
+    """
+    sql_command = "select * FROM information_schema.tables WHERE TABLE_SCHEMA ILIKE '{}' and TABLE_NAME ILIKE '{}'".format(
+        self.normalize_name(schema),
+        table_name,
+    )
+
+    cursor = connection.execute(text(sql_command))
+    return cursor.fetchone()  # pylint: disable=protected-access
+
+
+SnowflakeDialect._get_table_comment = _get_table_comment

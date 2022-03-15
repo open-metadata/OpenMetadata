@@ -568,6 +568,7 @@ declare module 'Models' {
     message: string;
     postTs: number;
     from: string;
+    id: string;
   }
 
   export interface EntityFieldThreadCount {

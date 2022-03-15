@@ -15,13 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { EntityThread, Post } from 'Models';
-import React, {
-  FC,
-  Fragment,
-  HTMLAttributes,
-  useEffect,
-  useState,
-} from 'react';
+import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -29,28 +23,12 @@ import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-
-interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
-  selectedThread: EntityThread;
-  open?: boolean;
-  onCancel: () => void;
-  postFeed: (value: string) => void;
-}
-
-interface FeedPanelHeaderProp
-  extends HTMLAttributes<HTMLHeadingElement>,
-    Pick<ActivityFeedPanelProp, 'onCancel'> {
-  entityField: string;
-  noun?: string;
-  onShowNewConversation?: (v: boolean) => void;
-}
-interface FeedPanelOverlayProp
-  extends HTMLAttributes<HTMLButtonElement>,
-    Pick<ActivityFeedPanelProp, 'onCancel'> {}
-interface FeedPanelBodyProp extends HTMLAttributes<HTMLDivElement> {
-  threadData: EntityThread;
-  isLoading: boolean;
-}
+import {
+  ActivityFeedPanelProp,
+  FeedPanelBodyProp,
+  FeedPanelHeaderProp,
+  FeedPanelOverlayProp,
+} from './ActivityFeedPanel.interface';
 
 export const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   onCancel,
@@ -118,12 +96,14 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   threadData,
   className,
   isLoading,
+  deletePostHandler,
 }) => {
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
     message: threadData.message,
     from: threadData.createdBy,
     postTs: threadData.threadTs,
+    id: threadData.id,
   };
 
   return (
@@ -151,8 +131,10 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                 <ActivityFeedCard
                   isEntityFeed
                   className="tw-mb-3"
+                  deletePostHandler={deletePostHandler}
                   feed={reply}
                   key={key}
+                  threadId={threadData.id}
                 />
               ))}
             </Fragment>
@@ -169,6 +151,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   onCancel,
   className,
   postFeed,
+  deletePostHandler,
 }) => {
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -204,6 +187,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
 
         <FeedPanelBody
           className="tw-p-4 tw-pl-8 tw-mb-3"
+          deletePostHandler={deletePostHandler}
           isLoading={isLoading}
           threadData={threadData as EntityThread}
         />
