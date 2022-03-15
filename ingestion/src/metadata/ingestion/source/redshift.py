@@ -222,13 +222,28 @@ def _handle_array_type(attype):
     )
 
 
-def _get_args_and_kwargs(charlen, attype, format_type):
-    kwargs = {}
+def _init_args(format_type):
     args = re.search(r"\((.*)\)", format_type)
     if args and args.group(1):
         args = tuple(re.split(r"\s*,\s*", args.group(1)))
     else:
         args = ()
+    return args
+
+
+def _get_kwargs_for_time_type(kwargs, charlen, attype):
+    if charlen:
+        kwargs["precision"] = int(charlen)
+    if attype in {"timestamp with time zone", "time with time zone"}:
+        kwargs["timezone"] = True
+    else:
+        kwargs["timezone"] = False
+    return kwargs
+
+
+def _get_args_and_kwargs(charlen, attype, format_type):
+    kwargs = {}
+    args = _init_args(format_type)
     if attype == "numeric" and charlen:
         prec, scale = charlen.split(",")
         args = (int(prec), int(scale))
@@ -236,19 +251,14 @@ def _get_args_and_kwargs(charlen, attype, format_type):
     elif attype == "double precision":
         args = (53,)
 
-    elif attype in ("timestamp with time zone", "time with time zone"):
-        kwargs["timezone"] = True
-        if charlen:
-            kwargs["precision"] = int(charlen)
-
-    elif attype in (
+    elif attype in {
+        "timestamp with time zone",
+        "time with time zone",
         "timestamp without time zone",
         "time without time zone",
         "time",
-    ):
-        kwargs["timezone"] = False
-        if charlen:
-            kwargs["precision"] = int(charlen)
+    }:
+        kwargs = _get_kwargs_for_time_type(kwargs, charlen, attype)
 
     elif attype == "bit varying":
         kwargs["varying"] = True
@@ -266,21 +276,40 @@ def _get_args_and_kwargs(charlen, attype, format_type):
     return args, kwargs
 
 
-def _update_default_and_autoincrement(default, schema, coltype, autoincrement):
-    match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
-    if match is not None:
-        if issubclass(coltype._type_affinity, sqltypes.Integer):
-            autoincrement = True
-        # the default is related to a Sequence
-        sch = schema
-        if "." not in match.group(2) and sch is not None:
-            # unconditionally quote the schema name.  this could
-            # later be enhanced to obey quoting rules /
-            # "quote schema"
-            default = (
-                match.group(1) + ('"%s"' % sch) + "." + match.group(2) + match.group(3)
-            )
-    return default, autoincrement
+def _update_column_info(
+    default, schema, coltype, autoincrement, name, nullable, identity, comment, computed
+):
+    if default is not None:
+        match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
+        if match is not None:
+            if issubclass(coltype._type_affinity, sqltypes.Integer):
+                autoincrement = True
+            # the default is related to a Sequence
+            sch = schema
+            if "." not in match.group(2) and sch is not None:
+                # unconditionally quote the schema name.  this could
+                # later be enhanced to obey quoting rules /
+                # "quote schema"
+                default = (
+                    match.group(1)
+                    + ('"%s"' % sch)
+                    + "."
+                    + match.group(2)
+                    + match.group(3)
+                )
+    column_info = dict(
+        name=name,
+        type=coltype,
+        nullable=nullable,
+        default=default,
+        autoincrement=autoincrement or identity is not None,
+        comment=comment,
+    )
+    if computed is not None:
+        column_info["computed"] = computed
+    if identity is not None:
+        column_info["identity"] = identity
+    return column_info
 
 
 def _update_coltype(coltype, args, kwargs, attype, name, is_array):
@@ -377,23 +406,18 @@ def _get_column_info(
 
     # adjust the default value
     autoincrement = False
-    if default is not None:
-        default, autoincrement = _update_default_and_autoincrement(
-            default, schema, coltype, autoincrement
-        )
-
-    column_info = dict(
-        name=name,
-        type=coltype,
-        nullable=nullable,
-        default=default,
-        autoincrement=autoincrement or identity is not None,
-        comment=comment,
+    column_info = _update_column_info(
+        default,
+        schema,
+        coltype,
+        autoincrement,
+        name,
+        nullable,
+        identity,
+        comment,
+        computed,
     )
-    if computed is not None:
-        column_info["computed"] = computed
-    if identity is not None:
-        column_info["identity"] = identity
+
     return column_info
 
 
