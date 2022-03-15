@@ -142,7 +142,7 @@ class LookerSource(Source[Entity]):
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
         if not dashboard_elements.id:
-            raise Exception("Chart(Dashboard Element) without ID")
+            raise ValueError("Chart(Dashboard Element) without ID")
         self.status.charts_scanned_status(dashboard_elements.id)
         yield om_dashboard_elements
         self.charts.append(om_dashboard_elements)
