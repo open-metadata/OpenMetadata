@@ -21,7 +21,9 @@ import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import {
   ActivityFeedPanelProp,
@@ -97,6 +99,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   className,
   isLoading,
   deletePostHandler,
+  onConfirmation,
 }) => {
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
@@ -135,6 +138,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                   feed={reply}
                   key={key}
                   threadId={threadData.id}
+                  onConfirmation={onConfirmation}
                 />
               ))}
             </Fragment>
@@ -157,6 +161,31 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
 
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
+    state: false,
+    threadId: undefined,
+    postId: undefined,
+  });
+
+  const onDiscard = () => {
+    setConfirmationState({
+      state: false,
+      threadId: undefined,
+      postId: undefined,
+    });
+  };
+
+  const onDelete = () => {
+    if (confirmationState.postId && confirmationState.threadId) {
+      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+    }
+    onDiscard();
+  };
+
+  const onConfirmation = (data: ConfirmState) => {
+    setConfirmationState(data);
+  };
+
   useEffect(() => {
     getFeedById(selectedThread.id)
       .then((res: AxiosResponse) => {
@@ -173,7 +202,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-10',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -190,6 +219,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           deletePostHandler={deletePostHandler}
           isLoading={isLoading}
           threadData={threadData as EntityThread}
+          onConfirmation={onConfirmation}
         />
         <ActivityFeedEditor
           buttonClass="tw-mr-4"
@@ -197,6 +227,18 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           onSave={postFeed}
         />
       </div>
+      {confirmationState.state && (
+        <ConfirmationModal
+          bodyClassName="tw-h-18"
+          bodyText="Are you sure you want to permanently remove this post?"
+          cancelText="Cancel"
+          className="tw-w-auto tw-h-screen"
+          confirmText="Delete"
+          header="Delete Post?"
+          onCancel={onDiscard}
+          onConfirm={onDelete}
+        />
+      )}
     </div>
   );
 };

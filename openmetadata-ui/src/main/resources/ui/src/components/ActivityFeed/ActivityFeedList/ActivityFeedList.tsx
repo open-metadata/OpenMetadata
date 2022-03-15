@@ -17,7 +17,9 @@ import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
@@ -56,6 +58,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onViewMore,
   selctedThreadId,
   deletePostHandler,
+  onConfirmation,
 }) => {
   return (
     <Fragment>
@@ -108,6 +111,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                     feed={lastPost}
                     isEntityFeed={isEntityFeed}
                     threadId={feed.id}
+                    onConfirmation={onConfirmation}
                   />
                   <p
                     className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
@@ -155,6 +159,31 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
   const [selctedThreadId, setSelctedThreadId] = useState<string>('');
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
+
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
+    state: false,
+    threadId: undefined,
+    postId: undefined,
+  });
+
+  const onDiscard = () => {
+    setConfirmationState({
+      state: false,
+      threadId: undefined,
+      postId: undefined,
+    });
+  };
+
+  const onDelete = () => {
+    if (confirmationState.postId && confirmationState.threadId) {
+      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+    }
+    onDiscard();
+  };
+
+  const onConfirmation = (data: ConfirmState) => {
+    setConfirmationState(data);
+  };
 
   const onThreadIdSelect = (id: string) => {
     setSelctedThreadId(id);
@@ -221,6 +250,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   selctedThreadId={selctedThreadId}
                   updatedFeedList={updatedFeedList}
                   withSidePanel={withSidePanel}
+                  onConfirmation={onConfirmation}
                   onThreadIdDeselect={onThreadIdDeselect}
                   onThreadIdSelect={onThreadIdSelect}
                   onThreadSelect={onThreadSelect}
@@ -255,6 +285,18 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             </Fragment>
           )}
         </Fragment>
+      )}
+      {confirmationState.state && (
+        <ConfirmationModal
+          bodyClassName="tw-h-18"
+          bodyText="Are you sure you want to permanently remove this post?"
+          cancelText="Cancel"
+          className="tw-w-auto tw-h-screen"
+          confirmText="Delete"
+          header="Delete Post?"
+          onCancel={onDiscard}
+          onConfirm={onDelete}
+        />
       )}
     </div>
   );

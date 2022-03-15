@@ -24,6 +24,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
+  deletePostById,
   getAllFeeds,
   getFeedCount,
   postFeedById,
@@ -389,6 +390,30 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePostById(threadId, postId)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              const posts = thread.posts.filter((post) => post.id !== id);
+
+              return { ...thread, posts: posts };
+            });
+          });
+          getEntityFeedCount();
+          showToast({
+            variant: 'success',
+            body: 'Post got deleted successfully',
+          });
+        }
+      })
+      .catch(() => {
+        showToast({ variant: 'error', body: 'Error while deleting post' });
+      });
+  };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -410,6 +435,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           activeTab={activeTab}
           cleanupPolicies={cleanupPolicies}
           createThread={createThread}
+          deletePostHandler={deletePostHandler}
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}

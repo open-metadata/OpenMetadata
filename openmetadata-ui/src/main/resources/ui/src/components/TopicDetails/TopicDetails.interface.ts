@@ -57,4 +57,5 @@ export interface TopicDetailsProps {
   tagUpdateHandler: (updatedTopic: Topic) => void;
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
+  deletePostHandler: (threadId: string, postId: string) => void;
 }

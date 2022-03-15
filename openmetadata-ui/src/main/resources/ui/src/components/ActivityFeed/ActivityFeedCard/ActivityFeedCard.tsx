@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, useState } from 'react';
+import React, { FC } from 'react';
 import AppState from '../../../AppState';
 import { useAuth } from '../../../hooks/authHooks';
 import {
@@ -20,14 +20,10 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
-import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import FeedCardBody from '../FeedCardBody/FeedCardBody';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import FeedCardHeader from '../FeedCardHeader/FeedCardHeader';
-import {
-  ActivityFeedCardProp,
-  ConfirmState,
-} from './ActivityFeedCard.interface';
+import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
@@ -41,6 +37,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onThreadSelect,
   isFooterVisible = false,
   deletePostHandler,
+  onConfirmation,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -48,31 +45,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
 
   const { isAdminUser } = useAuth();
   const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
-    state: false,
-    threadId: undefined,
-    postId: undefined,
-  });
-
-  const onCancel = () => {
-    setConfirmationState({
-      state: false,
-      threadId: undefined,
-      postId: undefined,
-    });
-  };
-
-  const onDelete = () => {
-    if (confirmationState.postId && confirmationState.threadId) {
-      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
-    }
-    onCancel();
-  };
-
-  const onConfirmation = (data: ConfirmState) => {
-    setConfirmationState(data);
-  };
 
   return (
     <div className={classNames(className)}>
@@ -102,18 +74,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         threadId={threadId}
         onThreadSelect={onThreadSelect}
       />
-      {confirmationState.state && (
-        <ConfirmationModal
-          bodyClassName="tw-h-18"
-          bodyText="Are you sure you want to permanently remove this post?"
-          cancelText="Cancel"
-          className="tw-w-auto"
-          confirmText="Delete"
-          header="Delete Post?"
-          onCancel={onCancel}
-          onConfirm={onDelete}
-        />
-      )}
     </div>
   );
 };

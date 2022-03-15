@@ -23,7 +23,9 @@ import {
   getFeedListWithRelativeDays,
   getReplyText,
 } from '../../../utils/FeedUtils';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedListSeparator } from '../ActivityFeedList/ActivityFeedList';
 import {
@@ -45,6 +47,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   onThreadIdSelect,
   onThreadSelect,
   deletePostHandler,
+  onConfirmation,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -105,6 +108,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           deletePostHandler={deletePostHandler}
                           feed={lastPost}
                           threadId={thread.id}
+                          onConfirmation={onConfirmation}
                         />
                         <p
                           className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
@@ -143,6 +147,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   selectedThread,
   postFeed,
   deletePostHandler,
+  onConfirmation,
 }) => {
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
@@ -185,6 +190,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                 feed={reply}
                 key={key}
                 threadId={threadData.id}
+                onConfirmation={onConfirmation}
               />
             ))}
           </Fragment>
@@ -213,6 +219,31 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);
+
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
+    state: false,
+    threadId: undefined,
+    postId: undefined,
+  });
+
+  const onDiscard = () => {
+    setConfirmationState({
+      state: false,
+      threadId: undefined,
+      postId: undefined,
+    });
+  };
+
+  const onDelete = () => {
+    if (confirmationState.postId && confirmationState.threadId) {
+      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+    }
+    onDiscard();
+  };
+
+  const onConfirmation = (data: ConfirmState) => {
+    setConfirmationState(data);
+  };
 
   const entityField = getEntityField(threadLink);
 
@@ -298,7 +329,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-10',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -328,6 +359,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               deletePostHandler={onPostDelete}
               postFeed={postFeed}
               selectedThread={selectedThread}
+              onConfirmation={onConfirmation}
             />
           </Fragment>
         ) : (
@@ -351,12 +383,25 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}
+              onConfirmation={onConfirmation}
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}
             />
           </Fragment>
         )}
       </div>
+      {confirmationState.state && (
+        <ConfirmationModal
+          bodyClassName="tw-h-18"
+          bodyText="Are you sure you want to permanently remove this post?"
+          cancelText="Cancel"
+          className="tw-w-auto tw-h-screen"
+          confirmText="Delete"
+          header="Delete Post?"
+          onCancel={onDiscard}
+          onConfirm={onDelete}
+        />
+      )}
     </div>
   );
 };

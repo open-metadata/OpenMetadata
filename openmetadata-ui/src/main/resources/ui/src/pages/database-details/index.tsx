@@ -30,6 +30,7 @@ import {
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
 import {
+  deletePostById,
   getAllFeeds,
   getFeedCount,
   postFeedById,
@@ -437,6 +438,30 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
 
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePostById(threadId, postId)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              const posts = thread.posts.filter((post) => post.id !== id);
+
+              return { ...thread, posts: posts };
+            });
+          });
+          getEntityFeedCount();
+          showToast({
+            variant: 'success',
+            body: 'Post got deleted successfully',
+          });
+        }
+      })
+      .catch(() => {
+        showToast({ variant: 'error', body: 'Error while deleting post' });
+      });
+  };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -670,6 +695,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       isEntityFeed
                       withSidePanel
                       className=""
+                      deletePostHandler={deletePostHandler}
                       entityName={databaseName}
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
@@ -694,6 +720,7 @@ const DatabaseDetails: FunctionComponent = () => {
             {threadLink ? (
               <ActivityThreadPanel
                 createThread={createThread}
+                deletePostHandler={deletePostHandler}
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
