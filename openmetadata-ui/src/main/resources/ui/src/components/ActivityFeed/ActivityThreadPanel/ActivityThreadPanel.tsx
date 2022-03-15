@@ -23,15 +23,14 @@ import {
   getFeedListWithRelativeDays,
   getReplyText,
 } from '../../../utils/FeedUtils';
-import ActivityFeedCard, {
-  FeedFooter,
-} from '../ActivityFeedCard/ActivityFeedCard';
+import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedListSeparator } from '../ActivityFeedList/ActivityFeedList';
 import {
   FeedPanelHeader,
   FeedPanelOverlay,
 } from '../ActivityFeedPanel/ActivityFeedPanel';
+import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import {
   ActivityThreadListProp,
   ActivityThreadPanelProp,
@@ -88,7 +87,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         {postLength > 1 ? (
                           <div className="tw-mb-6">
                             <div className="tw-ml-9 tw-flex tw-mb-6">
-                              <FeedFooter
+                              <FeedCardFooter
                                 isFooterVisible
                                 className="tw--mt-4"
                                 lastReplyTimeStamp={lastPost?.postTs}

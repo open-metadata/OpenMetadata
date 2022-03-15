@@ -44,8 +44,9 @@ export interface FeedBodyProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<ActivityFeedCardProp, 'deletePostHandler'> {
   message: string;
-  postId: string;
-  threadId: string;
+  postId?: string;
+  threadId?: string;
+  isAuthor: boolean;
   onConfirmation: (data: ConfirmState) => void;
 }
 export interface FeedFooterProp

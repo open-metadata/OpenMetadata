@@ -36,4 +36,5 @@ export interface MyDataProps {
   entityCounts: EntityCounts;
   isFeedLoading?: boolean;
   postFeedHandler: (value: string, id: string) => void;
+  deletePostHandler?: (threadId: string, postId: string) => void;
 }

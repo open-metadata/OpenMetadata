@@ -17,11 +17,10 @@ import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import ActivityFeedCard, {
-  FeedFooter,
-} from '../ActivityFeedCard/ActivityFeedCard';
+import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
+import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
 import {
   ActivityFeedListProp,
@@ -87,7 +86,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   {postLength > 1 ? (
                     <div className="tw-mb-6">
                       <div className="tw-ml-9 tw-flex tw-mb-6">
-                        <FeedFooter
+                        <FeedCardFooter
                           isFooterVisible
                           className="tw--mt-4"
                           lastReplyTimeStamp={lastPost?.postTs}
@@ -159,6 +158,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const onThreadIdSelect = (id: string) => {
     setSelctedThreadId(id);
+    setSelectedThread(undefined);
   };
 
   const onThreadIdDeselect = () => {
