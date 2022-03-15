@@ -111,6 +111,23 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return cls(ctx, config, metadata_config, session=session)
 
+    def get_table_profile_sample(self, table: Table) -> Optional[float]:
+        """
+        Pick the Table profileSample value, either from the test
+        definition or the value from the instance.
+
+        :param table: Table instance
+        :return: profileSample value to use
+        """
+        if self.config.test_suite:
+            # If the processed table has information about the profile_sample,
+            # use that instead of the Entity stored profileSample
+            my_record_tests = self.get_record_test_def(table)
+            if my_record_tests and my_record_tests.profile_sample:
+                return my_record_tests.profile_sample
+
+        return table.profileSample
+
     def build_profiler(self, orm: DeclarativeMeta, table: Table) -> Profiler:
         """
         Given a column from the entity, build the profiler.
@@ -120,17 +137,13 @@ class OrmProfilerProcessor(Processor[Table]):
         :return: Initialised Profiler
         """
 
-        profile_sample = table.profileSample
-        if self.config.test_suite:
-            # If the processed table has information about the profile_sample,
-            # use that instead of the Entity stored profileSample
-            my_record_tests = self.get_record_test_def(table)
-            if my_record_tests and my_record_tests.profile_sample:
-                profile_sample = my_record_tests.profile_sample
+        profile_sample = self.get_table_profile_sample(table)
 
         if not self.config.profiler:
             return DefaultProfiler(
-                session=self.session, table=orm, profile_sample=profile_sample
+                session=self.session,
+                table=orm,
+                profile_sample=profile_sample,
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
@@ -217,6 +230,7 @@ class OrmProfilerProcessor(Processor[Table]):
             execution_date=self.execution_date,
             session=self.session,
             table=orm_table,
+            profile_sample=self.get_table_profile_sample(table),
         )
         self.log_test_result(name=test_name, result=test_case_result)
         return test_case_result
