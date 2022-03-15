@@ -64,7 +64,6 @@ class Histogram(QueryMetric):
         num_bins = self.bins if hasattr(self, "bins") else 5
 
         bins = session.query(
-            sample,
             ((func.max(col) - func.min(col)) / float(num_bins - 1)).label("step"),
         ).select_from(sample)
 
