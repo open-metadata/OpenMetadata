@@ -583,7 +583,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your BigQuery deployment. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![](<../../../.gitbook/assets/image (31) (1) (1).png>)
+![](<../../../.gitbook/assets/image (31) (1) (1) (1).png>)
 
 #### Ingestion name
 
