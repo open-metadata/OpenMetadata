@@ -30,7 +30,7 @@ public class TagsPage {
   By addAssociatedTagButton = By.cssSelector("[data-testid='tags']");
   By removeAssociatedTag = By.cssSelector("[data-testid='remove']");
   By tables = By.cssSelector("[data-testid='tables']");
-  By tableLink = By.xpath("//button[@data-testid='table-link']");
+  By tableLink = By.xpath("//button[@data-testid='table-link'][1]");
   By lastTableLink = By.xpath("//button[@data-testid='table-link'][last()]");
   By tagUsageCount = By.cssSelector("[data-testid='usage-count']");
   By headerSettingsTags = By.cssSelector("[data-testid='menu-item-Tags']");

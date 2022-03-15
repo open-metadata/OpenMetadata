@@ -58,8 +58,6 @@ public class TeamsPageTest {
   public void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
-    options.addArguments("--no-sandbox");
-    options.addArguments("--disable-dev-shm-usage");
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
@@ -149,10 +147,10 @@ public class TeamsPageTest {
     // Select the created listed team
     Events.click(webDriver, By.xpath(xpath));
     Events.click(webDriver, teamsPage.editDescription());
-    wait.until(ExpectedConditions.presenceOfElementLocated(teamsPage.editDescriptionBox()));
-    Events.click(webDriver, teamsPage.editDescriptionBox());
-    Events.sendKeys(webDriver, teamsPage.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, teamsPage.editDescriptionBox(), sendKeys);
+    wait.until(ExpectedConditions.presenceOfElementLocated(teamsPage.enterDescription()));
+    Events.click(webDriver, teamsPage.enterDescription());
+    Events.sendKeys(webDriver, teamsPage.enterDescription(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, teamsPage.enterDescription(), sendKeys);
     Events.click(webDriver, teamsPage.saveDescription());
     String description = webDriver.findElement(common.descriptionContainer()).getText();
     Thread.sleep(2000);
@@ -215,6 +213,7 @@ public class TeamsPageTest {
       webDriver.navigate().back();
       Events.click(webDriver, myDataPage.openWhatsNew()); // What's New
     }
+    Events.click(webDriver, common.closeWhatsNew());
     String teamsListCount = String.valueOf(webDriver.findElements(teamsPage.teamsCount()).size());
     Thread.sleep(waitTime);
     Events.click(webDriver, myDataPage.home());

@@ -85,7 +85,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), "dim_location");
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
+    //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
@@ -160,19 +160,10 @@ public class CommonTests {
     Events.click(webDriver, common.descriptionBoldButton());
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, common.serviceUrl(), "localhost");
-    Events.sendKeys(webDriver, common.servicePort(), "3306");
-    Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
-    Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
-    Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.saveServiceButton());
-    webDriver.navigate().refresh();
-    try {
-      Events.click(webDriver, common.deleteServiceButton(" "));
-    } catch (TimeoutException exception) {
-      LOG.info("Success");
+    wait.until(ExpectedConditions.presenceOfElementLocated(common.containsText("Service name is required.")));
+    WebElement emptyName = webDriver.findElement(common.containsText("Service name is required."));
+    if (!emptyName.isDisplayed()) {
+      Assert.fail("Excepting space as name");
     }
   }
 
@@ -339,7 +330,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), tableName);
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
+    //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 8; i++) {

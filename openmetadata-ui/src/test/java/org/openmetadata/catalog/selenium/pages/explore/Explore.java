@@ -221,11 +221,15 @@ class Explore {
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());
-    Events.click(webDriver, explorePage.lastWeekSortDesc());
-    Events.click(webDriver, explorePage.lastWeekSortAesc());
+    Events.click(webDriver, explorePage.lastUpdatedSort());
+    Events.click(webDriver, explorePage.lastUpdatedSort());
     Thread.sleep(2000);
-    WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
-    Assert.assertEquals(sendKeys, descriptionCheck.getText());
+    try {
+      WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
+      Assert.assertEquals(sendKeys, descriptionCheck.getText());
+    } catch (NoSuchElementException e) {
+      Assert.fail("Description not updated || Not sorting according to last updated");
+    }
   }
 
   @Test

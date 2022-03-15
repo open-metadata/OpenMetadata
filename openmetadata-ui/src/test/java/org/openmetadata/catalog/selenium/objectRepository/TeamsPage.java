@@ -26,7 +26,6 @@ public class TeamsPage {
   By selectedUser = By.xpath("//div[@data-testid='data-container']/p[1]");
   By editDescription = By.xpath("//button[@data-testid='edit-description']");
   By saveDescription = By.xpath("//button[@data-testid='save']");
-  By editDescriptionBox = By.xpath("//div[@class='DraftEditor-editorContainer']");
   By asset = By.xpath("//button[@data-testid='assets']");
   By searchInput = By.xpath("//input[@data-testid='searchInputText']");
   By dataContainer = By.xpath("//div[@data-testid='data-container']");

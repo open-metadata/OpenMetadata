@@ -50,7 +50,6 @@ public class TopicDetailsPageTest {
   int counter = 2;
   String xpath = "//li[@data-testid='breadcrumb-link'][" + counter + "]";
   String description = "Test@1234";
-  String updatedDescription = "Updated Description";
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -109,8 +108,11 @@ public class TopicDetailsPageTest {
       Events.click(webDriver, common.follow());
     }
     Events.click(webDriver, myDataPage.home());
-    String tableName = webDriver.findElement(myDataPage.following()).getText();
-    Assert.assertEquals(tableName, "Started following " + topic);
+    if (!webDriver.getPageSource().contains(topic)) {
+      Assert.fail(topic + "topic not found");
+    } else {
+      LOG.info("Passed");
+    }
   }
 
   @Test
@@ -141,10 +143,14 @@ public class TopicDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Object count = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     Events.click(webDriver, topicDetails.addTag());
-    Events.click(webDriver, common.removeAssociatedTag());
+    try {
+      Events.click(webDriver, common.removeAssociatedTag());
+    } catch (TimeoutException e) {
+      Assert.fail("Tag not found");
+    }
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
@@ -191,16 +197,19 @@ public class TopicDetailsPageTest {
   public void checkManage() throws InterruptedException {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    Events.click(webDriver, common.selectTableLink(1));
+    Events.click(webDriver, common.selectTableLink(2));
     Thread.sleep(waitTime);
     actions.perform();
     actions.click();
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
+    String user = topicDetails.getOwnerName();
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
     Events.click(webDriver, common.saveManage());
+    String ownerName = webDriver.findElement(common.ownerDropdown()).getText();
+    Assert.assertEquals(ownerName, user);
   }
 
   @Test

@@ -28,11 +28,13 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -192,8 +194,16 @@ public class TagsPageTest {
   public void checkAddedTagToTableColumn() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, tagsPage.tables());
-    Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
-    Events.click(webDriver, tagsPage.tableLink());
+    try {
+      WebElement viewMore = wait.until(ExpectedConditions.presenceOfElementLocated(common.viewMore()));
+      if (viewMore.isDisplayed()) {
+        Events.click(webDriver, common.viewMore());
+      }
+      Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
+      Events.click(webDriver, tagsPage.tableLink());
+    } catch (TimeoutException | NoSuchElementException e) {
+      Assert.fail("Tag not found");
+    }
   }
 
   @Test
@@ -202,7 +212,11 @@ public class TagsPageTest {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
-    Events.click(webDriver, tagsPage.tableLink());
+    try {
+      Events.click(webDriver, tagsPage.tableLink());
+    } catch (TimeoutException e) {
+      Assert.fail("Table is not present for the selected tag filter");
+    }
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
@@ -252,7 +266,11 @@ public class TagsPageTest {
 
     Events.click(webDriver, common.containsText("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(2));
-    Events.click(webDriver, tagsPage.tableLink());
+    try {
+      Events.click(webDriver, tagsPage.tableLink());
+    } catch (TimeoutException e) {
+      Assert.fail("Table is not present for the selected tag filter");
+    }
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());

@@ -243,7 +243,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(7)
-  void checkFollowingTab() {
+  void checkFollowingTab() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
@@ -257,8 +257,18 @@ public class MyDataPageTest {
       Events.click(webDriver, tableDetails.follow());
     }
     Events.click(webDriver, myDataPage.home());
-    String tableName = webDriver.findElement(myDataPage.following()).getText();
-    Assert.assertEquals(tableName, "Started following " + table);
+    Thread.sleep(2000);
+    webDriver.navigate().refresh();
+    try {
+      Events.click(webDriver, common.followingTable(table));
+    } catch (TimeoutException | NoSuchElementException e) {
+      Assert.fail("Following data not present");
+    }
+
+    //    Do not delete
+    //    String tableName = webDriver.findElement(myDataPage.following()).getText();
+    //    Assert.assertEquals(tableName, "Started following " + table)
+
   }
 
   @Test
