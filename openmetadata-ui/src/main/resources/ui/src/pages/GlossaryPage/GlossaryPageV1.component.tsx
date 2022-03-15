@@ -27,10 +27,8 @@ import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
-  getGlossaries,
   getGlossariesByName,
   getGlossaryTermByFQN,
-  getGlossaryTerms,
   patchGlossaries,
   patchGlossaryTerm,
 } from '../../axiosAPIs/glossaryAPI';
@@ -51,6 +49,8 @@ import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
 import {
+  getChildGlossaryTerms,
+  getGlossariesWithRootTerms,
   getHierarchicalKeysByFQN,
   updateGlossaryListBySearchedTerms,
 } from '../../utils/GlossaryUtils';
@@ -75,6 +75,7 @@ const GlossaryPageV1 = () => {
   >([]);
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [expandedKey, setExpandedKey] = useState<string[]>([]);
+  const [loadingKey, setLoadingKey] = useState<string[]>([]);
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isGlossaryActive, setIsGlossaryActive] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -91,50 +92,12 @@ const GlossaryPageV1 = () => {
     setIsChildLoading(status);
   };
 
-  const fetchGlossaryTermsData = (id?: string) => {
-    getGlossaryTerms(id, 100, ['children', 'relatedTerms', 'reviewers', 'tags'])
-      .then((res: AxiosResponse) => {
-        const { data } = res.data;
+  const handleSelectedKey = (key: string) => {
+    setSelectedKey(key);
+  };
 
-        // Filtering root level terms from glossary
-        const updatedData = data.filter((d: GlossaryTerm) => !d.parent);
-
-        setGlossariesList((pre) => {
-          return pre.map((d) => {
-            let data = d;
-            if (d.id === id) {
-              let { children } = d;
-              children = ((updatedData as GlossaryTerm[]) || [])?.reduce(
-                (prev, curr) => {
-                  const data = prev.find((item) => {
-                    const itemFQN = item.fullyQualifiedName || item.name;
-                    const currFQN = curr.fullyQualifiedName || curr.name;
-
-                    return itemFQN === currFQN;
-                  });
-
-                  return data ? [...prev] : [...prev, curr];
-                },
-                children || []
-              );
-              data = { ...d, children };
-            }
-
-            return data;
-          });
-        });
-      })
-      .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body:
-            err.response?.data?.message ??
-            'Error while fetching glossary terms!',
-        });
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+  const handleExpandedKey = (key: string[]) => {
+    setExpandedKey(key);
   };
 
   const initSelectGlossary = (data: Glossary, noSetData = false) => {
@@ -144,22 +107,20 @@ const GlossaryPageV1 = () => {
       setSelectedKey(data.name);
     }
     setExpandedKey([data.name]);
-    fetchGlossaryTermsData(data.id);
   };
 
-  const fetchGlossaryList = (pagin = '') => {
+  const fetchGlossaryList = (paging = '') => {
     setIsLoading(true);
-    getGlossaries(pagin, 100, ['owner', 'tags', 'reviewers'])
-      .then((res: AxiosResponse) => {
-        const { data } = res.data;
+    getGlossariesWithRootTerms(paging, 100, ['owner', 'tags', 'reviewers'])
+      .then((data: ModifiedGlossaryData[]) => {
         if (data?.length) {
           setGlossaries(data);
           setGlossariesList(data);
           initSelectGlossary(data[0]);
         } else {
           setGlossariesList([]);
-          setIsLoading(false);
         }
+        setIsLoading(false);
       })
       .catch((err: AxiosError) => {
         showToast({
@@ -173,14 +134,18 @@ const GlossaryPageV1 = () => {
       });
   };
 
-  const fetchGlossaryTermByName = (name: string, pos: string[]) => {
+  const fetchGlossaryTermByName = (
+    name: string,
+    pos: string[],
+    key?: string
+  ) => {
     getGlossaryTermByFQN(name, [
       'children',
       'relatedTerms',
       'reviewers',
       'tags',
     ])
-      .then((res: AxiosResponse) => {
+      .then(async (res: AxiosResponse) => {
         const { data } = res;
         if (data) {
           const clonedGlossaryList = cloneDeep(glossariesList);
@@ -193,24 +158,44 @@ const GlossaryPageV1 = () => {
             }
           }
 
-          let children = [...(treeNode.children || [])];
+          let children = [...(treeNode.children || [])] as GlossaryTerm[];
 
-          children = (
-            (data.children as ModifiedGlossaryData['children']) || []
-          )?.reduce((prev, curr) => {
-            const data = prev.find((item) => {
+          let childTerms = [] as GlossaryTerm[];
+          if (data.children?.length) {
+            childTerms = await getChildGlossaryTerms(
+              (data.children as GlossaryTerm[]).map(
+                (item) => item.fullyQualifiedName || item.name
+              )
+            );
+          }
+
+          children = childTerms.reduce((prev, curr) => {
+            let arrData = [] as GlossaryTerm[];
+            for (let i = 0; i < prev.length; i++) {
+              const item = prev[i];
               const itemFQN = item.fullyQualifiedName || item.name;
               const currFQN = curr.fullyQualifiedName || curr.name;
 
-              return itemFQN === currFQN;
-            });
+              if (itemFQN === currFQN) {
+                if (item.children?.length !== curr.children?.length) {
+                  arrData = [...prev.slice(0, i), curr, ...prev.slice(i + 1)];
+                } else {
+                  arrData = [...prev];
+                }
 
-            return data ? [...prev] : [...prev, curr];
+                break;
+              }
+            }
+
+            return arrData.length ? arrData : [...prev, curr];
           }, children);
 
           extend(treeNode, { ...data, children });
 
           setSelectedData(data);
+          if (key) {
+            handleSelectedKey(key);
+          }
           setGlossariesList(clonedGlossaryList);
           setIsGlossaryActive(false);
         }
@@ -223,7 +208,12 @@ const GlossaryPageV1 = () => {
             'Error while fetching glossary terms!',
         });
       })
-      .finally(() => handleChildLoading(false));
+      .finally(() => {
+        handleChildLoading(false);
+        setLoadingKey((pre) => {
+          return pre.filter((item) => item !== key);
+        });
+      });
   };
 
   const getSearchedGlossaries = (
@@ -429,14 +419,6 @@ const GlossaryPageV1 = () => {
     }
   };
 
-  const handleSelectedKey = (key: string) => {
-    setSelectedKey(key);
-  };
-
-  const handleExpandedKey = (key: string[]) => {
-    setExpandedKey(key);
-  };
-
   const fetchGlossaryTermAssets = (data: GlossaryTerm, forceReset = false) => {
     if (data?.fullyQualifiedName || data?.name) {
       const tagName = data?.fullyQualifiedName || data?.name; // Incase fqn is not fetched yet.
@@ -487,19 +469,27 @@ const GlossaryPageV1 = () => {
     setAssetData((pre) => ({ ...pre, currPage: page }));
   };
 
-  const handleSelectedData = (data: Glossary | GlossaryTerm, pos: string) => {
+  const handleSelectedData = (
+    data: Glossary | GlossaryTerm,
+    pos: string,
+    key: string
+  ) => {
     handleChildLoading(true);
     const hierarchy = pos.split('-').splice(1);
     // console.log(hierarchy);
     if (hierarchy.length < 2) {
       setSelectedData(data);
-      fetchGlossaryTermsData(data.id);
+      handleSelectedKey(key);
       setIsGlossaryActive(true);
       handleChildLoading(false);
     } else {
+      setLoadingKey((pre) => {
+        return !pre.includes(key) ? [...pre, key] : pre;
+      });
       fetchGlossaryTermByName(
         (data as GlossaryTerm)?.fullyQualifiedName || data?.name,
-        hierarchy
+        hierarchy,
+        key
       );
       fetchGlossaryTermAssets(data as GlossaryTerm, true);
     }
@@ -538,11 +528,11 @@ const GlossaryPageV1 = () => {
           handleGlossaryTermUpdate={handleGlossaryTermUpdate}
           handleSearchText={handleSearchText}
           handleSelectedData={handleSelectedData}
-          handleSelectedKey={handleSelectedKey}
           isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
           isHasAccess={!isAdminUser && !isAuthDisabled}
           isSearchResultEmpty={isSearchResultEmpty}
+          loadingKey={loadingKey}
           searchText={searchText}
           selectedData={selectedData as Glossary | GlossaryTerm}
           selectedKey={selectedKey}
