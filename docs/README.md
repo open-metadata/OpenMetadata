@@ -34,7 +34,7 @@ OpenMetadata provides connectors that enable you to perform metadata ingestion f
 
 The key components of OpenMetadata include the following:
 
-* **OpenMetadata User Interface (UI)** - a central place for users to discover and collaborate on all data. See [Features](features.md) for an overview of the OpenMetadata UI.
+* **OpenMetadata User Interface (UI)** - a central place for users to discover and collaborate on all data. See [Features](overview/features.md) for an overview of the OpenMetadata UI.
 * **Ingestion framework** - a pluggable framework for integrating tools and ingesting metadata to the metadata store. The ingestion framework already supports well-known data warehouses. See the [Connectors](./#connectors) section for a complete list and documentation on supported services.
 * **Metadata APIs** - for producing and consuming metadata built on schemas for User Interfaces and for Integrating tools, systems, and services. See the API [Overview](openmetadata-apis/apis/overview.md) for details.
 * **Metadata store** - stores a metadata graph that connects data assets and user and tool generated metadata.
