@@ -28,7 +28,6 @@ import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
-  deletePostById,
   getAllFeeds,
   getFeedCount,
   postFeedById,
@@ -74,6 +73,7 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import { deletePost } from '../../utils/FeedUtils';
 import {
   defaultFields,
   getCurrentPipelineTab,
@@ -517,30 +517,30 @@ const PipelineDetailsPage = () => {
   };
 
   const deletePostHandler = (threadId: string, postId: string) => {
-    deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id } = res.data;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              const posts = thread.posts.filter((post) => post.id !== id);
+    deletePost(threadId, postId)
+      .then((data) => {
+        const { id } = data;
 
-              return {
-                ...thread,
-                posts: posts,
-                postsCount: thread.postsCount - 1,
-              };
-            });
-          });
+        setEntityThread((pre) => {
+          return pre.map((thread) => {
+            const posts = thread.posts.filter((post) => post.id !== id);
 
-          showToast({
-            variant: 'success',
-            body: onConfirmText,
+            return {
+              ...thread,
+              posts: posts,
+              postsCount: thread.postsCount - 1,
+            };
           });
-        }
+        });
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
       })
-      .catch(() => {
-        showToast({ variant: 'error', body: onErrorText });
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
       });
   };
 

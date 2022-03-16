@@ -30,7 +30,6 @@ import {
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
 import {
-  deletePostById,
   getAllFeeds,
   getFeedCount,
   postFeedById,
@@ -78,7 +77,7 @@ import {
 } from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { deletePost, getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -440,30 +439,30 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const deletePostHandler = (threadId: string, postId: string) => {
-    deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id } = res.data;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              const posts = thread.posts.filter((post) => post.id !== id);
+    deletePost(threadId, postId)
+      .then((data) => {
+        const { id } = data;
 
-              return {
-                ...thread,
-                posts: posts,
-                postsCount: thread.postsCount - 1,
-              };
-            });
-          });
+        setEntityThread((pre) => {
+          return pre.map((thread) => {
+            const posts = thread.posts.filter((post) => post.id !== id);
 
-          showToast({
-            variant: 'success',
-            body: onConfirmText,
+            return {
+              ...thread,
+              posts: posts,
+              postsCount: thread.postsCount - 1,
+            };
           });
-        }
+        });
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
       })
-      .catch(() => {
-        showToast({ variant: 'error', body: onErrorText });
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
       });
   };
 

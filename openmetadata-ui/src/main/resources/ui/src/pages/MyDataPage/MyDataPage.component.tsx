@@ -24,11 +24,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
-import {
-  deletePostById,
-  getFeedsWithFilter,
-  postFeedById,
-} from '../../axiosAPIs/feedsAPI';
+import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -43,6 +39,7 @@ import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getEntityCountByType } from '../../utils/EntityUtils';
+import { deletePost } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 
@@ -182,29 +179,30 @@ const MyDataPage = () => {
   };
 
   const deletePostHandler = (threadId: string, postId: string) => {
-    deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id } = res.data;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              const posts = thread.posts.filter((post) => post.id !== id);
+    deletePost(threadId, postId)
+      .then((data) => {
+        const { id } = data;
 
-              return {
-                ...thread,
-                posts: posts,
-                postsCount: thread.postsCount - 1,
-              };
-            });
+        setEntityThread((pre) => {
+          return pre.map((thread) => {
+            const posts = thread.posts.filter((post) => post.id !== id);
+
+            return {
+              ...thread,
+              posts: posts,
+              postsCount: thread.postsCount - 1,
+            };
           });
-          showToast({
-            variant: 'success',
-            body: onConfirmText,
-          });
-        }
+        });
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
       })
-      .catch(() => {
-        showToast({ variant: 'error', body: onErrorText });
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
       });
   };
 
