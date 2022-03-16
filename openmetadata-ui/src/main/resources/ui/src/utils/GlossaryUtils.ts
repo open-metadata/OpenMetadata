@@ -12,6 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { cloneDeep, isEmpty } from 'lodash';
 import {
   FormattedGlossarySuggestion,
   FormattedGlossaryTermData,
@@ -190,12 +191,62 @@ export const getHierarchicalKeysByFQN = (fqn: string) => {
   return keys;
 };
 
+export const getTermDataFromGlossary = (
+  glossary: ModifiedGlossaryData,
+  termFqn: string
+) => {
+  let data: ModifiedGlossaryData | GlossaryTerm = cloneDeep(glossary);
+  const arrFQN = getHierarchicalKeysByFQN(termFqn);
+  for (let i = 1; i < arrFQN.length; i++) {
+    data = data?.children
+      ? ((data.children as unknown as GlossaryTerm[])?.find(
+          (item) =>
+            item.fullyQualifiedName === arrFQN[i] || item.name === arrFQN[i]
+        ) as GlossaryTerm)
+      : ({} as GlossaryTerm);
+    if (isEmpty(data)) {
+      break;
+    }
+  }
+
+  return data;
+};
+
+export const getTermPosFromGlossaries = (
+  arrGlossary: ModifiedGlossaryData[],
+  termFqn: string
+) => {
+  const arrFQN = getHierarchicalKeysByFQN(termFqn);
+  const glossaryIdx = arrGlossary.findIndex((item) => item.name === arrFQN[0]);
+  const pos = [];
+  if (glossaryIdx !== -1) {
+    pos.push(glossaryIdx);
+    let data: ModifiedGlossaryData | GlossaryTerm = arrGlossary[glossaryIdx];
+    for (let i = 1; i < arrFQN.length; i++) {
+      const index = data?.children
+        ? (data.children as unknown as GlossaryTerm[])?.findIndex(
+            (item) =>
+              item.fullyQualifiedName === arrFQN[i] || item.name === arrFQN[i]
+          )
+        : -1;
+
+      if (index === -1) {
+        break;
+      }
+      data = (data?.children ? data?.children[index] : {}) as GlossaryTerm;
+      pos.push(index);
+    }
+  }
+
+  return pos;
+};
+
 const getRootTermEmbeddedGlossary = (
   glossaries: Array<ModifiedGlossaryData>
 ): Promise<Array<ModifiedGlossaryData>> => {
   return new Promise<Array<ModifiedGlossaryData>>((resolve, reject) => {
     const promises = glossaries.map((glossary) =>
-      getGlossaryTerms(glossary.id, 100, [
+      getGlossaryTerms(glossary.id, 1000, [
         'children',
         'relatedTerms',
         'reviewers',

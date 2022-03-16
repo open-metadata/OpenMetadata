@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, extend } from 'lodash';
+import { cloneDeep, extend, isEmpty } from 'lodash';
 import {
   FormattedGlossarySuggestion,
   GlossarySuggestionHit,
@@ -22,7 +22,7 @@ import {
   SearchResponse,
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   deleteGlossary,
@@ -38,6 +38,7 @@ import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
 import {
   getAddGlossaryTermsPath,
+  getGlossaryPath,
   PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
@@ -52,6 +53,8 @@ import {
   getChildGlossaryTerms,
   getGlossariesWithRootTerms,
   getHierarchicalKeysByFQN,
+  getTermDataFromGlossary,
+  getTermPosFromGlossaries,
   updateGlossaryListBySearchedTerms,
 } from '../../utils/GlossaryUtils';
 
@@ -60,8 +63,7 @@ export type ModifiedGlossaryData = Glossary & {
 };
 
 const GlossaryPageV1 = () => {
-  // const { glossaryName, glossaryTermsFQN } =
-  // useParams<{ [key: string]: string }>();
+  const { glossaryName } = useParams<Record<string, string>>();
 
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -100,6 +102,10 @@ const GlossaryPageV1 = () => {
     setExpandedKey(key);
   };
 
+  const handleSearchText = (text: string) => {
+    setSearchText(text);
+  };
+
   const initSelectGlossary = (data: Glossary, noSetData = false) => {
     if (!noSetData) {
       setSelectedData(data);
@@ -109,47 +115,18 @@ const GlossaryPageV1 = () => {
     setExpandedKey([data.name]);
   };
 
-  const fetchGlossaryList = (paging = '') => {
-    setIsLoading(true);
-    getGlossariesWithRootTerms(paging, 100, ['owner', 'tags', 'reviewers'])
-      .then((data: ModifiedGlossaryData[]) => {
-        if (data?.length) {
-          setGlossaries(data);
-          setGlossariesList(data);
-          initSelectGlossary(data[0]);
-        } else {
-          setGlossariesList([]);
-        }
-        setIsLoading(false);
-      })
-      .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message ?? 'Something went wrong!',
-        });
-        setIsLoading(false);
-      })
-      .finally(() => {
-        handleChildLoading(false);
-      });
-  };
-
   const fetchGlossaryTermByName = (
-    name: string,
-    pos: string[],
-    key?: string
+    fqn: string,
+    pos: number[],
+    arrGlossary: ModifiedGlossaryData[]
   ) => {
-    getGlossaryTermByFQN(name, [
-      'children',
-      'relatedTerms',
-      'reviewers',
-      'tags',
-    ])
+    getGlossaryTermByFQN(fqn, ['children', 'relatedTerms', 'reviewers', 'tags'])
       .then(async (res: AxiosResponse) => {
         const { data } = res;
         if (data) {
-          const clonedGlossaryList = cloneDeep(glossariesList);
-          let treeNode = clonedGlossaryList[+pos[0]];
+          const clonedGlossaryList = cloneDeep(arrGlossary);
+          let treeNode = clonedGlossaryList[pos[0]];
+
           for (let i = 1; i < pos.length; i++) {
             if (treeNode.children) {
               treeNode = treeNode.children[+pos[i]] as ModifiedGlossaryData;
@@ -193,8 +170,11 @@ const GlossaryPageV1 = () => {
           extend(treeNode, { ...data, children });
 
           setSelectedData(data);
-          if (key) {
-            handleSelectedKey(key);
+          if (fqn) {
+            if (!expandedKey.length) {
+              setExpandedKey(getHierarchicalKeysByFQN(fqn));
+            }
+            handleSelectedKey(fqn);
           }
           setGlossariesList(clonedGlossaryList);
           setIsGlossaryActive(false);
@@ -209,10 +189,129 @@ const GlossaryPageV1 = () => {
         });
       })
       .finally(() => {
+        setIsLoading(false);
         handleChildLoading(false);
         setLoadingKey((pre) => {
-          return pre.filter((item) => item !== key);
+          return pre.filter((item) => item !== fqn);
         });
+      });
+  };
+
+  const fetchGlossaryTermAssets = (fqn: string, forceReset = false) => {
+    if (fqn) {
+      const tagName = fqn;
+      searchData(
+        '',
+        forceReset ? 1 : assetData.currPage,
+        PAGE_SIZE,
+        `(tags:"${tagName}")`,
+        '',
+        '',
+        myDataSearchIndex
+      ).then((res: SearchResponse) => {
+        const hits = res.data.hits.hits;
+        if (hits.length > 0) {
+          setAssetData((pre) => {
+            const data = formatDataResponse(hits);
+            const total = res.data.hits.total.value;
+
+            return forceReset
+              ? {
+                  data,
+                  total,
+                  currPage: 1,
+                }
+              : { ...pre, data, total };
+          });
+        } else {
+          setAssetData((pre) => {
+            const data = [] as GlossaryTermAssets['data'];
+            const total = 0;
+
+            return forceReset
+              ? {
+                  data,
+                  total,
+                  currPage: 1,
+                }
+              : { ...pre, data, total };
+          });
+        }
+      });
+    } else {
+      setAssetData({ data: [], total: 0, currPage: 1 });
+    }
+  };
+
+  const selectDataByFQN = (
+    dataFQN: string,
+    arrGlossary: ModifiedGlossaryData[]
+  ) => {
+    handleChildLoading(true);
+    const hierarchy = getTermPosFromGlossaries(arrGlossary, dataFQN);
+    if (hierarchy.length < 2) {
+      setSelectedData(arrGlossary[hierarchy[0]]);
+      handleSelectedKey(dataFQN);
+      if (!expandedKey.length) {
+        setExpandedKey([dataFQN]);
+      }
+      setIsGlossaryActive(true);
+      setIsLoading(false);
+      handleChildLoading(false);
+    } else {
+      setLoadingKey((pre) => {
+        return !pre.includes(dataFQN) ? [...pre, dataFQN] : pre;
+      });
+      fetchGlossaryTermByName(dataFQN, hierarchy, arrGlossary);
+      fetchGlossaryTermAssets(dataFQN, true);
+    }
+  };
+
+  const checkAndFetchDataByFQN = (
+    arrGlossary: ModifiedGlossaryData[],
+    fqn: string
+  ) => {
+    let modifiedData = cloneDeep(arrGlossary);
+    const arrFQN = getHierarchicalKeysByFQN(fqn);
+    const glossary: ModifiedGlossaryData | GlossaryTerm = modifiedData.find(
+      (item) => item.name === arrFQN[0]
+    ) as ModifiedGlossaryData;
+    const data = getTermDataFromGlossary(glossary, fqn);
+    if (isEmpty(data)) {
+      modifiedData = updateGlossaryListBySearchedTerms(modifiedData, [
+        { fqdn: arrFQN[arrFQN.length - 1] },
+      ] as FormattedGlossarySuggestion[]);
+    }
+    selectDataByFQN(fqn, modifiedData);
+  };
+
+  const fetchGlossaryList = (termFqn = '', paging = '') => {
+    setIsLoading(true);
+    getGlossariesWithRootTerms(paging, 1000, ['owner', 'tags', 'reviewers'])
+      .then((data: ModifiedGlossaryData[]) => {
+        if (data?.length) {
+          setGlossaries(data);
+          setGlossariesList(data);
+          if (termFqn) {
+            checkAndFetchDataByFQN(data, termFqn);
+          } else {
+            initSelectGlossary(data[0]);
+            setIsLoading(false);
+            handleChildLoading(false);
+          }
+        } else {
+          setGlossariesList([]);
+          setIsLoading(false);
+          handleChildLoading(false);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.message ?? 'Something went wrong!',
+        });
+        setIsLoading(false);
+        handleChildLoading(false);
       });
   };
 
@@ -419,88 +518,27 @@ const GlossaryPageV1 = () => {
     }
   };
 
-  const fetchGlossaryTermAssets = (data: GlossaryTerm, forceReset = false) => {
-    if (data?.fullyQualifiedName || data?.name) {
-      const tagName = data?.fullyQualifiedName || data?.name; // Incase fqn is not fetched yet.
-      searchData(
-        '',
-        forceReset ? 1 : assetData.currPage,
-        PAGE_SIZE,
-        `(tags:"${tagName}")`,
-        '',
-        '',
-        myDataSearchIndex
-      ).then((res: SearchResponse) => {
-        const hits = res.data.hits.hits;
-        if (hits.length > 0) {
-          setAssetData((pre) => {
-            const data = formatDataResponse(hits);
-            const total = res.data.hits.total.value;
-
-            return forceReset
-              ? {
-                  data,
-                  total,
-                  currPage: 1,
-                }
-              : { ...pre, data, total };
-          });
-        } else {
-          setAssetData((pre) => {
-            const data = [] as GlossaryTermAssets['data'];
-            const total = 0;
-
-            return forceReset
-              ? {
-                  data,
-                  total,
-                  currPage: 1,
-                }
-              : { ...pre, data, total };
-          });
-        }
-      });
-    } else {
-      setAssetData({ data: [], total: 0, currPage: 1 });
-    }
-  };
-
   const handleAssetPagination = (page: number) => {
     setAssetData((pre) => ({ ...pre, currPage: page }));
   };
 
-  const handleSelectedData = (
-    data: Glossary | GlossaryTerm,
-    pos: string,
-    key: string
-  ) => {
-    handleChildLoading(true);
-    const hierarchy = pos.split('-').splice(1);
-    // console.log(hierarchy);
-    if (hierarchy.length < 2) {
-      setSelectedData(data);
-      handleSelectedKey(key);
-      setIsGlossaryActive(true);
-      handleChildLoading(false);
+  const handleSelectedData = (key: string) => {
+    const path = getGlossaryPath(key);
+    history.push(path);
+  };
+
+  const fetchData = () => {
+    if (glossariesList.length) {
+      checkAndFetchDataByFQN(glossariesList, glossaryName);
     } else {
-      setLoadingKey((pre) => {
-        return !pre.includes(key) ? [...pre, key] : pre;
-      });
-      fetchGlossaryTermByName(
-        (data as GlossaryTerm)?.fullyQualifiedName || data?.name,
-        hierarchy,
-        key
-      );
-      fetchGlossaryTermAssets(data as GlossaryTerm, true);
+      fetchGlossaryList(glossaryName);
     }
   };
 
-  const handleSearchText = (text: string) => {
-    setSearchText(text);
-  };
-
   useEffect(() => {
-    fetchGlossaryTermAssets(selectedData as GlossaryTerm);
+    fetchGlossaryTermAssets(
+      (selectedData as GlossaryTerm)?.fullyQualifiedName || ''
+    );
   }, [assetData.currPage]);
 
   useEffect(() => {
@@ -508,8 +546,8 @@ const GlossaryPageV1 = () => {
   }, [searchText]);
 
   useEffect(() => {
-    fetchGlossaryList();
-  }, []);
+    fetchData();
+  }, [glossaryName]);
 
   return (
     <PageContainerV1 className="tw-pt-4">

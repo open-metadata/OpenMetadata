@@ -58,25 +58,13 @@ type Props = {
   handleAddGlossaryTermClick: () => void;
   updateGlossary: (value: Glossary) => void;
   handleGlossaryTermUpdate: (value: GlossaryTerm) => void;
-  handleSelectedData: (
-    data: Glossary | GlossaryTerm,
-    pos: string,
-    key: string
-  ) => void;
+  handleSelectedData: (key: string) => void;
   handleChildLoading: (status: boolean) => void;
   handleSearchText: (text: string) => void;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: number) => void;
   isChildLoading: boolean;
-  // handlePathChange: (
-  //   glossary: string,
-  //   glossaryTermsFQN?: string | undefined
-  // ) => void;
-};
-
-type ModifiedDataNode = DataNode & {
-  data: Glossary | GlossaryTerm;
 };
 
 const GlossaryV1 = ({
@@ -163,14 +151,8 @@ Props) => {
     const key = node.key as string;
     if (selectedKey !== key) {
       handleChildLoading(true);
-      const breadCrumbData = (treeRef.current?.state.keyEntities[key].nodes ||
-        []) as ModifiedDataNode[];
-      const selData = breadCrumbData[breadCrumbData.length - 1].data;
-      const pos = treeRef.current?.state.keyEntities[key].pos;
-      handleSelectedData(selData, pos as string, key);
+      handleSelectedData(key);
     }
-    // handlePathChange(key.split('.')[0], key);
-    // handleSelectedKey(key);
   };
 
   useEffect(() => {

@@ -6,7 +6,7 @@ import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import { ROUTES } from '../../constants/constants';
+import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
@@ -21,8 +21,8 @@ const AddGlossaryPage: FunctionComponent = () => {
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<LoadingState>('initial');
 
-  const goToGlossary = () => {
-    history.push(ROUTES.GLOSSARY);
+  const goToGlossary = (name = '') => {
+    history.push(getGlossaryPath(name));
   };
 
   const handleCancel = () => {
@@ -32,11 +32,11 @@ const AddGlossaryPage: FunctionComponent = () => {
   const onSave = (data: CreateGlossary) => {
     setStatus('waiting');
     addGlossaries(data)
-      .then(() => {
+      .then((res) => {
         setStatus('success');
         setTimeout(() => {
           setStatus('initial');
-          goToGlossary();
+          goToGlossary(res?.data?.name);
         }, 500);
       })
       .catch((err: AxiosError) => {

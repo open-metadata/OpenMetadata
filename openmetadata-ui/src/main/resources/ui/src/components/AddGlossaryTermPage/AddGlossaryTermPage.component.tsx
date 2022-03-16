@@ -21,7 +21,7 @@ import {
   getGlossariesByName,
   getGlossaryTermByFQN,
 } from '../../axiosAPIs/glossaryAPI';
-import { ROUTES } from '../../constants/constants';
+import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -44,8 +44,8 @@ const AddGlossaryTermPage = () => {
 
   const [parentGlossaryData, setParentGlossaryData] = useState<GlossaryTerm>();
 
-  const goToGlossary = () => {
-    history.push(ROUTES.GLOSSARY);
+  const goToGlossary = (name = '') => {
+    history.push(getGlossaryPath(name));
   };
 
   const handleCancel = () => {
@@ -55,11 +55,11 @@ const AddGlossaryTermPage = () => {
   const onSave = (data: CreateGlossaryTerm) => {
     setStatus('waiting');
     addGlossaryTerm(data)
-      .then(() => {
+      .then((res) => {
         setStatus('success');
         setTimeout(() => {
           setStatus('initial');
-          goToGlossary();
+          goToGlossary(res?.data?.fullyQualifiedName);
         }, 500);
       })
       .catch((err: AxiosError) => {
