@@ -198,6 +198,14 @@
             "$ref": "../../tests/columnTest.json"
           },
           "default": null
+        },
+        "customMetrics": {
+          "description": "List of Custom Metrics registered for a column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../tests/customMetric.json"
+          },
+          "default": null
         }
       },
       "required": ["name", "dataType"],
@@ -271,6 +279,22 @@
             "description": "Data for a single row of the table within the same order as columns fields.",
             "type": "array"
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    "customMetricProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.CustomMetricProfile",
+      "description": "Profiling results of a Custom Metric.",
+      "properties": {
+        "name": {
+          "description": "Custom metric name.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Profiling results for the metric.",
+          "type": "number"
         }
       },
       "additionalProperties": false
@@ -377,6 +401,14 @@
             }
           },
           "additionalProperties": false
+        },
+        "customMetricsProfile": {
+          "description": "Custom Metrics profile list bound to a column.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/customMetricProfile"
+          },
+          "default": null
         }
       },
       "additionalProperties": false

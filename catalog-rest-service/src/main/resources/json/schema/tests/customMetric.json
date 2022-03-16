@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/customMetric.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomMetric",
+  "description": "Custom Metric definition that we will associate with a column.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.CustomMetric",
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this Custom Metric instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this Custom Metric.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "description": "Description of the Metric.",
+      "type": "string"
+    },
+    "columnName": {
+      "description": "Name of the column in a table.",
+      "type": "string"
+    },
+    "expression": {
+      "description": "SQL expression to compute the Metric. It should return a single numerical value.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this Custom Metric.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    }
+  },
+  "required": ["name", "columnName", "expression"],
+  "additionalProperties": false
+}
