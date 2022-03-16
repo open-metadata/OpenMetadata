@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
@@ -35,11 +36,11 @@ import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   data: ColumnTest;
   selectedColumn: string;
+  isTableDeleted?: boolean;
   column: ModifiedTableColumn[];
   handleAddColumnTestCase: (data: ColumnTest) => void;
   onFormCancel: () => void;
@@ -59,6 +60,7 @@ const ColumnTestForm = ({
   selectedColumn,
   data,
   column,
+  isTableDeleted,
   handleAddColumnTestCase,
   onFormCancel,
 }: Props) => {
@@ -692,7 +694,11 @@ const ColumnTestForm = ({
             </Button>
             <Button
               className="tw-w-16 tw-h-10"
-              disabled={isShowError.allTestAdded || isShowError.notSupported}
+              disabled={
+                isShowError.allTestAdded ||
+                isShowError.notSupported ||
+                isTableDeleted
+              }
               size="regular"
               theme="primary"
               variant="contained"

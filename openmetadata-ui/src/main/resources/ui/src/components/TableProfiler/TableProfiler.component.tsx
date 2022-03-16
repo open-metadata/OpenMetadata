@@ -39,6 +39,7 @@ type Props = {
     colType: string;
     colTests?: ColumnTest[];
   }>;
+  isTableDeleted?: boolean;
   qualityTestFormHandler: (
     tabValue: number,
     testMode?: DatasetTestModeType,
@@ -68,6 +69,7 @@ const PercentageGraph = ({
 const TableProfiler: FC<Props> = ({
   tableProfiles,
   columns,
+  isTableDeleted,
   qualityTestFormHandler,
 }) => {
   const { isAdminUser } = useAuth();
@@ -297,10 +299,10 @@ const TableProfiler: FC<Props> = ({
                               position="bottom"
                               title={TITLE_FOR_NON_ADMIN_ACTION}>
                               <Button
-                                className={classNames({
-                                  'tw-opacity-40':
-                                    !isAdminUser && !isAuthDisabled,
-                                })}
+                                disabled={
+                                  (!isAdminUser && !isAuthDisabled) ||
+                                  isTableDeleted
+                                }
                                 size="small"
                                 theme="primary"
                                 type="button"
