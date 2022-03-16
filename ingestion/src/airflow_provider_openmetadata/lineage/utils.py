@@ -268,7 +268,7 @@ def add_status(
     updated_status = PipelineStatus(
         executionDate=execution_date,
         executionStatus=get_dag_status(
-            all_tasks=list(dag.task_group.children.keys()),
+            all_tasks=dag.task_ids,
             task_status=updated_task_status,
         ),
         taskStatus=updated_task_status,
