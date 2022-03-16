@@ -659,7 +659,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
         handleShowTestForm(false);
         showToast({
           variant: 'success',
-          body: `Test ${data.testCase.tableTestType} for ${name} has been added.`,
+          body: `Test ${data.testCase.tableTestType} for ${name} has been ${
+            itsNewTest ? 'added' : 'updated'
+          }.`,
         });
       })
       .catch(() => {
@@ -673,6 +675,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const handleAddColumnTestCase = (data: ColumnTest) => {
     addColumnTestCase(tableDetails.id, data)
       .then((res: AxiosResponse) => {
+        let itsNewTest = true;
         const columnTestRes = res.data.columns.find(
           (d: Column) => d.name === data.columnName
         );
@@ -682,6 +685,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
               (d as ModifiedTableColumn)?.columnTests?.filter(
                 (test) => test.id !== columnTestRes.columnTests[0].id
               ) || [];
+
+            itsNewTest =
+              oldTest.length ===
+              (d as ModifiedTableColumn)?.columnTests?.length;
 
             return {
               ...d,
@@ -696,7 +703,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setSelectedColumn(undefined);
         showToast({
           variant: 'success',
-          body: `Test ${data.testCase.columnTestType} for ${data.columnName} has been added.`,
+          body: `Test ${data.testCase.columnTestType} for ${
+            data.columnName
+          } has been ${itsNewTest ? 'added' : 'updated'}.`,
         });
       })
       .catch(() => {
@@ -714,6 +723,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
           (d) => d.testCase.tableTestType !== testType
         );
         setTableTestCase(updatedTest);
+        showToast({
+          variant: 'success',
+          body: `Test successfully deleted.`,
+        });
       })
       .catch(() => {
         showToast({
@@ -745,6 +758,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
           return d;
         });
         setColumns(updatedColumns);
+        showToast({
+          variant: 'success',
+          body: `Test successfully deleted.`,
+        });
       })
       .catch(() => {
         showToast({
