@@ -153,7 +153,7 @@ class BigquerySource(SQLSource):
         if not resp_sample_data and self.config.partition_query:
             try:
                 logger.info("Using Query for Partitioned Tables")
-                query = self.config.partition_query.format(schema, f'"{table}"')
+                query = self.config.partition_query.format(schema, table)
                 logger.info(query)
                 results = self.connection.execute(query)
                 cols = []

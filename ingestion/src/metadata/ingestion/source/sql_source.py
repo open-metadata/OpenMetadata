@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import Source as TagSource
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -644,7 +645,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                     primary_tag_body=CreateTagRequest(
                                         name=column["policy_tags"],
                                         description="Bigquery Policy Tag",
-                                        associatedTags=TagLabel.source.Tag.name,
                                     ),
                                 )
                         except APIError:
@@ -654,6 +654,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                         tagFQN=f"{self.config.tag_category_name}.{column['policy_tags']}",
                                         labelType="Automated",
                                         state="Suggested",
+                                        source=TagSource.Tag.name,
                                     )
                                 ]
                         except Exception as err:
