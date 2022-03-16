@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import {
@@ -28,7 +29,7 @@ import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
-import { LabelType, State } from '../../generated/type/tagLabel';
+import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
 import {
@@ -48,7 +49,6 @@ import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
@@ -176,6 +176,7 @@ const GlossaryTermsV1 = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
+          source: Source.Tag,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];

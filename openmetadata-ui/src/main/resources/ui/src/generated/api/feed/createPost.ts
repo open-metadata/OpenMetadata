@@ -13,11 +13,15 @@
  */
 
 /**
- * GET entity by id, GET entity by name, and LIST entities can include deleted or
- * non-deleted entities using the parameter include.
+ * Create post request
  */
-export enum Include {
-  All = 'all',
-  Deleted = 'deleted',
-  NonDeleted = 'non-deleted',
+export interface CreatePost {
+  /**
+   * Name of the User posting the message
+   */
+  from: string;
+  /**
+   * Message in markdown format. See markdown support for more details.
+   */
+  message: string;
 }

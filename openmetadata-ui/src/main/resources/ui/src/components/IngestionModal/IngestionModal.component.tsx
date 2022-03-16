@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
@@ -20,7 +22,7 @@ import React, { Fragment, ReactNode, useEffect, useState } from 'react';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import {
   AirflowPipeline,
-  ConfigObject,
+  ConfigClass,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import {
   getCurrentDate,
@@ -35,8 +37,6 @@ import {
   IngestionModalProps,
   ValidationErrorMsg,
 } from './IngestionModal.interface';
-import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const errorMsg = (value: string) => {
   return (
@@ -126,7 +126,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
     selectedIngestion?.pipelineType || ingestionTypes[0] || ''
   );
   const [pipelineConfig] = useState(
-    (selectedIngestion?.pipelineConfig.config || {}) as ConfigObject
+    (selectedIngestion?.pipelineConfig.config || {}) as ConfigClass
   );
   const [tableIncludeFilter, setTableIncludeFilter] = useState(
     pipelineConfig.tableFilterPattern?.includes?.join(',') || ''
