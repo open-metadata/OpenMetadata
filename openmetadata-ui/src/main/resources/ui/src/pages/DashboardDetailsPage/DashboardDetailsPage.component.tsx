@@ -54,7 +54,11 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { onConfirmText, onErrorText } from '../../constants/feed.constants';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -76,7 +80,7 @@ import {
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost } from '../../utils/FeedUtils';
+import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 type ChartType = {
@@ -573,20 +577,30 @@ const DashboardDetailsPage = () => {
 
   const deletePostHandler = (threadId: string, postId: string) => {
     deletePost(threadId, postId)
-      .then((data) => {
-        const { id } = data;
-
-        setEntityThread((pre) => {
-          return pre.map((thread) => {
-            const posts = thread.posts.filter((post) => post.id !== id);
-
-            return {
-              ...thread,
-              posts: posts,
-              postsCount: thread.postsCount - 1,
-            };
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
+            });
           });
-        });
 
         showToast({
           variant: 'success',

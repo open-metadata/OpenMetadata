@@ -43,3 +43,6 @@ export const confirmHeadertext = 'Delete message?';
 export const onConfirmText = 'Message deleted successfully';
 
 export const onErrorText = 'Error while deleting message';
+
+export const onUpdatedConversastionError =
+  'Error while getting updated conversation';
