@@ -27,7 +27,7 @@ import {
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import { FeedListSeparator } from '../ActivityFeedList/ActivityFeedList';
+import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
 import {
   FeedPanelHeader,
   FeedPanelOverlay,
