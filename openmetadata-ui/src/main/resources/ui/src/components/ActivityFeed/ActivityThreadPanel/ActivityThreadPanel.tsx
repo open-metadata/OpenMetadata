@@ -18,6 +18,7 @@ import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
@@ -220,18 +221,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);
 
-  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
-    state: false,
-    threadId: undefined,
-    postId: undefined,
-  });
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
+    confirmStateInitialValue
+  );
 
   const onDiscard = () => {
-    setConfirmationState({
-      state: false,
-      threadId: undefined,
-      postId: undefined,
-    });
+    setConfirmationState(confirmStateInitialValue);
   };
 
   const onDelete = () => {

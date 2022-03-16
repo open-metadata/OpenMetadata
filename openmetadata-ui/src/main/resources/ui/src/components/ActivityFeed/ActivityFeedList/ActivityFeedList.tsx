@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
@@ -162,18 +163,12 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   const [selctedThreadId, setSelctedThreadId] = useState<string>('');
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
 
-  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
-    state: false,
-    threadId: undefined,
-    postId: undefined,
-  });
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
+    confirmStateInitialValue
+  );
 
   const onDiscard = () => {
-    setConfirmationState({
-      state: false,
-      threadId: undefined,
-      postId: undefined,
-    });
+    setConfirmationState(confirmStateInitialValue);
   };
 
   const onDelete = () => {

@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
@@ -161,18 +162,12 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
 
-  const [confirmationState, setConfirmationState] = useState<ConfirmState>({
-    state: false,
-    threadId: undefined,
-    postId: undefined,
-  });
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
+    confirmStateInitialValue
+  );
 
   const onDiscard = () => {
-    setConfirmationState({
-      state: false,
-      threadId: undefined,
-      postId: undefined,
-    });
+    setConfirmationState(confirmStateInitialValue);
   };
 
   const onDelete = () => {
