@@ -80,7 +80,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           const replies = feed.postsCount - 1;
           const repliedUsers = feed.posts
             .map((f) => f.from)
-            .slice(0, postLength === 3 ? 2 : 1);
+            .slice(0, postLength >= 3 ? 2 : 1);
           const lastPost = feed.posts[postLength - 1];
 
           return (

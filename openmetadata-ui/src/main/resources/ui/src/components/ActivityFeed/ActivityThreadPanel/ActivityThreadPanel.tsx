@@ -79,7 +79,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                 const replies = thread.postsCount - 1;
                 const repliedUsers = thread.posts
                   .map((f) => f.from)
-                  .slice(0, postLength === 3 ? 2 : 1);
+                  .slice(0, postLength >= 3 ? 2 : 1);
                 const lastPost = thread.posts[postLength - 1];
 
                 return (
