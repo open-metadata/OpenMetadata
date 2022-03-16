@@ -1,14 +1,16 @@
 # Table of contents
 
-* [🔰 Introduction](README.md)
-* [🔰 Features](features.md)
-* [🔰 Roadmap](roadmap.md)
-* [📌 Try OpenMetadata](../try-openmetadata/README.md)
-  * [Try OpenMetadata in our Public Sandbox](../try-openmetadata/take-it-for-a-spin.md)
-  * [Try OpenMetadata in Docker](try-openmetadata/run-openmetadata/README.md)
-    * [Enable Security](try-openmetadata/run-openmetadata/enable-security.md)
-* [📌 Tutorials](tutorials/README.md)
-  * [Tutorial: Data Discovery with OpenMetadata](tutorials/tutorial-data-discovery-with-openmetadata.md)
+## 📌 Overview
+
+* [Introduction](README.md)
+* [Features](overview/features.md)
+* [Roadmap](overview/roadmap.md)
+* [Try OpenMetadata](overview/try-openmetadata/README.md)
+  * [Try OpenMetadata in our Public Sandbox](overview/try-openmetadata/take-it-for-a-spin.md)
+  * [Try OpenMetadata in Docker](overview/try-openmetadata/run-openmetadata/README.md)
+    * [Enable Security](overview/try-openmetadata/run-openmetadata/enable-security.md)
+* [Tutorials](overview/tutorials/README.md)
+  * [Tutorial: Data Discovery with OpenMetadata](overview/tutorials/tutorial-data-discovery-with-openmetadata.md)
 
 ## 📦 Integrations
 
