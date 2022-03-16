@@ -32,6 +32,10 @@ import {
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../utils/GlossaryUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
@@ -50,10 +54,6 @@ import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDe
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
 
 const DashboardDetails = ({
   entityName,
@@ -95,6 +95,7 @@ const DashboardDetails = ({
   entityFieldThreadCount,
   createThread,
   dashboardFQN,
+  deletePostHandler,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -611,6 +612,7 @@ const DashboardDetails = ({
                     isEntityFeed
                     withSidePanel
                     className=""
+                    deletePostHandler={deletePostHandler}
                     entityName={entityName}
                     feedList={entityThread}
                     isLoading={isentityThreadLoading}
@@ -661,6 +663,7 @@ const DashboardDetails = ({
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
+          deletePostHandler={deletePostHandler}
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}

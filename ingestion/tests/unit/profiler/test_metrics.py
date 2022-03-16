@@ -76,6 +76,19 @@ class MetricsTest(TestCase):
         cls.session.add_all(data)
         cls.session.commit()
 
+    def test_count(self):
+        """
+        Check the Count metric
+        """
+        count = Metrics.COUNT.value
+        profiler = Profiler(
+            count, session=self.session, table=User, use_cols=[User.name]
+        )
+        res = profiler.execute()._column_results
+
+        # Note how we can get the result value by passing the metrics name
+        assert res.get(User.name.name).get(Metrics.COUNT.name) == 3
+
     def test_min(self):
         """
         Check the Min metric

@@ -126,6 +126,7 @@ class ProfilerWorkflowTest(TestCase):
                     "tests": [
                         {
                             "table": "test_sqlite.main.users",  # FQDN
+                            "profile_sample": 75,
                             "table_tests": [
                                 {
                                     "testCase": {
@@ -162,6 +163,12 @@ class ProfilerWorkflowTest(TestCase):
         assert (
             status == 1
         )  # We have a test error, so we get a failure with exit status 1
+
+        # The profileSample should have been updated
+        table = self.metadata.get_by_name(
+            entity=Table, fqdn="test_sqlite.main.users", fields=["profileSample"]
+        )
+        assert table.profileSample == 75.0
 
         with pytest.raises(WorkflowExecutionError):
             profiler_workflow.raise_from_status()

@@ -15,11 +15,14 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
+import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
 import {
@@ -55,7 +58,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   postFeed,
   onViewMore,
   selctedThreadId,
-  deletePostHandler,
+  onConfirmation,
 }) => {
   return (
     <Fragment>
@@ -70,7 +73,9 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           };
           const postLength = feed.posts.length;
           const replies = feed.postsCount - 1;
-          const repliedUsers = feed.posts.map((f) => f.from).slice(1, 3);
+          const repliedUsers = feed.posts
+            .map((f) => f.from)
+            .slice(0, postLength >= 3 ? 2 : 1);
           const lastPost = feed.posts[postLength - 1];
 
           return (
@@ -104,10 +109,10 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   ) : null}
                   <ActivityFeedCard
                     className="tw-mb-6 tw-ml-9"
-                    deletePostHandler={deletePostHandler}
                     feed={lastPost}
                     isEntityFeed={isEntityFeed}
                     threadId={feed.id}
+                    onConfirmation={onConfirmation}
                   />
                   <p
                     className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
@@ -155,6 +160,25 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
   const [selctedThreadId, setSelctedThreadId] = useState<string>('');
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
+
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
+    confirmStateInitialValue
+  );
+
+  const onDiscard = () => {
+    setConfirmationState(confirmStateInitialValue);
+  };
+
+  const onPostDelete = () => {
+    if (confirmationState.postId && confirmationState.threadId) {
+      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+    }
+    onDiscard();
+  };
+
+  const onConfirmation = (data: ConfirmState) => {
+    setConfirmationState(data);
+  };
 
   const onThreadIdSelect = (id: string) => {
     setSelctedThreadId(id);
@@ -221,6 +245,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   selctedThreadId={selctedThreadId}
                   updatedFeedList={updatedFeedList}
                   withSidePanel={withSidePanel}
+                  onConfirmation={onConfirmation}
                   onThreadIdDeselect={onThreadIdDeselect}
                   onThreadIdSelect={onThreadIdSelect}
                   onThreadSelect={onThreadSelect}
@@ -255,6 +280,12 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
             </Fragment>
           )}
         </Fragment>
+      )}
+      {confirmationState.state && (
+        <DeleteConfirmationModal
+          onDelete={onPostDelete}
+          onDiscard={onDiscard}
+        />
       )}
     </div>
   );

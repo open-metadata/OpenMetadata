@@ -11,7 +11,7 @@
 
 import logging
 import os
-import uuid
+import traceback
 from dataclasses import dataclass, field
 from typing import Iterable, List
 
@@ -130,19 +130,23 @@ class LookerSource(Source[Entity]):
         yield from self._get_looker_dashboards()
 
     def _get_dashboard_elements(self, dashboard_elements):
-        if not self.config.dashboard_pattern.included(dashboard_elements.id):
+        if not self.config.chart_pattern.included(dashboard_elements.id):
             self.status.charts_dropped_status(dashboard_elements.id)
             return None
-        self.status.charts_scanned_status(dashboard_elements.id)
-        return Chart(
-            id=uuid.uuid4(),
+        om_dashboard_elements = Chart(
             name=dashboard_elements.id,
-            displayName=dashboard_elements.id,
-            description=dashboard_elements.title if dashboard_elements.title else "",
+            displayName=dashboard_elements.title or "",
+            description="",
             chart_type=dashboard_elements.type,
-            url=self.config.url,
+            url=f"{self.config.url}/dashboard_elements/{dashboard_elements.id}",
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
+        if not dashboard_elements.id:
+            raise ValueError("Chart(Dashboard Element) without ID")
+        self.status.charts_scanned_status(dashboard_elements.id)
+        yield om_dashboard_elements
+        self.charts.append(om_dashboard_elements)
+        self.chart_names.append(dashboard_elements.id)
 
     def _get_looker_dashboards(self):
         all_dashboards = self.client.all_dashboards(fields="id")
@@ -161,17 +165,20 @@ class LookerSource(Source[Entity]):
                 dashboard = self.client.dashboard(
                     dashboard_id=child_dashboard.id, fields=",".join(fields)
                 )
-                charts = []
+                self.charts = []
+                self.chart_names = []
                 for iter_chart in dashboard.dashboard_elements:
-                    chart = self._get_dashboard_elements(iter_chart)
-                    if chart:
-                        charts.append(chart.name)
+                    try:
+                        yield from self._get_dashboard_elements(iter_chart)
+                    except Exception as err:
+                        logger.debug(traceback.print_exc())
+                        logger.error(err)
                 yield Dashboard(
                     name=dashboard.id,
                     displayName=dashboard.title,
-                    description="temp",
-                    charts=charts,
-                    url=self.config.url,
+                    description=dashboard.description or "",
+                    charts=self.chart_names,
+                    url=f"{self.config.url}/dashboards/{dashboard.id}",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),

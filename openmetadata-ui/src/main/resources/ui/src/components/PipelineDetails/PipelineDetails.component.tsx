@@ -92,6 +92,7 @@ const PipelineDetails = ({
   entityFieldThreadCount,
   createThread,
   pipelineFQN,
+  deletePostHandler,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -514,6 +515,7 @@ const PipelineDetails = ({
                     isEntityFeed
                     withSidePanel
                     className=""
+                    deletePostHandler={deletePostHandler}
                     entityName={entityName}
                     feedList={entityThread}
                     isLoading={isentityThreadLoading}
@@ -564,6 +566,7 @@ const PipelineDetails = ({
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
+          deletePostHandler={deletePostHandler}
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
