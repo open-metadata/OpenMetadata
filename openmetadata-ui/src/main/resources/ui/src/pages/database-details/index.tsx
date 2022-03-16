@@ -59,6 +59,7 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import { onConfirmText, onErrorText } from '../../constants/feed.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -454,15 +455,15 @@ const DatabaseDetails: FunctionComponent = () => {
               };
             });
           });
-          getEntityFeedCount();
+
           showToast({
             variant: 'success',
-            body: 'Message deleted successfully',
+            body: onConfirmText,
           });
         }
       })
       .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting message' });
+        showToast({ variant: 'error', body: onErrorText });
       });
   };
 

@@ -34,3 +34,12 @@ export const confirmStateInitialValue = {
   threadId: undefined,
   postId: undefined,
 };
+
+export const confirmationBodyText =
+  'Are you sure you want to permanently delete this message?';
+
+export const confirmHeadertext = 'Delete message?';
+
+export const onConfirmText = 'Message deleted successfully';
+
+export const onErrorText = 'Error while deleting message';

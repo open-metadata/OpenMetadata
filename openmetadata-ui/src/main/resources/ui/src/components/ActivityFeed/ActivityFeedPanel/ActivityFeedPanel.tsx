@@ -17,7 +17,11 @@ import classNames from 'classnames';
 import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import {
+  confirmationBodyText,
+  confirmHeadertext,
+  confirmStateInitialValue,
+} from '../../../constants/feed.constants';
 import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
@@ -225,11 +229,11 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
       {confirmationState.state && (
         <ConfirmationModal
           bodyClassName="tw-h-18"
-          bodyText="Are you sure you want to permanently delete this message?"
+          bodyText={confirmationBodyText}
           cancelText="Cancel"
           className="tw-w-auto tw-h-screen"
           confirmText="Delete"
-          header="Delete message?"
+          header={confirmHeadertext}
           onCancel={onDiscard}
           onConfirm={onDelete}
         />

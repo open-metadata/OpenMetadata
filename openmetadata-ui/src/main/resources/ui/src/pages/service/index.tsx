@@ -67,6 +67,7 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import { onConfirmText, onErrorText } from '../../constants/feed.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -1000,15 +1001,15 @@ const ServicePage: FunctionComponent = () => {
               };
             });
           });
-          getEntityFeedCount();
+
           showToast({
             variant: 'success',
-            body: 'Message deleted successfully',
+            body: onConfirmText,
           });
         }
       })
       .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting message' });
+        showToast({ variant: 'error', body: onErrorText });
       });
   };
 

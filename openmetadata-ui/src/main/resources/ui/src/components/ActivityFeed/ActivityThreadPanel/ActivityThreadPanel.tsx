@@ -18,7 +18,11 @@ import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import {
+  confirmationBodyText,
+  confirmHeadertext,
+  confirmStateInitialValue,
+} from '../../../constants/feed.constants';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
@@ -388,11 +392,11 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       {confirmationState.state && (
         <ConfirmationModal
           bodyClassName="tw-h-18"
-          bodyText="Are you sure you want to permanently delete this message?"
+          bodyText={confirmationBodyText}
           cancelText="Cancel"
           className="tw-w-auto tw-h-screen"
           confirmText="Delete"
-          header="Delete message?"
+          header={confirmHeadertext}
           onCancel={onDiscard}
           onConfirm={onDelete}
         />

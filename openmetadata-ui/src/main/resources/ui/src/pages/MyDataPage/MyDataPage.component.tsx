@@ -33,6 +33,7 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import { onConfirmText, onErrorText } from '../../constants/feed.constants';
 import {
   myDataEntityCounts,
   myDataSearchIndex,
@@ -198,12 +199,12 @@ const MyDataPage = () => {
           });
           showToast({
             variant: 'success',
-            body: 'Message deleted successfully',
+            body: onConfirmText,
           });
         }
       })
       .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting message' });
+        showToast({ variant: 'error', body: onErrorText });
       });
   };
 

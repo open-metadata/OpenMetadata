@@ -15,7 +15,11 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
-import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import {
+  confirmationBodyText,
+  confirmHeadertext,
+  confirmStateInitialValue,
+} from '../../../constants/feed.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
@@ -286,11 +290,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
       {confirmationState.state && (
         <ConfirmationModal
           bodyClassName="tw-h-18"
-          bodyText="Are you sure you want to permanently delete this message?"
+          bodyText={confirmationBodyText}
           cancelText="Cancel"
           className="tw-w-auto tw-h-screen"
           confirmText="Delete"
-          header="Delete message?"
+          header={confirmHeadertext}
           onCancel={onDiscard}
           onConfirm={onDelete}
         />

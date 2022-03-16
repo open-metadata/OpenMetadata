@@ -59,6 +59,7 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+import { onConfirmText, onErrorText } from '../../constants/feed.constants';
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -770,15 +771,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
               };
             });
           });
-          getEntityFeedCount();
+
           showToast({
             variant: 'success',
-            body: 'Message deleted successfully',
+            body: onConfirmText,
           });
         }
       })
       .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting message' });
+        showToast({ variant: 'error', body: onErrorText });
       });
   };
 
