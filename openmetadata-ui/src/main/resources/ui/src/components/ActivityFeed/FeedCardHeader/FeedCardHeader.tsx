@@ -41,7 +41,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
-  const onMousEnterHandler = () => {
+  const onClickHandler = () => {
     getUserByName(createdBy, 'profile,roles,teams,follows,owns')
       .then((res: AxiosResponse) => {
         setUserData(res.data);
@@ -147,7 +147,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         <span
           className="tw-cursor-pointer"
           data-testid="authorAvatar"
-          onMouseEnter={onMousEnterHandler}>
+          onClick={onClickHandler}>
           <Avatar name={createdBy} type="square" width="30" />
         </span>
       </PopOver>
@@ -158,7 +158,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           position="top"
           theme="light"
           trigger="click">
-          <span className="tw-cursor-pointer" onMouseEnter={onMousEnterHandler}>
+          <span className="tw-cursor-pointer" onClick={onClickHandler}>
             {createdBy}
           </span>
         </PopOver>
