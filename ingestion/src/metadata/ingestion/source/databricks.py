@@ -90,9 +90,15 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "type": coltype,
             "nullable": True,
             "default": None,
+            "comment": _comment,
         }
         if col_type in {"array", "struct", "map"}:
-            col_info["raw_data_type"] = raw_data_type
+            rows = dict(
+                connection.execute(
+                    "DESCRIBE {} {}".format(table_name, col_name)
+                ).fetchall()
+            )
+            col_info["raw_data_type"] = rows["data_type"]
         result.append(col_info)
     return result
 
