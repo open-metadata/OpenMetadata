@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, queryByText, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import { Post } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -34,9 +34,6 @@ jest.mock('../../../utils/FeedUtils', () => ({
   getEntityType: jest.fn(),
 }));
 
-jest.mock('../../Modals/ConfirmationModal/ConfirmationModal', () => {
-  return jest.fn().mockReturnValue(<p>ConfirmationModal</p>);
-});
 jest.mock('../FeedCardBody/FeedCardBody', () => {
   return jest.fn().mockReturnValue(<p>FeedCardBody</p>);
 });
@@ -68,11 +65,9 @@ describe('Test ActivityFeedCard Component', () => {
     const feedCardHeader = await findByText(container, /FeedCardHeader/i);
     const feedCardBody = await findByText(container, /FeedCardBody/i);
     const feedCardFooter = await findByText(container, /FeedCardFooter/i);
-    const confirmationModal = queryByText(container, /ConfirmationModal/i);
 
     expect(feedCardHeader).toBeInTheDocument();
     expect(feedCardBody).toBeInTheDocument();
     expect(feedCardFooter).toBeInTheDocument();
-    expect(confirmationModal).not.toBeInTheDocument();
   });
 });

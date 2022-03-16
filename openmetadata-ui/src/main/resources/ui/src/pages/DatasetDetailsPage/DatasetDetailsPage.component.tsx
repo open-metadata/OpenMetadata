@@ -27,7 +27,6 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
-  deletePostById,
   getAllFeeds,
   getFeedCount,
   postFeedById,
@@ -60,7 +59,15 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
+
 import { TEST_DELETE_MSG } from '../../constants/DatasetDetails.constants';
+
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -97,6 +104,7 @@ import {
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -774,29 +782,42 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const deletePostHandler = (threadId: string, postId: string) => {
-    deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id } = res.data;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              const posts = thread.posts.filter((post) => post.id !== id);
-
-              return { ...thread, posts: posts };
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
             });
           });
-          getEntityFeedCount();
-          showToast({
-            variant: 'success',
-            body: 'Post got deleted successfully',
-          });
-        }
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
       })
-      .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting post' });
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
       });
   };
-
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
