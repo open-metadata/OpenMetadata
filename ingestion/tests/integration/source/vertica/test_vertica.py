@@ -18,17 +18,7 @@ from unittest.mock import patch
 
 from sqlalchemy.types import JSON, SMALLINT, VARCHAR
 
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    Constraint,
-    DataType,
-    Table,
-    TableType,
-)
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 CONFIG = """
 {
@@ -51,45 +41,6 @@ CONFIG = """
     }
 }
 """
-
-
-OMetaDatabaseAndTable(
-    database=Database(
-        name="test_openmetadata_db",
-        service=EntityReference(
-            id="2ea1c918-9e2b-11ec-bf6e-1e00fb0a5848", type="Vertica"
-        ),
-    ),
-    table=Table(
-        id="2f8cf334-9e2b-11ec-bf6e-1e00fb0a5848",
-        name="test_table",
-        fullyQualifiedName="test_vertica.test_openmetadata_db.test_table",
-        tableType=TableType.Regular,
-        columns=[
-            Column(
-                name="ID",
-                dataType=DataType.VARCHAR,
-                dataLength=36,
-                dataTypeDisplay="VARCHAR(36)",
-                constraint=Constraint.PRIMARY_KEY,
-            ),
-            Column(
-                name="EMAIL",
-                dataType=DataType.VARCHAR,
-                dataLength=36,
-                dataTypeDisplay="VARCHAR(36)",
-                constraint=Constraint.NOT_NULL,
-            ),
-            Column(
-                name="Name",
-                dataType=DataType.VARCHAR,
-                dataLength=36,
-                dataTypeDisplay="VARCHAR(36)",
-                constraint=Constraint.NULL,
-            ),
-        ],
-    ),
-)
 
 
 MOCK_GET_TABLE_NAMES = [
@@ -150,7 +101,7 @@ MOCK_GET_COLUMN = [
 ]
 
 MOCK_GET_VIEW_NAMES = ["test_view"]
-MOCK_GET_VIEW_DEFINITION = []
+MOCK_GET_VIEW_DEFINITION = "SELECT failedpn.metric_date, failedpn.metric_hour, failedpn.game_id, failedpn.game_id_str, failedpn.user_id, failedpn.event_ts, failedpn.bundle_id, failedpn.mkt, failedpn.mkt_str, failedpn.device_token FROM bi_pipeline.failedpn"
 
 
 class VerticaIngestionTest(TestCase):
