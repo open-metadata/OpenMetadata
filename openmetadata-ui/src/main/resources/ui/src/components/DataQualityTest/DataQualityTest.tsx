@@ -34,6 +34,7 @@ type Props = {
   tableTestCase: TableTest[];
   columns: ModifiedTableColumn[];
   showDropDown: boolean;
+  isTableDeleted?: boolean;
   handleEditTest: (mode: DatasetTestModeType, obj: TableTestDataType) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
   haandleDropDownClick: (
@@ -51,6 +52,7 @@ const DataQualityTest = ({
   showDropDown,
   tableTestCase,
   columns,
+  isTableDeleted,
   handleEditTest,
   handleShowDropDown,
   handleRemoveTableTest,
@@ -64,10 +66,12 @@ const DataQualityTest = ({
     {
       name: 'Table Test',
       value: 'table',
+      disabled: isTableDeleted,
     },
     {
       name: 'Column Test',
       value: 'column',
+      disabled: isTableDeleted,
     },
   ];
 
@@ -142,6 +146,7 @@ const DataQualityTest = ({
                 isTableTest
                 handleEditTest={handleEditTest}
                 handleRemoveTableTest={handleRemoveTableTest}
+                isTableDeleted={isTableDeleted}
                 testCase={tableTestCase}
               />
             </div>
@@ -155,6 +160,7 @@ const DataQualityTest = ({
                   <DataQualityTable
                     handleEditTest={handleEditTest}
                     handleRemoveColumnTest={handleRemoveColumnTest}
+                    isTableDeleted={isTableDeleted}
                     isTableTest={false}
                     testCase={
                       data.columnTests && data.columnTests?.length > 0

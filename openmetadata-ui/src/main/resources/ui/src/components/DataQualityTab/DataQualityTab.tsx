@@ -27,6 +27,7 @@ import DataQualityTest from '../DataQualityTest/DataQualityTest';
 
 type Props = {
   handleAddTableTestCase: (data: CreateTableTest) => void;
+  isTableDeleted?: boolean;
   handleAddColumnTestCase: (data: ColumnTest) => void;
   columnOptions: Table['columns'];
   testMode: DatasetTestModeType;
@@ -44,6 +45,7 @@ type Props = {
 };
 
 const DataQualityTab = ({
+  isTableDeleted,
   columnOptions,
   showTestForm,
   handleTestModeChange,
@@ -111,6 +113,7 @@ const DataQualityTab = ({
           data={activeData}
           handleAddColumnTestCase={onColumnTestSave}
           handleAddTableTestCase={onTableTestSave}
+          isTableDeleted={isTableDeleted}
           selectedColumn={selectedColumn}
           tableTestCase={tableTestCase}
           testMode={testMode}
@@ -124,6 +127,7 @@ const DataQualityTab = ({
           handleRemoveColumnTest={handleRemoveColumnTest}
           handleRemoveTableTest={handleRemoveTableTest}
           handleShowDropDown={handleShowDropDown}
+          isTableDeleted={isTableDeleted}
           showDropDown={showDropDown}
           tableTestCase={tableTestCase}
         />
