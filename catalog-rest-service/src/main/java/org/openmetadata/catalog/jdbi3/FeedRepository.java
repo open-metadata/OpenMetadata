@@ -198,7 +198,11 @@ public class FeedRepository {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
     posts = posts.stream().filter(p -> !p.getId().equals(post.getId())).collect(Collectors.toList());
-    thread.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(userName).withPosts(posts);
+    thread
+        .withUpdatedAt(System.currentTimeMillis())
+        .withUpdatedBy(userName)
+        .withPosts(posts)
+        .withPostsCount(posts.size());
     // update the json document
     dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
 
