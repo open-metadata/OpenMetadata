@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import {
@@ -48,7 +49,6 @@ import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
@@ -626,6 +626,7 @@ const GlossaryTermsV1 = ({
 
         {showRelatedTermsModal && (
           <RelatedTermsModal
+            glossaryTermFQN={glossaryTerm.fullyQualifiedName}
             header="Add Related Terms"
             relatedTerms={relatedTerms}
             onCancel={onRelatedTermsModalCancel}
