@@ -19,9 +19,10 @@ import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEdito
 type Props = {
   data?: FormattedGlossaryTermData[];
   addButton?: ReactNode;
+  onRelatedTermClick?: (fqn: string) => void;
 };
 
-const RelationshipTab = ({ data, addButton }: Props) => {
+const RelationshipTab = ({ data, addButton, onRelatedTermClick }: Props) => {
   return (
     <div className="tw-table-responsive" id="relationship">
       <table className="tw-w-full tw-bg-white">
@@ -40,7 +41,11 @@ const RelationshipTab = ({ data, addButton }: Props) => {
                     className={classNames(
                       'tableBody-cell tw-group tw-relative tw-align-baseline'
                     )}>
-                    {row.displayName || row.name}
+                    <span
+                      className="link-text"
+                      onClick={() => onRelatedTermClick?.(row.name)}>
+                      {row.displayName || row.name}
+                    </span>
                   </td>
                   <td
                     className={classNames(
