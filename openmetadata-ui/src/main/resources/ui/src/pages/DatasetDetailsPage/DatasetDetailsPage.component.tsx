@@ -54,11 +54,13 @@ import {
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
+  COMMON_ERROR_MSG,
   getDatabaseDetailsPath,
   getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+import { TEST_DELETE_MSG } from '../../constants/DatasetDetails.constants';
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -661,13 +663,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
           variant: 'success',
           body: `Test ${data.testCase.tableTestType} for ${name} has been ${
             itsNewTest ? 'added' : 'updated'
-          }.`,
+          } successfully.`,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -705,13 +707,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
           variant: 'success',
           body: `Test ${data.testCase.columnTestType} for ${
             data.columnName
-          } has been ${itsNewTest ? 'added' : 'updated'}.`,
+          } has been ${itsNewTest ? 'added' : 'updated'} successfully.`,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -725,13 +727,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableTestCase(updatedTest);
         showToast({
           variant: 'success',
-          body: `Test successfully deleted.`,
+          body: TEST_DELETE_MSG,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -760,13 +762,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setColumns(updatedColumns);
         showToast({
           variant: 'success',
-          body: `Test successfully deleted.`,
+          body: TEST_DELETE_MSG,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
