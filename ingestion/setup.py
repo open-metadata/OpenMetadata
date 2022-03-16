@@ -100,7 +100,7 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle"},
     "powerbi": {"python-power-bi==0.1.2"},
     "presto": {"pyhive~=0.6.3"},
-    "trino": {"sqlalchemy-trino"},
+    "trino": {"sqlalchemy-trino==0.4.1"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.8"},
     "redshift": {"sqlalchemy-redshift==0.8.9", "psycopg2-binary", "GeoAlchemy2"},
