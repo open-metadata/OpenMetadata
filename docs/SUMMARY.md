@@ -5,10 +5,9 @@
 * [Introduction](README.md)
 * [Features](overview/features.md)
 * [Roadmap](overview/roadmap.md)
-* [Try OpenMetadata](overview/try-openmetadata/README.md)
-  * [Try OpenMetadata in our Public Sandbox](overview/try-openmetadata/take-it-for-a-spin.md)
-  * [Try OpenMetadata in Docker](overview/try-openmetadata/run-openmetadata/README.md)
-    * [Enable Security](overview/try-openmetadata/run-openmetadata/enable-security.md)
+* [Try OpenMetadata in our Public Sandbox](overview/take-it-for-a-spin.md)
+* [Try OpenMetadata in Docker](overview/run-openmetadata/README.md)
+  * [Enable Security](overview/run-openmetadata/enable-security.md)
 * [Tutorials](overview/tutorials/README.md)
   * [Tutorial: Data Discovery with OpenMetadata](overview/tutorials/tutorial-data-discovery-with-openmetadata.md)
 

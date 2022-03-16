@@ -19,7 +19,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](../../overview/try-openmetadata/run-openmetadata/) to get up and running.
+If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](../../overview/run-openmetadata/) to get up and running.
 
 ### Python (version 3.8.0 or later)
 
@@ -447,6 +447,6 @@ Max retries exceeded with url: /api/v1/services/databaseServices/name/local_sing
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, please follow the steps in the [Run OpenMetadata](../../overview/try-openmetadata/run-openmetadata/) guide to deploy OpenMetadata in Docker on your local machine.
+To correct this problem, please follow the steps in the [Run OpenMetadata](../../overview/run-openmetadata/) guide to deploy OpenMetadata in Docker on your local machine.
 
 Then re-run the metadata ingestion workflow in [Step 12](singlestore.md#run-manually).

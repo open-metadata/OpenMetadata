@@ -191,7 +191,7 @@ Username: `admin`
 
 Password: `admin`
 
-![](../../../.gitbook/assets/airflow-login.png)
+![](../../.gitbook/assets/airflow-login.png)
 
 ### 10. Begin using OpenMetadata
 
@@ -203,13 +203,13 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata server.
 
-![](../../../.gitbook/assets/om-local-landing-page.png)
+![](../../.gitbook/assets/om-local-landing-page.png)
 
 ### Next Steps
 
-1. Visit the [Features](../../features.md) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](../../../integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
-3. Visit the [API](../../../openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
+1. Visit the [Features](../features.md) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](../../integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+3. Visit the [API](../../openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ### Troubleshooting
 
