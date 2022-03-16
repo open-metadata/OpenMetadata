@@ -12,7 +12,7 @@
 
 ## Integrations
 
-* [Metadata Ingestion Overview](integrations/metadata-ingestion.md)
+* [Metadata Ingestion Overview](../metadata-ingestion/metadata-ingestion.md)
 * [Connectors](integrations/connectors/README.md)
   * [Airflow](integrations/connectors/airflow/README.md)
     * [Airflow Metadata Ingestion](integrations/connectors/airflow/airflow.md)
@@ -59,7 +59,7 @@
   * [Trino](integrations/connectors/trino.md)
   * [Vertica](integrations/connectors/vertica.md)
 * [Troubleshoot Connectors](integrations/troubleshoot-connectors.md)
-* [Ingest Sample Data](integrations/ingest-sample-data.md)
+* [Ingest Sample Data](../metadata-ingestion/ingest-sample-data.md)
 
 ## Metadata Standard
 
@@ -206,6 +206,13 @@
 * [Data Quality Overview](../data-quality/data-quality-overview/README.md)
   * [Metrics](../data-quality/data-quality-overview/metrics.md)
   * [Tests](../data-quality/data-quality-overview/tests.md)
+
+## Metadata Versioning
+
+* [Metadata Versioning](metadata-versioning/metadata-versioning.md)
+* [Change Feeds](metadata-versioning/change-feeds.md)
+* [Change Events](metadata-versioning/change-events.md)
+* [Event Notification via Webhooks](metadata-versioning/event-notification-via-webhooks.md)
 
 ## Open Source Community
 
