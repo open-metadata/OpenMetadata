@@ -75,7 +75,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         # Take out the more detailed type information
         # e.g. 'map<ixnt,int>' -> 'map'
         #      'decimal(10,1)' -> decimal
-        raw_data_type = col_type
         col_type = re.search(r"^\w+", col_type).group(0)
         try:
             coltype = _type_map[col_type]
