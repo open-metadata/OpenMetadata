@@ -1,16 +1,16 @@
 # Table of contents
 
-* [Introduction](README.md)
-* [Features](features.md)
-* [Roadmap](roadmap.md)
-* [Try OpenMetadata](../try-openmetadata/README.md)
+* [🔰 Introduction](README.md)
+* [🔰 Features](features.md)
+* [🔰 Roadmap](roadmap.md)
+* [📌 Try OpenMetadata](../try-openmetadata/README.md)
   * [Try OpenMetadata in our Public Sandbox](../try-openmetadata/take-it-for-a-spin.md)
   * [Try OpenMetadata in Docker](try-openmetadata/run-openmetadata/README.md)
     * [Enable Security](try-openmetadata/run-openmetadata/enable-security.md)
-* [Tutorials](tutorials/README.md)
+* [📌 Tutorials](tutorials/README.md)
   * [Tutorial: Data Discovery with OpenMetadata](tutorials/tutorial-data-discovery-with-openmetadata.md)
 
-## Integrations
+## 📦 Integrations
 
 * [Metadata Ingestion Overview](../metadata-ingestion/metadata-ingestion.md)
 * [Connectors](integrations/connectors/README.md)
@@ -61,7 +61,7 @@
 * [Troubleshoot Connectors](integrations/troubleshoot-connectors.md)
 * [Ingest Sample Data](../metadata-ingestion/ingest-sample-data.md)
 
-## Metadata Standard
+## 🧰 Metadata Standard
 
 * [Schemas](openmetadata-apis/schemas/README.md)
   * [JSON Schema](openmetadata-apis/schemas/schema-language.md)
@@ -123,7 +123,7 @@
   * [API Organization](openmetadata-apis/apis/api-organization.md)
   * [Implementation notes](openmetadata-apis/apis/implementation-notes.md)
 
-## Deploy
+## 🧰 Deploy
 
 * [Deploy on Bare Metal](../deploy/deploy-on-bare-metal/README.md)
   * [Deploy OpenMetadata on Bare Metal](../deploy/deploy-on-bare-metal/run-in-production.md)
@@ -166,7 +166,7 @@
   * [Server Configuration Parameters](../deploy/reference/configuration.md)
   * [Connector Configuration Parameters](../deploy/reference/connector-configuration.md)
 
-## Upgrade
+## 🧰 Upgrade
 
 * [Upgrade on Bare Metal](../upgrade/upgrade-on-bare-metal/README.md)
   * [Backup Metadata](../upgrade/upgrade-on-bare-metal/backup-metadata.md)
@@ -175,7 +175,7 @@
   * [Backup Metadata](../upgrade/upgrade-on-kubernetes/backup-metadata.md)
   * [Upgrade OpenMetadata on Kubernetes](../upgrade/upgrade-on-kubernetes/upgrade-openmetadata-on-kubernetes.md)
 
-## Data Discovery
+## 🔎 Data Discovery
 
 * [Keyword Search](data-discovery/keyword-search.md)
 * [Discovery through Association](data-discovery/discovery-through-association.md)
@@ -183,7 +183,7 @@
 * [Complex Data Types](data-discovery/complex-data-types.md)
 * [Deleted Entity Metadata](data-discovery/deleted-entity-metadata.md)
 
-## Data Collaboration
+## 🤝 Data Collaboration
 
 * [Activity Feeds](data-collaboration/activity-feeds.md)
 * [Conversation Threads](data-collaboration/conversation-threads.md)
@@ -191,30 +191,30 @@
 * [Data Importance](data-collaboration/data-importance.md)
 * [Data Ownership](data-collaboration/data-ownership.md)
 
-## Data Lineage
+## 🌿 Data Lineage
 
 * [Lineage Ingestion](data-lineage/lineage-ingestion.md)
 * [Edit Data Lineage Manually](data-lineage/edit-data-lineage-manually.md)
 * [DBT Integration](data-lineage/dbt-integration.md)
 
-## Controlled Vocabulary
+## 📗 Controlled Vocabulary
 
 * [Glossaries](controlled-vocabulary/glossaries.md)
 
-## Data Quality
+## ✅ Data Quality
 
 * [Data Quality Overview](../data-quality/data-quality-overview/README.md)
   * [Metrics](../data-quality/data-quality-overview/metrics.md)
   * [Tests](../data-quality/data-quality-overview/tests.md)
 
-## Metadata Versioning
+## 🔢 Metadata Versioning
 
 * [Metadata Versioning](metadata-versioning/metadata-versioning.md)
 * [Change Feeds](metadata-versioning/change-feeds.md)
 * [Change Events](metadata-versioning/change-events.md)
 * [Event Notification via Webhooks](metadata-versioning/event-notification-via-webhooks.md)
 
-## Open Source Community
+## 🏗 Open Source Community
 
 * [Community](open-source-community/community.md)
 * [UX Style Guide](open-source-community/ux-style-guide.md)
