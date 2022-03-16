@@ -629,6 +629,7 @@ const GlossaryTermsV1 = ({
 
         {showRelatedTermsModal && (
           <RelatedTermsModal
+            glossaryTermFQN={glossaryTerm.fullyQualifiedName}
             header="Add Related Terms"
             relatedTerms={relatedTerms}
             onCancel={onRelatedTermsModalCancel}
