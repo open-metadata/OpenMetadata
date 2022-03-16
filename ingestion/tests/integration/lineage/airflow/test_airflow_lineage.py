@@ -18,6 +18,7 @@ from unittest import TestCase
 
 # The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
+from airflow.models import TaskInstance
 from airflow.operators.bash import BashOperator
 
 from airflow_provider_openmetadata.lineage.openmetadata import (
@@ -143,6 +144,14 @@ class AirflowLineageTest(TestCase):
             context={
                 "dag": self.dag,
                 "task": self.dag.get_task("task1"),
+                "task_instance": TaskInstance(
+                    task=self.dag.get_task("task1"),
+                    execution_date=datetime.strptime(
+                        "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
+                    ),
+                    run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
+                    state="running",
+                ),
             },
         )
 
