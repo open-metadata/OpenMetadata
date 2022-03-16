@@ -33,6 +33,7 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
+from metadata.utils.helpers import get_start_and_end
 
 logger = logging.getLogger(__name__)
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
@@ -80,7 +81,7 @@ class BigQueryConfig(SQLConnectionConfig):
     project_id: Optional[str] = None
     duration: int = 1
     service_type = DatabaseServiceType.BigQuery.value
-    partition_query: str = None
+    partition_query: str = 'select * from {}.{} WHERE DATE({}) >= "{}" LIMIT 1000'
     enable_policy_tags: bool = False
     tag_category_name: str = "BigqueryPolicyTags"
 
@@ -153,7 +154,15 @@ class BigquerySource(SQLSource):
         if not resp_sample_data and self.config.partition_query:
             try:
                 logger.info("Using Query for Partitioned Tables")
-                query = self.config.partition_query.format(schema, table)
+                partition_details = self.inspector.get_indexes(table, schema)
+                start, end = get_start_and_end(self.config.duration)
+
+                query = self.config.partition_query.format(
+                    schema,
+                    table,
+                    partition_details[0]["column_names"][0],
+                    start.strftime("%Y-%m-%d"),
+                )
                 logger.info(query)
                 results = self.connection.execute(query)
                 cols = []
