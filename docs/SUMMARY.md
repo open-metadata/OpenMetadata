@@ -63,7 +63,7 @@
 * [Troubleshoot Connectors](integrations/troubleshoot-connectors.md)
 * [Ingest Sample Data](../metadata-ingestion/ingest-sample-data.md)
 
-## 🧰 Metadata Standard
+## 📐 Metadata Standard
 
 * [Schemas](openmetadata-apis/schemas/README.md)
   * [JSON Schema](openmetadata-apis/schemas/schema-language.md)
@@ -125,7 +125,7 @@
   * [API Organization](openmetadata-apis/apis/api-organization.md)
   * [Implementation notes](openmetadata-apis/apis/implementation-notes.md)
 
-## 🧰 Deploy
+## 🚀 Deploy
 
 * [Deploy on Bare Metal](../deploy/deploy-on-bare-metal/README.md)
   * [Deploy OpenMetadata on Bare Metal](../deploy/deploy-on-bare-metal/run-in-production.md)
