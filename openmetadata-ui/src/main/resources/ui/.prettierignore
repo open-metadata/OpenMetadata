@@ -19,6 +19,9 @@ node_modules/
 build/
 dist/
 
+# mockups
+mock-api/
+
 # Ignore files (Prettier has trouble parsing files without extension)
 .gitignore
 .prettierignore

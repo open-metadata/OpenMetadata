@@ -295,8 +295,14 @@ export const getUserPath = (username: string) => {
   return path;
 };
 
-export const getGlossaryPath = () => {
-  return ROUTES.GLOSSARY;
+export const getGlossaryPath = (fqn?: string) => {
+  let path = ROUTES.GLOSSARY;
+  if (fqn) {
+    path = ROUTES.GLOSSARY_DETAILS;
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+  }
+
+  return path;
 };
 
 export const getGlossaryTermsPath = (

@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, extend } from 'lodash';
+import { cloneDeep, extend, isEmpty } from 'lodash';
 import {
   FormattedGlossarySuggestion,
   GlossarySuggestionHit,
@@ -22,7 +22,7 @@ import {
   SearchResponse,
 } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   deleteGlossary,
@@ -38,6 +38,7 @@ import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
 import {
   getAddGlossaryTermsPath,
+  getGlossaryPath,
   PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
@@ -47,11 +48,14 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import {
   getChildGlossaryTerms,
   getGlossariesWithRootTerms,
   getHierarchicalKeysByFQN,
+  getTermDataFromGlossary,
+  getTermPosFromGlossaries,
   updateGlossaryListBySearchedTerms,
 } from '../../utils/GlossaryUtils';
 
@@ -60,8 +64,7 @@ export type ModifiedGlossaryData = Glossary & {
 };
 
 const GlossaryPageV1 = () => {
-  // const { glossaryName, glossaryTermsFQN } =
-  // useParams<{ [key: string]: string }>();
+  const { glossaryName } = useParams<Record<string, string>>();
 
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -88,6 +91,13 @@ const GlossaryPageV1 = () => {
     currPage: 1,
   });
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
   const handleChildLoading = (status: boolean) => {
     setIsChildLoading(status);
   };
@@ -100,6 +110,16 @@ const GlossaryPageV1 = () => {
     setExpandedKey(key);
   };
 
+  const handleSearchText = (text: string) => {
+    setSearchText(text);
+  };
+
+  /**
+   * Selects glossary after fetching list
+   * if no fqn is present in route params
+   * @param data Glossary to be selected initially
+   * @param noSetData bool to decide if data is already set
+   */
   const initSelectGlossary = (data: Glossary, noSetData = false) => {
     if (!noSetData) {
       setSelectedData(data);
@@ -109,47 +129,24 @@ const GlossaryPageV1 = () => {
     setExpandedKey([data.name]);
   };
 
-  const fetchGlossaryList = (paging = '') => {
-    setIsLoading(true);
-    getGlossariesWithRootTerms(paging, 100, ['owner', 'tags', 'reviewers'])
-      .then((data: ModifiedGlossaryData[]) => {
-        if (data?.length) {
-          setGlossaries(data);
-          setGlossariesList(data);
-          initSelectGlossary(data[0]);
-        } else {
-          setGlossariesList([]);
-        }
-        setIsLoading(false);
-      })
-      .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message ?? 'Something went wrong!',
-        });
-        setIsLoading(false);
-      })
-      .finally(() => {
-        handleChildLoading(false);
-      });
-  };
-
+  /**
+   * To fetch glossary term data
+   * @param fqn fullyQualifiedName of term
+   * @param pos hierarchical position of term in existing tree
+   * @param arrGlossary list of available/fetched glossaries
+   */
   const fetchGlossaryTermByName = (
-    name: string,
-    pos: string[],
-    key?: string
+    fqn: string,
+    pos: number[],
+    arrGlossary: ModifiedGlossaryData[]
   ) => {
-    getGlossaryTermByFQN(name, [
-      'children',
-      'relatedTerms',
-      'reviewers',
-      'tags',
-    ])
+    getGlossaryTermByFQN(fqn, ['children', 'relatedTerms', 'reviewers', 'tags'])
       .then(async (res: AxiosResponse) => {
         const { data } = res;
         if (data) {
-          const clonedGlossaryList = cloneDeep(glossariesList);
-          let treeNode = clonedGlossaryList[+pos[0]];
+          const clonedGlossaryList = cloneDeep(arrGlossary);
+          let treeNode = clonedGlossaryList[pos[0]];
+
           for (let i = 1; i < pos.length; i++) {
             if (treeNode.children) {
               treeNode = treeNode.children[+pos[i]] as ModifiedGlossaryData;
@@ -193,29 +190,188 @@ const GlossaryPageV1 = () => {
           extend(treeNode, { ...data, children });
 
           setSelectedData(data);
-          if (key) {
-            handleSelectedKey(key);
+          if (fqn) {
+            if (!expandedKey.length) {
+              setExpandedKey(getHierarchicalKeysByFQN(fqn));
+            }
+            handleSelectedKey(fqn);
           }
           setGlossariesList(clonedGlossaryList);
           setIsGlossaryActive(false);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-glossary-term-error']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body:
-            err.response?.data?.message ??
-            'Error while fetching glossary terms!',
-        });
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-glossary-term-error']
+        );
       })
       .finally(() => {
+        setIsLoading(false);
         handleChildLoading(false);
         setLoadingKey((pre) => {
-          return pre.filter((item) => item !== key);
+          return pre.filter((item) => item !== fqn);
         });
       });
   };
 
+  /**
+   * To fetch Assets using glossary term
+   * @param fqn fullyQualifiedName of term
+   * @param forceReset bool to reset the page to 1, incase of change in glossary term
+   */
+  const fetchGlossaryTermAssets = (fqn: string, forceReset = false) => {
+    if (fqn) {
+      const tagName = fqn;
+      searchData(
+        '',
+        forceReset ? 1 : assetData.currPage,
+        PAGE_SIZE,
+        `(tags:"${tagName}")`,
+        '',
+        '',
+        myDataSearchIndex
+      )
+        .then((res: SearchResponse) => {
+          const hits = res?.data?.hits?.hits;
+          if (hits?.length > 0) {
+            setAssetData((pre) => {
+              const data = formatDataResponse(hits);
+              const total = res.data.hits.total.value;
+
+              return forceReset
+                ? {
+                    data,
+                    total,
+                    currPage: 1,
+                  }
+                : { ...pre, data, total };
+            });
+          } else {
+            setAssetData((pre) => {
+              const data = [] as GlossaryTermAssets['data'];
+              const total = 0;
+
+              return forceReset
+                ? {
+                    data,
+                    total,
+                    currPage: 1,
+                  }
+                : { ...pre, data, total };
+            });
+          }
+        })
+        .catch((err: AxiosError) => {
+          handleShowErrorToast(
+            err.response?.data?.message ||
+              jsonData['api-error-messages']['elastic-search-error']
+          );
+        });
+    } else {
+      setAssetData({ data: [], total: 0, currPage: 1 });
+    }
+  };
+
+  /**
+   * To select data based on glossary or term name
+   * @param dataFQN fullyQualifiedName of glossary or term
+   * @param arrGlossary list of available/fetched glossaries
+   */
+  const selectDataByFQN = (
+    dataFQN: string,
+    arrGlossary: ModifiedGlossaryData[]
+  ) => {
+    handleChildLoading(true);
+    const hierarchy = getTermPosFromGlossaries(arrGlossary, dataFQN);
+    if (hierarchy.length < 2) {
+      setSelectedData(arrGlossary[hierarchy[0]]);
+      handleSelectedKey(dataFQN);
+      if (!expandedKey.length) {
+        setExpandedKey([dataFQN]);
+      }
+      setIsGlossaryActive(true);
+      setIsLoading(false);
+      handleChildLoading(false);
+    } else {
+      setLoadingKey((pre) => {
+        return !pre.includes(dataFQN) ? [...pre, dataFQN] : pre;
+      });
+      fetchGlossaryTermByName(dataFQN, hierarchy, arrGlossary);
+      fetchGlossaryTermAssets(dataFQN, true);
+    }
+  };
+
+  /**
+   * To check if glossary/term already exists and add to tree if they don't
+   * Then select the glossary/term by it's fqn
+   * @param arrGlossary list of available/fetched glossaries
+   * @param fqn fullyQualifiedName of glossary or term
+   */
+  const checkAndFetchDataByFQN = (
+    arrGlossary: ModifiedGlossaryData[],
+    fqn: string
+  ) => {
+    let modifiedData = cloneDeep(arrGlossary);
+    const arrFQN = getHierarchicalKeysByFQN(fqn);
+    const glossary: ModifiedGlossaryData | GlossaryTerm = modifiedData.find(
+      (item) => item.name === arrFQN[0]
+    ) as ModifiedGlossaryData;
+    const data = getTermDataFromGlossary(glossary, fqn);
+    if (isEmpty(data)) {
+      modifiedData = updateGlossaryListBySearchedTerms(modifiedData, [
+        { fqdn: arrFQN[arrFQN.length - 1] },
+      ] as FormattedGlossarySuggestion[]);
+    }
+    selectDataByFQN(fqn, modifiedData);
+  };
+
+  /**
+   * To fetch the list of all glossaries,
+   * and check for selection if nested fqn available
+   * @param termFqn fullyQualifiedName of term
+   * @param paging cursor pagination
+   */
+  const fetchGlossaryList = (termFqn = '', paging = '') => {
+    setIsLoading(true);
+    getGlossariesWithRootTerms(paging, 1000, ['owner', 'tags', 'reviewers'])
+      .then((data: ModifiedGlossaryData[]) => {
+        if (data?.length) {
+          setGlossaries(data);
+          setGlossariesList(data);
+          if (termFqn) {
+            checkAndFetchDataByFQN(data, termFqn);
+          } else {
+            initSelectGlossary(data[0]);
+            setIsLoading(false);
+            handleChildLoading(false);
+          }
+        } else {
+          setGlossariesList([]);
+          setIsLoading(false);
+          handleChildLoading(false);
+        }
+      })
+      .catch((err: AxiosError) => {
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-glossary-list-error']
+        );
+        setIsLoading(false);
+        handleChildLoading(false);
+      });
+  };
+
+  /**
+   * To update glossary tree based on searched terms
+   * @param arrGlossaries list of glossaries
+   * @param newGlossaries set of glossaries present in searched terms
+   * @param searchedTerms list of formatted searched terms
+   */
   const getSearchedGlossaries = (
     arrGlossaries: ModifiedGlossaryData[],
     newGlossaries: string[],
@@ -247,6 +403,9 @@ const GlossaryPageV1 = () => {
     }
   };
 
+  /**
+   * To fetch terms based on search text
+   */
   const fetchSearchedTerms = useCallback(() => {
     if (searchText) {
       searchData(
@@ -298,6 +457,11 @@ const GlossaryPageV1 = () => {
     }
   }, [searchText]);
 
+  /**
+   * To save updated glossary using patch method
+   * @param updatedData glossary with new values
+   * @returns promise of api response
+   */
   const saveUpdatedGlossaryData = (
     updatedData: Glossary
   ): Promise<AxiosResponse> => {
@@ -309,6 +473,10 @@ const GlossaryPageV1 = () => {
     ) as unknown as Promise<AxiosResponse>;
   };
 
+  /**
+   * To update glossary
+   * @param updatedData glossary with new values
+   */
   const updateGlossary = (updatedData: Glossary) => {
     saveUpdatedGlossaryData(updatedData)
       .then((res: AxiosResponse) => {
@@ -337,17 +505,25 @@ const GlossaryPageV1 = () => {
               }
             });
           });
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-description-error']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body:
-            err.response?.data?.message ?? 'Error while updating description!',
-        });
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['update-description-error']
+        );
       });
   };
 
+  /**
+   * To save updated glossary term using patch method
+   * @param updatedData glossary term with new values
+   * @returns promise of api response
+   */
   const saveUpdatedGlossaryTermData = (
     updatedData: GlossaryTerm
   ): Promise<AxiosResponse> => {
@@ -359,20 +535,33 @@ const GlossaryPageV1 = () => {
     ) as unknown as Promise<AxiosResponse>;
   };
 
+  /**
+   * To update glossary term
+   * @param updatedData glossary term with new values
+   */
   const handleGlossaryTermUpdate = (updatedData: GlossaryTerm) => {
     saveUpdatedGlossaryTermData(updatedData)
       .then((res: AxiosResponse) => {
-        setSelectedData(res.data);
+        if (res.data) {
+          setSelectedData(res.data);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-glossary-term-error']
+          );
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body:
-            err.response?.data?.message ?? 'Error while updating glossaryTerm!',
-        });
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['update-glossary-term-error']
+        );
       });
   };
 
+  /**
+   * To delete glossary by id
+   * @param id glossary id
+   */
   const handleGlossaryDelete = (id: string) => {
     setDeleteStatus('waiting');
     deleteGlossary(id)
@@ -381,14 +570,18 @@ const GlossaryPageV1 = () => {
         fetchGlossaryList();
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message ?? 'Something went wrong!',
-        });
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['delete-glossary-error']
+        );
         setDeleteStatus('initial');
       });
   };
 
+  /**
+   * To delete glossary term by id
+   * @param id glossary term id
+   */
   const handleGlossaryTermDelete = (id: string) => {
     setDeleteStatus('waiting');
     deleteGlossaryTerm(id)
@@ -397,18 +590,24 @@ const GlossaryPageV1 = () => {
         fetchGlossaryList();
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message ?? 'Something went wrong!',
-        });
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['delete-glossary-term-error']
+        );
         setDeleteStatus('initial');
       });
   };
 
+  /**
+   * To redirect to add glossary page
+   */
   const handleAddGlossaryClick = () => {
     history.push(ROUTES.ADD_GLOSSARY);
   };
 
+  /**
+   * To redirct to add glossary term page
+   */
   const handleAddGlossaryTermClick = () => {
     const activeTerm = selectedKey.split('.');
     const glossaryName = activeTerm[0];
@@ -419,88 +618,39 @@ const GlossaryPageV1 = () => {
     }
   };
 
-  const fetchGlossaryTermAssets = (data: GlossaryTerm, forceReset = false) => {
-    if (data?.fullyQualifiedName || data?.name) {
-      const tagName = data?.fullyQualifiedName || data?.name; // Incase fqn is not fetched yet.
-      searchData(
-        '',
-        forceReset ? 1 : assetData.currPage,
-        PAGE_SIZE,
-        `(tags:"${tagName}")`,
-        '',
-        '',
-        myDataSearchIndex
-      ).then((res: SearchResponse) => {
-        const hits = res.data.hits.hits;
-        if (hits.length > 0) {
-          setAssetData((pre) => {
-            const data = formatDataResponse(hits);
-            const total = res.data.hits.total.value;
-
-            return forceReset
-              ? {
-                  data,
-                  total,
-                  currPage: 1,
-                }
-              : { ...pre, data, total };
-          });
-        } else {
-          setAssetData((pre) => {
-            const data = [] as GlossaryTermAssets['data'];
-            const total = 0;
-
-            return forceReset
-              ? {
-                  data,
-                  total,
-                  currPage: 1,
-                }
-              : { ...pre, data, total };
-          });
-        }
-      });
-    } else {
-      setAssetData({ data: [], total: 0, currPage: 1 });
-    }
-  };
-
+  /**
+   * handle assets page change
+   * @param page new page number
+   */
   const handleAssetPagination = (page: number) => {
     setAssetData((pre) => ({ ...pre, currPage: page }));
   };
 
-  const handleSelectedData = (
-    data: Glossary | GlossaryTerm,
-    pos: string,
-    key: string
-  ) => {
-    handleChildLoading(true);
-    const hierarchy = pos.split('-').splice(1);
-    // console.log(hierarchy);
-    if (hierarchy.length < 2) {
-      setSelectedData(data);
-      handleSelectedKey(key);
-      setIsGlossaryActive(true);
-      handleChildLoading(false);
+  /**
+   * handle route change on selecting glossary or glossary term
+   * @param key fqn of glossary or Term
+   */
+  const handleSelectedData = (key: string) => {
+    const path = getGlossaryPath(key);
+    history.push(path);
+  };
+
+  /**
+   * Fetch details to show based on route params
+   * and existing data list
+   */
+  const fetchData = () => {
+    if (glossariesList.length) {
+      checkAndFetchDataByFQN(glossariesList, glossaryName);
     } else {
-      setLoadingKey((pre) => {
-        return !pre.includes(key) ? [...pre, key] : pre;
-      });
-      fetchGlossaryTermByName(
-        (data as GlossaryTerm)?.fullyQualifiedName || data?.name,
-        hierarchy,
-        key
-      );
-      fetchGlossaryTermAssets(data as GlossaryTerm, true);
+      fetchGlossaryList(glossaryName);
     }
   };
 
-  const handleSearchText = (text: string) => {
-    setSearchText(text);
-  };
-
   useEffect(() => {
-    fetchGlossaryTermAssets(selectedData as GlossaryTerm);
+    fetchGlossaryTermAssets(
+      (selectedData as GlossaryTerm)?.fullyQualifiedName || ''
+    );
   }, [assetData.currPage]);
 
   useEffect(() => {
@@ -508,8 +658,8 @@ const GlossaryPageV1 = () => {
   }, [searchText]);
 
   useEffect(() => {
-    fetchGlossaryList();
-  }, []);
+    fetchData();
+  }, [glossaryName]);
 
   return (
     <PageContainerV1 className="tw-pt-4">
