@@ -230,11 +230,11 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
       {confirmationState.state && (
         <ConfirmationModal
           bodyClassName="tw-h-18"
-          bodyText="Are you sure you want to permanently remove this post?"
+          bodyText="Are you sure you want to permanently delete this message?"
           cancelText="Cancel"
           className="tw-w-auto tw-h-screen"
           confirmText="Delete"
-          header="Delete Post?"
+          header="Delete message?"
           onCancel={onDiscard}
           onConfirm={onDelete}
         />

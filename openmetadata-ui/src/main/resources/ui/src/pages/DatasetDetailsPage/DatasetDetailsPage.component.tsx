@@ -773,12 +773,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
           getEntityFeedCount();
           showToast({
             variant: 'success',
-            body: 'Reply deleted successfully',
+            body: 'Message deleted successfully',
           });
         }
       })
       .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting reply' });
+        showToast({ variant: 'error', body: 'Error while deleting message' });
       });
   };
 
