@@ -10,7 +10,7 @@ import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
-import jsonData from '../../jsons/en.json';
+import jsonData from '../../jsons/en';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
