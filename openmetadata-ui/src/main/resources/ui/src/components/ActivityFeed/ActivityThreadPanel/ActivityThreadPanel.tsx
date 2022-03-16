@@ -18,18 +18,21 @@ import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
   getReplyText,
 } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedListSeparator } from '../ActivityFeedList/ActivityFeedList';
 import {
   FeedPanelHeader,
   FeedPanelOverlay,
 } from '../ActivityFeedPanel/ActivityFeedPanel';
+import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import {
   ActivityThreadListProp,
@@ -44,7 +47,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   postFeed,
   onThreadIdSelect,
   onThreadSelect,
-  deletePostHandler,
+  onConfirmation,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -71,7 +74,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                 const replies = thread.postsCount - 1;
                 const repliedUsers = thread.posts
                   .map((f) => f.from)
-                  .slice(1, 3);
+                  .slice(0, postLength >= 3 ? 2 : 1);
                 const lastPost = thread.posts[postLength - 1];
 
                 return (
@@ -102,9 +105,9 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         <ActivityFeedCard
                           isEntityFeed
                           className="tw-mb-6 tw-ml-9"
-                          deletePostHandler={deletePostHandler}
                           feed={lastPost}
                           threadId={thread.id}
+                          onConfirmation={onConfirmation}
                         />
                         <p
                           className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
@@ -142,7 +145,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   className,
   selectedThread,
   postFeed,
-  deletePostHandler,
+  onConfirmation,
 }) => {
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
@@ -181,10 +184,10 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               <ActivityFeedCard
                 isEntityFeed
                 className="tw-mb-3"
-                deletePostHandler={deletePostHandler}
                 feed={reply}
                 key={key}
                 threadId={threadData.id}
+                onConfirmation={onConfirmation}
               />
             ))}
           </Fragment>
@@ -214,17 +217,39 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);
 
-  const entityField = getEntityField(threadLink);
-
-  const onShowNewConversation = (value: boolean) => {
-    setShowNewConversation(value);
-  };
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
+    confirmStateInitialValue
+  );
 
   const getThreads = () => {
     getAllFeeds(threadLink).then((res: AxiosResponse) => {
       const { data } = res.data;
       setThreads(data);
     });
+  };
+
+  const onDiscard = () => {
+    setConfirmationState(confirmStateInitialValue);
+  };
+
+  const onPostDelete = () => {
+    if (confirmationState.postId && confirmationState.threadId) {
+      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+    }
+    onDiscard();
+    setTimeout(() => {
+      getThreads();
+    }, 500);
+  };
+
+  const onConfirmation = (data: ConfirmState) => {
+    setConfirmationState(data);
+  };
+
+  const entityField = getEntityField(threadLink);
+
+  const onShowNewConversation = (value: boolean) => {
+    setShowNewConversation(value);
   };
 
   const postFeed = (value: string) => {
@@ -262,13 +287,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     }, 500);
   };
 
-  const onPostDelete = (threadId: string, postId: string) => {
-    deletePostHandler?.(threadId, postId);
-    setTimeout(() => {
-      getThreads();
-    }, 500);
-  };
-
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -298,7 +316,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-10',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -325,9 +343,9 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             </p>
             <ActivityThread
               className="tw-pb-6 tw-pl-5"
-              deletePostHandler={onPostDelete}
               postFeed={postFeed}
               selectedThread={selectedThread}
+              onConfirmation={onConfirmation}
             />
           </Fragment>
         ) : (
@@ -347,16 +365,22 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             ) : null}
             <ActivityThreadList
               className="tw-py-6 tw-pl-5"
-              deletePostHandler={onPostDelete}
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}
+              onConfirmation={onConfirmation}
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}
             />
           </Fragment>
         )}
       </div>
+      {confirmationState.state && (
+        <DeleteConfirmationModal
+          onDelete={onPostDelete}
+          onDiscard={onDiscard}
+        />
+      )}
     </div>
   );
 };

@@ -36,6 +36,7 @@ class DefaultProfiler(Profiler):
         table: DeclarativeMeta,
         ignore_cols: Optional[List[str]] = None,
         profile_date: datetime = datetime.now(),
+        profile_sample: Optional[float] = None,
     ):
         _metrics = [
             # Table Metrics
@@ -63,5 +64,6 @@ class DefaultProfiler(Profiler):
             session=session,
             table=table,
             ignore_cols=ignore_cols,
-            profile_date=profile_date
+            profile_date=profile_date,
+            profile_sample=profile_sample,
         )

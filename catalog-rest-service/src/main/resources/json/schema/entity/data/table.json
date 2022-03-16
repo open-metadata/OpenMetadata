@@ -390,12 +390,18 @@
           "description": "Data one which profile is taken.",
           "$ref": "../../type/basic.json#/definitions/date"
         },
+        "profileSample": {
+          "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
         "columnCount": {
           "description": "No.of columns in the table.",
           "type": "number"
         },
         "rowCount": {
-          "description": "No.of rows in the table.",
+          "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
         },
         "columnProfile": {
@@ -605,6 +611,13 @@
     "sampleData": {
       "description": "Sample data for a table.",
       "$ref": "#/definitions/tableData",
+      "default": null
+    },
+    "profileSample": {
+      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100].",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100,
       "default": null
     },
     "tableProfile": {

@@ -14,8 +14,8 @@ Histogram Metric definition
 """
 from typing import Optional
 
-from sqlalchemy import and_, func
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, column, func
+from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import QueryMetric
 from metadata.orm_profiler.orm.functions.concat import ConcatFn
@@ -43,7 +43,9 @@ class Histogram(QueryMetric):
     def metric_type(self):
         return dict
 
-    def query(self, session: Optional[Session] = None):
+    def query(
+        self, sample: Optional[DeclarativeMeta], session: Optional[Session] = None
+    ):
         """
         Build the histogram query
         """
@@ -56,33 +58,28 @@ class Histogram(QueryMetric):
         if not is_quantifiable(self.col.type):
             return None
 
+        # Run all queries on top of the sampled data
+        col = column(self.col.name)
+
         num_bins = self.bins if hasattr(self, "bins") else 5
 
         bins = session.query(
-            ((func.max(self.col) - func.min(self.col)) / float(num_bins - 1)).label(
-                "step"
-            )
-        )
+            ((func.max(col) - func.min(col)) / float(num_bins - 1)).label("step"),
+        ).select_from(sample)
 
-        if dict(bins.first()).get("step") == 0:
+        step = dict(bins.first())["step"]
+
+        if step == 0:
             logger.debug(
-                f"MIN({self.col.name}) == MAX({self.col.name}). Aborting histogram computation."
+                f"MIN({col.name}) == MAX({col.name}). Aborting histogram computation."
             )
             return None
 
-        bins_cte = bins.cte("bins")
-
         ranges = session.query(
-            (func.round(self.col / bins_cte.c.step - 0.5, 0) * bins_cte.c.step).label(
-                "bin_floor"
-            ),
-            (
-                func.round(self.col / bins_cte.c.step - 0.5, 0) * bins_cte.c.step
-                + bins_cte.c.step
-            ).label("bin_ceil"),
-        ).join(
-            bins_cte, and_(True)
-        )  # join on 1 = 1 -> we just want the step info
+            sample,
+            (func.round(col / step - 0.5, 0) * step).label("bin_floor"),
+            (func.round(col / step - 0.5, 0) * step + step).label("bin_ceil"),
+        )
         ranges_cte = ranges.cte("ranges")
 
         hist = (

@@ -83,7 +83,7 @@ public class TableRepository extends EntityRepository<Table> {
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints");
   // Table fields that can be updated in a PUT request
   static final Fields TABLE_UPDATE_FIELDS =
-      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,dataModel");
+      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,dataModel,profileSample");
 
   public TableRepository(CollectionDAO dao) {
     super(
@@ -115,6 +115,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
+    table.setProfileSample(fields.contains("profileSample") ? table.getProfileSample() : null);
     table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
     getColumnTests(fields.contains("tests"), table);
     return table;
@@ -969,6 +970,7 @@ public class TableRepository extends EntityRepository<Table> {
       Table origTable = original.getEntity();
       Table updatedTable = updated.getEntity();
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
+      recordChange("profileSample", origTable.getProfileSample(), updatedTable.getProfileSample());
       updateConstraints(origTable, updatedTable);
       updateColumns("columns", origTable.getColumns(), updated.getEntity().getColumns(), EntityUtil.columnMatch);
     }

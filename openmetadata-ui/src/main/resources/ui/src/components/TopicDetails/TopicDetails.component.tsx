@@ -70,6 +70,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   entityFieldThreadCount,
   createThread,
   topicFQN,
+  deletePostHandler,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -377,6 +378,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   isEntityFeed
                   withSidePanel
                   className=""
+                  deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
                   isLoading={isentityThreadLoading}
@@ -404,6 +406,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           {threadLink ? (
             <ActivityThreadPanel
               createThread={createThread}
+              deletePostHandler={deletePostHandler}
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}

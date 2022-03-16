@@ -32,6 +32,7 @@ import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 type Props = {
   data: TableTest;
   tableTestCase: TableTest[];
+  isTableDeleted?: boolean;
   handleAddTableTestCase: (data: CreateTableTest) => void;
   onFormCancel: () => void;
 };
@@ -49,6 +50,7 @@ export const Field = ({
 const TableTestForm = ({
   data,
   tableTestCase,
+  isTableDeleted,
   handleAddTableTestCase,
   onFormCancel,
 }: Props) => {
@@ -64,7 +66,7 @@ const TableTestForm = ({
     data?.testCase?.config?.maxValue
   );
   const [value, setValue] = useState<number | undefined>(
-    data?.testCase.config?.value
+    data?.testCase.config?.value || data?.testCase.config?.columnCount
   );
   const [frequency, setFrequency] = useState<TestCaseExecutionFrequency>(
     data?.executionFrequency
@@ -358,7 +360,7 @@ const TableTestForm = ({
           </Button>
           <Button
             className="tw-w-16 tw-h-10"
-            disabled={isShowError.allTestAdded}
+            disabled={isShowError.allTestAdded || isTableDeleted}
             size="regular"
             theme="primary"
             variant="contained"

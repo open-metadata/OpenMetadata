@@ -38,6 +38,7 @@ def column_values_to_match_regex(
     execution_date: datetime,
     session: Optional[Session] = None,
     table: Optional[DeclarativeMeta] = None,
+    profile_sample: Optional[float] = None,
 ) -> TestCaseResult:
     """
     Validate Column Values metric
@@ -46,6 +47,7 @@ def column_values_to_match_regex(
     :param execution_date: Datetime when the tests ran
     :param session: SQLAlchemy Session, for tests that need to compute new metrics
     :param table: SQLAlchemy Table, for tests that need to compute new metrics
+    :param profile_sample: % of the data to run the profiler on
     :return: TestCaseResult with status and results
     """
 
@@ -67,6 +69,7 @@ def column_values_to_match_regex(
             session=session,
             table=table,
             column=col_profile.name,
+            profile_sample=profile_sample,
         )
 
     except Exception as err:  # pylint: disable=broad-except
