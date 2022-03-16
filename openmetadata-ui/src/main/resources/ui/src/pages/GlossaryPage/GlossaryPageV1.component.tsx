@@ -115,7 +115,7 @@ const GlossaryPageV1 = () => {
   };
 
   /**
-   * Selects Glossary after fetching list
+   * Selects glossary after fetching list
    * if no fqn is present in route params
    * @param data Glossary to be selected initially
    * @param noSetData bool to decide if data is already set
