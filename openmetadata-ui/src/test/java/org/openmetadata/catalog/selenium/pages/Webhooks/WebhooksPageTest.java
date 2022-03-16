@@ -210,6 +210,7 @@ public class WebhooksPageTest {
   void deleteWebhook() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     addWebHook();
+    Thread.sleep(2000);
     String webhookName = webDriver.findElement(webhooks.selectWebhook()).getText();
     Events.click(webDriver, webhooks.selectWebhook());
     Events.click(webDriver, webhooks.deleteWebhook());
