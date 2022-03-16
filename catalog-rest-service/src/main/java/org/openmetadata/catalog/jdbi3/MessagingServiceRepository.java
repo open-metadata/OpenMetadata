@@ -15,12 +15,9 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -224,25 +221,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   public class MessagingServiceUpdater extends EntityUpdater {
     public MessagingServiceUpdater(MessagingService original, MessagingService updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      MessagingService origService = original.getEntity();
-      MessagingService updatedService = updated.getEntity();
-      recordChange("schemaRegistry", origService.getSchemaRegistry(), updatedService.getSchemaRegistry());
-      recordChange(
-          "ingestionSchedule", origService.getIngestionSchedule(), updatedService.getIngestionSchedule(), true);
-      updateBrokers();
-    }
-
-    private void updateBrokers() throws JsonProcessingException {
-      List<String> origBrokers = original.getEntity().getBrokers();
-      List<String> updatedBrokers = updated.getEntity().getBrokers();
-
-      List<String> addedBrokers = new ArrayList<>();
-      List<String> deletedBrokers = new ArrayList<>();
-      recordListChange("brokers", origBrokers, updatedBrokers, addedBrokers, deletedBrokers, EntityUtil.stringMatch);
     }
   }
 }

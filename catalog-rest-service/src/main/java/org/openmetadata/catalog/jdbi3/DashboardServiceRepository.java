@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -25,7 +24,6 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -223,25 +221,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public class DashboardServiceUpdater extends EntityUpdater {
     public DashboardServiceUpdater(DashboardService original, DashboardService updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      updateDashboardUrl();
-      updateIngestionSchedule();
-      recordChange("userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
-      // TODO change recorded for password
-      //      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
-    }
-
-    private void updateDashboardUrl() throws JsonProcessingException {
-      recordChange("dashboardUrl", original.getEntity().getDashboardUrl(), updated.getEntity().getDashboardUrl());
-    }
-
-    private void updateIngestionSchedule() throws JsonProcessingException {
-      Schedule origSchedule = original.getEntity().getIngestionSchedule();
-      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
     }
   }
 }
