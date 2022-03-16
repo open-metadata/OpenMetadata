@@ -27,6 +27,7 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en.json';
 import AddGlossaryTerm from '../AddGlossaryTerm/AddGlossaryTerm.component';
 import PageContainerV1 from '../containers/PageContainerV1';
 import Loader from '../Loader/Loader';
@@ -52,35 +53,57 @@ const AddGlossaryTermPage = () => {
     goToGlossary();
   };
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
+  const handleSaveFailure = (errorMessage = '') => {
+    handleShowErrorToast(
+      errorMessage || jsonData['api-error-messages']['add-glossary-term-error']
+    );
+    setStatus('initial');
+  };
+
   const onSave = (data: CreateGlossaryTerm) => {
     setStatus('waiting');
     addGlossaryTerm(data)
       .then((res) => {
-        setStatus('success');
-        setTimeout(() => {
-          setStatus('initial');
-          goToGlossary(res?.data?.fullyQualifiedName);
-        }, 500);
+        if (res.data) {
+          setStatus('success');
+          setTimeout(() => {
+            setStatus('initial');
+            goToGlossary(res?.data?.fullyQualifiedName);
+          }, 500);
+        } else {
+          handleSaveFailure();
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Something went wrong!',
-        });
-        setStatus('initial');
+        handleSaveFailure(err.response?.data?.message);
       });
   };
 
   const fetchGlossaryData = () => {
     getGlossariesByName(glossaryName, ['tags', 'owner', 'reviewers'])
       .then((res: AxiosResponse) => {
-        setGlossaryData(res.data);
+        if (res.data) {
+          setGlossaryData(res.data);
+        } else {
+          setGlossaryData(undefined);
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-glossary-error']
+          );
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while fetching glossary!',
-        });
+        setGlossaryData(undefined);
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-glossary-error']
+        );
       })
       .finally(() => setIsLoading(false));
   };
@@ -93,14 +116,21 @@ const AddGlossaryTermPage = () => {
       'tags',
     ])
       .then((res: AxiosResponse) => {
-        setParentGlossaryData(res.data);
+        if (res.data) {
+          setParentGlossaryData(res.data);
+        } else {
+          setParentGlossaryData(undefined);
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-glossary-term-error']
+          );
+        }
       })
       .catch((err: AxiosError) => {
         setParentGlossaryData(undefined);
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while fetching glossary terms!',
-        });
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-glossary-term-error']
+        );
       });
   };
 

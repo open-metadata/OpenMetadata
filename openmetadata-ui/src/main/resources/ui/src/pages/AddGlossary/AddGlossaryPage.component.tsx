@@ -10,6 +10,7 @@ import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en.json';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
@@ -29,22 +30,36 @@ const AddGlossaryPage: FunctionComponent = () => {
     goToGlossary();
   };
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
+  const handleSaveFailure = (errorMessage = '') => {
+    handleShowErrorToast(
+      errorMessage || jsonData['api-error-messages']['add-glossary-error']
+    );
+    setStatus('initial');
+  };
+
   const onSave = (data: CreateGlossary) => {
     setStatus('waiting');
     addGlossaries(data)
       .then((res) => {
-        setStatus('success');
-        setTimeout(() => {
-          setStatus('initial');
-          goToGlossary(res?.data?.name);
-        }, 500);
+        if (res.data) {
+          setStatus('success');
+          setTimeout(() => {
+            setStatus('initial');
+            goToGlossary(res.data.name);
+          }, 500);
+        } else {
+          handleSaveFailure();
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Something went wrong!',
-        });
-        setStatus('initial');
+        handleSaveFailure(err.response?.data?.message);
       });
   };
 
@@ -52,7 +67,19 @@ const AddGlossaryPage: FunctionComponent = () => {
     setIsTagLoading(true);
     getTagCategories()
       .then((res) => {
-        setTagList(getTaglist(res.data));
+        if (res.data) {
+          setTagList(getTaglist(res.data));
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-tags-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-tags-error']
+        );
       })
       .finally(() => {
         setIsTagLoading(false);
