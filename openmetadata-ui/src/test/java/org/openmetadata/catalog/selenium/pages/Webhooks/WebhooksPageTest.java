@@ -3,6 +3,7 @@ package org.openmetadata.catalog.selenium.pages.Webhooks;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -17,7 +18,6 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -78,9 +78,9 @@ public class WebhooksPageTest {
     actions.perform();
     Events.click(webDriver, webhooks.saveWebhook());
     Thread.sleep(2000);
-    WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook()));
-    Assert.assertTrue(checkName.isDisplayed());
-    Assert.assertEquals(checkName.getText(), name);
+    if (!webDriver.getPageSource().contains(name)) {
+      Assert.fail("Webhook not added");
+    }
   }
 
   @Test
@@ -165,6 +165,61 @@ public class WebhooksPageTest {
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Webhook event filters are required.");
+  }
+
+  @Test
+  @Order(7)
+  void checkActiveFilter() throws InterruptedException {
+    openWebHookPage();
+    Thread.sleep(1000);
+    Events.click(webDriver, webhooks.selectFilter(2));
+    List<WebElement> activeFilter = webDriver.findElements(webhooks.checkFilter());
+    for (WebElement e : activeFilter) {
+      if (!e.getText().equals("Active")) {
+        Assert.fail("Active filter not working properly");
+      }
+    }
+  }
+
+  @Test
+  @Order(8)
+  void checkDisabledFilter() throws InterruptedException {
+    openWebHookPage();
+    Thread.sleep(1000);
+    Events.click(webDriver, webhooks.selectFilter(1));
+    List<WebElement> disabledFilter = webDriver.findElements(webhooks.checkFilter());
+    for (WebElement e : disabledFilter) {
+      if (!e.getText().equals("Disabled")) {
+        Assert.fail("Disabled filter not working properly");
+      }
+    }
+  }
+
+  @Test
+  @Order(9)
+  void checkFilterWithNoData() throws InterruptedException {
+    openWebHookPage();
+    Events.click(webDriver, webhooks.selectFilter(3));
+    if (!webDriver.getPageSource().contains("No webhooks found for applied filters")) {
+      Assert.fail("Data is available for the selected filter");
+    }
+  }
+
+  @Test
+  @Order(10)
+  void deleteWebhook() throws InterruptedException {
+    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+    openWebHookPage();
+    String webhookName = webDriver.findElement(webhooks.selectWebhook()).getText();
+    Events.click(webDriver, webhooks.selectWebhook());
+    Events.click(webDriver, webhooks.deleteWebhook());
+    Events.click(webDriver, webhooks.save());
+    Thread.sleep(2000);
+    webDriver.navigate().refresh();
+    Thread.sleep(2000);
+    if (webDriver.getPageSource().contains(webhookName)) {
+      Assert.fail("Webhook not deleted");
+    }
   }
 
   @AfterEach
