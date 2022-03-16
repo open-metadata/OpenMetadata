@@ -14,8 +14,8 @@ Unique Count Metric definition
 """
 from typing import Optional
 
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import column, func
+from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import QueryMetric
 
@@ -35,7 +35,9 @@ class UniqueCount(QueryMetric):
     def metric_type(self):
         return int
 
-    def query(self, session: Optional[Session] = None):
+    def query(
+        self, sample: Optional[DeclarativeMeta], session: Optional[Session] = None
+    ):
         """
         Build the Unique Count metric
         """
@@ -44,10 +46,14 @@ class UniqueCount(QueryMetric):
                 "We are missing the session attribute to compute the UniqueCount."
             )
 
+        # Run all queries on top of the sampled data
+        col = column(self.col.name)
+
         only_once = (
-            session.query(func.count(self.col))
-            .group_by(self.col)
-            .having(func.count(self.col) == 1)  # Values that appear only once
+            session.query(func.count(col))
+            .select_from(sample)
+            .group_by(col)
+            .having(func.count(col) == 1)  # Values that appear only once
         )
 
         only_once_cte = only_once.cte("only_once")

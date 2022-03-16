@@ -12,7 +12,7 @@
 """
 Count Metric definition
 """
-from sqlalchemy import func
+from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 
@@ -34,4 +34,4 @@ class Count(StaticMetric):
 
     @_label
     def fn(self):
-        return func.count(self.col)
+        return func.count(column(self.col.name))

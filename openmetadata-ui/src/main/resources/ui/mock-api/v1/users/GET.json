@@ -1,0 +1,656 @@
+{
+  "data": [
+    {
+      "id": "ea4851dc-76d5-4d00-bd87-39bee118f297",
+      "name": "aaron_johnson0",
+      "displayName": "Aaron Johnson",
+      "version": 0.1,
+      "updatedAt": 1646772050864,
+      "updatedBy": "anonymous",
+      "email": "aaron_johnson0@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/ea4851dc-76d5-4d00-bd87-39bee118f297",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "3c1417e3-9e53-4824-91a1-1967fc4940ea",
+          "type": "team",
+          "name": "Cloud_Infra",
+          "description": "This is Cloud_Infra description.",
+          "displayName": "Cloud_Infra",
+          "href": "http://localhost:3000/api/v1/teams/3c1417e3-9e53-4824-91a1-1967fc4940ea"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "6d61de33-2943-452d-ace0-5fd3a8a188fe",
+          "type": "role",
+          "name": "DataSteward",
+          "description": "Users with Data Steward role are responsible for ensuring correctness of metadata for data assets, thereby facilitating data governance principles within the organization.<br/>Data Stewards can update metadata for any entity.",
+          "displayName": "Data Steward",
+          "href": "http://localhost:3000/api/v1/roles/6d61de33-2943-452d-ace0-5fd3a8a188fe"
+        },
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "42832c1f-c8f7-4f5e-adce-11b57c29960c",
+      "name": "aaron_singh2",
+      "displayName": "Aaron Singh",
+      "version": 0.1,
+      "updatedAt": 1646772050920,
+      "updatedBy": "anonymous",
+      "email": "aaron_singh2@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/42832c1f-c8f7-4f5e-adce-11b57c29960c",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "3c1417e3-9e53-4824-91a1-1967fc4940ea",
+          "type": "team",
+          "name": "Cloud_Infra",
+          "description": "This is Cloud_Infra description.",
+          "displayName": "Cloud_Infra",
+          "href": "http://localhost:3000/api/v1/teams/3c1417e3-9e53-4824-91a1-1967fc4940ea"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "0540dbf2-5c63-4065-89b0-38e73b6ede7c",
+      "name": "aaron_warren5",
+      "displayName": "Aaron Warren",
+      "version": 0.1,
+      "updatedAt": 1646772051010,
+      "updatedBy": "anonymous",
+      "email": "aaron_warren5@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/0540dbf2-5c63-4065-89b0-38e73b6ede7c",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+          "type": "team",
+          "name": "Customer_Support",
+          "description": "This is Customer_Support description.",
+          "displayName": "Customer_Support",
+          "href": "http://localhost:3000/api/v1/teams/c6880bc8-73c1-4e45-92db-c2d6e22c45a9"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "cbd91d28-e063-4fc0-be4f-c6bd915be5d2",
+      "name": "adam_matthews2",
+      "displayName": "Adam Matthews",
+      "version": 0.1,
+      "updatedAt": 1646772051121,
+      "updatedBy": "anonymous",
+      "email": "adam_matthews2@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/cbd91d28-e063-4fc0-be4f-c6bd915be5d2",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "9ecbb695-a033-445f-8b8a-7b2e98374f56",
+          "type": "team",
+          "name": "Legal",
+          "description": "This is Legal description.",
+          "displayName": "Legal",
+          "href": "http://localhost:3000/api/v1/teams/9ecbb695-a033-445f-8b8a-7b2e98374f56"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "8f1a9daf-0307-4bc9-8c87-94881e7bed29",
+      "name": "adam_rodriguez9",
+      "displayName": "Adam Rodriguez",
+      "version": 0.1,
+      "updatedAt": 1646772051193,
+      "updatedBy": "anonymous",
+      "email": "adam_rodriguez9@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/8f1a9daf-0307-4bc9-8c87-94881e7bed29",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "d8db7780-e64e-418c-9a37-fc087ece1a61",
+          "type": "team",
+          "name": "Payments",
+          "description": "This is Payments description.",
+          "displayName": "Payments",
+          "href": "http://localhost:3000/api/v1/teams/d8db7780-e64e-418c-9a37-fc087ece1a61"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "47431cb0-bdb2-4c98-98ff-663e45a7e16f",
+      "name": "alec_kane4",
+      "displayName": "Alec Kane",
+      "version": 0.1,
+      "updatedAt": 1646772051248,
+      "updatedBy": "anonymous",
+      "email": "alec_kane4@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/47431cb0-bdb2-4c98-98ff-663e45a7e16f",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+          "type": "team",
+          "name": "Customer_Support",
+          "description": "This is Customer_Support description.",
+          "displayName": "Customer_Support",
+          "href": "http://localhost:3000/api/v1/teams/c6880bc8-73c1-4e45-92db-c2d6e22c45a9"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "edd58290-d220-41b1-a1e7-0162d15d1ba4",
+      "name": "alex_pollard9",
+      "displayName": "Alex Pollard",
+      "version": 0.1,
+      "updatedAt": 1646772051289,
+      "updatedBy": "anonymous",
+      "email": "alex_pollard9@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/edd58290-d220-41b1-a1e7-0162d15d1ba4",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "9ecbb695-a033-445f-8b8a-7b2e98374f56",
+          "type": "team",
+          "name": "Legal",
+          "description": "This is Legal description.",
+          "displayName": "Legal",
+          "href": "http://localhost:3000/api/v1/teams/9ecbb695-a033-445f-8b8a-7b2e98374f56"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "3029cb6c-623e-4060-a167-dadc59edc71b",
+      "name": "alexa_jordan3",
+      "displayName": "Alexa Jordan",
+      "version": 0.1,
+      "updatedAt": 1646772051337,
+      "updatedBy": "anonymous",
+      "email": "alexa_jordan3@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/3029cb6c-623e-4060-a167-dadc59edc71b",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+          "type": "team",
+          "name": "Customer_Support",
+          "description": "This is Customer_Support description.",
+          "displayName": "Customer_Support",
+          "href": "http://localhost:3000/api/v1/teams/c6880bc8-73c1-4e45-92db-c2d6e22c45a9"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "7a8f77dc-48e3-48a7-8f47-92cd6a77c626",
+      "name": "alexander_jackson5",
+      "displayName": "Alexander Jackson",
+      "version": 0.1,
+      "updatedAt": 1646772051374,
+      "updatedBy": "anonymous",
+      "email": "alexander_jackson5@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/7a8f77dc-48e3-48a7-8f47-92cd6a77c626",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "3c1417e3-9e53-4824-91a1-1967fc4940ea",
+          "type": "team",
+          "name": "Cloud_Infra",
+          "description": "This is Cloud_Infra description.",
+          "displayName": "Cloud_Infra",
+          "href": "http://localhost:3000/api/v1/teams/3c1417e3-9e53-4824-91a1-1967fc4940ea"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "f9c4578e-09fe-42fd-9eb8-243728969bd0",
+      "name": "alexander_russell2",
+      "displayName": "Alexander Russell",
+      "version": 0.1,
+      "updatedAt": 1646772051433,
+      "updatedBy": "anonymous",
+      "email": "alexander_russell2@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/f9c4578e-09fe-42fd-9eb8-243728969bd0",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "accbd2d8-94d1-445d-a0c4-fb38de16901f",
+          "type": "team",
+          "name": "Data_Platform",
+          "description": "This is Data_Platform description.",
+          "displayName": "Data_Platform",
+          "href": "http://localhost:3000/api/v1/teams/accbd2d8-94d1-445d-a0c4-fb38de16901f"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "e96e7544-32b6-4bb0-8f49-2b582ec25870",
+      "name": "amanda_bullock6",
+      "displayName": "Amanda Bullock",
+      "version": 0.1,
+      "updatedAt": 1646772051486,
+      "updatedBy": "anonymous",
+      "email": "amanda_bullock6@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/e96e7544-32b6-4bb0-8f49-2b582ec25870",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "672f3cfd-7b5a-48af-911b-e221d6766b85",
+          "type": "team",
+          "name": "Finance",
+          "description": "This is Finance description.",
+          "displayName": "Finance",
+          "href": "http://localhost:3000/api/v1/teams/672f3cfd-7b5a-48af-911b-e221d6766b85"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "e386617d-b428-4f46-8361-ecff9a3fd890",
+      "name": "amanda_york8",
+      "displayName": "Amanda York",
+      "version": 0.1,
+      "updatedAt": 1646772051532,
+      "updatedBy": "anonymous",
+      "email": "amanda_york8@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/e386617d-b428-4f46-8361-ecff9a3fd890",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "3c1417e3-9e53-4824-91a1-1967fc4940ea",
+          "type": "team",
+          "name": "Cloud_Infra",
+          "description": "This is Cloud_Infra description.",
+          "displayName": "Cloud_Infra",
+          "href": "http://localhost:3000/api/v1/teams/3c1417e3-9e53-4824-91a1-1967fc4940ea"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "aa287c52-95f4-4f10-86ce-2fa56ca7c706",
+      "name": "amber_green0",
+      "displayName": "Amber Green",
+      "version": 0.1,
+      "updatedAt": 1646772051569,
+      "updatedBy": "anonymous",
+      "email": "amber_green0@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/aa287c52-95f4-4f10-86ce-2fa56ca7c706",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "672f3cfd-7b5a-48af-911b-e221d6766b85",
+          "type": "team",
+          "name": "Finance",
+          "description": "This is Finance description.",
+          "displayName": "Finance",
+          "href": "http://localhost:3000/api/v1/teams/672f3cfd-7b5a-48af-911b-e221d6766b85"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "6fce83f0-7cf8-484c-aa30-65e7a59cb725",
+      "name": "amy_stephens4",
+      "displayName": "Amy Stephens",
+      "version": 0.1,
+      "updatedAt": 1646772051606,
+      "updatedBy": "anonymous",
+      "email": "amy_stephens4@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/6fce83f0-7cf8-484c-aa30-65e7a59cb725",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "672f3cfd-7b5a-48af-911b-e221d6766b85",
+          "type": "team",
+          "name": "Finance",
+          "description": "This is Finance description.",
+          "displayName": "Finance",
+          "href": "http://localhost:3000/api/v1/teams/672f3cfd-7b5a-48af-911b-e221d6766b85"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "f3cef424-60fd-46e4-89aa-ebeaaa80dffa",
+      "name": "ana_mckay7",
+      "displayName": "Ana Mckay",
+      "version": 0.1,
+      "updatedAt": 1646772051656,
+      "updatedBy": "anonymous",
+      "email": "ana_mckay7@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/f3cef424-60fd-46e4-89aa-ebeaaa80dffa",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "a1a9d760-e042-44b2-9989-1a3ef6a67026",
+          "type": "team",
+          "name": "Marketplace",
+          "description": "This is Marketplace description.",
+          "displayName": "Marketplace",
+          "href": "http://localhost:3000/api/v1/teams/a1a9d760-e042-44b2-9989-1a3ef6a67026"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "c2070eb7-5c1a-42a6-b23c-f95eed6a5019",
+      "name": "andrea_bartlett6",
+      "displayName": "Andrea Bartlett",
+      "version": 0.1,
+      "updatedAt": 1646772051703,
+      "updatedBy": "anonymous",
+      "email": "andrea_bartlett6@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/c2070eb7-5c1a-42a6-b23c-f95eed6a5019",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+          "type": "team",
+          "name": "Customer_Support",
+          "description": "This is Customer_Support description.",
+          "displayName": "Customer_Support",
+          "href": "http://localhost:3000/api/v1/teams/c6880bc8-73c1-4e45-92db-c2d6e22c45a9"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "8cdf4d3e-e40b-4334-bcec-19496a7a047a",
+      "name": "andrea_reed7",
+      "displayName": "Andrea Reed",
+      "version": 0.1,
+      "updatedAt": 1646772051740,
+      "updatedBy": "anonymous",
+      "email": "andrea_reed7@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/8cdf4d3e-e40b-4334-bcec-19496a7a047a",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+          "type": "team",
+          "name": "Customer_Support",
+          "description": "This is Customer_Support description.",
+          "displayName": "Customer_Support",
+          "href": "http://localhost:3000/api/v1/teams/c6880bc8-73c1-4e45-92db-c2d6e22c45a9"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "af6e491f-dccd-44e9-a24e-6b3158172fd4",
+      "name": "andrew_hernandez9",
+      "displayName": "Andrew Hernandez",
+      "version": 0.1,
+      "updatedAt": 1646772051784,
+      "updatedBy": "anonymous",
+      "email": "andrew_hernandez9@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/af6e491f-dccd-44e9-a24e-6b3158172fd4",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "9ecbb695-a033-445f-8b8a-7b2e98374f56",
+          "type": "team",
+          "name": "Legal",
+          "description": "This is Legal description.",
+          "displayName": "Legal",
+          "href": "http://localhost:3000/api/v1/teams/9ecbb695-a033-445f-8b8a-7b2e98374f56"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "629d0e3c-6c4a-4d02-8384-3ea081f0f2d3",
+      "name": "andrew_jackson3",
+      "displayName": "Andrew Jackson",
+      "version": 0.1,
+      "updatedAt": 1646772051832,
+      "updatedBy": "anonymous",
+      "email": "andrew_jackson3@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/629d0e3c-6c4a-4d02-8384-3ea081f0f2d3",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+          "type": "team",
+          "name": "Customer_Support",
+          "description": "This is Customer_Support description.",
+          "displayName": "Customer_Support",
+          "href": "http://localhost:3000/api/v1/teams/c6880bc8-73c1-4e45-92db-c2d6e22c45a9"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    },
+    {
+      "id": "da372488-813e-45b7-8060-d7360d697929",
+      "name": "andrew_jennings3",
+      "displayName": "Andrew Jennings",
+      "version": 0.1,
+      "updatedAt": 1646772051876,
+      "updatedBy": "anonymous",
+      "email": "andrew_jennings3@gmail.com",
+      "href": "http://localhost:3000/api/v1/users/da372488-813e-45b7-8060-d7360d697929",
+      "isAdmin": false,
+      "teams": [
+        {
+          "id": "d8db7780-e64e-418c-9a37-fc087ece1a61",
+          "type": "team",
+          "name": "Payments",
+          "description": "This is Payments description.",
+          "displayName": "Payments",
+          "href": "http://localhost:3000/api/v1/teams/d8db7780-e64e-418c-9a37-fc087ece1a61"
+        }
+      ],
+      "deleted": false,
+      "roles": [
+        {
+          "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+          "type": "role",
+          "name": "DataConsumer",
+          "description": "Users with Data Consumer role use different data assets for their day to day work.",
+          "displayName": "Data Consumer",
+          "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378"
+        }
+      ]
+    }
+  ],
+  "paging": {
+    "after": "6GMaYAOKVB6uK-u60zruvEaYZMnwZkhUNAM48hJiRj4=",
+    "total": 103
+  }
+}

@@ -4,8 +4,9 @@ Mixin class containing Table specific methods
 To be used by OpenMetadata class
 """
 import logging
-from typing import List, Union
+from typing import List, Optional, Union
 
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.location import Location
@@ -175,3 +176,32 @@ class OMetaTableMixin:
         """
 
         return self._add_tests(table=table, test=col_test, path="columnTest")
+
+    def update_profile_sample(
+        self, fqdn: str, profile_sample: float
+    ) -> Optional[Table]:
+        """
+        Update the profileSample property of a Table, given
+        its FQDN.
+
+        :param fqdn: Table FQDN
+        :param profile_sample: new profile sample to set
+        :return: Updated table
+        """
+        table = self.get_by_name(entity=Table, fqdn=fqdn)
+        if table:
+            updated = CreateTableRequest(
+                name=table.name,
+                description=table.description,
+                tableType=table.tableType,
+                columns=table.columns,
+                tableConstraints=table.tableConstraints,
+                profileSample=profile_sample,  # Updated!
+                owner=table.owner,
+                database=table.database,
+                tags=table.tags,
+                viewDefinition=table.viewDefinition,
+            )
+            return self.create_or_update(updated)
+
+        return None

@@ -6,6 +6,7 @@ export interface TreeViewProps {
   showIcon?: boolean;
   selectedKeys?: string[];
   expandedKeys?: string[];
+  loadingKey?: string[];
   handleClick?: (
     event: React.MouseEvent<HTMLElement>,
     node: EventDataNode

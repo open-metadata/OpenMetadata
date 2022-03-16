@@ -1,0 +1,11 @@
+{
+  "className": "org.openmetadata.catalog.security.NoopAuthorizer",
+  "containerRequestFilter": "org.openmetadata.catalog.security.NoopFilter",
+  "adminPrincipals": [
+    "admin"
+  ],
+  "botPrincipals": [
+    "ingestion-bot"
+  ],
+  "principalDomain": ""
+}

@@ -59,7 +59,7 @@ logger = logger()
 
 
 @singledispatch
-def validate(test_case, **kwargs) -> TestCaseResult:
+def validate(test_case, **__) -> TestCaseResult:
     """
     Default function to validate test cases.
 

@@ -126,6 +126,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
                     sql=row["query_text"],
                     service_name=self.config.service_name,
                 )
+                logger.debug(f"Parsed Query: {row['query_text']}")
                 if row["schema_name"] is not None:
                     self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
                 else:

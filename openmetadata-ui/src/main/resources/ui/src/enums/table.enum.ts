@@ -17,3 +17,11 @@ export enum ConstraintTypes {
   NOT_NULL = 'NOT_NULL',
   UNIQUE = 'UNIQUE',
 }
+
+export enum PrimaryTableDataTypes {
+  VARCHAR = 'varchar',
+  TIMESTAMP = 'timestamp',
+  DATE = 'date',
+  NUMERIC = 'numeric',
+  BOOLEAN = 'boolean',
+}

@@ -30,7 +30,7 @@ import {
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ConstraintTypes } from '../enums/table.enum';
+import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { Column, DataType } from '../generated/entity/data/table';
 import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -291,22 +291,22 @@ export const getDataTypeString = (dataType: string): string => {
     case DataType.Mediumtext:
     case DataType.Mediumblob:
     case DataType.Blob:
-      return 'varchar';
+      return PrimaryTableDataTypes.VARCHAR;
     case DataType.Timestamp:
     case DataType.Time:
-      return 'timestamp';
+      return PrimaryTableDataTypes.TIMESTAMP;
     case DataType.Date:
-      return 'date';
+      return PrimaryTableDataTypes.DATE;
     case DataType.Int:
     case DataType.Float:
     case DataType.Smallint:
     case DataType.Bigint:
     case DataType.Numeric:
     case DataType.Tinyint:
-      return 'numeric';
+      return PrimaryTableDataTypes.NUMERIC;
     case DataType.Boolean:
     case DataType.Enum:
-      return 'boolean';
+      return PrimaryTableDataTypes.BOOLEAN;
     default:
       return dataType;
   }

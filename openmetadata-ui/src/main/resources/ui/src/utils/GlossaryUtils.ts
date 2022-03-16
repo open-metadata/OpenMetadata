@@ -11,20 +11,25 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import {
   FormattedGlossarySuggestion,
   FormattedGlossaryTermData,
   SearchResponse,
 } from 'Models';
 import { DataNode } from 'rc-tree/lib/interface';
+import {
+  getGlossaries,
+  getGlossaryTermByFQN,
+  getGlossaryTerms,
+} from '../axiosAPIs/glossaryAPI';
+import { searchData } from '../axiosAPIs/miscAPI';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
-import { getNameFromFQN } from './CommonUtils';
-import { searchData } from '../axiosAPIs/miscAPI';
-import { SearchIndex } from '../enums/search.enum';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { AxiosError } from 'axios';
+import { getNameFromFQN } from './CommonUtils';
 
 export interface GlossaryTermTreeNode {
   children?: GlossaryTermTreeNode[];
@@ -49,6 +54,26 @@ export const getGlossaryTermlist = (
   terms: Array<FormattedGlossaryTermData> = []
 ): Array<string> => {
   return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
+};
+
+export const getChildGlossaryTerms = (
+  listTermFQN: Array<string>
+): Promise<GlossaryTerm[]> => {
+  return new Promise((resolve, reject) => {
+    const promises = listTermFQN.map((term) => {
+      return getGlossaryTermByFQN(term, ['children']);
+    });
+    Promise.allSettled(promises)
+      .then((responses: PromiseSettledResult<AxiosResponse>[]) => {
+        const data = responses.reduce((prev, curr) => {
+          return curr.status === 'fulfilled' ? [...prev, curr.value] : prev;
+        }, [] as AxiosResponse[]);
+        resolve(data.map((item) => item.data));
+      })
+      .catch((err) => {
+        reject(err);
+      });
+  });
 };
 
 export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
@@ -163,4 +188,59 @@ export const getHierarchicalKeysByFQN = (fqn: string) => {
   }, [] as string[]);
 
   return keys;
+};
+
+const getRootTermEmbeddedGlossary = (
+  glossaries: Array<ModifiedGlossaryData>
+): Promise<Array<ModifiedGlossaryData>> => {
+  return new Promise<Array<ModifiedGlossaryData>>((resolve, reject) => {
+    const promises = glossaries.map((glossary) =>
+      getGlossaryTerms(glossary.id, 100, [
+        'children',
+        'relatedTerms',
+        'reviewers',
+        'tags',
+      ])
+    );
+    Promise.allSettled(promises)
+      .then((responses: PromiseSettledResult<AxiosResponse>[]) => {
+        for (let i = 0; i < responses.length; i++) {
+          const res = responses[i];
+          const glossary = glossaries[i];
+          if (res.status === 'fulfilled') {
+            const { data } = res.value.data;
+
+            // Filtering root level terms from glossary
+            glossary.children = data.filter((d: GlossaryTerm) => !d.parent);
+          }
+        }
+        resolve(glossaries);
+      })
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
+};
+
+export const getGlossariesWithRootTerms = (
+  paging = '',
+  limit = 10,
+  arrQueryFields: string[]
+): Promise<Array<ModifiedGlossaryData>> => {
+  return new Promise<Array<ModifiedGlossaryData>>((resolve, reject) => {
+    getGlossaries(paging, limit, arrQueryFields)
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        if (data?.length) {
+          getRootTermEmbeddedGlossary(data)
+            .then((res) => resolve(res))
+            .catch((err) => reject(err));
+        } else {
+          resolve([]);
+        }
+      })
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
 };

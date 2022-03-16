@@ -1,0 +1,306 @@
+{
+  "took": 8,
+  "timed_out": false,
+  "_shards": {
+    "total": 4,
+    "successful": 4,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 2,
+      "relation": "eq"
+    },
+    "max_score": 2.4637282,
+    "hits": [
+      {
+        "_index": "table_search_index",
+        "_type": "_doc",
+        "_id": "07244140-402d-48e0-9b68-3a0f078d334b",
+        "_score": 2.4637282,
+        "_source": {
+          "name": "raw_product_catalog",
+          "fqdn": "bigquery_gcp.shopify.raw_product_catalog",
+          "service": "bigquery_gcp",
+          "deleted": false,
+          "suggest": [
+            {
+              "input": "bigquery_gcp.shopify.raw_product_catalog",
+              "weight": 5
+            },
+            {
+              "input": "raw_product_catalog",
+              "weight": 10
+            }
+          ],
+          "description": "This is a raw product catalog table contains the product listing, price, seller etc.. represented in our online DB.",
+          "tags": [
+            "Health care.Term 2",
+            "PII.Sensitive",
+            "PersonalData.Personal",
+            "User.Address"
+          ],
+          "followers": [],
+          "database": "shopify",
+          "display_name": "raw_product_catalog",
+          "service_type": "BigQuery",
+          "service_category": "databaseService",
+          "entity_type": "table",
+          "last_updated_timestamp": 1646948504918,
+          "change_descriptions": [
+            {
+              "updatedBy": "anonymous",
+              "updatedAt": 1646772061575,
+              "fieldsAdded": [],
+              "fieldsUpdated": [],
+              "fieldsDeleted": []
+            },
+            {
+              "updatedBy": "anonymous",
+              "fieldsAdded": [
+                {
+                  "newValue": "[{\"tagFQN\":\"Health care.Term 2\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                  "name": "columns.platform.tags"
+                }
+              ],
+              "fieldsUpdated": [],
+              "fieldsDeleted": [],
+              "updatedAt": 1646897095509
+            },
+            {
+              "updatedBy": "anonymous",
+              "fieldsAdded": [
+                {
+                  "newValue": "[{\"tagFQN\":\"PII.Sensitive\",\"description\":\"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"PersonalData.Personal\",\"description\":\"Data that can be used to directly or indirectly identify a person.\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"User.Address\",\"source\":\"Tag\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                  "name": "columns.store_address.tags"
+                }
+              ],
+              "fieldsUpdated": [],
+              "fieldsDeleted": [],
+              "updatedAt": 1646897119471
+            },
+            {
+              "updatedBy": "anonymous",
+              "fieldsAdded": [
+                {
+                  "newValue": "[{\"tagFQN\":\"Health care.term1.COBRA\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                  "name": "columns.comments.tags"
+                }
+              ],
+              "fieldsUpdated": [],
+              "fieldsDeleted": [],
+              "updatedAt": 1646898527281
+            },
+            {
+              "updatedBy": "anonymous",
+              "fieldsAdded": [
+                {
+                  "newValue": "{\"id\":\"ea4851dc-76d5-4d00-bd87-39bee118f297\",\"type\":\"user\",\"name\":\"aaron_johnson0\",\"displayName\":\"Aaron Johnson\"}",
+                  "name": "owner"
+                }
+              ],
+              "fieldsUpdated": [],
+              "fieldsDeleted": [],
+              "updatedAt": 1646948483587
+            },
+            {
+              "updatedBy": "anonymous",
+              "fieldsAdded": [],
+              "fieldsUpdated": [],
+              "fieldsDeleted": [
+                {
+                  "name": "columns.comments.tags",
+                  "oldValue": "[{\"tagFQN\":\"Health care.term1.COBRA\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]"
+                }
+              ],
+              "updatedAt": 1646948504918
+            }
+          ],
+          "table_id": "07244140-402d-48e0-9b68-3a0f078d334b",
+          "table_type": "Regular",
+          "column_names": [
+            "comments",
+            "products",
+            "platform",
+            "store_address",
+            "first_order_date",
+            "last_order_date"
+          ],
+          "column_descriptions": [
+            null,
+            null,
+            null,
+            null,
+            "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
+            "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01)."
+          ],
+          "owner": "ea4851dc-76d5-4d00-bd87-39bee118f297"
+        }
+      },
+      {
+        "_index": "dashboard_search_index",
+        "_type": "_doc",
+        "_id": "7468a313-6905-4d50-a0d2-e6175bf8e58d",
+        "_score": 2.0125778,
+        "_source": {
+          "name": "ETA Predictions Performance",
+          "fqdn": "sample_superset.eta_predictions_performance",
+          "service": "sample_superset",
+          "deleted": false,
+          "suggest": [
+            {
+              "input": "sample_superset.eta_predictions_performance",
+              "weight": 5
+            },
+            {
+              "input": "ETA Predictions Performance",
+              "weight": 10
+            }
+          ],
+          "description": "",
+          "tags": [
+            "Health care.term 3.Term 4",
+            "PII.None",
+            "PersonalData.SpecialCategory",
+            "User.Biometric"
+          ],
+          "followers": [],
+          "display_name": "ETA Predictions Performance",
+          "service_type": "Superset",
+          "service_category": "dashboardService",
+          "entity_type": "dashboard",
+          "last_updated_timestamp": 1646899003376,
+          "change_descriptions": [
+            {
+              "updatedBy": "anonymous",
+              "updatedAt": 1646772063477,
+              "fieldsAdded": null,
+              "fieldsUpdated": null,
+              "fieldsDeleted": null
+            },
+            {
+              "updatedBy": "anonymous",
+              "fieldsAdded": [
+                {
+                  "newValue": "{\"id\":\"ea4851dc-76d5-4d00-bd87-39bee118f297\",\"type\":\"user\",\"name\":\"aaron_johnson0\",\"displayName\":\"Aaron Johnson\"}",
+                  "name": "owner"
+                }
+              ],
+              "fieldsUpdated": [],
+              "fieldsDeleted": [],
+              "updatedAt": 1646796667666
+            },
+            {
+              "updatedBy": "anonymous",
+              "fieldsAdded": [
+                {
+                  "newValue": "[{\"tagFQN\":\"Health care.term 3.Term 4\",\"source\":\"Glossary\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"},{\"tagFQN\":\"PII.None\",\"description\":\"Non PII\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"PersonalData.SpecialCategory\",\"description\":\"GDPR special category data is personal information of data subjects that is especially sensitive, the exposure of which could significantly impact the rights and freedoms of data subjects and potentially be used against them for unlawful discrimination.\",\"source\":\"Tag\",\"labelType\":\"Derived\",\"state\":\"Confirmed\"},{\"tagFQN\":\"User.Biometric\",\"source\":\"Tag\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]",
+                  "name": "tags"
+                }
+              ],
+              "fieldsUpdated": [],
+              "fieldsDeleted": [],
+              "updatedAt": 1646899003376
+            }
+          ],
+          "dashboard_id": "7468a313-6905-4d50-a0d2-e6175bf8e58d",
+          "chart_names": [
+            "ETA Predictions Accuracy"
+          ],
+          "chart_descriptions": [
+            ""
+          ],
+          "owner": "ea4851dc-76d5-4d00-bd87-39bee118f297"
+        }
+      }
+    ]
+  },
+  "aggregations": {
+    "sterms#EntityType": {
+      "doc_count_error_upper_bound": 0,
+      "sum_other_doc_count": 0,
+      "buckets": [
+        {
+          "key": "dashboard",
+          "doc_count": 1
+        },
+        {
+          "key": "table",
+          "doc_count": 1
+        }
+      ]
+    },
+    "sterms#ServiceCategory": {
+      "doc_count_error_upper_bound": 0,
+      "sum_other_doc_count": 0,
+      "buckets": [
+        {
+          "key": "dashboardService",
+          "doc_count": 1
+        },
+        {
+          "key": "databaseService",
+          "doc_count": 1
+        }
+      ]
+    },
+    "sterms#Tier": {
+      "doc_count_error_upper_bound": 0,
+      "sum_other_doc_count": 0,
+      "buckets": []
+    },
+    "sterms#Service": {
+      "doc_count_error_upper_bound": 0,
+      "sum_other_doc_count": 0,
+      "buckets": [
+        {
+          "key": "BigQuery",
+          "doc_count": 1
+        },
+        {
+          "key": "Superset",
+          "doc_count": 1
+        }
+      ]
+    },
+    "sterms#Tags": {
+      "doc_count_error_upper_bound": 0,
+      "sum_other_doc_count": 0,
+      "buckets": [
+        {
+          "key": "Health care.Term 2",
+          "doc_count": 1
+        },
+        {
+          "key": "Health care.term 3.Term 4",
+          "doc_count": 1
+        },
+        {
+          "key": "PII.None",
+          "doc_count": 1
+        },
+        {
+          "key": "PII.Sensitive",
+          "doc_count": 1
+        },
+        {
+          "key": "PersonalData.Personal",
+          "doc_count": 1
+        },
+        {
+          "key": "PersonalData.SpecialCategory",
+          "doc_count": 1
+        },
+        {
+          "key": "User.Address",
+          "doc_count": 1
+        },
+        {
+          "key": "User.Biometric",
+          "doc_count": 1
+        }
+      ]
+    }
+  }
+}

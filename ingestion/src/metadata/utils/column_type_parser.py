@@ -44,6 +44,7 @@ class ColumnTypeParser:
         types.INTEGER: "INT",
         types.Integer: "INT",
         types.BigInteger: "BIGINT",
+        types.VARBINARY: "VARBINARY",
     }
 
     _SOURCE_TYPE_TO_OM_TYPE = {
@@ -61,6 +62,7 @@ class ColumnTypeParser:
         "BYTES": "BYTES",
         "CHAR": "CHAR",
         "CHARACTER VARYING": "VARCHAR",
+        "BINARY VARYING": "VARBINARY",
         "CURSOR": "BINARY",
         "DATE": "DATE",
         "DATETIME": "DATETIME",
@@ -133,6 +135,8 @@ class ColumnTypeParser:
         "TIME": "TIME",
         "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
         "TIMESTAMP WITH TIME ZONE": "TIMESTAMP",
+        "TIME WITH TIME ZONE": "TIME",
+        "TIME WITHOUT TIME ZONE": "TIME",
         "TIMESTAMP": "TIMESTAMP",
         "TIMESTAMPTZ": "TIMESTAMP",
         "TIMESTAMP_NTZ": "TIMESTAMP",

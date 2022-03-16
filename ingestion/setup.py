@@ -109,7 +109,7 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         "GeoAlchemy2",
     },
-    "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
+    "snowflake": {"snowflake-sqlalchemy<=1.3.2", "cryptography"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
@@ -153,7 +153,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.9.1.dev0",
+    version="0.9.2.dev1",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

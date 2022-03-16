@@ -53,16 +53,21 @@ import {
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
+  COMMON_ERROR_MSG,
   getDatabaseDetailsPath,
   getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+
 import {
   onConfirmText,
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
+
+import { TEST_DELETE_MSG } from '../../constants/DatasetDetails.constants';
+
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -664,13 +669,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         handleShowTestForm(false);
         showToast({
           variant: 'success',
-          body: `Test ${data.testCase.tableTestType} for ${name} has been added.`,
+          body: `Test ${data.testCase.tableTestType} for ${name} has been ${
+            itsNewTest ? 'added' : 'updated'
+          } successfully.`,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -678,6 +685,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const handleAddColumnTestCase = (data: ColumnTest) => {
     addColumnTestCase(tableDetails.id, data)
       .then((res: AxiosResponse) => {
+        let itsNewTest = true;
         const columnTestRes = res.data.columns.find(
           (d: Column) => d.name === data.columnName
         );
@@ -687,6 +695,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
               (d as ModifiedTableColumn)?.columnTests?.filter(
                 (test) => test.id !== columnTestRes.columnTests[0].id
               ) || [];
+
+            itsNewTest =
+              oldTest.length ===
+              (d as ModifiedTableColumn)?.columnTests?.length;
 
             return {
               ...d,
@@ -701,13 +713,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setSelectedColumn(undefined);
         showToast({
           variant: 'success',
-          body: `Test ${data.testCase.columnTestType} for ${data.columnName} has been added.`,
+          body: `Test ${data.testCase.columnTestType} for ${
+            data.columnName
+          } has been ${itsNewTest ? 'added' : 'updated'} successfully.`,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -719,11 +733,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
           (d) => d.testCase.tableTestType !== testType
         );
         setTableTestCase(updatedTest);
+        showToast({
+          variant: 'success',
+          body: TEST_DELETE_MSG,
+        });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -750,11 +768,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
           return d;
         });
         setColumns(updatedColumns);
+        showToast({
+          variant: 'success',
+          body: TEST_DELETE_MSG,
+        });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };

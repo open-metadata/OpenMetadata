@@ -64,7 +64,7 @@ const TableTestForm = ({
     data?.testCase?.config?.maxValue
   );
   const [value, setValue] = useState<number | undefined>(
-    data?.testCase.config?.value
+    data?.testCase.config?.value || data?.testCase.config?.columnCount
   );
   const [frequency, setFrequency] = useState<TestCaseExecutionFrequency>(
     data?.executionFrequency

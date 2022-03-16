@@ -26,6 +26,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -129,6 +130,10 @@ public class PaginationAndFilterTest {
     webDriver.navigate().refresh();
     Events.click(webDriver, common.headerItem("explore"));
     Events.click(webDriver, common.selectFilterExplore("BigQuery"));
+    Events.click(webDriver, common.home());
+    Thread.sleep(waitTime);
+    actions.moveToElement(webDriver.findElement(common.removeRecentlySearchedText("zzzz"))).perform();
+    Events.click(webDriver, common.removeRecentlySearchedText("zzzz"));
   }
 
   @Test
@@ -173,7 +178,15 @@ public class PaginationAndFilterTest {
     webDriver.navigate().back();
     webDriver.navigate().refresh();
     Thread.sleep(2000);
-    Events.click(webDriver, common.selectFilterExplore("PersonalData.Personal"));
+    try {
+      WebElement viewMore = wait.until(ExpectedConditions.presenceOfElementLocated(common.viewMore()));
+      if (viewMore.isDisplayed()) {
+        Events.click(webDriver, common.viewMore());
+      }
+      Events.click(webDriver, common.selectFilterExplore("PersonalData.Personal"));
+    } catch (TimeoutException | NoSuchElementException e) {
+      Assert.fail("Tag not present");
+    }
     Events.click(webDriver, common.selectFilterExplore("shopify"));
     Thread.sleep(2000);
     Object filteredResults = webDriver.findElements(common.searchResultsList()).size();
