@@ -19,7 +19,10 @@ import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  getGlossaryPath,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
@@ -64,6 +67,7 @@ type Props = {
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: number) => void;
+  onRelatedTermClick?: (fqn: string) => void;
   isChildLoading: boolean;
 };
 
@@ -91,6 +95,7 @@ const GlossaryV1 = ({
   onGlossaryDelete,
   onGlossaryTermDelete,
   onAssetPaginate,
+  onRelatedTermClick,
 }: // handlePathChange,
 Props) => {
   const { isAdminUser } = useAuth();
@@ -103,12 +108,23 @@ Props) => {
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
-  const handleBreadcrum = (arr: Array<string>) => {
-    const newData = arr.map((d) => ({
-      name: d,
-      url: '',
-      activeTitle: true,
-    }));
+  /**
+   * To create breadcrumb from the fqn
+   * @param fqn fqn of glossary or glossary term
+   */
+  const handleBreadcrum = (fqn: string) => {
+    const arr = fqn.split('.');
+    const dataFQN: Array<string> = [];
+    const newData = arr.map((d, i) => {
+      dataFQN.push(d);
+      const isLink = i < arr.length - 1;
+
+      return {
+        name: d,
+        url: isLink ? getGlossaryPath(dataFQN.join('.')) : '',
+        activeTitle: isLink,
+      };
+    });
     setBreadcrumb(newData);
   };
 
@@ -163,7 +179,7 @@ Props) => {
   }, [glossaryList]);
 
   useEffect(() => {
-    handleBreadcrum(selectedKey.split('.'));
+    handleBreadcrum(selectedKey);
   }, [selectedKey]);
 
   const fetchLeftPanel = () => {
@@ -231,7 +247,7 @@ Props) => {
         <div
           className="tw-heading tw-text-link tw-text-base tw--mt-2"
           data-testid="category-name">
-          <TitleBreadcrumb noLink titleLinks={breadcrumb} />
+          <TitleBreadcrumb titleLinks={breadcrumb} />
         </div>
         <div className="tw-relative tw-mr-2">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -291,6 +307,7 @@ Props) => {
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
             isHasAccess={isHasAccess}
             onAssetPaginate={onAssetPaginate}
+            onRelatedTermClick={onRelatedTermClick}
           />
         ))
       )}

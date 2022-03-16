@@ -106,8 +106,20 @@ const GlossaryPageV1 = () => {
     setSelectedKey(key);
   };
 
-  const handleExpandedKey = (key: string[]) => {
-    setExpandedKey(key);
+  /**
+   * Updated expanded keys for RcTree
+   * @param keys expanded keys
+   * @param append to append or replace
+   */
+  const handleExpandedKey = (keys: string[], append = false) => {
+    setExpandedKey((pre) => {
+      let filteredKeys = keys;
+      if (append) {
+        filteredKeys = [...pre, ...keys.filter((key) => !pre.includes(key))];
+      }
+
+      return filteredKeys;
+    });
   };
 
   const handleSearchText = (text: string) => {
@@ -126,7 +138,7 @@ const GlossaryPageV1 = () => {
       setIsGlossaryActive(true);
       setSelectedKey(data.name);
     }
-    setExpandedKey([data.name]);
+    handleExpandedKey([data.name]);
   };
 
   /**
@@ -192,7 +204,7 @@ const GlossaryPageV1 = () => {
           setSelectedData(data);
           if (fqn) {
             if (!expandedKey.length) {
-              setExpandedKey(getHierarchicalKeysByFQN(fqn));
+              handleExpandedKey(getHierarchicalKeysByFQN(fqn), true);
             }
             handleSelectedKey(fqn);
           }
@@ -292,7 +304,7 @@ const GlossaryPageV1 = () => {
       setSelectedData(arrGlossary[hierarchy[0]]);
       handleSelectedKey(dataFQN);
       if (!expandedKey.length) {
-        setExpandedKey([dataFQN]);
+        handleExpandedKey([dataFQN], true);
       }
       setIsGlossaryActive(true);
       setIsLoading(false);
@@ -391,7 +403,7 @@ const GlossaryPageV1 = () => {
           searchedTerms
         );
         setGlossariesList(arrData);
-        setExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
+        handleExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
       });
     } else {
       const arrData = updateGlossaryListBySearchedTerms(
@@ -399,7 +411,7 @@ const GlossaryPageV1 = () => {
         searchedTerms
       );
       setGlossariesList(arrData);
-      setExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
+      handleExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
     }
   };
 
@@ -635,6 +647,12 @@ const GlossaryPageV1 = () => {
     history.push(path);
   };
 
+  const handleRelatedTermClick = (fqn: string) => {
+    const arrFQN = getHierarchicalKeysByFQN(fqn);
+    handleExpandedKey(arrFQN, true);
+    handleSelectedData(fqn);
+  };
+
   /**
    * Fetch details to show based on route params
    * and existing data list
@@ -690,6 +708,7 @@ const GlossaryPageV1 = () => {
           onAssetPaginate={handleAssetPagination}
           onGlossaryDelete={handleGlossaryDelete}
           onGlossaryTermDelete={handleGlossaryTermDelete}
+          onRelatedTermClick={handleRelatedTermClick}
         />
       )}
     </PageContainerV1>

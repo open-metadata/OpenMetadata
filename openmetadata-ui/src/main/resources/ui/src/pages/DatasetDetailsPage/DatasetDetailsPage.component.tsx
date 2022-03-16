@@ -59,15 +59,12 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
-
+import { TEST_DELETE_MSG } from '../../constants/DatasetDetails.constants';
 import {
   onConfirmText,
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
-
-import { TEST_DELETE_MSG } from '../../constants/DatasetDetails.constants';
-
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';

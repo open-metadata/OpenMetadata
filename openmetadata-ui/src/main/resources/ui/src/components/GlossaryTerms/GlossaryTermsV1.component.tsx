@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import {
@@ -48,13 +49,13 @@ import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
   glossaryTerm: GlossaryTerm;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
   onAssetPaginate: (num: number) => void;
+  onRelatedTermClick?: (fqn: string) => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -63,6 +64,7 @@ const GlossaryTermsV1 = ({
   glossaryTerm,
   handleGlossaryTermUpdate,
   onAssetPaginate,
+  onRelatedTermClick,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -613,6 +615,7 @@ const GlossaryTermsV1 = ({
             <RelationshipTab
               addButton={<>{AddRelatedTermButton()}</>}
               data={relatedTerms}
+              onRelatedTermClick={onRelatedTermClick}
             />
           )}
           {activeTab === 2 && (
