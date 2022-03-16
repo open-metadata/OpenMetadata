@@ -446,8 +446,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table deleteCustomMetric(UUID tableId, String columnName, String metricName)
-      throws IOException, ParseException {
+  public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     validateColumn(table, columnName);
