@@ -24,6 +24,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -37,7 +38,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity, WorkflowContext
@@ -198,6 +198,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def next_record(self) -> Iterable[Entity]:
         inspector = inspect(self.engine)
         schema_names = inspector.get_schema_names()
+
         for schema in schema_names:
             # clear any previous source database state
             self.database_source_state.clear()
@@ -638,10 +639,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 and "policy_tags" in column
                                 and column["policy_tags"]
                             ):
-                                self.metadata.create_tag_category(
-                                    category=self.config.tag_category_name,
-                                    data=Tag(
-                                        name=column["policy_tags"], description=""
+                                self.metadata.create_primary_tag(
+                                    category_name=self.config.tag_category_name,
+                                    primary_tag_body=CreateTagRequest(
+                                        name=column["policy_tags"],
+                                        description="Bigquery Policy Tag",
+                                        associatedTags=TagLabel.source.Tag.name,
                                     ),
                                 )
                         except APIError:
