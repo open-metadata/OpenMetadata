@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
 import { ColumnTestType } from '../../../enums/columnTest.enum';
@@ -86,7 +86,7 @@ const DataQualityTable = ({
   const getConfigInfo = (config: TestCaseConfigType) => {
     return !isEmpty(config) && config
       ? Object.entries(config).map((d, i) => (
-          <p key={i}>{`${d[0]}: ${d[1] || '--'}`}</p>
+          <p key={i}>{`${d[0]}: ${!isUndefined(d[1]) ? d[1] : '--'}`}</p>
         ))
       : '--';
   };
