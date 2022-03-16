@@ -409,12 +409,12 @@ const TopicDetailsPage: FunctionComponent = () => {
           getEntityFeedCount();
           showToast({
             variant: 'success',
-            body: 'Post got deleted successfully',
+            body: 'Reply deleted successfully',
           });
         }
       })
       .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting post' });
+        showToast({ variant: 'error', body: 'Error while deleting reply' });
       });
   };
 
