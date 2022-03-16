@@ -99,7 +99,6 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   threadData,
   className,
   isLoading,
-  deletePostHandler,
   onConfirmation,
 }) => {
   const repliesLength = threadData?.posts?.length ?? 0;
@@ -135,7 +134,6 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                 <ActivityFeedCard
                   isEntityFeed
                   className="tw-mb-3"
-                  deletePostHandler={deletePostHandler}
                   feed={reply}
                   key={key}
                   threadId={threadData.id}
@@ -170,7 +168,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
     setConfirmationState(confirmStateInitialValue);
   };
 
-  const onDelete = () => {
+  const onPostDelete = () => {
     if (confirmationState.postId && confirmationState.threadId) {
       deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
     }
@@ -223,7 +221,10 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         />
       </div>
       {confirmationState.state && (
-        <DeleteConfirmationModal onDelete={onDelete} onDiscard={onDiscard} />
+        <DeleteConfirmationModal
+          onDelete={onPostDelete}
+          onDiscard={onDiscard}
+        />
       )}
     </div>
   );

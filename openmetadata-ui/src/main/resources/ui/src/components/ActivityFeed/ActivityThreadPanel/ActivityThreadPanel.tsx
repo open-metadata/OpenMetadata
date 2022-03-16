@@ -47,7 +47,6 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   postFeed,
   onThreadIdSelect,
   onThreadSelect,
-  deletePostHandler,
   onConfirmation,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
@@ -106,7 +105,6 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         <ActivityFeedCard
                           isEntityFeed
                           className="tw-mb-6 tw-ml-9"
-                          deletePostHandler={deletePostHandler}
                           feed={lastPost}
                           threadId={thread.id}
                           onConfirmation={onConfirmation}
@@ -147,7 +145,6 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   className,
   selectedThread,
   postFeed,
-  deletePostHandler,
   onConfirmation,
 }) => {
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
@@ -187,7 +184,6 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               <ActivityFeedCard
                 isEntityFeed
                 className="tw-mb-3"
-                deletePostHandler={deletePostHandler}
                 feed={reply}
                 key={key}
                 threadId={threadData.id}
@@ -225,15 +221,25 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     confirmStateInitialValue
   );
 
+  const getThreads = () => {
+    getAllFeeds(threadLink).then((res: AxiosResponse) => {
+      const { data } = res.data;
+      setThreads(data);
+    });
+  };
+
   const onDiscard = () => {
     setConfirmationState(confirmStateInitialValue);
   };
 
-  const onDelete = () => {
+  const onPostDelete = () => {
     if (confirmationState.postId && confirmationState.threadId) {
       deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
     }
     onDiscard();
+    setTimeout(() => {
+      getThreads();
+    }, 500);
   };
 
   const onConfirmation = (data: ConfirmState) => {
@@ -244,13 +250,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
 
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
-  };
-
-  const getThreads = () => {
-    getAllFeeds(threadLink).then((res: AxiosResponse) => {
-      const { data } = res.data;
-      setThreads(data);
-    });
   };
 
   const postFeed = (value: string) => {
@@ -283,13 +282,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       about: threadLink,
     };
     createThread(data);
-    setTimeout(() => {
-      getThreads();
-    }, 500);
-  };
-
-  const onPostDelete = (threadId: string, postId: string) => {
-    deletePostHandler?.(threadId, postId);
     setTimeout(() => {
       getThreads();
     }, 500);
@@ -351,7 +343,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             </p>
             <ActivityThread
               className="tw-pb-6 tw-pl-5"
-              deletePostHandler={onPostDelete}
               postFeed={postFeed}
               selectedThread={selectedThread}
               onConfirmation={onConfirmation}
@@ -374,7 +365,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             ) : null}
             <ActivityThreadList
               className="tw-py-6 tw-pl-5"
-              deletePostHandler={onPostDelete}
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}
@@ -386,7 +376,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
         )}
       </div>
       {confirmationState.state && (
-        <DeleteConfirmationModal onDelete={onDelete} onDiscard={onDiscard} />
+        <DeleteConfirmationModal
+          onDelete={onPostDelete}
+          onDiscard={onDiscard}
+        />
       )}
     </div>
   );

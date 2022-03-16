@@ -58,7 +58,6 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   postFeed,
   onViewMore,
   selctedThreadId,
-  deletePostHandler,
   onConfirmation,
 }) => {
   return (
@@ -110,7 +109,6 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   ) : null}
                   <ActivityFeedCard
                     className="tw-mb-6 tw-ml-9"
-                    deletePostHandler={deletePostHandler}
                     feed={lastPost}
                     isEntityFeed={isEntityFeed}
                     threadId={feed.id}
@@ -171,7 +169,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     setConfirmationState(confirmStateInitialValue);
   };
 
-  const onDelete = () => {
+  const onPostDelete = () => {
     if (confirmationState.postId && confirmationState.threadId) {
       deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
     }
@@ -284,7 +282,10 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         </Fragment>
       )}
       {confirmationState.state && (
-        <DeleteConfirmationModal onDelete={onDelete} onDiscard={onDiscard} />
+        <DeleteConfirmationModal
+          onDelete={onPostDelete}
+          onDiscard={onDiscard}
+        />
       )}
     </div>
   );

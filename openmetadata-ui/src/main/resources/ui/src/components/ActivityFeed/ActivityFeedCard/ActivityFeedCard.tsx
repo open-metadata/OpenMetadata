@@ -36,7 +36,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   lastReplyTimeStamp,
   onThreadSelect,
   isFooterVisible = false,
-  deletePostHandler,
   onConfirmation,
 }) => {
   const entityType = getEntityType(entityLink as string);
@@ -58,7 +57,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       />
       <FeedCardBody
         className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
-        deletePostHandler={deletePostHandler}
         isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
         message={feed.message}
         postId={feed.id}

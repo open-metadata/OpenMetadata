@@ -29,7 +29,6 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   lastReplyTimeStamp?: number;
   isFooterVisible?: boolean;
   onThreadSelect?: (id: string) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
   onConfirmation?: (data: ConfirmState) => void;
 }
 export interface FeedHeaderProp
@@ -43,7 +42,7 @@ export interface FeedHeaderProp
 }
 export interface FeedBodyProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'deletePostHandler' | 'onConfirmation'> {
+    Pick<ActivityFeedCardProp, 'onConfirmation'> {
   message: string;
   postId?: string;
   threadId?: string;
