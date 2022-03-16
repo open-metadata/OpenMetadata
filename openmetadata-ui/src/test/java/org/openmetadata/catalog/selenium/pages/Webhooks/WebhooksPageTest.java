@@ -209,7 +209,7 @@ public class WebhooksPageTest {
   @Order(10)
   void deleteWebhook() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    openWebHookPage();
+    addWebHook();
     String webhookName = webDriver.findElement(webhooks.selectWebhook()).getText();
     Events.click(webDriver, webhooks.selectWebhook());
     Events.click(webDriver, webhooks.deleteWebhook());
