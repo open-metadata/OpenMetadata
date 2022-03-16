@@ -18,7 +18,7 @@ from functools import wraps
 from typing import Any, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy import Column
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import DeclarativeMeta, Session
 
 # When creating complex metrics, use inherit_cache = CACHE
 CACHE = True
@@ -157,11 +157,14 @@ class StaticMetric(Metric, ABC):
 class QueryMetric(Metric, ABC):
     """
     Metric that needs to execute a fully fledged
-    query to output +1 rows as a result
+    query to output +1 rows as a result or that
+    need multiple steps in the computations.
     """
 
     @abstractmethod
-    def query(self, session: Optional[Session] = None):
+    def query(
+        self, sample: Optional[DeclarativeMeta], session: Optional[Session] = None
+    ):
         """
         SQLAlchemy query to execute with .all()
 

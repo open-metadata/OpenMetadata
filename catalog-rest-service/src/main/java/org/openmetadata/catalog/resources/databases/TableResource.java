@@ -112,7 +112,7 @@ public class TableResource {
   }
 
   static final String FIELDS =
-      "tableConstraints,usageSummary,owner,"
+      "tableConstraints,usageSummary,owner,profileSample,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
   public static final List<String> ALLOWED_FIELDS;
 
@@ -632,6 +632,7 @@ public class TableResource {
         .withTableType(create.getTableType())
         .withTags(create.getTags())
         .withViewDefinition(create.getViewDefinition())
+        .withProfileSample(create.getProfileSample())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withOwner(create.getOwner())
         .withUpdatedAt(System.currentTimeMillis())

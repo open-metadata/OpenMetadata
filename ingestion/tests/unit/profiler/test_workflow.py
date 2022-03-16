@@ -188,8 +188,23 @@ def test_default_profile_def():
         nickname = sqa.Column(sqa.String(256))
         age = sqa.Column(sqa.Integer)
 
+    table = Table(
+        id=uuid.uuid4(),
+        name="users",
+        fullyQualifiedName="service.db.users",
+        columns=[
+            Column(name="id", dataType=DataType.INT),
+            Column(name="name", dataType=DataType.STRING),
+            Column(name="fullname", dataType=DataType.STRING),
+            Column(name="nickname", dataType=DataType.STRING),
+            Column(name="age", dataType=DataType.INT),
+        ],
+        database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
+        profileSample=80.0,
+    )
+
     assert isinstance(
-        profile_workflow.processor.build_profiler(User),
+        profile_workflow.processor.build_profiler(User, table=table),
         DefaultProfiler,
     )
 

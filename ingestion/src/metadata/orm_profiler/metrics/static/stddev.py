@@ -12,6 +12,7 @@
 """
 Population Standard deviation Metric definition
 """
+from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
@@ -69,7 +70,7 @@ class StdDev(StaticMetric):
     @_label
     def fn(self):
         if is_quantifiable(self.col.type):
-            return StdDevFn(self.col)
+            return StdDevFn(column(self.col.name))
 
         logger.debug(
             f"{self.col} has type {self.col.type}, which is not listed as quantifiable."
