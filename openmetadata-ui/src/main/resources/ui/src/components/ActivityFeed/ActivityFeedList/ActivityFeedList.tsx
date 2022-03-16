@@ -15,18 +15,14 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
-import {
-  confirmationBodyText,
-  confirmHeadertext,
-  confirmStateInitialValue,
-} from '../../../constants/feed.constants';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
+import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
 import {
@@ -288,16 +284,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         </Fragment>
       )}
       {confirmationState.state && (
-        <ConfirmationModal
-          bodyClassName="tw-h-18"
-          bodyText={confirmationBodyText}
-          cancelText="Cancel"
-          className="tw-w-auto tw-h-screen"
-          confirmText="Delete"
-          header={confirmHeadertext}
-          onCancel={onDiscard}
-          onConfirm={onDelete}
-        />
+        <DeleteConfirmationModal onDelete={onDelete} onDiscard={onDiscard} />
       )}
     </div>
   );

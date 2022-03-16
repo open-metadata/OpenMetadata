@@ -17,19 +17,15 @@ import classNames from 'classnames';
 import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import {
-  confirmationBodyText,
-  confirmHeadertext,
-  confirmStateInitialValue,
-} from '../../../constants/feed.constants';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
 import { Button } from '../../buttons/Button/Button';
 import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
-import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import {
   ActivityFeedPanelProp,
   FeedPanelBodyProp,
@@ -227,16 +223,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         />
       </div>
       {confirmationState.state && (
-        <ConfirmationModal
-          bodyClassName="tw-h-18"
-          bodyText={confirmationBodyText}
-          cancelText="Cancel"
-          className="tw-w-auto tw-h-screen"
-          confirmText="Delete"
-          header={confirmHeadertext}
-          onCancel={onDiscard}
-          onConfirm={onDelete}
-        />
+        <DeleteConfirmationModal onDelete={onDelete} onDiscard={onDiscard} />
       )}
     </div>
   );
