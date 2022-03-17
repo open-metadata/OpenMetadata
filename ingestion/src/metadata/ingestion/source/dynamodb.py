@@ -62,7 +62,7 @@ class DynamodbSource(Source[Entity]):
 
     def next_record(self) -> Iterable[Entity]:
         try:
-            table_list = list(self.dynamodb.tables.all())
+            table_list = self.get_tables()
             if not table_list:
                 return
             yield from self.ingest_tables()
@@ -73,7 +73,7 @@ class DynamodbSource(Source[Entity]):
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
         try:
-            tables = list(self.dynamodb.tables.all())
+            tables = self.get_tables()
             for table in tables:
                 if not self.config.table_filter_pattern.included(table.name):
                     self.status.filter(
@@ -131,3 +131,6 @@ class DynamodbSource(Source[Entity]):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def get_tables(self):
+        return list(self.dynamodb.tables.all())
