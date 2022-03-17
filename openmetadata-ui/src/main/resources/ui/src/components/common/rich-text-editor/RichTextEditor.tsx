@@ -78,12 +78,9 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
     };
 
     useImperativeHandle(ref, () => ({
-      getEditorContent(format: 'json' | 'markdown') {
-        switch (format) {
-          case Format.MARKDOWN:
-          default:
-            return draftjsToMd(convertToRaw(editorState.getCurrentContent()));
-        }
+      getEditorContent(_format: 'json' | 'markdown') {
+        // use switch case for multiple format support
+        return draftjsToMd(convertToRaw(editorState.getCurrentContent()));
       },
     }));
 
