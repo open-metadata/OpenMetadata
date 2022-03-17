@@ -19,6 +19,7 @@ import {
   Constraint,
   DataType,
   LabelType,
+  Source,
   State,
   Table,
 } from '../../generated/entity/data/table';
@@ -50,10 +51,16 @@ const mockColumns: Table['columns'] = [
     name: 'address_id',
     ordinalPosition: 1,
     tags: [
-      { tagFQN: 'string', labelType: LabelType.Manual, state: State.Confirmed },
+      {
+        tagFQN: 'string',
+        labelType: LabelType.Manual,
+        source: Source.Tag,
+        state: State.Confirmed,
+      },
       {
         tagFQN: 'string2',
         labelType: LabelType.Derived,
+        source: Source.Tag,
         state: State.Confirmed,
       },
     ],
