@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash';
 import React, { useState } from 'react';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
 import { errorMsg, isValidUrl } from '../../../utils/CommonUtils';
@@ -62,7 +62,11 @@ const GlossaryReferenceModal = ({
       }))
       .filter((item) => item.name && item.endpoint);
     if (isValid(refList)) {
-      onSave(references);
+      if (!isEqual(referenceList, refList)) {
+        onSave(refList);
+      } else {
+        onCancel();
+      }
     } else {
       setErrMsg('Endpoints should be valid URL.');
     }
@@ -86,6 +90,7 @@ const GlossaryReferenceModal = ({
         </div>
         <div className="tw-modal-footer" data-testid="cta-container">
           <Button
+            data-testid="cancelButton"
             size="regular"
             theme="primary"
             variant="link"
