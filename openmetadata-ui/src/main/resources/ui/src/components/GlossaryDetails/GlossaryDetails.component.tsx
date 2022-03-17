@@ -191,7 +191,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           className={classNames('tw-h-8 tw-rounded tw-mr-1', {
             'tw-opacity-40': isHasAccess,
           })}
-          data-testid="add-new-tag-button"
+          data-testid="add-new-reviewer"
           size="small"
           theme="primary"
           variant="contained"

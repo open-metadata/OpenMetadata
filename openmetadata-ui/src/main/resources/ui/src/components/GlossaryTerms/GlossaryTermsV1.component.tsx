@@ -306,7 +306,7 @@ const GlossaryTermsV1 = ({
           className={classNames('tw-h-8 tw-rounded', {
             'tw-opacity-40': isHasAccess,
           })}
-          data-testid="add-new-tag-button"
+          data-testid="add-new-reviewer"
           size="small"
           theme="primary"
           variant="contained"
