@@ -16,6 +16,7 @@ import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
+import { TableType } from '../../generated/entity/data/table';
 import { pluralize } from '../../utils/CommonUtils';
 import {
   getOwnerFromId,
@@ -124,7 +125,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             name={name}
             owner={getOwnerFromId(table.owner)?.name}
             serviceType={table.serviceType || '--'}
-            tableType={table.tableType}
+            tableType={table.tableType as TableType}
             tags={table.tags}
             tier={
               (table.tier || getTierFromSearchTableTags(table.tags))?.split(
