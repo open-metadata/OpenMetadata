@@ -112,7 +112,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         <Fragment>
           {relativeDays.map((d, i) => {
             return (
-              <Fragment key={i}>
+              <div data-testid="feed" key={i}>
                 <FeedListSeparator
                   className="tw-relative tw-mt-1 tw-mb-3.5"
                   relativeDay={d}
@@ -131,7 +131,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   onThreadSelect={onThreadSelect}
                   onViewMore={onViewMore}
                 />
-              </Fragment>
+              </div>
             );
           })}
           {withSidePanel && selectedThread && isPanelOpen ? (
