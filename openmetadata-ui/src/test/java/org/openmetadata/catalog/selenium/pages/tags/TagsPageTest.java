@@ -222,7 +222,8 @@ public class TagsPageTest {
     Events.click(webDriver, common.saveAssociatedTag());
   }
 
-  @Test
+  // DO NOT DELETE
+  /*@Test
   @Order(10)
   public void addTagWithExistingName() throws InterruptedException {
     openTagsPage();
@@ -243,7 +244,7 @@ public class TagsPageTest {
     Thread.sleep(2000);
     String usageCount = webDriver.findElement(tagsPage.aTagUsageCountElementIndex(1)).getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not Used");
-  }
+  }*/
 
   @Test
   @Order(11)
@@ -259,7 +260,8 @@ public class TagsPageTest {
     Assert.assertEquals(afterFilterCount, beforeFilterCount);
   }
 
-  @Test
+  // DO NOT DELETE
+  /*@Test
   @Order(12)
   public void removeTagWithExistingName() throws InterruptedException {
     openTagsPage();
@@ -280,7 +282,7 @@ public class TagsPageTest {
     Thread.sleep(2000);
     String usageCount = webDriver.findElement(tagsPage.spanTagUsageCountElementIndex(2)).getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not used");
-  }
+  }*/
 
   @Test
   @Order(13)

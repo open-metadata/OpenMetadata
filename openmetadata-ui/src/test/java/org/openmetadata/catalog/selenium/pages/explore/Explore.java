@@ -221,6 +221,7 @@ class Explore {
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());
+    webDriver.navigate().refresh();
     Events.click(webDriver, explorePage.lastUpdatedSort());
     Events.click(webDriver, explorePage.lastUpdatedSort());
     Thread.sleep(2000);
