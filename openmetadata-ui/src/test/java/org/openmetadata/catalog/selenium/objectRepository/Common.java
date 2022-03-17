@@ -38,7 +38,7 @@ public class Common {
   By searchResults = By.cssSelector("[data-testid='search-results']");
   By searchBar = By.cssSelector("[data-testid='searchBox']");
   By searchSuggestion = By.cssSelector("[data-testid='data-name']");
-  By editAssociatedTagButton = By.xpath("//div[@data-testid='tag-conatiner']//span");
+  By editAssociatedTagButton = By.xpath("//div[@data-testid='tag-container']//span");
   By enterAssociatedTagName = By.cssSelector("[data-testid='associatedTagName']");
   By tagListItem = By.cssSelector("[data-testid='list-item']");
   By saveAssociatedTag = By.cssSelector("[data-testid='saveAssociatedTag']");
@@ -51,7 +51,7 @@ public class Common {
   By databaseName = By.cssSelector("[data-testid='database']");
   By addTagCategory = By.cssSelector("[data-testid='add-category']");
   By addTagButton = By.cssSelector("[data-testid='add-new-tag-button']");
-  By tagCount = By.xpath("//div[@data-testid='tag-conatiner']/div/div");
+  By tagCount = By.xpath("//div[@data-testid='tag-container']/div/div");
   By errorMessage = By.cssSelector("[data-testid='error-message']");
   By matchesInDescription = By.xpath("(//div[@data-testid='matches-stats'][1])/span[3]");
   By tagCountSearch = By.xpath("(//div[@data-testid='description-text'][1])/div/span/span[@class='text-highlighter']");
@@ -80,11 +80,12 @@ public class Common {
   By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
   By topics = By.xpath("(//button[@data-testid='tab'])[2]");
   By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[1]");
-  By addTag = By.xpath("(//div[@data-testid='tag-conatiner'])[1]");
+  By addTag = By.xpath("(//div[@data-testid='tag-container'])[1]");
   By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])");
   By tagsAdded = By.cssSelector("span[class='tw-no-underline hover:tw-no-underline tw-px-1']");
   By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
   By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p]");
+  By home = By.cssSelector("[data-testid='image']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
@@ -160,5 +161,17 @@ public class Common {
 
   public By selectTableLink(int index) {
     return By.xpath("(//button[@data-testid='table-link'])[" + index + "]");
+  }
+
+  public By followingTable(String table) {
+    return By.xpath("//div[@data-testid='Following data-" + table + "']");
+  }
+
+  public By recentlySearchedText(String text) {
+    return By.xpath("//div[@data-testid='Recently-Search-" + text + "']");
+  }
+
+  public By removeRecentlySearchedText(String text) {
+    return By.xpath("//div[@data-testid='Recently-Search-" + text + "']/div/div/button/img");
   }
 }

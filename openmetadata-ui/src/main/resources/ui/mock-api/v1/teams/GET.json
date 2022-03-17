@@ -1,0 +1,91 @@
+{
+  "data": [
+    {
+      "id": "3c1417e3-9e53-4824-91a1-1967fc4940ea",
+      "name": "Cloud_Infra",
+      "displayName": "Cloud_Infra",
+      "description": "This is Cloud_Infra description.",
+      "version": 0.1,
+      "updatedAt": 1646772050836,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/teams/3c1417e3-9e53-4824-91a1-1967fc4940ea",
+      "deleted": false,
+      "defaultRoles": []
+    },
+    {
+      "id": "c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+      "name": "Customer_Support",
+      "displayName": "Customer_Support",
+      "description": "This is Customer_Support description.",
+      "version": 0.1,
+      "updatedAt": 1646772050977,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/teams/c6880bc8-73c1-4e45-92db-c2d6e22c45a9",
+      "deleted": false,
+      "defaultRoles": []
+    },
+    {
+      "id": "accbd2d8-94d1-445d-a0c4-fb38de16901f",
+      "name": "Data_Platform",
+      "displayName": "Data_Platform",
+      "description": "This is Data_Platform description.",
+      "version": 0.1,
+      "updatedAt": 1646772051418,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/teams/accbd2d8-94d1-445d-a0c4-fb38de16901f",
+      "deleted": false,
+      "defaultRoles": []
+    },
+    {
+      "id": "672f3cfd-7b5a-48af-911b-e221d6766b85",
+      "name": "Finance",
+      "displayName": "Finance",
+      "description": "This is Finance description.",
+      "version": 0.1,
+      "updatedAt": 1646772051471,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/teams/672f3cfd-7b5a-48af-911b-e221d6766b85",
+      "deleted": false,
+      "defaultRoles": []
+    },
+    {
+      "id": "9ecbb695-a033-445f-8b8a-7b2e98374f56",
+      "name": "Legal",
+      "displayName": "Legal",
+      "description": "This is Legal description.",
+      "version": 0.1,
+      "updatedAt": 1646772051101,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/teams/9ecbb695-a033-445f-8b8a-7b2e98374f56",
+      "deleted": false,
+      "defaultRoles": []
+    },
+    {
+      "id": "a1a9d760-e042-44b2-9989-1a3ef6a67026",
+      "name": "Marketplace",
+      "displayName": "Marketplace",
+      "description": "This is Marketplace description.",
+      "version": 0.1,
+      "updatedAt": 1646772051643,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/teams/a1a9d760-e042-44b2-9989-1a3ef6a67026",
+      "deleted": false,
+      "defaultRoles": []
+    },
+    {
+      "id": "d8db7780-e64e-418c-9a37-fc087ece1a61",
+      "name": "Payments",
+      "displayName": "Payments",
+      "description": "This is Payments description.",
+      "version": 0.1,
+      "updatedAt": 1646772051179,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:3000/api/v1/teams/d8db7780-e64e-418c-9a37-fc087ece1a61",
+      "deleted": false,
+      "defaultRoles": []
+    }
+  ],
+  "paging": {
+    "total": 7
+  }
+}

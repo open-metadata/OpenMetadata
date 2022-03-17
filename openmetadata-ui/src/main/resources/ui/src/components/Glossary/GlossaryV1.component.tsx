@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
@@ -18,7 +19,10 @@ import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  getGlossaryPath,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
@@ -38,7 +42,6 @@ import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   assetData: GlossaryTermAssets;
@@ -48,8 +51,9 @@ type Props = {
   glossaryList: ModifiedGlossaryData[];
   selectedKey: string;
   expandedKey: string[];
+  loadingKey: string[];
   handleExpandedKey: (key: string[]) => void;
-  handleSelectedKey: (key: string) => void;
+  handleSelectedKey?: (key: string) => void;
   searchText: string;
   selectedData: Glossary | GlossaryTerm;
   isGlossaryActive: boolean;
@@ -57,21 +61,14 @@ type Props = {
   handleAddGlossaryTermClick: () => void;
   updateGlossary: (value: Glossary) => void;
   handleGlossaryTermUpdate: (value: GlossaryTerm) => void;
-  handleSelectedData: (data: Glossary | GlossaryTerm, pos: string) => void;
+  handleSelectedData: (key: string) => void;
   handleChildLoading: (status: boolean) => void;
   handleSearchText: (text: string) => void;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: number) => void;
+  onRelatedTermClick?: (fqn: string) => void;
   isChildLoading: boolean;
-  // handlePathChange: (
-  //   glossary: string,
-  //   glossaryTermsFQN?: string | undefined
-  // ) => void;
-};
-
-type ModifiedDataNode = DataNode & {
-  data: Glossary | GlossaryTerm;
 };
 
 const GlossaryV1 = ({
@@ -82,8 +79,8 @@ const GlossaryV1 = ({
   glossaryList,
   selectedKey,
   expandedKey,
+  loadingKey,
   handleExpandedKey,
-  handleSelectedKey,
   searchText,
   selectedData,
   isGlossaryActive,
@@ -98,6 +95,7 @@ const GlossaryV1 = ({
   onGlossaryDelete,
   onGlossaryTermDelete,
   onAssetPaginate,
+  onRelatedTermClick,
 }: // handlePathChange,
 Props) => {
   const { isAdminUser } = useAuth();
@@ -110,12 +108,23 @@ Props) => {
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
-  const handleBreadcrum = (arr: Array<string>) => {
-    const newData = arr.map((d) => ({
-      name: d,
-      url: '',
-      activeTitle: true,
-    }));
+  /**
+   * To create breadcrumb from the fqn
+   * @param fqn fqn of glossary or glossary term
+   */
+  const handleBreadcrum = (fqn: string) => {
+    const arr = fqn.split('.');
+    const dataFQN: Array<string> = [];
+    const newData = arr.map((d, i) => {
+      dataFQN.push(d);
+      const isLink = i < arr.length - 1;
+
+      return {
+        name: d,
+        url: isLink ? getGlossaryPath(dataFQN.join('.')) : '',
+        activeTitle: isLink,
+      };
+    });
     setBreadcrumb(newData);
   };
 
@@ -155,17 +164,11 @@ Props) => {
     _event: React.MouseEvent<HTMLElement, MouseEvent>,
     node: EventDataNode
   ) => {
-    handleChildLoading(true);
     const key = node.key as string;
-    const breadCrumbData = (treeRef.current?.state.keyEntities[key].nodes ||
-      []) as ModifiedDataNode[];
-    const pos = treeRef.current?.state.keyEntities[key].pos;
-    handleSelectedData(
-      breadCrumbData[breadCrumbData.length - 1].data,
-      pos as string
-    );
-    // handlePathChange(key.split('.')[0], key);
-    handleSelectedKey(key);
+    if (selectedKey !== key) {
+      handleChildLoading(true);
+      handleSelectedData(key);
+    }
   };
 
   useEffect(() => {
@@ -176,7 +179,7 @@ Props) => {
   }, [glossaryList]);
 
   useEffect(() => {
-    handleBreadcrum(selectedKey.split('.'));
+    handleBreadcrum(selectedKey);
   }, [selectedKey]);
 
   const fetchLeftPanel = () => {
@@ -221,6 +224,7 @@ Props) => {
                   expandedKeys={expandedKey}
                   handleClick={handleTreeClick}
                   handleExpand={(key) => handleExpandedKey(key as string[])}
+                  loadingKey={loadingKey}
                   ref={treeRef}
                   selectedKeys={[selectedKey]}
                   treeData={treeData}
@@ -243,7 +247,7 @@ Props) => {
         <div
           className="tw-heading tw-text-link tw-text-base tw--mt-2"
           data-testid="category-name">
-          <TitleBreadcrumb noLink titleLinks={breadcrumb} />
+          <TitleBreadcrumb titleLinks={breadcrumb} />
         </div>
         <div className="tw-relative tw-mr-2">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -303,6 +307,7 @@ Props) => {
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
             isHasAccess={isHasAccess}
             onAssetPaginate={onAssetPaginate}
+            onRelatedTermClick={onRelatedTermClick}
           />
         ))
       )}

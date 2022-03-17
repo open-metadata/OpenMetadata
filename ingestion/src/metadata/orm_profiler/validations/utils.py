@@ -13,7 +13,7 @@
 Validation Utilities
 """
 
-from typing import Type
+from typing import Optional, Type
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeMeta, Session
@@ -23,7 +23,11 @@ from metadata.orm_profiler.profiles.core import Profiler
 
 
 def run_col_metric(
-    metric: Type[Metric], session: Session, table: DeclarativeMeta, column: str
+    metric: Type[Metric],
+    session: Session,
+    table: DeclarativeMeta,
+    column: str,
+    profile_sample: Optional[float] = None,
 ) -> int:
     """
     Runs a metric on a table column and returns the results
@@ -32,6 +36,7 @@ def run_col_metric(
     :param session: SQLAlchemy session
     :param table:  ORM table
     :param column: column name
+    :param profile_sample: % of the data to run the profiler on
     :return: metric result
     """
 
@@ -46,7 +51,13 @@ def run_col_metric(
         )
 
     res = (
-        Profiler(metric, session=session, table=table, use_cols=[col])
+        Profiler(
+            metric,
+            session=session,
+            table=table,
+            use_cols=[col],
+            profile_sample=profile_sample,
+        )
         .execute()
         .column_results
     )

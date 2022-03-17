@@ -25,6 +25,7 @@ import {
 import { ColumnTestType } from '../enums/columnTest.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
@@ -524,4 +525,12 @@ export const filteredColumnTestOption = (dataType: string) => {
     default:
       return Object.values(ColumnTestType);
   }
+};
+
+export const isColumnTestSupported = (dataType: string) => {
+  const supportedType = Object.values(PrimaryTableDataTypes);
+
+  return supportedType.includes(
+    getDataTypeString(dataType) as PrimaryTableDataTypes
+  );
 };

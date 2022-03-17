@@ -222,17 +222,21 @@ def create_lineage(from_table, to_table, query_info, metadata):
 def ingest_lineage(query_info, metadata_config):
     from sqllineage.runner import LineageRunner
 
-    result = LineageRunner(query_info["sql"])
-    metadata = OpenMetadata(metadata_config)
-    for intermediate_table in result.intermediate_tables:
-        for source_table in result.source_tables:
-            create_lineage(source_table, intermediate_table, query_info, metadata)
-        for target_table in result.target_tables:
-            create_lineage(intermediate_table, target_table, query_info, metadata)
-    if not result.intermediate_tables:
-        for target_table in result.target_tables:
+    try:
+        result = LineageRunner(query_info["sql"])
+        metadata = OpenMetadata(metadata_config)
+        for intermediate_table in result.intermediate_tables:
             for source_table in result.source_tables:
-                create_lineage(source_table, target_table, query_info, metadata)
+                create_lineage(source_table, intermediate_table, query_info, metadata)
+            for target_table in result.target_tables:
+                create_lineage(intermediate_table, target_table, query_info, metadata)
+
+        if not result.intermediate_tables:
+            for target_table in result.target_tables:
+                for source_table in result.source_tables:
+                    create_lineage(source_table, target_table, query_info, metadata)
+    except Exception as err:
+        logger.error(str(err))
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:

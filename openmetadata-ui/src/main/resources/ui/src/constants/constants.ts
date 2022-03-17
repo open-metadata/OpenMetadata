@@ -31,6 +31,8 @@ export const imageTypes = {
   image512: 's512-c',
   image72: 's72-c',
 };
+
+export const COMMON_ERROR_MSG = 'Something went wrong.';
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = 'No data found';
 export const ERROR500 = 'Something went wrong';
@@ -293,8 +295,14 @@ export const getUserPath = (username: string) => {
   return path;
 };
 
-export const getGlossaryPath = () => {
-  return ROUTES.GLOSSARY;
+export const getGlossaryPath = (fqn?: string) => {
+  let path = ROUTES.GLOSSARY;
+  if (fqn) {
+    path = ROUTES.GLOSSARY_DETAILS;
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+  }
+
+  return path;
 };
 
 export const getGlossaryTermsPath = (

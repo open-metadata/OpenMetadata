@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "id": "76d35f32-c44d-4db7-86b6-1dbdc54221ad",
+      "name": "sample_kafka",
+      "serviceType": "Kafka",
+      "version": 0.2,
+      "updatedAt": 1646811226877,
+      "updatedBy": "anonymous",
+      "brokers": [
+        "localhost:9092"
+      ],
+      "schemaRegistry": "http://localhost:8084",
+      "href": "http://localhost:3000/api/v1/services/messagingServices/76d35f32-c44d-4db7-86b6-1dbdc54221ad",
+      "changeDescription": {
+        "fieldsAdded": [],
+        "fieldsUpdated": [
+          {
+            "name": "schemaRegistry",
+            "oldValue": "http://localhost:8081",
+            "newValue": "http://localhost:8084"
+          }
+        ],
+        "fieldsDeleted": [],
+        "previousVersion": 0.1
+      },
+      "deleted": false
+    }
+  ],
+  "paging": {
+    "total": 1
+  }
+}

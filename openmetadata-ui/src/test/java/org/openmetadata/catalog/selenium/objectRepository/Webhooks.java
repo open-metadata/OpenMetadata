@@ -12,7 +12,7 @@ public class Webhooks {
   @NotNull WebDriver webDriver;
 
   By webhookLink = By.linkText("Webhooks");
-  By addWebhook = By.xpath("//button[@data-testid='add-webhook-button']");
+  By addWebhook = By.cssSelector("[data-testid='add-webhook-button']");
   By name = By.xpath("//input[@data-testid='name']");
   By descriptionBox = By.xpath("//div[@class='notranslate public-DraftEditor-content']");
   By endpoint = By.xpath("//input[@data-testid='endpoint-url']");

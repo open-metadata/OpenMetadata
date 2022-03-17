@@ -1,0 +1,31 @@
+{
+  "data": [
+    {
+      "id": "74236fa6-a0c1-4b83-a400-fceecb82e378",
+      "name": "DataConsumer",
+      "displayName": "Data Consumer",
+      "description": "Users with Data Consumer role use different data assets for their day to day work.",
+      "version": 0.1,
+      "updatedAt": 1646772043913,
+      "updatedBy": "admin",
+      "href": "http://localhost:3000/api/v1/roles/74236fa6-a0c1-4b83-a400-fceecb82e378",
+      "deleted": false,
+      "defaultRole": true
+    },
+    {
+      "id": "6d61de33-2943-452d-ace0-5fd3a8a188fe",
+      "name": "DataSteward",
+      "displayName": "Data Steward",
+      "description": "Users with Data Steward role are responsible for ensuring correctness of metadata for data assets, thereby facilitating data governance principles within the organization.<br/>Data Stewards can update metadata for any entity.",
+      "version": 0.1,
+      "updatedAt": 1646772043940,
+      "updatedBy": "admin",
+      "href": "http://localhost:3000/api/v1/roles/6d61de33-2943-452d-ace0-5fd3a8a188fe",
+      "deleted": false,
+      "defaultRole": false
+    }
+  ],
+  "paging": {
+    "total": 2
+  }
+}

@@ -26,11 +26,17 @@ class TestDef(ConfigModel):
 
     We expect:
     - table name
+    - Profile sample
     - List of table tests
     - List of column tests
+
+    We will run a PUT using the info given in the JSON
+    workflow to update the Table definition based
+    on the incoming properties.
     """
 
     table: str  # Table FQDN
+    profile_sample: Optional[float] = None
     table_tests: Optional[List[CreateTableTestRequest]] = None
     column_tests: Optional[List[CreateColumnTestRequest]] = None
 

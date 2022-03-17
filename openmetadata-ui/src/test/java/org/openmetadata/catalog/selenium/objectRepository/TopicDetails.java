@@ -11,7 +11,7 @@ import org.openqa.selenium.WebDriver;
 public class TopicDetails {
   @Nonnull WebDriver webDriver;
 
-  By addTag = By.xpath("//div[@data-testid=\"tag-conatiner\"]");
+  By addTag = By.xpath("//div[@data-testid=\"tag-container\"]");
   By selectTag = By.xpath("(//div[@data-testid=\"list-item\"])[2]");
   By selectedTag =
       By.xpath("//span[@class=\"tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1\"]");
@@ -20,4 +20,9 @@ public class TopicDetails {
   By config = By.xpath("(//button[@data-testid = \"tab\"])[2]");
   By manage = By.xpath("(//button[@data-testid = \"tab\"])[3]");
   By topicName = By.linkText("orders");
+  By ownerName = By.xpath("//div[@data-testid='list-item']");
+
+  public String getOwnerName() {
+    return webDriver.findElement(ownerName).getText();
+  }
 }

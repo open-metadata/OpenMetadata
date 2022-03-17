@@ -69,6 +69,11 @@ class MetadataRestSink(Sink[Entity]):
             )
 
             if record.record_tests:
+                if record.record_tests.profile_sample:
+                    self.metadata.update_profile_sample(
+                        fqdn=record.table.fullyQualifiedName,
+                        profile_sample=record.record_tests.profile_sample,
+                    )
                 for table_test in record.record_tests.table_tests:
                     self.metadata.add_table_test(
                         table=record.table, table_test=table_test

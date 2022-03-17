@@ -633,8 +633,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     constraint: col.constraint as string,
                     colName: col.name,
                     colType: col.dataTypeDisplay as string,
+                    dataType: col.dataType as string,
                     colTests: col.columnTests,
                   }))}
+                  isTableDeleted={deleted}
                   qualityTestFormHandler={qualityTestFormHandler}
                   tableProfiles={tableProfile}
                 />
@@ -651,6 +653,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 handleSelectedColumn={handleSelectedColumn}
                 handleShowTestForm={handleShowTestForm}
                 handleTestModeChange={handleTestModeChange}
+                isTableDeleted={deleted}
                 selectedColumn={selectedColumn}
                 showTestForm={showTestForm}
                 tableTestCase={tableTestCase}

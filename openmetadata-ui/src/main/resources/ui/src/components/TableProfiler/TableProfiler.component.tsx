@@ -24,6 +24,7 @@ import {
   ColumnTest,
   DatasetTestModeType,
 } from '../../interface/dataQuality.interface';
+import { isColumnTestSupported } from '../../utils/EntityUtils';
 import { getRoundedValue } from '../../utils/ProfilerUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { Button } from '../buttons/Button/Button';
@@ -37,8 +38,10 @@ type Props = {
     constraint: string;
     colName: string;
     colType: string;
+    dataType: string;
     colTests?: ColumnTest[];
   }>;
+  isTableDeleted?: boolean;
   qualityTestFormHandler: (
     tabValue: number,
     testMode?: DatasetTestModeType,
@@ -68,6 +71,7 @@ const PercentageGraph = ({
 const TableProfiler: FC<Props> = ({
   tableProfiles,
   columns,
+  isTableDeleted,
   qualityTestFormHandler,
 }) => {
   const { isAdminUser } = useAuth();
@@ -246,7 +250,7 @@ const TableProfiler: FC<Props> = ({
                       colSpan={2}
                       data-testid="tableBody-cell">
                       <div className="tw-flex tw-justify-between">
-                        {col.columnTests ? (
+                        {col.columnTests?.length ? (
                           <div className="tw-rounded tw-max-h-44 tw-overflow-y-auto tw-flex-1">
                             {col.columnTests.map((m, i) => (
                               <div className="tw-flex tw-mb-2" key={i}>
@@ -290,17 +294,17 @@ const TableProfiler: FC<Props> = ({
                           `No tests available`
                         )}
                         <div className="tw-self-center tw-ml-5">
-                          {col.name.colType.includes('struct') ? (
+                          {!isColumnTestSupported(col.name.dataType) ? (
                             <span>Not supported</span>
                           ) : (
                             <NonAdminAction
                               position="bottom"
                               title={TITLE_FOR_NON_ADMIN_ACTION}>
                               <Button
-                                className={classNames({
-                                  'tw-opacity-40':
-                                    !isAdminUser && !isAuthDisabled,
-                                })}
+                                disabled={
+                                  (!isAdminUser && !isAuthDisabled) ||
+                                  isTableDeleted
+                                }
                                 size="small"
                                 theme="primary"
                                 type="button"
