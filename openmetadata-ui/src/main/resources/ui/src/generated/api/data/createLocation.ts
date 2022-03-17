@@ -45,6 +45,7 @@ export interface CreateLocation {
 export enum LocationType {
   Bucket = 'Bucket',
   Database = 'Database',
+  Iceberg = 'Iceberg',
   Prefix = 'Prefix',
   Table = 'Table',
 }
@@ -109,6 +110,10 @@ export interface TagLabel {
    */
   labelType: LabelType;
   /**
+   * Label is from Tags or Glossary.
+   */
+  source: Source;
+  /**
    * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
    * entity must confirm the suggested labels before it is marked as 'Confirmed'.
    */
@@ -128,6 +133,14 @@ export enum LabelType {
   Derived = 'Derived',
   Manual = 'Manual',
   Propagated = 'Propagated',
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum Source {
+  Glossary = 'Glossary',
+  Tag = 'Tag',
 }
 
 /**

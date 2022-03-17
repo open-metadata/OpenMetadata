@@ -21,7 +21,7 @@ export interface Role {
    */
   changeDescription?: ChangeDescription;
   /**
-   * If `true`, this role is set as default and will be assigned to all users.
+   * If `true`, this role is set as default role and will be assigned to all users.
    */
   defaultRole?: boolean;
   /**

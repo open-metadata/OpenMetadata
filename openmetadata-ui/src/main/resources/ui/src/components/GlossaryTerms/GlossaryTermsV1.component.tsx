@@ -29,7 +29,7 @@ import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
-import { LabelType, State } from '../../generated/type/tagLabel';
+import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
 import {
@@ -178,6 +178,7 @@ const GlossaryTermsV1 = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
+          source: Source.Tag,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];

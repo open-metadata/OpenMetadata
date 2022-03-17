@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase } from 'lodash';
@@ -19,7 +21,7 @@ import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import {
   AirflowPipeline,
-  ConfigObject,
+  ConfigClass,
   PipelineType,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
@@ -35,8 +37,6 @@ import IngestionModal from '../IngestionModal/IngestionModal.component';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { Props } from './ingestion.interface';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 
 const Ingestion: React.FC<Props> = ({
   serviceType = '',
@@ -137,9 +137,9 @@ const Ingestion: React.FC<Props> = ({
       pipelineConfig: {
         ...pipelineConfig,
         config: {
-          ...(pipelineConfig.config as ConfigObject),
+          ...(pipelineConfig.config as ConfigClass),
 
-          ...(data.pipelineConfig.config as ConfigObject),
+          ...(data.pipelineConfig.config as ConfigClass),
         },
       },
       scheduleInterval: data.scheduleInterval,
