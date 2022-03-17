@@ -7,11 +7,16 @@
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
-#  limitations under the License.
+#  limitations under the License.\
+
+from typing import Iterable
+
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -36,3 +41,24 @@ class MysqlSource(SQLSource):
         config = MySQLConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
+
+    def next_record(self) -> Iterable[Entity]:
+        inspector = inspect(self.engine)
+        schema_names = (
+            inspector.get_schema_names()
+            if not self.config.database
+            else [self.config.database]
+        )
+        for schema in schema_names:
+            # clear any previous source database state
+            self.database_source_state.clear()
+            if not self.sql_config.schema_filter_pattern.included(schema):
+                self.status.filter(schema, "Schema pattern not allowed")
+                continue
+            if self.config.include_tables:
+                yield from self.fetch_tables(inspector, schema)
+            if self.config.include_views:
+                yield from self.fetch_views(inspector, schema)
+            if self.config.mark_deleted_tables_as_deleted:
+                schema_fqdn = f"{self.config.service_name}.{schema}"
+                yield from self.delete_tables(schema_fqdn)
