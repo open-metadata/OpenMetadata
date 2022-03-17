@@ -133,6 +133,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     status: 'initial',
   });
 
+  /**
+   * take node as input and check if node is main entity or not
+   * @param node
+   * @returns class `leaf-node core` for main node and `leaf-node` for leaf node
+   */
   const getNodeClass = (node: FlowElement) => {
     return `${
       node.id.includes(lineageData.entity?.id) && !isEditMode
@@ -141,14 +146,29 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }`;
   };
 
+  /**
+   * take entity as input and set it as selected entity
+   * @param entity
+   */
   const selectedEntityHandler = (entity: EntityReference) => {
     setSelectedEntity(entity);
   };
+
+  /**
+   * take state and value to set selected node
+   * @param state
+   * @param value
+   */
   const selectNodeHandler = (state: boolean, value: SelectedNode) => {
     setIsDrawerOpen(state);
     setSelectedNode(value);
   };
 
+  /**
+   *
+   * @param node
+   * @returns lable for given node
+   */
   const getNodeLable = (node: EntityReference) => {
     return (
       <>
@@ -177,6 +197,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     );
   };
 
+  /**
+   *
+   * @param data selected edge
+   * @param confirmDelete confirmation state for deleting seslected edge
+   */
   const removeEdgeHandler = (data: SelectedEdge, confirmDelete: boolean) => {
     if (confirmDelete) {
       const edgeData: EdgeData = {
@@ -215,6 +240,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  /**
+   * take edge data and set it as selected edge
+   * @param evt
+   * @param data
+   */
   const onEdgeClick = (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
@@ -245,6 +275,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     });
   };
 
+  /**
+   *
+   * @returns unique flow elements
+   */
   const setElementsHandle = () => {
     const flag: { [x: string]: boolean } = {};
     const uniqueElements: Elements = [];
@@ -276,6 +310,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     getLayoutedElements(setElementsHandle())
   );
 
+  /**
+   * take boolean value as input and reset selected node
+   * @param value
+   */
   const closeDrawer = (value: boolean) => {
     setIsDrawerOpen(value);
     setElements((prevElements) => {
@@ -293,21 +331,47 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setSelectedNode({} as SelectedNode);
   };
 
+  /**
+   * take list of elements to remove it from the graph
+   * @param elementsToRemove
+   * @returns updated elements list
+   */
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
 
+  /**
+   * take edge or connection to add new element in the graph
+   * @param params
+   */
   const onConnect = (params: Edge | Connection) => {
     setStatus('waiting');
     setLoading(true);
     const { target, source } = params;
 
-    const downstreamNode = lineageData.downstreamEdges?.find((d) =>
+    const nodes = [
+      ...(lineageData.nodes as EntityReference[]),
+      lineageData.entity,
+    ];
+
+    const sourceDownstreamNode = lineageData.downstreamEdges?.find((d) =>
       source?.includes(d.toEntity as string)
     );
 
-    let targetNode = lineageData.nodes?.find((n) => target?.includes(n.id));
+    const sourceUpStreamNode = lineageData.upstreamEdges?.find((u) =>
+      source?.includes(u.fromEntity as string)
+    );
 
-    let sourceNode = lineageData.nodes?.find((n) => source?.includes(n.id));
+    const targetDownStreamNode = lineageData.downstreamEdges?.find((d) =>
+      target?.includes(d.toEntity as string)
+    );
+
+    const targetUpStreamNode = lineageData.upstreamEdges?.find((u) =>
+      target?.includes(u.fromEntity as string)
+    );
+
+    let targetNode = nodes?.find((n) => target?.includes(n.id));
+
+    let sourceNode = nodes?.find((n) => source?.includes(n.id));
 
     if (isUndefined(targetNode)) {
       targetNode = target?.includes(lineageData.entity?.id)
@@ -332,9 +396,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         },
       },
     };
+
     setElements((els) =>
       addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
     );
+
     setTimeout(() => {
       addLineageHandler(newEdge)
         .then(() => {
@@ -350,8 +416,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   ]
                 : lineageData.nodes,
               downstreamEdges:
-                !isUndefined(downstreamNode) ||
-                sourceNode?.id === lineageData.entity?.id
+                !isUndefined(sourceUpStreamNode) ||
+                !isUndefined(targetUpStreamNode) ||
+                targetNode?.id === selectedEntity.id
                   ? [
                       ...(lineageData.downstreamEdges as EntityEdge[]),
                       {
@@ -361,8 +428,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                     ]
                   : lineageData.downstreamEdges,
               upstreamEdges:
-                isUndefined(downstreamNode) &&
-                sourceNode?.id !== lineageData.entity?.id
+                !isUndefined(sourceDownstreamNode) ||
+                !isUndefined(targetDownStreamNode) ||
+                sourceNode?.id === selectedEntity.id
                   ? [
                       ...(lineageData.upstreamEdges as EntityEdge[]),
                       {
@@ -384,6 +452,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }, 500);
   };
 
+  /**
+   * take element and perform onClick logic
+   * @param el
+   */
   const onElementClick = (el: FlowElement) => {
     const node = [
       ...(lineageData.nodes as Array<EntityReference>),
@@ -393,6 +465,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       selectNodeHandler(true, {
         name: node?.name as string,
         id: el.id,
+        displayName: node?.displayName,
         type: node?.type as string,
         entityId: node?.id as string,
       });
@@ -413,6 +486,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  /**
+   * this method is used for table entity to show table columns
+   * @param tableColumns
+   */
   const onNodeExpand = (tableColumns?: Column[]) => {
     const elements = getLayoutedElements(setElementsHandle());
     setElements(
@@ -433,6 +510,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     );
   };
 
+  /**
+   * take node and get the columns for that node
+   * @param expandNode
+   */
   const getTableColumns = (expandNode?: EntityReference) => {
     if (expandNode) {
       getTableDetails(expandNode.id, ['columns'])
@@ -454,16 +535,28 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  /**
+   * take node and remove it from the graph
+   * @param node
+   */
   const removeNodeHandler = (node: FlowElement) => {
     setElements((es) => es.filter((n) => n.id !== node.id));
     setNewAddedNode({} as FlowElement);
   };
 
+  /**
+   * handle node drag event
+   * @param event
+   */
   const onDragOver = (event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   };
 
+  /**
+   * handle node drop event
+   * @param event
+   */
   const onDrop = (event: DragEvent) => {
     event.preventDefault();
 
@@ -518,6 +611,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  /**
+   * handle onNode select logic
+   */
   const onEntitySelect = () => {
     if (!isEmpty(selectedEntity)) {
       const isExistingNode = elements.some((n) =>
@@ -630,10 +726,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         <div
           className={classNames(
             'tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4'
-          )}>
+          )}
+          data-testid="lineage-container">
           <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
             <ReactFlowProvider>
               <ReactFlow
+                data-testid="react-flow-component"
                 edgeTypes={{ buttonedge: CustomEdge }}
                 elements={elements as Elements}
                 elementsSelectable={!isEditMode}
@@ -729,7 +827,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 ) : null}
               </ReactFlow>
             </ReactFlowProvider>
-            :
           </div>
           <EntityInfoDrawer
             isMainNode={selectedNode.name === lineageData.entity?.name}

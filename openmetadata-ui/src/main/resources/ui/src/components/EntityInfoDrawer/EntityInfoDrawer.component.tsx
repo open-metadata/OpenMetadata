@@ -153,7 +153,11 @@ const EntityInfoDrawer = ({
       <header className="tw-flex tw-justify-between">
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(selectedNode.type)}</span>
-          {getHeaderLabel(selectedNode.name, selectedNode.type, isMainNode)}
+          {getHeaderLabel(
+            selectedNode.displayName ?? selectedNode.name,
+            selectedNode.type,
+            isMainNode
+          )}
         </p>
         <div className="tw-flex">
           <svg
