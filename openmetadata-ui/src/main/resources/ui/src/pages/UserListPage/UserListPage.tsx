@@ -57,7 +57,7 @@ const UserListPage = () => {
    * Redirect user to add-user route for adding new user.
    */
   const handleAddUserClick = () => {
-    history.push(ROUTES.ADD_USER);
+    history.push(ROUTES.CREATE_USER);
   };
 
   const updateUser = (id: string, data: Operation[], updatedUser: User) => {

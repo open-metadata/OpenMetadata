@@ -14,7 +14,7 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import AddUserPageComponent from './AddUserPage.component';
+import AddUserPageComponent from './CreateUserPage.component';
 
 jest.mock('../../components/containers/PageContainerV1', () => {
   return jest

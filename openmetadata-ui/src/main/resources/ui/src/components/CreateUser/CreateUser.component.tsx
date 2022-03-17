@@ -17,7 +17,7 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { useRef, useState } from 'react';
 import { validEmailRegEx } from '../../constants/regex.constants';
-import { CreateUser } from '../../generated/api/teams/createUser';
+import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
@@ -27,7 +27,7 @@ import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
 import Loader from '../Loader/Loader';
-import { AddUserProps } from './AddUser.interface';
+import { CreateUserProps } from './CreateUser.interface';
 
 const Field = ({
   children,
@@ -39,14 +39,14 @@ const Field = ({
   return <div className={classNames('tw-mt-4', className)}>{children}</div>;
 };
 
-const AddUser = ({
+const CreateUser = ({
   allowAccess,
   roles,
   teams,
   saveState = 'initial',
   onCancel,
   onSave,
-}: AddUserProps) => {
+}: CreateUserProps) => {
   const markdownRef = useRef<EditorContentRef>();
   const [description] = useState<string>('');
   const [email, setEmail] = useState('');
@@ -177,7 +177,7 @@ const AddUser = ({
       (id) => !isUndefined(id)
     ) as string[];
     if (validateForm()) {
-      const userProfile: CreateUser = {
+      const userProfile: CreateUserSchema = {
         description: markdownRef.current?.getEditorContent() || undefined,
         name: email.split('@')[0],
         roles: validRole.length ? validRole : undefined,
@@ -226,7 +226,7 @@ const AddUser = ({
             theme="primary"
             variant="contained"
             onClick={handleSave}>
-            Save
+            Create
           </Button>
         )}
       </>
@@ -235,7 +235,7 @@ const AddUser = ({
 
   return (
     <PageLayout classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-py-4">
-      <h6 className="tw-heading tw-text-base">Add User</h6>
+      <h6 className="tw-heading tw-text-base">Create User</h6>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
           {requiredField('Email:')}
@@ -260,7 +260,7 @@ const AddUser = ({
         <MarkdownWithPreview ref={markdownRef} value={description} />
       </Field>
       <Field>
-        <label className="tw-block tw-form-label tw-mb-0">Team:</label>
+        <label className="tw-block tw-form-label tw-mb-0">Teams:</label>
         <DropDown
           className={classNames('tw-bg-white', {
             'tw-bg-gray-100 tw-cursor-not-allowed': teams.length === 0,
@@ -274,7 +274,7 @@ const AddUser = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
-          Role:
+          Roles:
         </label>
         <DropDown
           className={classNames('tw-bg-white', {
@@ -327,4 +327,4 @@ const AddUser = ({
   );
 };
 
-export default AddUser;
+export default CreateUser;

@@ -16,7 +16,7 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 
-export interface AddUserProps {
+export interface CreateUserProps {
   allowAccess: boolean;
   saveState?: LoadingState;
   roles: Array<Role>;

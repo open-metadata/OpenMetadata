@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import AddUser from './AddUser.component';
-import { AddUserProps } from './AddUser.interface';
+import CreateUser from './CreateUser.component';
+import { CreateUserProps } from './CreateUser.interface';
 
 jest.mock(
   '../containers/PageLayout',
@@ -37,7 +37,7 @@ jest.mock('../common/editor/MarkdownWithPreview', () => {
   return jest.fn().mockReturnValue(<p>MarkdownWithPreview component</p>);
 });
 
-const propsValue: AddUserProps = {
+const propsValue: CreateUserProps = {
   allowAccess: true,
   saveState: 'initial',
   roles: [],
@@ -48,7 +48,7 @@ const propsValue: AddUserProps = {
 
 describe('Test AddUser component', () => {
   it('AddUser component should render properly', async () => {
-    const { container } = render(<AddUser {...propsValue} />, {
+    const { container } = render(<CreateUser {...propsValue} />, {
       wrapper: MemoryRouter,
     });
 

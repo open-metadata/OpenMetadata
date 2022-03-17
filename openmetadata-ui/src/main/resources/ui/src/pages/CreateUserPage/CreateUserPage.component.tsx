@@ -19,8 +19,8 @@ import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { createUser } from '../../axiosAPIs/userAPI';
-import AddUser from '../../components/AddUser/AddUser.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
 import { ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
@@ -29,7 +29,7 @@ import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 
-const AddUserPage = () => {
+const CreateUserPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const showToast = useToastContext();
@@ -104,7 +104,7 @@ const AddUserPage = () => {
 
   return (
     <PageContainerV1>
-      <AddUser
+      <CreateUserComponent
         allowAccess={isAdminUser || isAuthDisabled}
         roles={roles}
         saveState={status}
@@ -116,4 +116,4 @@ const AddUserPage = () => {
   );
 };
 
-export default observer(AddUserPage);
+export default observer(CreateUserPage);
