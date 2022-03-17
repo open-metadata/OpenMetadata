@@ -38,12 +38,17 @@ airflow users create \
     --email spiderman@superhero.org \
     --password ${AIRFLOW_ADMIN_PASSWORD}
 
-if [ ! -z "${LOAD_SAMPLE}" ]; then
+if [ "${LOAD_SAMPLE}" = "true" ]; then
     AIRFLOW_CREDENTIALS="${AIRFLOW_ADMIN_USER}:${AIRFLOW_ADMIN_PASSWORD}"
-    (while ! wget -O /dev/null -o /dev/null http://localhost:8080; do sleep 5; done; sleep 5; curl -u "${AIRFLOW_CREDENTIALS}" --data '{"dag_run_id":"sample_data_1"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_data/dagRuns) &
-    (while ! wget -O /dev/null -o /dev/null $OPENMETADATA_SERVER/api/v1/tables/name/bigquery_gcp.shopify.fact_sale; do sleep 5; done; sleep 7; curl -u "${AIRFLOW_CREDENTIALS}" --data '{"dag_run_id":"sample_usage_1"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_usage/dagRuns) &
-    (while ! wget -O /dev/null -o /dev/null $OPENMETADATA_SERVER/api/v1/tables/name/bigquery_gcp.shopify.fact_sale; do sleep 5; done; sleep 9; curl -u "${AIRFLOW_CREDENTIALS}" --data '{"dag_run_id":"sample_dbt_1"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_dbt/dagRuns) &
-    (while ! wget -O /dev/null -o /dev/null $OPENMETADATA_SERVER/api/v1/tables/name/bigquery_gcp.shopify.fact_sale; do sleep 5; done; sleep 10; curl -u "${AIRFLOW_CREDENTIALS}" --data '{"dag_run_id":"index_metadata_1"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/index_metadata/dagRuns) &
+    # Wait until the API endpoint is up
+    (while ! curl -u "${AIRFLOW_CREDENTIALS}" --head --request GET http://localhost:8080/api/v1/dags/sample_data | grep "200 OK" > /dev/null; do sleep 5; done; sleep 5;
+    # Resume the paused DAGs to load sample data
+    echo "Resuming the paused sample_data DAG..."
+    curl -u "${AIRFLOW_CREDENTIALS}" --data '{"is_paused":false}' -H "Content-type: application/json" -X PATCH http://localhost:8080/api/v1/dags/sample_data) &
+    (while ! wget -O /dev/null -o /dev/null $OPENMETADATA_SERVER/api/v1/tables/name/bigquery_gcp.shopify.fact_sale; do sleep 5; done; sleep 7;
+    # Resume the paused DAGs to load sample usage data
+    curl -u "${AIRFLOW_CREDENTIALS}" --data '{"is_paused":false}' -H "Content-type: application/json" -X PATCH http://localhost:8080/api/v1/dags/sample_usage) &
+    (sleep 10; curl -u "${AIRFLOW_CREDENTIALS}" --data '{"dag_run_id":"index_metadata_1"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/index_metadata/dagRuns) &
 fi
 
 airflow webserver --port 8080 -D &

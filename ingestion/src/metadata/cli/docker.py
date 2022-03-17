@@ -14,7 +14,9 @@ calc_gb = 1024 * 1024 * 1000
 min_memory_limit = 6 * calc_gb
 
 
-def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
+def run_docker(
+    start, stop, pause, resume, clean, file_path, env_file_path, skip_sample_data
+):
     try:
         from python_on_whales import DockerClient
 
@@ -59,8 +61,17 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
                 logger.info(f"Using docker compose file from {file_path}")
                 docker_compose_file_path = pathlib.Path(file_path)
 
-        env_file = None
-        if env_file_path is not None:
+        default_env_path = pathlib.Path(tempfile.gettempdir()) / ".env"
+        if env_file_path is None:
+            # By default load sample data while starting up docker
+            env = "LOAD_SAMPLE=true"
+            if skip_sample_data:
+                env = "LOAD_SAMPLE=false"
+            with open(default_env_path, "wt") as env_file_handle:
+                env_file_handle.write(env)
+            env_file = default_env_path
+
+        else:
             if env_file_path == "":
                 raise ValueError("Please provide path to env file")
             else:
@@ -81,28 +92,31 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
             else:
                 docker.compose.up(detach=True)
 
-            logger.info(
-                "Docker Compose for Open Metadata successful. Waiting for ingestion to complete...."
-            )
-            metadata_config = MetadataServerConfig.parse_obj(
-                {
-                    "api_endpoint": "http://localhost:8585/api",
-                    "auth_provider_type": "no-auth",
-                }
-            )
+            if not skip_sample_data:
+                logger.info(
+                    "Docker Compose for Open Metadata successful. Waiting for ingestion to complete...."
+                )
+                metadata_config = MetadataServerConfig.parse_obj(
+                    {
+                        "api_endpoint": "http://localhost:8585/api",
+                        "auth_provider_type": "no-auth",
+                    }
+                )
 
-            ometa_client = OpenMetadata(metadata_config).client
-            while True:
-                try:
-                    ometa_client.get(f"/tables/name/bigquery_gcp.shopify.dim_customer")
-                    break
-                except Exception as err:
-                    sys.stdout.flush()
-                    time.sleep(5)
-            elapsed = time.time() - start_time
-            logger.info(
-                f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
-            )
+                ometa_client = OpenMetadata(metadata_config).client
+                while True:
+                    try:
+                        ometa_client.get(
+                            f"/tables/name/bigquery_gcp.shopify.dim_customer"
+                        )
+                        break
+                    except Exception as err:
+                        sys.stdout.flush()
+                        time.sleep(5)
+                elapsed = time.time() - start_time
+                logger.info(
+                    f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
+                )
             click.secho(
                 "\n✅ OpenMetadata is up and running",
                 fg="bright_green",
@@ -141,6 +155,8 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
             )
             if file_path is None:
                 docker_compose_file_path.unlink()
+            if env_file_path is None:
+                default_env_path.unlink()
 
     except MemoryError:
         click.secho(

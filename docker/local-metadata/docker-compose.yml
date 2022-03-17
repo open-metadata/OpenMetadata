@@ -84,6 +84,8 @@ services:
       context: ../../.
       dockerfile: ingestion/Dockerfile
     container_name: openmetadata_ingestion
+    environment:
+      LOAD_SAMPLE: ${LOAD_SAMPLE:-true}
     depends_on:
       - mysql
     expose:

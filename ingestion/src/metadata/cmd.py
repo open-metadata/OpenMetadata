@@ -197,13 +197,18 @@ def report(config: str) -> None:
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(start, stop, pause, resume, clean, file_path, env_file_path) -> None:
+@click.option("--skip-sample-data", help="Skip ingesting sample metadata", is_flag=True)
+def docker(
+    start, stop, pause, resume, clean, file_path, env_file_path, skip_sample_data
+) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
-    Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
+    Run Local Docker - metadata docker --start -f path/to/docker-compose.ymls
     """
-    run_docker(start, stop, pause, resume, clean, file_path, env_file_path)
+    run_docker(
+        start, stop, pause, resume, clean, file_path, env_file_path, skip_sample_data
+    )
 
 
 @metadata.command()
