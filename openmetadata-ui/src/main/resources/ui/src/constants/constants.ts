@@ -274,9 +274,12 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   return path;
 };
 
-export const getTeamDetailsPath = (teamName: string) => {
-  let path = ROUTES.TEAM_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
+export const getTeamDetailsPath = (teamName?: string) => {
+  let path = ROUTES.TEAMS;
+  if (teamName) {
+    path = ROUTES.TEAM_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
+  }
 
   return path;
 };
