@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
+import { AssetsType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
@@ -35,13 +36,6 @@ type Props = {
   onRemove?: (value: string) => void;
 };
 
-enum DatasetType {
-  TABLE = 'table',
-  TOPIC = 'topic',
-  DASHBOARD = 'dashboard',
-  PIPELINE = 'pipeline',
-}
-
 const UserCard = ({
   item,
   isActionVisible = false,
@@ -57,10 +51,10 @@ const UserCard = ({
     type: string
   ): Array<'service' | 'database' | 'table' | 'column'> => {
     switch (type) {
-      case DatasetType.TABLE:
+      case AssetsType.TABLE:
         return ['database', 'table'];
-      case DatasetType.TOPIC:
-      case DatasetType.DASHBOARD:
+      case AssetsType.TOPIC:
+      case AssetsType.DASHBOARD:
       default:
         return ['service', 'database', 'table'];
     }
@@ -69,19 +63,19 @@ const UserCard = ({
   const getDatasetIcon = (type: string) => {
     let icon = '';
     switch (type) {
-      case DatasetType.TOPIC:
+      case AssetsType.TOPIC:
         icon = Icons.TOPIC;
 
         break;
-      case DatasetType.DASHBOARD:
+      case AssetsType.DASHBOARD:
         icon = Icons.DASHBOARD;
 
         break;
-      case DatasetType.PIPELINE:
+      case AssetsType.PIPELINE:
         icon = Icons.PIPELINE;
 
         break;
-      case DatasetType.TABLE:
+      case AssetsType.TABLE:
       default:
         icon = Icons.TABLE;
 
@@ -92,7 +86,7 @@ const UserCard = ({
       <SVGIcons
         alt="icon"
         className={classNames('tw-h-4 tw-w-4', {
-          'tw-mt-0.5': type !== DatasetType.DASHBOARD,
+          'tw-mt-0.5': type !== AssetsType.DASHBOARD,
         })}
         icon={icon}
       />
@@ -102,15 +96,19 @@ const UserCard = ({
   const getDatasetTitle = (type: string, fqn: string) => {
     let link = '';
     switch (type) {
-      case DatasetType.TOPIC:
+      case AssetsType.TOPIC:
         link = getEntityLink(SearchIndex.TOPIC, fqn);
 
         break;
-      case DatasetType.DASHBOARD:
+      case AssetsType.PIPELINE:
+        link = getEntityLink(SearchIndex.PIPELINE, fqn);
+
+        break;
+      case AssetsType.DASHBOARD:
         link = getEntityLink(SearchIndex.DASHBOARD, fqn);
 
         break;
-      case DatasetType.TABLE:
+      case AssetsType.TABLE:
       default:
         link = getEntityLink(SearchIndex.TABLE, fqn);
 
