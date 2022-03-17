@@ -35,6 +35,7 @@ import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
   TableJoins,
+  TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -222,6 +223,7 @@ const TourPage = () => {
             tableQueries={[]}
             tableTags={mockDatasetData.tableTags}
             tableTestCase={[]}
+            tableType={mockDatasetData.tableType as TableType}
             testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
