@@ -228,8 +228,14 @@ export const getEntityOverview = (
       return overview;
     }
     case EntityType.DASHBOARD: {
-      const { owner, tags, dashboardUrl, service, fullyQualifiedName } =
-        entityDetail;
+      const {
+        owner,
+        tags,
+        dashboardUrl,
+        service,
+        fullyQualifiedName,
+        displayName,
+      } = entityDetail;
       const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
 
@@ -260,7 +266,7 @@ export const getEntityOverview = (
         },
         {
           name: `${serviceType} url`,
-          value: fullyQualifiedName?.split('.')[1] as string,
+          value: displayName || (fullyQualifiedName?.split('.')[1] as string),
           url: dashboardUrl as string,
           isLink: true,
           isExternal: true,
