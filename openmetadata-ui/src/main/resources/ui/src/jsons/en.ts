@@ -15,6 +15,7 @@ const jsonData = {
   'api-error-messages': {
     'add-glossary-error': 'Error while adding glossary!',
     'add-glossary-term-error': 'Error while adding glossary term!',
+    'add-user-error': 'Error while adding user!',
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
     'elastic-search-error': 'Error while fetch data from Elasticsearch!',

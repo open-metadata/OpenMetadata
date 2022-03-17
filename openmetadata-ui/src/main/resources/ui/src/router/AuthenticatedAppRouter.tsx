@@ -20,6 +20,7 @@ import AddGlossaryTermPage from '../components/AddGlossaryTermPage/AddGlossaryTe
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
+import AddUserPage from '../pages/AddUserPage/AddUserPage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
@@ -130,6 +131,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
           <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
           <Route exact component={RolesPage} path={ROUTES.ROLES} />
+          <Route exact component={AddUserPage} path={ROUTES.ADD_USER} />
           <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
         </>
       ) : null}
