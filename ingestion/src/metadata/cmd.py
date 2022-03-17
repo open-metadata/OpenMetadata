@@ -204,7 +204,7 @@ def docker(
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
-    Run Local Docker - metadata docker --start -f path/to/docker-compose.ymls
+    Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
     run_docker(
         start, stop, pause, resume, clean, file_path, env_file_path, skip_sample_data
