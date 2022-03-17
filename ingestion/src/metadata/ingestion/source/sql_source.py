@@ -24,6 +24,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -37,8 +38,8 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import Source as TagSource
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -198,6 +199,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def next_record(self) -> Iterable[Entity]:
         inspector = inspect(self.engine)
         schema_names = inspector.get_schema_names()
+
         for schema in schema_names:
             # clear any previous source database state
             self.database_source_state.clear()
@@ -231,7 +233,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         "Table pattern not allowed",
                     )
                     continue
-                if self._is_partition(table_name, schema):
+                if self._is_partition(table_name, schema, inspector):
                     self.status.filter(
                         f"{self.config.get_service_name()}.{table_name}",
                         "Table is partition",
@@ -363,7 +365,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             if table.fullyQualifiedName not in self.database_source_state:
                 yield DeleteTable(table=table)
 
-    def _is_partition(self, table_name: str, schema: str) -> bool:
+    def _is_partition(self, table_name: str, schema: str, inspector) -> bool:
+        self.inspector = inspector
         return False
 
     def _parse_data_model(self):
@@ -638,10 +641,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 and "policy_tags" in column
                                 and column["policy_tags"]
                             ):
-                                self.metadata.create_tag_category(
-                                    category=self.config.tag_category_name,
-                                    data=Tag(
-                                        name=column["policy_tags"], description=""
+                                self.metadata.create_primary_tag(
+                                    category_name=self.config.tag_category_name,
+                                    primary_tag_body=CreateTagRequest(
+                                        name=column["policy_tags"],
+                                        description="Bigquery Policy Tag",
                                     ),
                                 )
                         except APIError:
@@ -651,6 +655,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                         tagFQN=f"{self.config.tag_category_name}.{column['policy_tags']}",
                                         labelType="Automated",
                                         state="Suggested",
+                                        source=TagSource.Tag.name,
                                     )
                                 ]
                         except Exception as err:
