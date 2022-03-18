@@ -25,7 +25,7 @@ Note, OpenMetadata only supports Helm 3
 Assuming Kubernetes setup is done and your Kubernetes context points to a correct Kubernetes cluster, first we create kubernetes secrets that contains MySQL and Airflow passwords as secrets.
 
 ```
-kubectl create secret generic mysql-secrets --from-literal=openmetadata-user-password=openmetadata_password
+kubectl create secret generic mysql-secrets --from-literal=openmetadata-mysql-password=openmetadata_password
 kubectl create secret generic airflow-secrets --from-literal=openmetadata-airflow-admin-password=admin
 ```
 
