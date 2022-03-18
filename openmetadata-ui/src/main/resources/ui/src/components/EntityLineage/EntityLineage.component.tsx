@@ -190,6 +190,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       setElements((es) => es.filter((e) => e.id !== data.id));
 
+      /**
+       * Get new downstreamEdges
+       */
       const newDownStreamEdges = lineageData.downstreamEdges?.filter(
         (dn) =>
           !lineageData.downstreamEdges?.find(
@@ -197,6 +200,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               edgeData.fromId === dn.fromEntity && edgeData.toId === dn.toEntity
           )
       );
+
+      /**
+       * Get new upstreamEdges
+       */
       const newUpStreamEdges = lineageData.upstreamEdges?.filter(
         (up) =>
           !lineageData.upstreamEdges?.find(
@@ -205,10 +212,20 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           )
       );
 
+      /**
+       * Get new nodes that have either downstreamEdge or upstreamEdge
+       */
+      const newNodes = lineageData.nodes?.filter(
+        (n) =>
+          !isUndefined(newDownStreamEdges?.find((d) => d.toEntity === n.id)) ||
+          !isUndefined(newUpStreamEdges?.find((u) => u.fromEntity === n.id))
+      );
+
       setNewAddedNode({} as FlowElement);
       setSelectedEntity({} as EntityReference);
       entityLineageHandler({
         ...lineageData,
+        nodes: newNodes,
         downstreamEdges: newDownStreamEdges,
         upstreamEdges: newUpStreamEdges,
       });
@@ -602,6 +619,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     if (!isEmpty(selectedNode)) {
       setExpandNode(undefined);
     }
+    setElements((pre) => {
+      return pre.map((el) => ({ ...el, data: { ...el.data, selectedNode } }));
+    });
   }, [selectedNode]);
 
   useEffect(() => {
