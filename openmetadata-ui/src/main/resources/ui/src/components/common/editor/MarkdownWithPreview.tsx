@@ -18,7 +18,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { isValidJSONString } from '../../../utils/StringsUtils';
 import RichTextEditor from '../rich-text-editor/RichTextEditor';
 import { editorRef } from '../rich-text-editor/RichTextEditor.interface';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -105,7 +104,7 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
         <div className="tw-my-5 tw-bg-white">
           {activeTab === 1 && (
             <RichTextEditor
-              format={isValidJSONString(initValue) ? 'json' : 'markdown'}
+              format="markdown"
               initvalue={initValue}
               readonly={readonly}
               ref={editorRef}
