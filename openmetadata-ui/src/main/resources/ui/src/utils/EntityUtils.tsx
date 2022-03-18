@@ -421,7 +421,7 @@ export const getInfoElements = (data: ExtraInfo) => {
   }
 
   return (
-    <>
+    <span>
       <span className="tw-text-grey-muted">{retVal}</span>
       {displayVal ? (
         <span>
@@ -470,7 +470,7 @@ export const getInfoElements = (data: ExtraInfo) => {
           )}
         </span>
       ) : null}
-    </>
+    </span>
   );
 };
 

@@ -12,3 +12,4 @@
  */
 
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
+export const validEmailRegEx = /^\S+@\S+\.\S+$/;

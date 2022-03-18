@@ -75,7 +75,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         # Take out the more detailed type information
         # e.g. 'map<ixnt,int>' -> 'map'
         #      'decimal(10,1)' -> decimal
-        raw_data_type = col_type
         col_type = re.search(r"^\w+", col_type).group(0)
         try:
             coltype = _type_map[col_type]
@@ -90,9 +89,15 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "type": coltype,
             "nullable": True,
             "default": None,
+            "comment": _comment,
         }
         if col_type in {"array", "struct", "map"}:
-            col_info["raw_data_type"] = raw_data_type
+            rows = dict(
+                connection.execute(
+                    "DESCRIBE {} {}".format(table_name, col_name)
+                ).fetchall()
+            )
+            col_info["raw_data_type"] = rows["data_type"]
         result.append(col_info)
     return result
 

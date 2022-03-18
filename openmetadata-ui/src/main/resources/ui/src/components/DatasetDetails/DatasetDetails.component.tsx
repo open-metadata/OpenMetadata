@@ -86,6 +86,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   users,
   usageSummary,
   joins,
+  tableType,
   version,
   versionHandler,
   loadNodeHandler,
@@ -319,6 +320,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       openInNewTab: false,
     },
     { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
+    { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
     { value: `${weeklyUsageCount} queries` },
     {
@@ -636,6 +638,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     dataType: col.dataType as string,
                     colTests: col.columnTests,
                   }))}
+                  isTableDeleted={deleted}
                   qualityTestFormHandler={qualityTestFormHandler}
                   tableProfiles={tableProfile}
                 />
@@ -652,6 +655,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 handleSelectedColumn={handleSelectedColumn}
                 handleShowTestForm={handleShowTestForm}
                 handleTestModeChange={handleTestModeChange}
+                isTableDeleted={deleted}
                 selectedColumn={selectedColumn}
                 showTestForm={showTestForm}
                 tableTestCase={tableTestCase}

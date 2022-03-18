@@ -12,7 +12,7 @@
 """
 AVG Metric definition
 """
-from sqlalchemy import func
+from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
@@ -43,10 +43,10 @@ class Mean(StaticMetric):
     @_label
     def fn(self):
         if is_quantifiable(self.col.type):
-            return func.avg(self.col)
+            return func.avg(column(self.col.name))
 
         if is_concatenable(self.col.type):
-            return func.avg(LenFn(self.col))
+            return func.avg(LenFn(column(self.col.name)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MEAN"

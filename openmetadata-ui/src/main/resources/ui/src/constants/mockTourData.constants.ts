@@ -93,6 +93,7 @@ export const mockDatasetData = {
   activeTab: 1,
   description:
     'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
+  tableType: 'Regular',
   tableProfile: [
     {
       profileDate: '2021-10-16',

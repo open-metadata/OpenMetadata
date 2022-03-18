@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { UserProfile } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
+import { CreateUser } from '../generated/api/teams/createUser';
 import { User } from '../generated/entity/teams/user';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -88,9 +89,9 @@ export const getUserById: Function = (id: string): Promise<AxiosResponse> => {
   return APIClient.get(`/users/${id}`);
 };
 
-export const createUser = (userDetails: {
-  [name: string]: string | Array<string> | UserProfile;
-}): Promise<AxiosResponse> => {
+export const createUser = (
+  userDetails: Record<string, string | Array<string> | UserProfile> | CreateUser
+): Promise<AxiosResponse> => {
   return APIClient.post(`/users`, userDetails);
 };
 

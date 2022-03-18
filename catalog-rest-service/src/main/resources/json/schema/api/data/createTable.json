@@ -31,6 +31,13 @@
       },
       "default": null
     },
+    "profileSample": {
+      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100].",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100,
+      "default": null
+    },
     "owner": {
       "description": "Owner of this entity",
       "$ref": "../../type/entityReference.json",

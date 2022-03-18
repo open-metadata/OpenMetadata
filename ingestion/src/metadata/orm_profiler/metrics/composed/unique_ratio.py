@@ -50,6 +50,21 @@ class UniqueRatio(ComposedMetric):
         res_unique = res.get(UniqueCount.name())
 
         if res_count and res_unique is not None:
-            return res_unique / res_count
+            # Why do we need to wrap this into a min?
+            # If we run metrics on a random sample, each time
+            # a query gets executed against the sample CTE, new
+            # random numbers will get generated. This means that
+            # when running the Count metric in a session and the
+            # Unique Count metric in another, we could possibly obtain
+            # res_unique > res_count for tables with a low number
+            # of rows. In those cases, the tendency would still be
+            # to have a high number of uniques, so we can
+            # comfortably return 100%.
+            # The alternative would be to try to find repeatable
+            # random generators, but not all dialects support
+            # setting a global seed, and it is more interesting
+            # to have a wider variety of results for the
+            # profiler runs.
+            return min(res_unique / res_count, 100)
 
         return None

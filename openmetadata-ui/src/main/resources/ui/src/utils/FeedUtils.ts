@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import {
   EntityFieldThreadCount,
   EntityFieldThreads,
   EntityThread,
   EntityThreadField,
+  Post,
 } from 'Models';
 import TurndownService from 'turndown';
+import { deletePostById, getFeedById } from '../axiosAPIs/feedsAPI';
 import {
   getInitialEntity,
   getInitialUsers,
@@ -265,4 +268,36 @@ export const getFrontEndFormat = (message: string) => {
   });
 
   return updatedMessage;
+};
+
+export const deletePost = (threadId: string, postId: string) => {
+  return new Promise<Post>((resolve, reject) => {
+    deletePostById(threadId, postId)
+      .then((res: AxiosResponse) => {
+        if (res.status === 200) {
+          resolve(res.data);
+        } else {
+          reject(res.data);
+        }
+      })
+      .catch((error: AxiosError) => {
+        reject(error);
+      });
+  });
+};
+
+export const getUpdatedThread = (id: string) => {
+  return new Promise<EntityThread>((resolve, reject) => {
+    getFeedById(id)
+      .then((res: AxiosResponse) => {
+        if (res.status === 200) {
+          resolve(res.data);
+        } else {
+          reject(res.data);
+        }
+      })
+      .catch((error: AxiosError) => {
+        reject(error);
+      });
+  });
 };

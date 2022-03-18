@@ -21,7 +21,6 @@ import java.security.GeneralSecurityException;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import org.openmetadata.catalog.type.Paging;
-import org.openmetadata.common.utils.CipherText;
 
 /**
  * Class used for generating JSON response for APIs returning list of objects in the following format: { "data" : [ {
@@ -84,8 +83,8 @@ public class ResultList<T> {
     this.data = data;
     paging =
         new Paging()
-            .withBefore(CipherText.instance().encrypt(beforeCursor))
-            .withAfter(CipherText.instance().encrypt(afterCursor))
+            .withBefore(RestUtil.encodeCursor(beforeCursor))
+            .withAfter(RestUtil.encodeCursor(afterCursor))
             .withTotal(total);
   }
 
