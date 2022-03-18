@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -23,6 +24,7 @@ import AppState from '../../AppState';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import {
   createTeam,
+  deleteTeam,
   getTeamByName,
   getTeams,
   patchTeamDetail,
@@ -50,6 +52,7 @@ import {
 } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
@@ -58,7 +61,6 @@ import {
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const TeamsPage = () => {
   const { team } = useParams() as Record<string, string>;
@@ -79,8 +81,19 @@ const TeamsPage = () => {
     user: EntityReference | undefined;
     state: boolean;
   }>({ user: undefined, state: false });
+  const [deletingTeam, setDeletingTeam] = useState<{
+    team: Team | undefined;
+    state: boolean;
+  }>({ team: undefined, state: false });
 
   const showToast = useToastContext();
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const fetchTeams = () => {
     setIsLoading(true);
@@ -100,6 +113,15 @@ const TeamsPage = () => {
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  const goToTeams = () => {
+    if (team) {
+      history.push(getTeamDetailsPath());
+    } else {
+      fetchTeams();
+      setCurrentTab(1);
+    }
   };
 
   const fetchCurrentTeam = (name: string, update = false) => {
@@ -223,6 +245,33 @@ const TeamsPage = () => {
       })
       .finally(() => {
         setDeletingUser({ user: undefined, state: false });
+      });
+  };
+
+  const deleteTeamHandler = () => {
+    const team = currentTeam;
+    setDeletingTeam({ team: team, state: true });
+  };
+
+  const deleteTeamById = (id: string) => {
+    deleteTeam(id)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          goToTeams();
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['delete-team-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        handleShowErrorToast(
+          err.response?.data?.message ||
+            jsonData['api-error-messages']['delete-team-error']
+        );
+      })
+      .finally(() => {
+        setDeletingTeam({ team: undefined, state: false });
       });
   };
 
@@ -514,27 +563,50 @@ const TeamsPage = () => {
                         title={currentTeam?.displayName ?? currentTeam?.name}>
                         {currentTeam?.displayName ?? currentTeam?.name}
                       </div>
-                      <NonAdminAction
-                        html={
-                          <>You do not have permission to update the team.</>
-                        }
-                        permission={Operation.UpdateTeam}
-                        position="bottom">
-                        <Button
-                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                            'tw-opacity-40':
-                              !isAdminUser &&
-                              !isAuthDisabled &&
-                              !userPermissions[Operation.UpdateTeam],
-                          })}
-                          data-testid="add-new-user-button"
-                          size="small"
-                          theme="primary"
-                          variant="contained"
-                          onClick={() => setIsAddingUsers(true)}>
-                          Add new user
-                        </Button>
-                      </NonAdminAction>
+                      <div>
+                        <NonAdminAction
+                          html={
+                            <>You do not have permission to update the team.</>
+                          }
+                          permission={Operation.UpdateTeam}
+                          position="bottom">
+                          <Button
+                            className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                              'tw-opacity-40':
+                                !isAdminUser &&
+                                !isAuthDisabled &&
+                                !userPermissions[Operation.UpdateTeam],
+                            })}
+                            data-testid="add-new-user-button"
+                            size="small"
+                            theme="primary"
+                            variant="contained"
+                            onClick={() => setIsAddingUsers(true)}>
+                            Add new user
+                          </Button>
+                        </NonAdminAction>
+                        <NonAdminAction
+                          html={
+                            <>You do not have permission to delete the team.</>
+                          }
+                          position="bottom">
+                          <Button
+                            className={classNames(
+                              'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
+                              {
+                                'tw-opacity-40':
+                                  !isAdminUser && !isAuthDisabled,
+                              }
+                            )}
+                            data-testid="delete-team-button"
+                            size="small"
+                            theme="primary"
+                            variant="contained"
+                            onClick={() => deleteTeamHandler()}>
+                            Delete Team
+                          </Button>
+                        </NonAdminAction>
+                      </div>
                     </div>
                     <div
                       className="tw-mb-3 tw--ml-5"
@@ -622,6 +694,22 @@ const TeamsPage = () => {
                     }
                     onConfirm={() => {
                       deleteUser(deletingUser.user?.id as string);
+                    }}
+                  />
+                )}
+                {deletingTeam.state && (
+                  <ConfirmationModal
+                    bodyText={`Are you sure you want to delete the team "${
+                      deletingTeam.team?.displayName || deletingTeam.team?.name
+                    }"?`}
+                    cancelText="Cancel"
+                    confirmText="Confirm"
+                    header="Delete Team"
+                    onCancel={() =>
+                      setDeletingTeam({ team: undefined, state: false })
+                    }
+                    onConfirm={() => {
+                      deleteTeamById(deletingTeam.team?.id as string);
                     }}
                   />
                 )}
