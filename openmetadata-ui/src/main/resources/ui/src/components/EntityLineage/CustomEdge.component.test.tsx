@@ -48,14 +48,12 @@ describe('Test CustomEdge Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const edgeElement = await findByTestId(container, 'react-flow-edge');
     const deleteButton = await findByTestId(container, 'delete-button');
     const edgePathElement = await findByTestId(
       container,
       'react-flow-edge-path'
     );
 
-    expect(edgeElement).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
     expect(edgePathElement).toBeInTheDocument();
   });
@@ -71,10 +69,14 @@ describe('Test CustomEdge Component', () => {
       }
     );
 
-    const edgeElement = await findByTestId(container, 'react-flow-edge');
+    const edgePathElement = await findByTestId(
+      container,
+      'react-flow-edge-path'
+    );
+
     const deleteButton = queryByTestId(container, 'delete-button');
 
-    expect(edgeElement).toBeInTheDocument();
     expect(deleteButton).not.toBeInTheDocument();
+    expect(edgePathElement).toBeInTheDocument();
   });
 });

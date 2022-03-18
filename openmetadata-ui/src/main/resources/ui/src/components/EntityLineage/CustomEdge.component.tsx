@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import React, { Fragment } from 'react';
 import {
   EdgeProps,
   getBezierPath,
@@ -54,7 +54,7 @@ export const CustomEdge = ({
   });
 
   return (
-    <span data-testid="react-flow-edge">
+    <Fragment>
       <path
         className="react-flow__edge-path"
         d={edgePath}
@@ -83,6 +83,6 @@ export const CustomEdge = ({
           </button>
         </foreignObject>
       ) : null}
-    </span>
+    </Fragment>
   );
 };
