@@ -18,133 +18,13 @@ import React, { FC, Fragment, useEffect, useState } from 'react';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedPanel from '../ActivityFeedPanel/ActivityFeedPanel';
 import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import NoFeedPlaceholder from '../NoFeedPlaceholder/NoFeedPlaceholder';
-import {
-  ActivityFeedListProp,
-  FeedListBodyProp,
-  FeedListSeparatorProp,
-} from './ActivityFeedList.interface';
-
-export const FeedListSeparator: FC<FeedListSeparatorProp> = ({
-  className,
-  relativeDay,
-}) => {
-  return (
-    <div className={className}>
-      <div className="tw-flex tw-justify-center">
-        <hr className="tw-absolute tw-top-3 tw-border-b tw-border-main tw-w-full tw-z-0" />
-        {relativeDay ? (
-          <span className="tw-bg-white tw-px-4 tw-py-px tw-border tw-border-grey-muted tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium">
-            {relativeDay}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-};
-
-const FeedListBody: FC<FeedListBodyProp> = ({
-  updatedFeedList,
-  relativeDay,
-  isEntityFeed,
-  onThreadSelect,
-  onThreadIdSelect,
-  postFeed,
-  onViewMore,
-  selctedThreadId,
-  onConfirmation,
-}) => {
-  return (
-    <Fragment>
-      {updatedFeedList
-        .filter((f) => f.relativeDay === relativeDay)
-        .map((feed, index) => {
-          const mainFeed = {
-            message: feed.message,
-            postTs: feed.threadTs,
-            from: feed.createdBy,
-            id: feed.id,
-          };
-          const postLength = feed.posts.length;
-          const replies = feed.postsCount - 1;
-          const repliedUsers = feed.posts
-            .map((f) => f.from)
-            .slice(0, postLength >= 3 ? 2 : 1);
-          const lastPost = feed.posts[postLength - 1];
-
-          return (
-            <Fragment key={index}>
-              <ActivityFeedCard
-                className="tw-mb-6"
-                entityLink={feed.about}
-                feed={mainFeed}
-                isEntityFeed={isEntityFeed}
-              />
-              {postLength > 0 ? (
-                <Fragment>
-                  {postLength > 1 ? (
-                    <div className="tw-mb-6">
-                      <div className="tw-ml-9 tw-flex tw-mb-6">
-                        <FeedCardFooter
-                          isFooterVisible
-                          className="tw--mt-4"
-                          lastReplyTimeStamp={lastPost?.postTs}
-                          repliedUsers={repliedUsers}
-                          replies={replies}
-                          threadId={feed.id}
-                          onThreadSelect={(id: string) => {
-                            onThreadIdSelect('');
-                            onThreadSelect(id);
-                            onViewMore();
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-                  <ActivityFeedCard
-                    className="tw-mb-6 tw-ml-9"
-                    feed={lastPost}
-                    isEntityFeed={isEntityFeed}
-                    threadId={feed.id}
-                    onConfirmation={onConfirmation}
-                  />
-                  <p
-                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
-                    onClick={() => {
-                      onThreadIdSelect(feed.id);
-                    }}>
-                    Reply
-                  </p>
-                  {selctedThreadId === feed.id ? (
-                    <ActivityFeedEditor
-                      buttonClass="tw-mr-4"
-                      className="tw-ml-5 tw-mr-2"
-                      onSave={postFeed}
-                    />
-                  ) : null}
-                </Fragment>
-              ) : (
-                <p
-                  className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6"
-                  onClick={() => {
-                    onThreadSelect(feed.id);
-                    onViewMore();
-                  }}>
-                  Reply
-                </p>
-              )}
-            </Fragment>
-          );
-        })}
-    </Fragment>
-  );
-};
+import { ActivityFeedListProp } from './ActivityFeedList.interface';
+import FeedListBody from './FeedListBody';
+import FeedListSeparator from './FeedListSeparator';
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
@@ -232,7 +112,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         <Fragment>
           {relativeDays.map((d, i) => {
             return (
-              <Fragment key={i}>
+              <div data-testid={`feed${i}`} key={i}>
                 <FeedListSeparator
                   className="tw-relative tw-mt-1 tw-mb-3.5"
                   relativeDay={d}
@@ -251,7 +131,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   onThreadSelect={onThreadSelect}
                   onViewMore={onViewMore}
                 />
-              </Fragment>
+              </div>
             );
           })}
           {withSidePanel && selectedThread && isPanelOpen ? (
