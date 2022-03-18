@@ -11,5 +11,16 @@
  *  limitations under the License.
  */
 
-export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
-export const validEmailRegEx = /^\S+@\S+\.\S+$/;
+import { LoadingState } from 'Models';
+import { CreateUser } from '../../generated/api/teams/createUser';
+import { Role } from '../../generated/entity/teams/role';
+import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+
+export interface CreateUserProps {
+  allowAccess: boolean;
+  saveState?: LoadingState;
+  roles: Array<Role>;
+  teams: Array<UserTeams>;
+  onSave: (data: CreateUser) => void;
+  onCancel: () => void;
+}

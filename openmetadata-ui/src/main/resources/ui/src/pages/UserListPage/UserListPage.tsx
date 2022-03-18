@@ -15,11 +15,13 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import UserList from '../../components/UserList/UserList';
+import { ROUTES } from '../../constants/constants';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
@@ -27,6 +29,7 @@ import useToastContext from '../../hooks/useToastContext';
 
 const UserListPage = () => {
   const showToast = useToastContext();
+  const history = useHistory();
 
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
@@ -48,6 +51,13 @@ const UserListPage = () => {
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  /**
+   * Redirect user to add-user route for adding new user.
+   */
+  const handleAddUserClick = () => {
+    history.push(ROUTES.CREATE_USER);
   };
 
   const updateUser = (id: string, data: Operation[], updatedUser: User) => {
@@ -84,6 +94,7 @@ const UserListPage = () => {
     <PageContainerV1>
       <UserList
         allUsers={allUsers}
+        handleAddUserClick={handleAddUserClick}
         isLoading={isLoading}
         roles={roles}
         teams={teams}
