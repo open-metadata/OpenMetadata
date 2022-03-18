@@ -16,8 +16,6 @@ package org.openmetadata.catalog.util;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 import org.openmetadata.catalog.type.Paging;
@@ -78,8 +76,7 @@ public class ResultList<T> {
    * <p>CASE 4: Page 1 has exactly page number of entries Returns: page1 beforeCursor = null afterCursor = Empty string
    * to start at page1 -------- BACKWARD SCROLLING ENDS -------------
    */
-  public ResultList(List<T> data, String beforeCursor, String afterCursor, int total)
-      throws GeneralSecurityException, UnsupportedEncodingException {
+  public ResultList(List<T> data, String beforeCursor, String afterCursor, int total) {
     this.data = data;
     paging =
         new Paging()

@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Collections;
@@ -107,8 +106,7 @@ public class DatabaseServiceResource {
     @SuppressWarnings("unused") /* Required for tests */
     public DatabaseServiceList() {}
 
-    public DatabaseServiceList(List<DatabaseService> data, String beforeCursor, String afterCursor, int total)
-        throws GeneralSecurityException, UnsupportedEncodingException {
+    public DatabaseServiceList(List<DatabaseService> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }

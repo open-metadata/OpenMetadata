@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Objects;
@@ -56,8 +55,7 @@ public class EventResource {
     @SuppressWarnings("unused") /* Required for tests */
     public ChangeEventList() {}
 
-    public ChangeEventList(List<ChangeEvent> data, String beforeCursor, String afterCursor, int total)
-        throws GeneralSecurityException, UnsupportedEncodingException {
+    public ChangeEventList(List<ChangeEvent> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
