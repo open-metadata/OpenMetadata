@@ -32,8 +32,8 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../components/AddUser/AddUser.component', () => {
-  return jest.fn().mockReturnValue(<div>AddUser component</div>);
+jest.mock('../../components/CreateUser/CreateUser.component', () => {
+  return jest.fn().mockReturnValue(<div>CreateUser component</div>);
 });
 
 jest.mock('../../AppState', () =>
@@ -50,9 +50,12 @@ describe('Test AddUserPage component', () => {
     });
 
     const pageContainerV1 = await findByTestId(container, 'PageContainerV1');
-    const addUserComponent = await findByText(container, /AddUser component/i);
+    const createUserComponent = await findByText(
+      container,
+      /CreateUser component/i
+    );
 
     expect(pageContainerV1).toBeInTheDocument();
-    expect(addUserComponent).toBeInTheDocument();
+    expect(createUserComponent).toBeInTheDocument();
   });
 });

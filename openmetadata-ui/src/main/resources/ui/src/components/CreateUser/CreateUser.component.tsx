@@ -20,24 +20,16 @@ import { validEmailRegEx } from '../../constants/regex.constants';
 import { CreateUser as CreateUserSchema } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import jsonData from '../../jsons/en';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
+import { Field } from '../Field/Field';
 import Loader from '../Loader/Loader';
 import { CreateUserProps } from './CreateUser.interface';
-
-const Field = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => {
-  return <div className={classNames('tw-mt-4', className)}>{children}</div>;
-};
 
 const CreateUser = ({
   allowAccess,
@@ -68,7 +60,6 @@ const CreateUser = ({
    * @param event change event for input/selection field
    * @returns if user dont have access to the page it will not update data.
    */
-
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -96,7 +87,6 @@ const CreateUser = ({
    * @param data Array containing object which must have name and id
    * @returns DropdownListItem[]
    */
-
   const getDropdownOptions = (
     data: Array<Role> | Array<UserTeams>
   ): DropDownListItem[] => {
@@ -114,7 +104,6 @@ const CreateUser = ({
    * Dropdown option selector
    * @param id of selected option from dropdown
    */
-
   const selectedRolesHandler = (id?: string) => {
     setSelectedRoles((prevState: Array<string | undefined>) => {
       if (prevState.includes(id as string)) {
@@ -133,7 +122,6 @@ const CreateUser = ({
    * Dropdown option selector.
    * @param id of selected option from dropdown.
    */
-
   const selectedTeamsHandler = (id?: string) => {
     setSelectedTeams((prevState: Array<string | undefined>) => {
       if (prevState.includes(id as string)) {
@@ -152,7 +140,6 @@ const CreateUser = ({
    * Validate if required value is provided or not.
    * @returns boolean
    */
-
   const validateForm = () => {
     const errMsg = cloneDeep(showErrorMsg);
     if (isEmpty(email)) {
@@ -168,7 +155,6 @@ const CreateUser = ({
   /**
    * Form submit handler
    */
-
   const handleSave = () => {
     const validRole = selectedRoles.filter(
       (id) => !isUndefined(id)
@@ -194,7 +180,6 @@ const CreateUser = ({
    * Dynamic button provided as per its state, useful for micro interaction
    * @returns Button
    */
-
   const getSaveButton = () => {
     return allowAccess ? (
       <>
@@ -250,8 +235,12 @@ const CreateUser = ({
           value={email}
           onChange={handleValidation}
         />
-        {showErrorMsg.email && errorMsg('Email is required.')}
-        {showErrorMsg.validEmail && errorMsg('Email is invalid.')}
+
+        {showErrorMsg.email
+          ? errorMsg(jsonData['form-error-messages']['empty-email'])
+          : showErrorMsg.validEmail
+          ? errorMsg(jsonData['form-error-messages']['invalid-email'])
+          : null}
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="description">
@@ -295,7 +284,10 @@ const CreateUser = ({
             className={classNames('toggle-switch', { open: isAdmin })}
             data-testid="admin"
             onClick={() => {
-              allowAccess && setIsAdmin((prev) => !prev);
+              if (allowAccess) {
+                setIsAdmin((prev) => !prev);
+                setIsBot(false);
+              }
             }}>
             <div className="switch" />
           </div>
@@ -306,7 +298,10 @@ const CreateUser = ({
             className={classNames('toggle-switch', { open: isBot })}
             data-testid="bot"
             onClick={() => {
-              allowAccess && setIsBot((prev) => !prev);
+              if (allowAccess) {
+                setIsBot((prev) => !prev);
+                setIsAdmin(false);
+              }
             }}>
             <div className="switch" />
           </div>

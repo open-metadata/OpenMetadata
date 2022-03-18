@@ -90,11 +90,7 @@ export const getUserById: Function = (id: string): Promise<AxiosResponse> => {
 };
 
 export const createUser = (
-  userDetails:
-    | {
-        [name: string]: string | Array<string> | UserProfile;
-      }
-    | CreateUser
+  userDetails: Record<string, string | Array<string> | UserProfile> | CreateUser
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/users`, userDetails);
 };

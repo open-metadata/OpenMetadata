@@ -51,7 +51,6 @@ const CreateUserPage = () => {
    * Creates toast notification for error.
    * @param errMessage Error message
    */
-
   const handleShowErrorToast = (errMessage: string) => {
     showToast({
       variant: 'error',
@@ -63,10 +62,9 @@ const CreateUserPage = () => {
    * Handles error if any, while creating new user.
    * @param errorMessage Error message
    */
-
   const handleSaveFailure = (errorMessage = '') => {
     handleShowErrorToast(
-      errorMessage || jsonData['api-error-messages']['add-user-error']
+      errorMessage || jsonData['api-error-messages']['create-user-error']
     );
     setStatus('initial');
   };
@@ -75,7 +73,6 @@ const CreateUserPage = () => {
    * Submit handler for new user form.
    * @param userData Data for creating new user
    */
-
   const handleAddUserSave = (userData: CreateUser) => {
     setStatus('waiting');
     createUser(userData)

@@ -46,8 +46,8 @@ const propsValue: CreateUserProps = {
   onCancel: jest.fn(),
 };
 
-describe('Test AddUser component', () => {
-  it('AddUser component should render properly', async () => {
+describe('Test CreateUser component', () => {
+  it('CreateUser component should render properly', async () => {
     const { container } = render(<CreateUser {...propsValue} />, {
       wrapper: MemoryRouter,
     });
