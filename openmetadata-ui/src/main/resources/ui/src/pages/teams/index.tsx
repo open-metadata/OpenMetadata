@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined, orderBy, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -58,7 +59,6 @@ import {
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const TeamsPage = () => {
   const { team } = useParams() as Record<string, string>;
@@ -299,12 +299,14 @@ const TeamsPage = () => {
       );
     }
 
+    const sortedUser = orderBy(currentTeam?.users || [], ['name'], 'asc');
+
     return (
       <>
         <div
           className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
           data-testid="user-card-container">
-          {currentTeam?.users?.map((user, index) => {
+          {sortedUser.map((user, index) => {
             const User = {
               description: user.displayName || user.name || '',
               name: user.name || '',
