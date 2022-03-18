@@ -73,7 +73,6 @@ import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 import org.openmetadata.common.utils.CommonUtil;
 
 /**
@@ -282,7 +281,7 @@ public abstract class EntityRepository<T> {
       throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
-        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : CipherText.instance().decrypt(after), include);
+        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after), include);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -306,7 +305,7 @@ public abstract class EntityRepository<T> {
       UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before, Include include)
       throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before), include);
+    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, RestUtil.decodeCursor(before), include);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
