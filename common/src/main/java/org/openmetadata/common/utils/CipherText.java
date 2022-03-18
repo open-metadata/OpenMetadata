@@ -28,13 +28,12 @@ import javax.crypto.spec.SecretKeySpec;
 /** Class that uses AEC encryption to encrypt and decrypt plain text */
 public final class CipherText {
   private static CipherText instance = null;
-  private final String key = "nYznHcz+l04TmsCMYGQxANTjNtwiWDQ7IfDkqW1wb1U=";
+  private final String key = "OpenMetadata";
   private SecretKeySpec secretKey;
 
   @VisibleForTesting
   CipherText() {
-    byte[] bytes = Base64.getDecoder().decode(key);
-    secretKey = new SecretKeySpec(Arrays.copyOf(bytes, 16), "AES");
+    secretKey = new SecretKeySpec(Arrays.copyOf(key.getBytes(StandardCharsets.UTF_8), 16), "AES");
   }
 
   public static CipherText instance() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
