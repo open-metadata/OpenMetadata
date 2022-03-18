@@ -13,15 +13,14 @@
 
 package org.openmetadata.common.utils;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Random;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
@@ -29,15 +28,12 @@ import javax.crypto.spec.SecretKeySpec;
 /** Class that uses AEC encryption to encrypt and decrypt plain text */
 public final class CipherText {
   private static CipherText instance = null;
-  private static SecretKeySpec secretKey;
+  private final String key = "nYznHcz+l04TmsCMYGQxANTjNtwiWDQ7IfDkqW1wb1U=";
+  private SecretKeySpec secretKey;
 
-  private CipherText() throws NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException {
-    // Generate random set of bytes to be used as secret key
-    byte[] bytes = new byte[16];
-    new Random().nextBytes(bytes);
-
-    // Generate secret key from random bytes
-    bytes = MessageDigest.getInstance("SHA-1").digest(bytes);
+  @VisibleForTesting
+  CipherText() {
+    byte[] bytes = Base64.getDecoder().decode(key);
     secretKey = new SecretKeySpec(Arrays.copyOf(bytes, 16), "AES");
   }
 

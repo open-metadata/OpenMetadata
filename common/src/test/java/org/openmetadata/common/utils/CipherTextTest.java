@@ -29,4 +29,14 @@ public class CipherTextTest {
       assertEquals(str, cipherText.decrypt(encryptedStr));
     }
   }
+
+  @Test
+  void encryptTwiceTest() throws GeneralSecurityException, UnsupportedEncodingException {
+    CipherText cipher1 = new CipherText();
+    CipherText cipher2 = new CipherText();
+    String str = "foobar";
+    String token = cipher1.encrypt(str);
+    String clear = cipher2.decrypt(token);
+    assertEquals(str, clear);
+  }
 }
