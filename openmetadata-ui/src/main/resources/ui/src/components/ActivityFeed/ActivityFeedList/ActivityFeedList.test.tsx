@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findAllByTestId, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedList from './ActivityFeedList';
@@ -42,7 +42,7 @@ const mockFeeds = [
     updatedBy: 'anonymous',
     resolved: false,
     message: 'New thread.',
-    postsCount: 4,
+    postsCount: 3,
     posts: [
       {
         id: 'afc5648f-9f30-4588-bd26-319c66af7c46',
@@ -108,8 +108,10 @@ describe('Test FeedList Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const feeds = await findAllByTestId(container, 'feed');
+    const feed1 = await findByTestId(container, 'feed0');
+    const feed2 = await findByTestId(container, 'feed1');
 
-    expect(feeds).toHaveLength(2);
+    expect(feed1).toBeInTheDocument();
+    expect(feed2).toBeInTheDocument();
   });
 });

@@ -112,7 +112,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         <Fragment>
           {relativeDays.map((d, i) => {
             return (
-              <div data-testid="feed" key={i}>
+              <div data-testid={`feed${i}`} key={i}>
                 <FeedListSeparator
                   className="tw-relative tw-mt-1 tw-mb-3.5"
                   relativeDay={d}

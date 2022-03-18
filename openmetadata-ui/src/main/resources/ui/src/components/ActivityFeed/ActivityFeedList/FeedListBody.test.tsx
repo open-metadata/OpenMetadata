@@ -62,7 +62,7 @@ const mockThreads = [
     updatedBy: 'anonymous',
     resolved: false,
     message: 'New thread.',
-    postsCount: 4,
+    postsCount: 3,
     posts: [
       {
         id: 'afc5648f-9f30-4588-bd26-319c66af7c46',
