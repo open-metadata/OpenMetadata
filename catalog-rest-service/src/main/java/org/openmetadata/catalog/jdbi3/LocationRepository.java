@@ -37,8 +37,8 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
@@ -93,7 +93,7 @@ public class LocationRepository extends EntityRepository<Location> {
                 fqn,
                 service,
                 limitParam + 1,
-                CipherText.instance().decrypt(before));
+                RestUtil.decodeCursor(before));
 
     List<Location> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -129,7 +129,7 @@ public class LocationRepository extends EntityRepository<Location> {
                 fqn,
                 service,
                 limitParam + 1,
-                after == null ? "" : CipherText.instance().decrypt(after));
+                after == null ? "" : RestUtil.decodeCursor(after));
 
     List<Location> entities = new ArrayList<>();
     for (String json : jsons) {
