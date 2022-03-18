@@ -35,7 +35,8 @@ export const CustomEdge = ({
   markerEndId,
   data,
 }: EdgeProps) => {
-  const { onEdgeClick, ...rest } = data;
+  const { onEdgeClick, selectedNode, ...rest } = data;
+
   const edgePath = getBezierPath({
     sourceX,
     sourceY,
@@ -57,23 +58,31 @@ export const CustomEdge = ({
       <path
         className="react-flow__edge-path"
         d={edgePath}
+        data-testid="react-flow-edge-path"
         id={id}
         markerEnd={markerEnd}
         style={style}
       />
-      <foreignObject
-        className="tw-opacity-0 hover:tw-opacity-100"
-        height={foreignObjectSize}
-        requiredExtensions="http://www.w3.org/1999/xhtml"
-        width={foreignObjectSize}
-        x={edgeCenterX - foreignObjectSize / 4}
-        y={edgeCenterY - foreignObjectSize / 4}>
-        <button
-          className="tw-cursor-pointer tw-flex tw-z-9999"
-          onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
-          <SVGIcons alt="times-circle" icon="icon-times-circle" width="14px" />
-        </button>
-      </foreignObject>
+      {(rest as CustomEdgeData)?.source?.includes(selectedNode?.id) ||
+      (rest as CustomEdgeData)?.target?.includes(selectedNode?.id) ? (
+        <foreignObject
+          data-testid="delete-button"
+          height={foreignObjectSize}
+          requiredExtensions="http://www.w3.org/1999/xhtml"
+          width={foreignObjectSize}
+          x={edgeCenterX - foreignObjectSize / 4}
+          y={edgeCenterY - foreignObjectSize / 4}>
+          <button
+            className="tw-cursor-pointer tw-flex tw-z-9999"
+            onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
+            <SVGIcons
+              alt="times-circle"
+              icon="icon-times-circle"
+              width="14px"
+            />
+          </button>
+        </foreignObject>
+      ) : null}
     </Fragment>
   );
 };
