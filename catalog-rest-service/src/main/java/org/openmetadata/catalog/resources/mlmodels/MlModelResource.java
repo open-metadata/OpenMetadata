@@ -272,7 +272,11 @@ public class MlModelResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     MlModel mlModel = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(mlModel).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(mlModel).getEntityReference(),
+        dao.getOwnerReference(mlModel),
+        patch);
 
     PatchResponse<MlModel> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);

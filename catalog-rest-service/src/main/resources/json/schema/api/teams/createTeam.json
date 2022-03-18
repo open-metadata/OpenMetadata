@@ -29,12 +29,22 @@
       "default": null
     },
     "defaultRoles": {
-      "description":  "Roles to be assigned to all users that are part of this team.",
+      "description": "Roles to be assigned to all users that are part of this team.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
+    },
+    "owner": {
+      "description": "Owner of this team. ",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "joinable": {
+      "description": "This field describes if the users can join a team without any permission. By default this is set to True.",
+      "type": "boolean",
+      "default": "true"
     }
   },
   "required": ["name"],

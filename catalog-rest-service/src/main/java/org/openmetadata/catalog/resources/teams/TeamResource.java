@@ -307,8 +307,8 @@ public class TeamResource {
   public Response createOrUpdateTeam(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
+    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(team));
     RestUtil.PutResponse<Team> response = dao.createOrUpdate(uriInfo, team);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -339,7 +339,11 @@ public class TeamResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Team team = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(team).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(team).getEntityReference(),
+        dao.getOriginalOwner(team),
+        patch);
     PatchResponse<Team> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -370,6 +374,7 @@ public class TeamResource {
         .withDescription(ct.getDescription())
         .withDisplayName(ct.getDisplayName())
         .withProfile(ct.getProfile())
+        .withOwner(ct.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
         .withUsers(dao.getEntityReferences(ct.getUsers()))

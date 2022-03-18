@@ -368,7 +368,11 @@ public class GlossaryTermResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     GlossaryTerm term = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(term).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(term).getEntityReference(),
+        dao.getOriginalOwner(term),
+        patch);
     PatchResponse<GlossaryTerm> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

@@ -332,7 +332,11 @@ public class TopicResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
     Topic topic = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(topic).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(topic).getEntityReference(),
+        dao.getOwnerReference(topic),
+        patch);
 
     PatchResponse<Topic> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
