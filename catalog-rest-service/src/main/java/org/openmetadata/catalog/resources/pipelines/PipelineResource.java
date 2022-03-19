@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,7 +26,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -57,6 +54,7 @@ import org.openmetadata.catalog.entity.data.PipelineStatus;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -73,17 +71,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelines")
-public class PipelineResource {
+public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
-  private final PipelineRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Pipeline> addHref(UriInfo uriInfo, ResultList<Pipeline> pipelines) {
-    listOrEmpty(pipelines.getData()).forEach(i -> addHref(uriInfo, i));
-    return pipelines;
-  }
-
-  public static Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
+  @Override
+  public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
     pipeline.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, pipeline.getId()));
     Entity.withHref(uriInfo, pipeline.getOwner());
     Entity.withHref(uriInfo, pipeline.getService());
@@ -92,9 +84,7 @@ public class PipelineResource {
   }
 
   public PipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "PipelineRepository must not be null");
-    this.dao = new PipelineRepository(dao);
-    this.authorizer = authorizer;
+    super(Pipeline.class, new PipelineRepository(dao), authorizer);
   }
 
   public static class PipelineList extends ResultList<Pipeline> {

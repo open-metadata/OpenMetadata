@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,7 +26,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -56,6 +53,7 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -72,17 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboards")
-public class DashboardResource {
+public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
-  private final DashboardRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Dashboard> addHref(UriInfo uriInfo, ResultList<Dashboard> dashboards) {
-    listOrEmpty(dashboards.getData()).forEach(i -> addHref(uriInfo, i));
-    return dashboards;
-  }
-
-  public static Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
+  @Override
+  public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
     Entity.withHref(uriInfo, dashboard.getOwner());
     Entity.withHref(uriInfo, dashboard.getService());
     Entity.withHref(uriInfo, dashboard.getCharts());
@@ -91,9 +83,7 @@ public class DashboardResource {
   }
 
   public DashboardResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "DashboardRepository must not be null");
-    this.dao = new DashboardRepository(dao);
-    this.authorizer = authorizer;
+    super(Dashboard.class, new DashboardRepository(dao), authorizer);
   }
 
   public static class DashboardList extends ResultList<Dashboard> {

@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -47,6 +46,7 @@ import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -59,13 +59,16 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metrics")
-public class MetricsResource {
+public class MetricsResource extends EntityResource<Metrics, MetricsRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
-  private final MetricsRepository dao;
 
   public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "MetricsRepository must not be null");
-    this.dao = new MetricsRepository(dao);
+    super(Metrics.class, new MetricsRepository(dao), authorizer);
+  }
+
+  @Override
+  public Metrics addHref(UriInfo uriInfo, Metrics entity) {
+    return entity;
   }
 
   public static class MetricsList extends ResultList<Metrics> {

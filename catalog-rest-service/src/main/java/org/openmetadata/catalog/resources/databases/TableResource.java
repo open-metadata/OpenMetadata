@@ -57,6 +57,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.tests.ColumnTest;
@@ -80,12 +81,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
-public class TableResource {
+public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
-  private final TableRepository dao;
-  private final Authorizer authorizer;
 
-  public static Table addHref(UriInfo uriInfo, Table table) {
+  @Override
+  public Table addHref(UriInfo uriInfo, Table table) {
     Entity.withHref(uriInfo, table.getDatabase());
     Entity.withHref(uriInfo, table.getLocation());
     Entity.withHref(uriInfo, table.getOwner());
@@ -94,8 +94,7 @@ public class TableResource {
   }
 
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new TableRepository(dao);
-    this.authorizer = authorizer;
+    super(Table.class, new TableRepository(dao), authorizer);
   }
 
   public static class TableList extends ResultList<Table> {
@@ -115,8 +114,7 @@ public class TableResource {
   public static final List<String> ALLOWED_FIELDS;
 
   static {
-    List<String> list = new ArrayList<>();
-    list.addAll(Entity.getEntityFields(Table.class));
+    List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
     list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
     ALLOWED_FIELDS = Collections.unmodifiableList(list);
   }
@@ -176,8 +174,7 @@ public class TableResource {
     } else { // Forward paging or first page
       tables = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after, include);
     }
-    tables.getData().forEach(t -> addHref(uriInfo, t));
-    return tables;
+    return addHref(uriInfo, tables);
   }
 
   @GET

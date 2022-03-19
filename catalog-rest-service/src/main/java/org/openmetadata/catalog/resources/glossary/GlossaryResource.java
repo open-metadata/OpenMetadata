@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -29,7 +27,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -57,6 +54,7 @@ import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -74,17 +72,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "glossaries")
-public class GlossaryResource {
+public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
-  private final GlossaryRepository dao;
-  private final Authorizer authorizer;
 
-  public static List<Glossary> addHref(UriInfo uriInfo, List<Glossary> glossaries) {
-    listOrEmpty(glossaries).forEach(i -> addHref(uriInfo, i));
-    return glossaries;
-  }
-
-  public static Glossary addHref(UriInfo uriInfo, Glossary glossary) {
+  @Override
+  public Glossary addHref(UriInfo uriInfo, Glossary glossary) {
     glossary.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, glossary.getId()));
     Entity.withHref(uriInfo, glossary.getOwner());
     Entity.withHref(uriInfo, glossary.getReviewers());
@@ -93,9 +85,7 @@ public class GlossaryResource {
 
   @Inject
   public GlossaryResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "GlossaryRepository must not be null");
-    this.dao = new GlossaryRepository(dao);
-    this.authorizer = authorizer;
+    super(Glossary.class, new GlossaryRepository(dao), authorizer);
   }
 
   public static class GlossaryList extends ResultList<Glossary> {
@@ -163,8 +153,7 @@ public class GlossaryResource {
     } else { // Forward paging or first page
       glossary = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
-    addHref(uriInfo, glossary.getData());
-    return glossary;
+    return addHref(uriInfo, glossary);
   }
 
   @GET

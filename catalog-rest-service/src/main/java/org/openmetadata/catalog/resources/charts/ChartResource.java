@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.charts;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -55,6 +53,7 @@ import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -71,17 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
-public class ChartResource {
+public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
-  private final ChartRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Chart> addHref(UriInfo uriInfo, ResultList<Chart> charts) {
-    listOrEmpty(charts.getData()).forEach(i -> addHref(uriInfo, i));
-    return charts;
-  }
-
-  public static Chart addHref(UriInfo uriInfo, Chart chart) {
+  @Override
+  public Chart addHref(UriInfo uriInfo, Chart chart) {
     chart.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, chart.getId()));
     Entity.withHref(uriInfo, chart.getOwner());
     Entity.withHref(uriInfo, chart.getService());
@@ -90,8 +83,7 @@ public class ChartResource {
   }
 
   public ChartResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new ChartRepository(dao);
-    this.authorizer = authorizer;
+    super(Chart.class, new ChartRepository(dao), authorizer);
   }
 
   public static class ChartList extends ResultList<Chart> {

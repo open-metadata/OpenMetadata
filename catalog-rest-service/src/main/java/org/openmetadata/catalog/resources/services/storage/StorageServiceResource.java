@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.services.storage;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +25,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -52,6 +50,7 @@ import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -67,29 +66,21 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storageServices")
-public class StorageServiceResource {
+public class StorageServiceResource extends EntityResource<StorageService, StorageServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  private final StorageServiceRepository dao;
-  private final Authorizer authorizer;
 
   static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(StorageService.class);
 
-  public static ResultList<StorageService> addHref(UriInfo uriInfo, ResultList<StorageService> services) {
-    listOrEmpty(services.getData()).forEach(i -> addHref(uriInfo, i));
-    return services;
-  }
-
-  public static StorageService addHref(UriInfo uriInfo, StorageService service) {
+  @Override
+  public StorageService addHref(UriInfo uriInfo, StorageService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
     return service;
   }
 
   public StorageServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "StorageServiceRepository must not be null");
-    this.dao = new StorageServiceRepository(dao);
-    this.authorizer = authorizer;
+    super(StorageService.class, new StorageServiceRepository(dao), authorizer);
   }
 
   public static class StorageServiceList extends ResultList<StorageService> {

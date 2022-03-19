@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.policies;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -29,7 +28,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -58,6 +56,7 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
@@ -76,25 +75,17 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies")
-public class PolicyResource {
+public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
-  private final PolicyRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Policy> addHref(UriInfo uriInfo, ResultList<Policy> policies) {
-    listOrEmpty(policies.getData()).forEach(i -> addHref(uriInfo, i));
-    return policies;
-  }
-
-  public static Policy addHref(UriInfo uriInfo, Policy policy) {
+  @Override
+  public Policy addHref(UriInfo uriInfo, Policy policy) {
     Entity.withHref(uriInfo, policy.getOwner());
     return policy;
   }
 
   public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "PolicyRepository must not be null");
-    this.dao = new PolicyRepository(dao);
-    this.authorizer = authorizer;
+    super(Policy.class, new PolicyRepository(dao), authorizer);
   }
 
   @SuppressWarnings("unused") // Method is used for reflection

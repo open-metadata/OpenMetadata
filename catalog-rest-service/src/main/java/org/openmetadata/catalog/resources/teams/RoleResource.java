@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -55,6 +54,7 @@ import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -70,12 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "roles")
-public class RoleResource {
+public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";
-  private final RoleRepository dao;
-  private final Authorizer authorizer;
 
-  public static Role addHref(UriInfo uriInfo, Role role) {
+  @Override
+  public Role addHref(UriInfo uriInfo, Role role) {
     Entity.withHref(uriInfo, role.getPolicy());
     Entity.withHref(uriInfo, role.getTeams());
     Entity.withHref(uriInfo, role.getUsers());
@@ -83,9 +82,7 @@ public class RoleResource {
   }
 
   public RoleResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "RoleRepository must not be null");
-    this.dao = new RoleRepository(dao);
-    this.authorizer = authorizer;
+    super(Role.class, new RoleRepository(dao), authorizer);
   }
 
   @SuppressWarnings("unused") // Method used for reflection
@@ -161,8 +158,7 @@ public class RoleResource {
     } else { // Forward paging or first page
       roles = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
-    roles.getData().forEach(role -> addHref(uriInfo, role));
-    return roles;
+    return addHref(uriInfo, roles);
   }
 
   @GET

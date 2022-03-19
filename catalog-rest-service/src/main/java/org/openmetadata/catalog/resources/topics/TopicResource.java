@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.topics;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -57,6 +56,7 @@ import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -73,17 +73,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "topics")
-public class TopicResource {
+public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
-  private final TopicRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Topic> addHref(UriInfo uriInfo, ResultList<Topic> topics) {
-    listOrEmpty(topics.getData()).forEach(i -> addHref(uriInfo, i));
-    return topics;
-  }
-
-  public static Topic addHref(UriInfo uriInfo, Topic topic) {
+  @Override
+  public Topic addHref(UriInfo uriInfo, Topic topic) {
     Entity.withHref(uriInfo, topic.getOwner());
     Entity.withHref(uriInfo, topic.getService());
     Entity.withHref(uriInfo, topic.getFollowers());
@@ -92,8 +86,7 @@ public class TopicResource {
 
   @Inject
   public TopicResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new TopicRepository(dao);
-    this.authorizer = authorizer;
+    super(Topic.class, new TopicRepository(dao), authorizer);
   }
 
   public static class TopicList extends ResultList<Topic> {

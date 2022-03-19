@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -47,6 +46,7 @@ import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -66,10 +66,13 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "webhook")
-public class WebhookResource {
+public class WebhookResource extends EntityResource<Webhook, WebhookRepository> {
   public static final String COLLECTION_PATH = "v1/webhook/";
-  private final WebhookRepository dao;
-  private final Authorizer authorizer;
+
+  @Override
+  public Webhook addHref(UriInfo uriInfo, Webhook entity) {
+    return entity;
+  }
 
   public static class WebhookList extends ResultList<Webhook> {
 
@@ -82,9 +85,7 @@ public class WebhookResource {
   }
 
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
-    this.dao = new WebhookRepository(dao);
-    this.authorizer = authorizer;
+    super(Webhook.class, new WebhookRepository(dao), authorizer);
   }
 
   @GET

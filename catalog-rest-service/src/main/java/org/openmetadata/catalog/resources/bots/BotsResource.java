@@ -43,6 +43,7 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.jdbi3.BotsRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.Include;
@@ -55,14 +56,16 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "bots")
-public class BotsResource {
+public class BotsResource extends EntityResource<Bots, BotsRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
-  private final BotsRepository dao;
-  private final Authorizer authorizer;
 
   public BotsResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new BotsRepository(dao);
-    this.authorizer = authorizer;
+    super(Bots.class, new BotsRepository(dao), authorizer);
+  }
+
+  @Override
+  public Bots addHref(UriInfo uriInfo, Bots entity) {
+    return entity;
   }
 
   public static class BotsList extends ResultList<Bots> {

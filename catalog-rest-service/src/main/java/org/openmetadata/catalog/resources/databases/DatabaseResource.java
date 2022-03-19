@@ -25,9 +25,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -55,6 +53,7 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -71,23 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
-public class DatabaseResource {
+public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
-  private final DatabaseRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Database> addHref(UriInfo uriInfo, ResultList<Database> databases) {
-    Optional.ofNullable(databases.getData())
-        .orElse(Collections.emptyList())
-        .forEach(
-            i -> {
-              addHref(uriInfo, i);
-              i.setTables(null);
-            });
-    return databases;
-  }
-
-  public static Database addHref(UriInfo uriInfo, Database db) {
+  @Override
+  public Database addHref(UriInfo uriInfo, Database db) {
     Entity.withHref(uriInfo, db.getTables());
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getOwner());
@@ -96,8 +83,7 @@ public class DatabaseResource {
   }
 
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new DatabaseRepository(dao);
-    this.authorizer = authorizer;
+    super(Database.class, new DatabaseRepository(dao), authorizer);
   }
 
   public static class DatabaseList extends ResultList<Database> {

@@ -31,7 +31,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -62,6 +61,7 @@ import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -79,28 +79,20 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "airflowPipelines")
-public class AirflowPipelineResource {
+public class AirflowPipelineResource extends EntityResource<AirflowPipeline, AirflowPipelineRepository> {
   public static final String COLLECTION_PATH = "operations/v1/airflowPipeline/";
-  private final AirflowPipelineRepository dao;
-  private final Authorizer authorizer;
   private AirflowRESTClient airflowRESTClient;
   private CatalogApplicationConfig config;
 
-  public static ResultList<AirflowPipeline> addHref(UriInfo uriInfo, ResultList<AirflowPipeline> ingestions) {
-    listOrEmpty(ingestions.getData()).forEach(i -> addHref(uriInfo, i));
-    return ingestions;
-  }
-
-  public static AirflowPipeline addHref(UriInfo uriInfo, AirflowPipeline airflowPipeline) {
+  @Override
+  public AirflowPipeline addHref(UriInfo uriInfo, AirflowPipeline airflowPipeline) {
     Entity.withHref(uriInfo, airflowPipeline.getOwner());
     Entity.withHref(uriInfo, airflowPipeline.getService());
     return airflowPipeline;
   }
 
   public AirflowPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "AirflowPipelineRepository must not be null");
-    this.dao = new AirflowPipelineRepository(dao);
-    this.authorizer = authorizer;
+    super(AirflowPipeline.class, new AirflowPipelineRepository(dao), authorizer);
   }
 
   public void initialize(CatalogApplicationConfig config) {

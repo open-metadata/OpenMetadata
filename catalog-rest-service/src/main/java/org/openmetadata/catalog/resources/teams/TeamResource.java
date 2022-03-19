@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -54,6 +53,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -69,12 +69,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams")
-public class TeamResource {
+public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
-  private final TeamRepository dao;
-  private final Authorizer authorizer;
 
-  public static Team addHref(UriInfo uriInfo, Team team) {
+  @Override
+  public Team addHref(UriInfo uriInfo, Team team) {
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
@@ -82,9 +81,7 @@ public class TeamResource {
   }
 
   public TeamResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "TeamRepository must not be null");
-    this.dao = new TeamRepository(dao);
-    this.authorizer = authorizer;
+    super(Team.class, new TeamRepository(dao), authorizer);
   }
 
   public static class TeamList extends ResultList<Team> {
@@ -150,8 +147,7 @@ public class TeamResource {
     } else { // Forward paging or first page
       teams = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
-    teams.getData().forEach(team -> addHref(uriInfo, team));
-    return teams;
+    return addHref(uriInfo, teams);
   }
 
   @GET

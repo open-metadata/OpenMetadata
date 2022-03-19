@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.services.pipeline;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +25,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -52,6 +50,7 @@ import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -67,29 +66,21 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelineServices")
-public class PipelineServiceResource {
+public class PipelineServiceResource extends EntityResource<PipelineService, PipelineServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  private final PipelineServiceRepository dao;
-  private final Authorizer authorizer;
 
   static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(PipelineService.class);
 
-  public static ResultList<PipelineService> addHref(UriInfo uriInfo, ResultList<PipelineService> services) {
-    listOrEmpty(services.getData()).forEach(i -> addHref(uriInfo, i));
-    return services;
-  }
-
-  public static PipelineService addHref(UriInfo uriInfo, PipelineService service) {
+  @Override
+  public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
     return service;
   }
 
   public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "PipelineServiceRepository must not be null");
-    this.dao = new PipelineServiceRepository(dao);
-    this.authorizer = authorizer;
+    super(PipelineService.class, new PipelineServiceRepository(dao), authorizer);
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {

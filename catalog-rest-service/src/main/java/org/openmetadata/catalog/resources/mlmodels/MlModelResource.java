@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -54,6 +53,7 @@ import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -70,12 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
-public class MlModelResource {
+public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  private final MlModelRepository dao;
-  private final Authorizer authorizer;
 
-  public static MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
+  @Override
+  public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
     mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
     Entity.withHref(uriInfo, mlmodel.getOwner());
     Entity.withHref(uriInfo, mlmodel.getDashboard());
@@ -84,9 +83,7 @@ public class MlModelResource {
   }
 
   public MlModelResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "ModelRepository must not be null");
-    this.dao = new MlModelRepository(dao);
-    this.authorizer = authorizer;
+    super(MlModel.class, new MlModelRepository(dao), authorizer);
   }
 
   public static class MlModelList extends ResultList<MlModel> {
@@ -154,8 +151,7 @@ public class MlModelResource {
     } else { // Forward paging or first page
       mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
     }
-    mlmodels.getData().forEach(m -> addHref(uriInfo, m));
-    return mlmodels;
+    return addHref(uriInfo, mlmodels);
   }
 
   @GET
