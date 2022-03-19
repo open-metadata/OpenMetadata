@@ -107,19 +107,7 @@ public final class Entity {
   //
   // List of entities whose changes should not be published to the Activity Feed
   //
-  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
-      List.of(
-          USER,
-          TEAM,
-          ROLE,
-          POLICY,
-          BOTS,
-          AIRFLOW_PIPELINE,
-          DATABASE_SERVICE,
-          PIPELINE_SERVICE,
-          DASHBOARD_SERVICE,
-          STORAGE_SERVICE,
-          MESSAGING_SERVICE);
+  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES = List.of(USER, TEAM, ROLE, POLICY, BOTS);
 
   private Entity() {}
 

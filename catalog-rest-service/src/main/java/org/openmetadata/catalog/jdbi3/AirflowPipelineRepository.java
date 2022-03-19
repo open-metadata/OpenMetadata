@@ -257,5 +257,15 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     public AirflowPipelineUpdater(AirflowPipeline original, AirflowPipeline updated, Operation operation) {
       super(original, updated, operation);
     }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      AirflowPipeline origIngestion = original.getEntity();
+      AirflowPipeline updatedIngestion = updated.getEntity();
+      recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getScheduleInterval());
+      recordChange("pipelineConfig", origIngestion.getPipelineConfig(), updatedIngestion.getPipelineConfig());
+      recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
+      recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
+    }
   }
 }
