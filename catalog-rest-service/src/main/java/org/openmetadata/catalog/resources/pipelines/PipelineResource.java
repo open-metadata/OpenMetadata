@@ -334,7 +334,11 @@ public class PipelineResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Pipeline pipeline = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(pipeline).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(pipeline).getEntityReference(),
+        dao.getOwnerReference(pipeline),
+        patch);
 
     PatchResponse<Pipeline> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);

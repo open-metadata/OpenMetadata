@@ -364,7 +364,11 @@ public class TableResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Table table = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(table).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(table).getEntityReference(),
+        dao.getOriginalOwner(table),
+        patch);
 
     PatchResponse<Table> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);

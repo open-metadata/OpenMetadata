@@ -401,7 +401,11 @@ public class LocationResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Location location = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(location).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(location).getEntityReference(),
+        dao.getOwnerReference(location),
+        patch);
 
     PatchResponse<Location> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);

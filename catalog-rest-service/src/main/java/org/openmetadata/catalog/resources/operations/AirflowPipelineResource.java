@@ -370,7 +370,11 @@ public class AirflowPipelineResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     AirflowPipeline airflowPipeline = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(airflowPipeline).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(airflowPipeline).getEntityReference(),
+        dao.getOriginalOwner(airflowPipeline),
+        patch);
 
     PatchResponse<AirflowPipeline> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);

@@ -327,7 +327,11 @@ public class ChartResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Chart chart = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(chart).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(chart).getEntityReference(),
+        dao.getOriginalOwner(chart),
+        patch);
 
     PatchResponse<Chart> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
