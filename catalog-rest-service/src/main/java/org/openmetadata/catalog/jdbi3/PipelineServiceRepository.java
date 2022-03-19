@@ -222,5 +222,15 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     public PipelineServiceUpdater(PipelineService original, PipelineService updated, Operation operation) {
       super(original, updated, operation);
     }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("pipelineUrl", original.getEntity().getPipelineUrl(), updated.getEntity().getPipelineUrl());
+      recordChange(
+          "ingestionSchedule",
+          original.getEntity().getIngestionSchedule(),
+          updated.getEntity().getIngestionSchedule(),
+          true);
+    }
   }
 }
