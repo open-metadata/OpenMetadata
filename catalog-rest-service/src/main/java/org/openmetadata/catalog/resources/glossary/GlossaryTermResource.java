@@ -162,6 +162,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
+    // TODO make this common implementation
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
 

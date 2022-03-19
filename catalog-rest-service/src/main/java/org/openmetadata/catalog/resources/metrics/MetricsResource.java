@@ -50,7 +50,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -93,6 +92,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
       })
   public ResultList<Metrics> list(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -106,14 +106,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    if (before != null) { // Reverse paging
-      return dao.listBefore(uriInfo, fields, null, limitParam, before, Include.NON_DELETED);
-    }
-    // Forward paging or first page
-    return dao.listAfter(uriInfo, fields, null, limitParam, after, Include.NON_DELETED);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, null, limitParam, before, after, Include.ALL);
   }
 
   @GET

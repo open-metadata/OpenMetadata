@@ -70,7 +70,6 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -95,6 +94,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
+    allowedFields.add("tests");
   }
 
   public static class TableList extends ResultList<Table> {
@@ -165,16 +165,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Table> tables;
-    if (before != null) { // Reverse paging
-      tables = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before, include);
-    } else { // Forward paging or first page
-      tables = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, tables);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, databaseParam, limitParam, before, after, include);
   }
 
   @GET

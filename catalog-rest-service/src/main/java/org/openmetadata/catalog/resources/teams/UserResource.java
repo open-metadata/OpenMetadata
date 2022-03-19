@@ -147,16 +147,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<User> users;
-    if (before != null) { // Reverse paging
-      users = dao.listBefore(uriInfo, fields, teamParam, limitParam, before, include);
-    } else { // Forward paging or first page
-      users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, users);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, teamParam, limitParam, before, after, include);
   }
 
   @GET

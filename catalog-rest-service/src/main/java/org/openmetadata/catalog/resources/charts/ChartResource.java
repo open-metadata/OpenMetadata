@@ -144,16 +144,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Chart> charts;
-    if (before != null) { // Reverse paging
-      charts = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      charts = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, charts);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, serviceParam, limitParam, before, after, include);
   }
 
   @GET

@@ -138,16 +138,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Team> teams;
-    if (before != null) { // Reverse paging
-      teams = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      teams = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    return addHref(uriInfo, teams);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, null, limitParam, before, after, include);
   }
 
   @GET

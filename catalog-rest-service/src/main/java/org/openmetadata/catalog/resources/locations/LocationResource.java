@@ -143,16 +143,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Location> locations;
-    if (before != null) { // Reverse paging
-      locations = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      locations = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, locations);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, serviceParam, limitParam, before, after, include);
   }
 
   @GET

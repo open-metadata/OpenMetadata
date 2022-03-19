@@ -67,7 +67,6 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -169,20 +168,12 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<AirflowPipeline> airflowPipelines;
-    if (before != null) { // Reverse paging
-      airflowPipelines =
-          dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      airflowPipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
+    ResultList<AirflowPipeline> airflowPipelines =
+        super.listInternal(uriInfo, securityContext, fieldsParam, serviceParam, limitParam, before, after, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       addStatus(airflowPipelines.getData());
     }
-    return addHref(uriInfo, airflowPipelines);
+    return airflowPipelines;
   }
 
   @GET

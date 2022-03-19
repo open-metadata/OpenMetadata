@@ -64,7 +64,6 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -154,16 +153,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Policy> policies;
-    if (before != null) { // Reverse paging
-      policies = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      policies = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    return addHref(uriInfo, policies);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, null, limitParam, before, after, include);
   }
 
   @GET

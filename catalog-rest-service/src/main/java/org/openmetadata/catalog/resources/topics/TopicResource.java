@@ -62,7 +62,6 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -149,16 +148,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Topic> topics;
-    if (before != null) { // Reverse paging
-      topics = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      topics = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, topics);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, serviceParam, limitParam, before, after, include);
   }
 
   @GET

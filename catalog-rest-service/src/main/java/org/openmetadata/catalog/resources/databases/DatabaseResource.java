@@ -59,7 +59,6 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -144,20 +143,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Database> databases;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
-    if (before != null) { // Reverse paging
-      databases = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, databases);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, serviceParam, limitParam, before, after, include);
   }
 
   @GET

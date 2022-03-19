@@ -142,16 +142,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<MlModel> mlmodels;
-    if (before != null) { // Reverse paging
-      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
-    } else { // Forward paging or first page
-      mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    return addHref(uriInfo, mlmodels);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, null, limitParam, before, after, include);
   }
 
   @GET

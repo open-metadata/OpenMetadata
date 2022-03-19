@@ -144,16 +144,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Glossary> glossary;
-    if (before != null) { // Reverse paging
-      glossary = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      glossary = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    return addHref(uriInfo, glossary);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, null, limitParam, before, after, include);
   }
 
   @GET

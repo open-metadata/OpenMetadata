@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -270,7 +271,7 @@ public final class Entity {
    */
   public static <T> List<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
-    return List.of(propertyOrder.value());
+    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */
