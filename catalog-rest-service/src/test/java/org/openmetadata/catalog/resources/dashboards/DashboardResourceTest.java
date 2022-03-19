@@ -59,17 +59,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   public static EntityReference SUPERSET_INVALID_SERVICE_REFERENCE;
 
   public DashboardResourceTest() {
-    super(
-        Entity.DASHBOARD,
-        Dashboard.class,
-        DashboardList.class,
-        "dashboards",
-        DashboardResource.FIELDS,
-        true,
-        true,
-        true,
-        true,
-        true);
+    super(Entity.DASHBOARD, Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS);
   }
 
   @BeforeAll

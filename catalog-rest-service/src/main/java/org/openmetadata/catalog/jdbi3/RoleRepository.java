@@ -59,10 +59,7 @@ public class RoleRepository extends EntityRepository<Role> {
         dao.roleDAO(),
         dao,
         ROLE_PATCH_FIELDS,
-        ROLE_UPDATE_FIELDS,
-        false,
-        false,
-        false);
+        ROLE_UPDATE_FIELDS);
   }
 
   @Override

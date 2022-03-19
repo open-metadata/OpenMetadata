@@ -50,10 +50,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         dao.databaseDAO(),
         dao,
         DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        DATABASE_UPDATE_FIELDS);
   }
 
   public static String getFQN(Database database) {

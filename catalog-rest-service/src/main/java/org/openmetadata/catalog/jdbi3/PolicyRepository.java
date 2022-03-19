@@ -62,10 +62,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
         dao.policyDAO(),
         dao,
         POLICY_PATCH_FIELDS,
-        POLICY_UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        POLICY_UPDATE_FIELDS);
     policyEvaluator = PolicyEvaluator.getInstance();
   }
 

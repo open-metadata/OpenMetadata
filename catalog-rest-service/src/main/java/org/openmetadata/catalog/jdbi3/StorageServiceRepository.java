@@ -38,10 +38,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         dao.storageServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
   }
 
   @Override

@@ -93,10 +93,7 @@ public class TableRepository extends EntityRepository<Table> {
         dao.tableDAO(),
         dao,
         TABLE_PATCH_FIELDS,
-        TABLE_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        TABLE_UPDATE_FIELDS);
   }
 
   @Override

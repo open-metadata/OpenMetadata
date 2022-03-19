@@ -56,10 +56,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         dao.topicDAO(),
         dao,
         TOPIC_PATCH_FIELDS,
-        TOPIC_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        TOPIC_UPDATE_FIELDS);
   }
 
   @Transaction

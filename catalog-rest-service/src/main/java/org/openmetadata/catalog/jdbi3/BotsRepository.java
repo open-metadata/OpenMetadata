@@ -33,10 +33,7 @@ public class BotsRepository extends EntityRepository<Bots> {
         dao.botsDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
-        false,
-        false,
-        false);
+        Fields.EMPTY_FIELDS);
   }
 
   @Override

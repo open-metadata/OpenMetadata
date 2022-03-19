@@ -41,10 +41,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         dao.dashboardServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
   }
 
   @Override

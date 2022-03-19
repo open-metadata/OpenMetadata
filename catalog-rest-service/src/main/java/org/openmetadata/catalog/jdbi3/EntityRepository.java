@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.getEntityFields;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
@@ -131,10 +132,7 @@ public abstract class EntityRepository<T> {
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
       Fields patchFields,
-      Fields putFields,
-      boolean supportsTags,
-      boolean supportsOwner,
-      boolean supportsFollower) {
+      Fields putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     this.dao = entityDAO;
@@ -142,9 +140,11 @@ public abstract class EntityRepository<T> {
     this.patchFields = patchFields;
     this.putFields = putFields;
     this.entityType = entityType;
-    this.supportsTags = supportsTags;
-    this.supportsOwner = supportsOwner;
-    this.supportsFollower = supportsFollower;
+
+    List<String> allowedFields = getEntityFields(entityClass);
+    this.supportsTags = allowedFields.contains("tags");
+    this.supportsOwner = allowedFields.contains("owner");
+    this.supportsFollower = allowedFields.contains("followers");
     Entity.registerEntity(entityClass, entityType, dao, this);
   }
 

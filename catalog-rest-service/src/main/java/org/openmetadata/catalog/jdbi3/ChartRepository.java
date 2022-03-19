@@ -49,10 +49,7 @@ public class ChartRepository extends EntityRepository<Chart> {
         dao.chartDAO(),
         dao,
         CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        CHART_UPDATE_FIELDS);
   }
 
   public static String getFQN(Chart chart) {

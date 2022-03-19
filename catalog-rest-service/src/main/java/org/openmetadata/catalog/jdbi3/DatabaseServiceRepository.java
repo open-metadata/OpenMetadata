@@ -50,10 +50,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao.dbServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
     fernet = Fernet.getInstance();
   }
 

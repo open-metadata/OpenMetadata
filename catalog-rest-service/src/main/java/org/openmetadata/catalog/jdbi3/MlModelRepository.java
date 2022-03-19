@@ -56,10 +56,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao.mlModelDAO(),
         dao,
         MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        MODEL_UPDATE_FIELDS);
   }
 
   public static String getFQN(MlModel model) {

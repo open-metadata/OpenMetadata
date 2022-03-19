@@ -53,10 +53,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dao.dashboardDAO(),
         dao,
         DASHBOARD_PATCH_FIELDS,
-        DASHBOARD_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        DASHBOARD_UPDATE_FIELDS);
   }
 
   public static String getFQN(Dashboard dashboard) {

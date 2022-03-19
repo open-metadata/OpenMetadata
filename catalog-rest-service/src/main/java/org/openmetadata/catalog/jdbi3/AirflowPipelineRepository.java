@@ -44,10 +44,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
         dao.airflowPipelineDAO(),
         dao,
         AIRFLOW_PIPELINE_PATCH_FIELDS,
-        AIRFLOW_PIPELINE_UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        AIRFLOW_PIPELINE_UPDATE_FIELDS);
   }
 
   public static String getFQN(AirflowPipeline airflowPipeline) {

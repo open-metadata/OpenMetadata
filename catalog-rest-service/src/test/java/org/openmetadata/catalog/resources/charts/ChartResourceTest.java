@@ -46,7 +46,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   public ChartResourceTest() {
-    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true, true, true);
+    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS);
   }
 
   @BeforeAll

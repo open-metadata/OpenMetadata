@@ -94,12 +94,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         AirflowPipeline.class,
         AirflowPipelineResource.AirflowPipelineList.class,
         "airflowPipeline",
-        AirflowPipelineResource.FIELDS,
-        false,
-        true,
-        false,
-        true,
-        true);
+        AirflowPipelineResource.FIELDS);
   }
 
   @BeforeAll

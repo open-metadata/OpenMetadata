@@ -54,10 +54,7 @@ public class LocationRepository extends EntityRepository<Location> {
         dao.locationDAO(),
         dao,
         LOCATION_PATCH_FIELDS,
-        LOCATION_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        LOCATION_UPDATE_FIELDS);
   }
 
   @Override

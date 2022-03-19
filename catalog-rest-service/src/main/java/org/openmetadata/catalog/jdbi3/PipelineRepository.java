@@ -59,10 +59,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         dao.pipelineDAO(),
         dao,
         PIPELINE_PATCH_FIELDS,
-        PIPELINE_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        PIPELINE_UPDATE_FIELDS);
   }
 
   public static String getFQN(Pipeline pipeline) {
