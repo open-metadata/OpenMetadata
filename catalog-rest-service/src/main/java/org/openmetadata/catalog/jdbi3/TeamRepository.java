@@ -44,10 +44,7 @@ public class TeamRepository extends EntityRepository<Team> {
         dao.teamDAO(),
         dao,
         TEAM_PATCH_FIELDS,
-        TEAM_UPDATE_FIELDS,
-        false,
-        false,
-        false);
+        TEAM_UPDATE_FIELDS);
   }
 
   public List<EntityReference> getEntityReferences(List<UUID> ids) {

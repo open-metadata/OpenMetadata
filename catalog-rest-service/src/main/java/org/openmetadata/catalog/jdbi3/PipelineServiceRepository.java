@@ -39,10 +39,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao.pipelineServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
   }
 
   @Override

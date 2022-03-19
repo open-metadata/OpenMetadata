@@ -44,10 +44,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         dao.metricsDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        METRICS_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        METRICS_UPDATE_FIELDS);
   }
 
   public static String getFQN(Metrics metrics) {

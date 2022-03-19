@@ -70,13 +70,10 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         DatabaseService.class,
         DatabaseServiceList.class,
         "services/databaseServices",
-        "owner",
-        false,
-        true,
-        false,
-        false,
-        false);
+        "owner");
     this.supportsPatch = false;
+    this.supportsDots = false;
+    this.supportsAuthorizedMetadataOperations = false;
   }
 
   @Test

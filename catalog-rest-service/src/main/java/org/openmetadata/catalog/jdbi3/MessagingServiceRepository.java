@@ -42,10 +42,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         dao.messagingServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
   }
 
   @Override

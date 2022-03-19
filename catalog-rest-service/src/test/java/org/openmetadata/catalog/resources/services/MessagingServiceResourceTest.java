@@ -68,13 +68,10 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         MessagingService.class,
         MessagingServiceList.class,
         "services/messagingServices",
-        MessagingServiceResource.FIELDS,
-        false,
-        true,
-        false,
-        false,
-        false);
+        MessagingServiceResource.FIELDS);
     supportsPatch = false;
+    supportsDots = false;
+    supportsAuthorizedMetadataOperations = false;
   }
 
   @Test

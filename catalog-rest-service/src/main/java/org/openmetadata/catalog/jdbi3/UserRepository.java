@@ -52,10 +52,7 @@ public class UserRepository extends EntityRepository<User> {
         dao.userDAO(),
         dao,
         USER_PATCH_FIELDS,
-        USER_UPDATE_FIELDS,
-        false,
-        false,
-        false);
+        USER_UPDATE_FIELDS);
   }
 
   @Override
