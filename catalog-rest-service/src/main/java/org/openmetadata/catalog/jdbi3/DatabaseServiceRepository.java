@@ -18,11 +18,13 @@ import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
 import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -274,6 +276,25 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   public class DatabaseServiceUpdater extends EntityUpdater {
     public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateDatabaseConnectionConfig();
+    }
+
+    private void updateDatabaseConnectionConfig() throws JsonProcessingException {
+      DatabaseConnection origConn = original.getEntity().getDatabaseConnection();
+      DatabaseConnection updatedConn = updated.getEntity().getDatabaseConnection();
+      if (origConn != null
+          && updatedConn != null
+          && Objects.equals(
+              Fernet.decryptIfTokenized(origConn.getPassword()),
+              Fernet.decryptIfTokenized(updatedConn.getPassword()))) {
+        // Password in clear didn't change. The tokenized changed because it's time-dependent.
+        updatedConn.setPassword(origConn.getPassword());
+      }
+      recordChange("databaseConnection", origConn, updatedConn, true);
     }
   }
 }
