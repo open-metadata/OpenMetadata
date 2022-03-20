@@ -41,11 +41,11 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -96,7 +96,8 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
           String fieldsParam)
       throws IOException, GeneralSecurityException, ParseException {
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return dao.listAfter(uriInfo, fields, null, 10000, null, Include.NON_DELETED);
+    ListFilter filter = new ListFilter();
+    return dao.listAfter(uriInfo, fields, filter, 10000, null);
   }
 
   @GET

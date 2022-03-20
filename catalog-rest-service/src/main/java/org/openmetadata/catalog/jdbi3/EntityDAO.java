@@ -58,23 +58,13 @@ public interface EntityDAO<T> {
       @Bind("name") String name,
       @Bind("deleted") Boolean deleted);
 
-  @SqlQuery(
-      "SELECT count(*) FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "(deleted = :deleted OR :deleted IS NULL)")
-  int listCount(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
-      @Bind("deleted") Boolean deleted);
+  @SqlQuery("SELECT count(*) FROM <table> <cond>")
+  int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
 
   @SqlQuery(
       "SELECT json FROM ("
-          + "SELECT <nameColumn>, json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + // Filter by service name
-          "<nameColumn> < :before AND "
-          + "deleted = false "
+          + "SELECT <nameColumn>, json FROM <table> <cond> AND "
+          + "<nameColumn> < :before "
           + // Pagination by chart fullyQualifiedName
           "ORDER BY <nameColumn> DESC "
           + // Pagination ordering by chart fullyQualifiedName
@@ -83,58 +73,18 @@ public interface EntityDAO<T> {
   List<String> listBefore(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
+      @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("before") String before);
 
   @SqlQuery(
-      "SELECT json FROM ("
-          + "SELECT <nameColumn>, json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + // Filter by service name
-          "<nameColumn> < :before AND "
-          + "(deleted = :deleted OR :deleted IS NULL) "
-          + // Pagination by chart fullyQualifiedName
-          "ORDER BY <nameColumn> DESC "
-          + // Pagination ordering by chart fullyQualifiedName
-          "LIMIT :limit"
-          + ") last_rows_subquery ORDER BY <nameColumn>")
-  List<String> listBefore(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
-      @Bind("limit") int limit,
-      @Bind("before") String before,
-      @Bind("deleted") Boolean deleted);
-
-  @SqlQuery(
-      "SELECT json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "<nameColumn> > :after AND "
-          + "deleted = false "
-          + "ORDER BY <nameColumn> "
-          + "LIMIT :limit")
+      "SELECT json FROM <table> <cond> AND " + "<nameColumn> > :after " + "ORDER BY <nameColumn> " + "LIMIT :limit")
   List<String> listAfter(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
+      @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("after") String after);
-
-  @SqlQuery(
-      "SELECT json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "<nameColumn> > :after AND "
-          + "(deleted = :deleted OR :deleted IS NULL) "
-          + "ORDER BY <nameColumn> "
-          + "LIMIT :limit")
-  List<String> listAfter(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
-      @Bind("limit") int limit,
-      @Bind("after") String after,
-      @Bind("deleted") Boolean deleted);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
@@ -211,16 +161,17 @@ public interface EntityDAO<T> {
     return findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
   }
 
-  default int listCount(String databaseFQN, Include include) {
-    return listCount(getTableName(), getNameColumn(), databaseFQN, toBoolean(include));
+  default int listCount(ListFilter filter) {
+    return listCount(getTableName(), getNameColumn(), filter.getCondition());
   }
 
-  default List<String> listBefore(String parentFQN, int limit, String before, Include include) {
-    return listBefore(getTableName(), getNameColumn(), parentFQN, limit, before, toBoolean(include));
+  default List<String> listBefore(ListFilter filter, int limit, String before) {
+
+    return listBefore(getTableName(), getNameColumn(), filter.getCondition(), limit, before);
   }
 
-  default List<String> listAfter(String databaseFQN, int limit, String after, Include include) {
-    return listAfter(getTableName(), getNameColumn(), databaseFQN, limit, after, toBoolean(include));
+  default List<String> listAfter(ListFilter filter, int limit, String after) {
+    return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
   }
 
   default boolean exists(UUID id) {

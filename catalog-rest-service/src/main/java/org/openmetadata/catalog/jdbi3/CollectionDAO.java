@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -80,7 +78,6 @@ import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
@@ -1267,20 +1264,32 @@ public interface CollectionDAO {
     String findByEmail(@Bind("email") String email);
 
     @Override
-    default int listCount(String team, Include include) {
-      return listCount(getTableName(), getNameColumn(), team, Relationship.HAS.ordinal(), toBoolean(include));
+    default int listCount(ListFilter filter) {
+      String team = filter.getQueryParam("team");
+      if (team == null) {
+        return EntityDAO.super.listCount(filter);
+      }
+      return listCount(getTableName(), getNameColumn(), filter.getCondition("ue"), team, Relationship.HAS.ordinal());
     }
 
     @Override
-    default List<String> listBefore(String team, int limit, String before, Include include) {
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String team = filter.getQueryParam("team");
+      if (team == null) {
+        return EntityDAO.super.listBefore(filter, limit, before);
+      }
       return listBefore(
-          getTableName(), getNameColumn(), team, limit, before, Relationship.HAS.ordinal(), toBoolean(include));
+          getTableName(), getNameColumn(), filter.getCondition(), team, limit, before, Relationship.HAS.ordinal());
     }
 
     @Override
-    default List<String> listAfter(String team, int limit, String after, Include include) {
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String team = filter.getQueryParam("team");
+      if (team == null) {
+        return EntityDAO.super.listAfter(filter, limit, after);
+      }
       return listAfter(
-          getTableName(), getNameColumn(), team, limit, after, Relationship.HAS.ordinal(), toBoolean(include));
+          getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, after, Relationship.HAS.ordinal());
     }
 
     @SqlQuery(
@@ -1289,16 +1298,15 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (te.name = :team OR :team IS NULL) "
-            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
-            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
+            + " <cond> "
+            + " AND te.name = :team "
             + "GROUP BY ue.id) subquery")
     int listCount(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
         @Bind("team") String team,
-        @Bind("relation") int relation,
-        @Bind("deleted") Boolean deleted);
+        @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT json FROM ("
@@ -1306,9 +1314,8 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (te.name = :team OR :team IS NULL) "
-            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
-            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
+            + "WHERE te.name = :team "
+            + "AND <cond> "
             + "AND ue.<nameColumn> < :before "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> DESC "
@@ -1317,20 +1324,19 @@ public interface CollectionDAO {
     List<String> listBefore(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("before") String before,
-        @Bind("relation") int relation,
-        @Bind("deleted") Boolean deleted);
+        @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT ue.json "
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE (te.name = :team OR :team IS NULL) "
-            + "AND (ue.deleted = :deleted OR :deleted IS NULL) "
-            + "AND (er.deleted = :deleted OR :deleted IS NULL OR (:team IS NULL AND er.deleted IS NULL)) "
+            + " <cond> "
+            + "AND te.name = :team "
             + "AND ue.<nameColumn> > :after "
             + "GROUP BY ue.json "
             + "ORDER BY ue.<nameColumn> "
@@ -1338,11 +1344,11 @@ public interface CollectionDAO {
     List<String> listAfter(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
+        @Define("cond") String cond,
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("after") String after,
-        @Bind("relation") int relation,
-        @Bind("deleted") Boolean deleted);
+        @Bind("relation") int relation);
   }
 
   interface ChangeEventDAO {

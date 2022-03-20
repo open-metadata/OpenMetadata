@@ -82,16 +82,17 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         new SqlLogger() {
           @Override
           public void logAfterExecution(StatementContext context) {
-            LOG.debug(
+            LOG.info(
                 "sql {}, parameters {}, timeTaken {} ms",
                 context.getRenderedSql(),
                 context.getBinding(),
                 context.getElapsedTime(ChronoUnit.MILLIS));
           }
         };
-    if (LOG.isDebugEnabled()) {
-      jdbi.setSqlLogger(sqlLogger);
-    }
+    jdbi.setSqlLogger(sqlLogger);
+    //    if (LOG.isDebugEnabled()) {
+    //      jdbi.setSqlLogger(sqlLogger);
+    //    }
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);

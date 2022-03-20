@@ -55,6 +55,7 @@ import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
@@ -185,12 +186,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             CatalogExceptionMessage.glossaryTermMismatch(parentTermParam, glossaryIdParam));
       }
     }
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("parent", fqn);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
-      terms = dao.listBefore(uriInfo, fields, fqn, limitParam, before, include); // Ask for one extra entry
+      terms = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      terms = dao.listAfter(uriInfo, fields, fqn, limitParam, after, include);
+      terms = dao.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, terms);
   }

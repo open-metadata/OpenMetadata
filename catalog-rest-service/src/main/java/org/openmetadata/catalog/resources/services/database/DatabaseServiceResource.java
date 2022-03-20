@@ -53,6 +53,7 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.AuthorizationException;
@@ -141,10 +142,14 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     ResultList<DatabaseService> dbServices;
+
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+
     if (before != null) {
-      dbServices = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
+      dbServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      dbServices = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
+      dbServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, dbServices));
   }

@@ -51,6 +51,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateMlModel;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
@@ -142,7 +143,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    return super.listInternal(uriInfo, securityContext, fieldsParam, null, limitParam, before, after, include);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

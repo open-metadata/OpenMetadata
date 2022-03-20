@@ -380,8 +380,9 @@ public class RoleRepository extends EntityRepository<Role> {
         // Assumptions:
         // - we will not have more than Integer.MAX_VALUE users in the system.
         // - we do not need to update deleted user's roles.
+        ListFilter filter = new ListFilter().addQueryParam("include", Include.NON_DELETED.value());
         return userRepository
-            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, null, Integer.MAX_VALUE - 1, null, Include.NON_DELETED)
+            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, filter, Integer.MAX_VALUE - 1, null)
             .getData();
       } catch (GeneralSecurityException | IOException | ParseException e) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));

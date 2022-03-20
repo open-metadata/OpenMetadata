@@ -208,7 +208,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   private List<Policy> getAccessControlPolicies() throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
-    List<String> jsons = daoCollection.policyDAO().listAfter(null, Integer.MAX_VALUE, "", Include.NON_DELETED);
+    ListFilter filter = new ListFilter().addQueryParam("include", Include.NON_DELETED.value());
+    List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);

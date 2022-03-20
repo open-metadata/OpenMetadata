@@ -52,6 +52,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
@@ -148,15 +149,16 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    ListFilter filter = new ListFilter().addQueryParam("include", include.value());
 
     ResultList<Role> roles;
     if (defaultParam) {
       // The number of default roles is usually 1, and hence does not require pagination.
       roles = dao.getDefaultRolesResultList(uriInfo, fields);
     } else if (before != null) { // Reverse paging
-      roles = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
+      roles = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      roles = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
+      roles = dao.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, roles);
   }

@@ -55,6 +55,7 @@ import org.openmetadata.catalog.api.tests.CreateColumnTest;
 import org.openmetadata.catalog.api.tests.CreateTableTest;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
@@ -165,7 +166,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    return super.listInternal(uriInfo, securityContext, fieldsParam, databaseParam, limitParam, before, after, include);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("database", databaseParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

@@ -42,13 +42,12 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.jdbi3.BotsRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/bots")
@@ -88,7 +87,6 @@ public class BotsResource extends EntityResource<Bots, BotsRepository> {
   public ResultList<Bots> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @QueryParam("name") String name,
       @DefaultValue("10") @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(description = "Returns list of bots before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -97,15 +95,7 @@ public class BotsResource extends EntityResource<Bots, BotsRepository> {
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-
-    ResultList<Bots> list;
-    if (before != null) { // Reverse paging
-      list = dao.listBefore(uriInfo, null, name, limitParam, before, Include.NON_DELETED);
-    } else { // Forward paging or first page
-      list = dao.listAfter(uriInfo, null, name, limitParam, after, Include.NON_DELETED);
-    }
-    return list;
+    return super.listInternal(uriInfo, securityContext, "", new ListFilter(), limitParam, before, after);
   }
 
   @GET

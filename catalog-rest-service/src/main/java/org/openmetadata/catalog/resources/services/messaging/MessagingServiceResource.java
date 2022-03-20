@@ -48,6 +48,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
@@ -133,16 +134,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    ResultList<MessagingService> services;
-    if (before != null) { // Reverse paging
-      services = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
-    } else {
-      // Forward paging or first page
-      services = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    return addHref(uriInfo, services);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

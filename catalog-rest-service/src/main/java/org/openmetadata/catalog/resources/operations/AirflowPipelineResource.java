@@ -59,6 +59,7 @@ import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
@@ -168,8 +169,10 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
     ResultList<AirflowPipeline> airflowPipelines =
-        super.listInternal(uriInfo, securityContext, fieldsParam, serviceParam, limitParam, before, after, include);
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       addStatus(airflowPipelines.getData());
     }

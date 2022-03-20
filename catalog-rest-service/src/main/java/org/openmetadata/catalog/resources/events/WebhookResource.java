@@ -44,6 +44,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
@@ -122,11 +123,14 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+
     ResultList<Webhook> webhooks;
     if (before != null) { // Reverse paging
-      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, before, include);
+      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
     } else { // Forward paging or first page
-      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, after, include);
+      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, after);
     }
     webhooks.getData().forEach(t -> dao.withHref(uriInfo, t));
     return webhooks;

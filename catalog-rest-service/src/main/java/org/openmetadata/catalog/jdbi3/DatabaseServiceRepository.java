@@ -60,7 +60,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     if (!fernet.isKeyDefined()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.FERNET_KEY_NULL);
     }
-    List<String> jsons = dao.listAfter(null, Integer.MAX_VALUE, "", Include.ALL);
+    ListFilter filter = new ListFilter().addQueryParam("include", Include.ALL.value());
+    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
     for (String json : jsons) {
       DatabaseService databaseService = JsonUtils.readValue(json, DatabaseService.class);
       DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();

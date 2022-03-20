@@ -10,8 +10,8 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -38,21 +38,19 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
       UriInfo uriInfo,
       SecurityContext securityContext,
       String fieldsParam,
-      String serviceParam,
+      ListFilter filter,
       int limitParam,
       String before,
-      String after,
-      Include include)
+      String after)
       throws GeneralSecurityException, IOException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(allowedFields, fieldsParam);
 
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
-      resultList =
-          dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
+      resultList = dao.listBefore(uriInfo, fields, filter, limitParam, before);
     } else { // Forward paging or first page
-      resultList = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
+      resultList = dao.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, resultList);
   }

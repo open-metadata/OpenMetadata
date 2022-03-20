@@ -275,19 +275,17 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final ResultList<T> listAfter(
-      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after, Include include)
+  public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
       throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
-    List<String> jsons =
-        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after), include);
+    List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix, include);
+    int total = dao.listCount(filter);
 
     String beforeCursor;
     String afterCursor = null;
@@ -301,17 +299,17 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final ResultList<T> listBefore(
-      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before, Include include)
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before)
       throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, RestUtil.decodeCursor(before), include);
+    List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix, include);
+    int total = dao.listCount(filter);
 
     String beforeCursor = null;
     String afterCursor;
