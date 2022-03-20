@@ -227,8 +227,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -260,9 +259,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    GlossaryTerm term = dao.getByName(uriInfo, name, fields, include);
-    return addHref(uriInfo, term);
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET

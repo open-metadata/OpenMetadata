@@ -12,6 +12,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -53,5 +54,18 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
       resultList = dao.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, resultList);
+  }
+
+  public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
+      throws IOException, ParseException {
+    Fields fields = new Fields(allowedFields, fieldsParam);
+    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
+      throws IOException, ParseException {
+    Fields fields = new Fields(allowedFields, fieldsParam);
+    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 }

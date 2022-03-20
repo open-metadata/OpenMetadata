@@ -56,7 +56,6 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -169,8 +168,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -203,8 +201,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET

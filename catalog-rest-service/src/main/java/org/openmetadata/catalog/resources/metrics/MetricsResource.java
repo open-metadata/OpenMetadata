@@ -49,7 +49,7 @@ import org.openmetadata.catalog.jdbi3.MetricsRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -125,15 +125,21 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
       })
   public Metrics get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @PathParam("id") String id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return dao.get(uriInfo, id, fields);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @POST

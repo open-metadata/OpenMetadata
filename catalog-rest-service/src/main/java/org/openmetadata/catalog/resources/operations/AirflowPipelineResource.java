@@ -229,12 +229,11 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    AirflowPipeline airflowPipeline = dao.get(uriInfo, id, fields, include);
+    AirflowPipeline airflowPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       airflowPipeline = addStatus(airflowPipeline);
     }
-    return addHref(uriInfo, airflowPipeline);
+    return airflowPipeline;
   }
 
   @GET
@@ -296,12 +295,11 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    AirflowPipeline airflowPipeline = dao.getByName(uriInfo, fqn, fields, include);
+    AirflowPipeline airflowPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       airflowPipeline = addStatus(airflowPipeline);
     }
-    return addHref(uriInfo, airflowPipeline);
+    return airflowPipeline;
   }
 
   @POST

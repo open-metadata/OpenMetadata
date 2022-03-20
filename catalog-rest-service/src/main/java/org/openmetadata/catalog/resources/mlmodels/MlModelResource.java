@@ -177,8 +177,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -210,8 +209,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST

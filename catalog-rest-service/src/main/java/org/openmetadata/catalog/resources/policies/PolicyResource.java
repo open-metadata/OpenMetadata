@@ -188,8 +188,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -221,9 +220,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Policy policy = dao.getByName(uriInfo, fqn, fields, include);
-    return addHref(uriInfo, policy);
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

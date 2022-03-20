@@ -185,8 +185,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       })
   public Chart get(
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
       @Context SecurityContext securityContext,
+      @PathParam("id") String id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -199,8 +199,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -216,7 +215,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
       })
-  public Response getByName(
+  public Chart getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -232,10 +231,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Chart chart = dao.getByName(uriInfo, fqn, fields, include);
-    addHref(uriInfo, chart);
-    return Response.ok(chart).build();
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

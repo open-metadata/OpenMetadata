@@ -203,8 +203,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -220,7 +219,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
-  public Response getByName(
+  public Topic getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -236,10 +235,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Topic topic = dao.getByName(uriInfo, fqn, fields, include);
-    addHref(uriInfo, topic);
-    return Response.ok(topic).build();
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

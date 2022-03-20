@@ -182,7 +182,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
       })
-  public Response get(
+  public Database get(
       @Context UriInfo uriInfo,
       @PathParam("id") String id,
       @Context SecurityContext securityContext,
@@ -198,10 +198,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Database database = dao.get(uriInfo, id, fields, include);
-    addHref(uriInfo, database);
-    return Response.ok(database).build();
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -217,7 +214,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
       })
-  public Response getByName(
+  public Database getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -233,10 +230,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Database database = dao.getByName(uriInfo, fqn, fields, include);
-    addHref(uriInfo, database);
-    return Response.ok(database).build();
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

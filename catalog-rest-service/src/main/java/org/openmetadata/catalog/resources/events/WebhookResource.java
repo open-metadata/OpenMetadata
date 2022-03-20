@@ -152,6 +152,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       })
   public Webhook get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
@@ -160,7 +161,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, Fields.EMPTY_FIELDS, include);
+    return getInternal(uriInfo, securityContext, id, "", include);
   }
 
   @GET
@@ -179,7 +180,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Webhook getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String fqn,
+      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -187,7 +188,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS, include);
+    return getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
   @GET

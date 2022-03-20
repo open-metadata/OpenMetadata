@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -46,6 +47,7 @@ import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -115,15 +117,21 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       })
   public Report get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @PathParam("id") String id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return dao.get(uriInfo, id, fields);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @POST

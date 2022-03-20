@@ -203,8 +203,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -236,9 +235,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Pipeline pipeline = dao.getByName(uriInfo, fqn, fields, include);
-    return addHref(uriInfo, pipeline);
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

@@ -184,8 +184,8 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, decryptOrNullify(securityContext, dao.get(uriInfo, id, fields, include)));
+    DatabaseService service = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, service);
   }
 
   @GET
@@ -218,8 +218,8 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, decryptOrNullify(securityContext, dao.getByName(uriInfo, name, fields, include)));
+    DatabaseService service = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, service);
   }
 
   @GET
