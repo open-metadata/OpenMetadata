@@ -200,7 +200,8 @@ public class ChartRepository extends EntityRepository<Chart> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.CHART);
+          .withType(Entity.CHART)
+          .withDeleted(isDeleted());
     }
 
     @Override

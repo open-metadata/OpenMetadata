@@ -32,6 +32,7 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -604,7 +605,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Make sure the user is no longer following the table
     team = teamResourceTest.getEntity(team.getId(), "users", ADMIN_AUTH_HEADERS);
-    assertTrue(team.getUsers().isEmpty());
+    assertDeleted(team.getUsers(), true);
     tableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), ADMIN_AUTH_HEADERS);
 
     // User can no longer follow other entities

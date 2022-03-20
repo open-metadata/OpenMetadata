@@ -128,7 +128,8 @@ public class BotsRepository extends EntityRepository<Bots> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.BOTS);
+          .withType(Entity.BOTS)
+          .withDeleted(isDeleted());
     }
 
     @Override

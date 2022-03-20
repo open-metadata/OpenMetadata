@@ -118,8 +118,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private List<EntityReference> getReviewers(Glossary entity) throws IOException {
-    List<String> ids =
-        findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
+    List<String> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
@@ -202,7 +201,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.GLOSSARY);
+          .withType(Entity.GLOSSARY)
+          .withDeleted(isDeleted());
     }
 
     @Override

@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
@@ -78,8 +77,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /** Find the location to which this policy applies to. * */
   @Transaction
   private EntityReference getLocationForPolicy(Policy policy) throws IOException {
-    List<String> result =
-        findTo(policy.getId(), Entity.POLICY, Relationship.APPLIED_TO, Entity.LOCATION, toBoolean(toInclude(policy)));
+    List<String> result = findTo(policy.getId(), Entity.POLICY, Relationship.APPLIED_TO, Entity.LOCATION);
     // There is at most one location for a policy.
     return result.size() == 1
         ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
@@ -323,7 +321,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.POLICY);
+          .withType(Entity.POLICY)
+          .withDeleted(isDeleted());
     }
 
     @Override

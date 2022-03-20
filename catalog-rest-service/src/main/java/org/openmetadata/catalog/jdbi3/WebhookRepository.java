@@ -223,7 +223,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.WEBHOOK);
+          .withType(Entity.WEBHOOK)
+          .withDeleted(isDeleted());
     }
 
     @Override

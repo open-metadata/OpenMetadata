@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -86,12 +85,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
       return null;
     }
     List<String> airflowPipelineIds =
-        findTo(
-            service.getId(),
-            Entity.DATABASE_SERVICE,
-            Relationship.CONTAINS,
-            Entity.AIRFLOW_PIPELINE,
-            toBoolean(toInclude(service)));
+        findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.AIRFLOW_PIPELINE);
     List<EntityReference> airflowPipelines = new ArrayList<>();
     for (String airflowPipelineId : airflowPipelineIds) {
       airflowPipelines.add(
@@ -218,7 +212,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.DATABASE_SERVICE);
+          .withType(Entity.DATABASE_SERVICE)
+          .withDeleted(isDeleted());
     }
 
     @Override

@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -117,21 +116,18 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(Team team) throws IOException {
-    List<String> userIds = findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.USER, toBoolean(toInclude(team)));
+    List<String> userIds = findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.USER);
     return EntityUtil.populateEntityReferences(userIds, Entity.USER);
   }
 
   private List<EntityReference> getOwns(Team team) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.populateEntityReferences(
-        daoCollection
-            .relationshipDAO()
-            .findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal(), toBoolean(toInclude(team))));
+        daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal()));
   }
 
   private List<EntityReference> getDefaultRoles(Team team) throws IOException {
-    List<String> defaultRoleIds =
-        findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.ROLE, toBoolean(toInclude(team)));
+    List<String> defaultRoleIds = findTo(team.getId(), Entity.TEAM, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
   }
 
@@ -200,7 +196,8 @@ public class TeamRepository extends EntityRepository<Team> {
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
           .withType(Entity.TEAM)
-          .withHref(getHref());
+          .withHref(getHref())
+          .withDeleted(isDeleted());
     }
 
     @Override

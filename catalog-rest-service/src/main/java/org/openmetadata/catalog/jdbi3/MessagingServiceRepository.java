@@ -162,7 +162,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.MESSAGING_SERVICE);
+          .withType(Entity.MESSAGING_SERVICE)
+          .withDeleted(isDeleted());
     }
 
     @Override

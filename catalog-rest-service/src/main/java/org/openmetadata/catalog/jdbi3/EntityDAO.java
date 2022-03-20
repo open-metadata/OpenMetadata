@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -48,15 +47,15 @@ public interface EntityDAO<T> {
   @SqlUpdate("UPDATE <table> SET  json = :json WHERE id = :id")
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
-  @SqlQuery("SELECT json FROM <table> WHERE id = :id AND (deleted = :deleted OR :deleted IS NULL)")
-  String findById(@Define("table") String table, @Bind("id") String id, @Bind("deleted") Boolean deleted);
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
+  String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);
 
-  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND (deleted = :deleted OR :deleted IS NULL)")
+  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name <cond>")
   String findByName(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
       @Bind("name") String name,
-      @Bind("deleted") Boolean deleted);
+      @Define("cond") String cond);
 
   @SqlQuery("SELECT count(*) FROM <table> <cond>")
   int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
@@ -101,9 +100,19 @@ public interface EntityDAO<T> {
     update(getTableName(), id.toString(), json);
   }
 
+  default String getCondition(Include include) {
+    if (include == null || include == Include.NON_DELETED) {
+      return "AND deleted = false";
+    }
+    if (include == Include.DELETED) {
+      return " AND deleted = true";
+    }
+    return "";
+  }
+
   default T findEntityById(UUID id, Include include) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id.toString(), toBoolean(include));
+    String json = findById(getTableName(), id.toString(), getCondition(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -125,7 +134,7 @@ public interface EntityDAO<T> {
 
   default T findEntityByName(String fqn, Include include) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
+    String json = findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -154,11 +163,11 @@ public interface EntityDAO<T> {
   }
 
   default String findJsonById(String id, Include include) {
-    return findById(getTableName(), id, toBoolean(include));
+    return findById(getTableName(), id, getCondition(include));
   }
 
   default String findJsonByFqn(String fqn, Include include) {
-    return findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
+    return findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
   }
 
   default int listCount(ListFilter filter) {

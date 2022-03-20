@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -176,8 +175,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard == null) {
       return null;
     }
-    List<String> chartIds =
-        findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART, toBoolean(toInclude(dashboard)));
+    List<String> chartIds = findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
     return EntityUtil.populateEntityReferences(chartIds, Entity.CHART);
   }
 
@@ -296,7 +294,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
           .withType(Entity.DASHBOARD)
-          .withHref(getHref());
+          .withHref(getHref())
+          .withDeleted(isDeleted());
     }
 
     @Override

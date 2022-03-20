@@ -152,7 +152,8 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.STORAGE_SERVICE);
+          .withType(Entity.STORAGE_SERVICE)
+          .withDeleted(isDeleted());
     }
 
     @Override

@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
-
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -85,8 +83,7 @@ public class UsageRepository {
       Table table = dao.tableDAO().findEntityById(UUID.fromString(entityId), Include.ALL);
       Include include = table.getDeleted() ? Include.DELETED : Include.NON_DELETED;
       List<String> databaseIds =
-          dao.relationshipDAO()
-              .findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE, toBoolean(include));
+          dao.relationshipDAO().findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }

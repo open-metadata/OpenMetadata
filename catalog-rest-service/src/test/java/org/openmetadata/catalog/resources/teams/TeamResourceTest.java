@@ -18,11 +18,11 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
@@ -170,7 +170,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Ensure that the user does not have relationship to this team
     User user = userResourceTest.getEntity(user1.getId(), "teams", ADMIN_AUTH_HEADERS);
-    assertTrue(user.getTeams().isEmpty());
+    assertDeleted(user.getTeams(), true);
 
     // Ensure that the role is not deleted
     Role role = roleResourceTest.getEntity(role1.getId(), "", ADMIN_AUTH_HEADERS);
