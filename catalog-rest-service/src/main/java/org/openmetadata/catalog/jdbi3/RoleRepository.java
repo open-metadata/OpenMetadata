@@ -168,8 +168,7 @@ public class RoleRepository extends EntityRepository<Role> {
     addRelationship(role.getId(), role.getPolicy().getId(), Entity.ROLE, Entity.POLICY, Relationship.CONTAINS);
   }
 
-  public ResultList<Role> getDefaultRolesResultList(UriInfo uriInfo, Fields fields)
-      throws GeneralSecurityException, IOException {
+  public ResultList<Role> getDefaultRolesResultList(UriInfo uriInfo, Fields fields) throws IOException {
     List<Role> roles = getDefaultRoles(uriInfo, fields);
     return new ResultList<>(roles, null, null, roles.size());
   }

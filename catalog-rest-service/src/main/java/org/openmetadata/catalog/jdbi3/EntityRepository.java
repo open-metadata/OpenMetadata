@@ -27,7 +27,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
@@ -545,8 +544,7 @@ public abstract class EntityRepository<T> {
     return getEntityInterface(entity).getFullyQualifiedName();
   }
 
-  public final ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor, int total)
-      throws GeneralSecurityException, UnsupportedEncodingException {
+  public final ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor, int total) {
     return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 

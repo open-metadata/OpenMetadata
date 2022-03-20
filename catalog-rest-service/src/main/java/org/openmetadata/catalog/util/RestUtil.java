@@ -207,7 +207,7 @@ public final class RestUtil {
   }
 
   public static class DeleteResponse<T> {
-    private T entity;
+    private final T entity;
     private final String changeType;
 
     /**
