@@ -106,7 +106,7 @@ const mockTableQueriesProp = {
   queries: mockQueriesData,
 };
 
-jest.mock('./ QueryCard', () => {
+jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
 
