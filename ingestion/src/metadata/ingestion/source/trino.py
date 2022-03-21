@@ -20,7 +20,7 @@ from sqlalchemy.inspection import inspect
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.entity import Entity
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -89,7 +89,7 @@ class TrinoSource(SQLSource):
         )
         return super().prepare()
 
-    def next_record(self) -> Iterable[Entity]:
+    def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         for schema in self.schema_names:
             self.database_source_state.clear()
             if not self.sql_config.schema_filter_pattern.included(schema):
