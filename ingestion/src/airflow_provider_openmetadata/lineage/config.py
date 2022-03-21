@@ -63,6 +63,9 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
             "lineage", "audience", fallback="https://www.googleapis.com/oauth2/v4/token"
         )
         auth_header = conf.get("lineage", "auth_header", fallback="Authorization")
+        authority = conf.get("lineage", "authority", fallback=None)
+        callback_url = conf.get("lineage", "callback_url", fallback=None)
+        scopes = conf.get("lineage", "scopes", fallback=None)
         return OpenMetadataLineageConfig.parse_obj(
             {
                 "airflow_service_name": airflow_service_name,
@@ -79,6 +82,9 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
                 "retry_wait": retry_wait,
                 "retry": retry,
                 "api_version": api_version,
+                "authority": authority,
+                "callback_url": callback_url,
+                "scopes": scopes,
             }
         )
 
