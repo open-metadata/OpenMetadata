@@ -88,7 +88,6 @@ import {
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   // User Id for getting followers
@@ -673,16 +672,6 @@ const DatabaseDetails: FunctionComponent = () => {
                                     type="label"
                                   />
                                 ))}
-                                {getTableTags(table.columns).map(
-                                  (tag, tagIdx) => (
-                                    <Tags
-                                      key={tagIdx}
-                                      startWith="#"
-                                      tag={tag}
-                                      type="label"
-                                    />
-                                  )
-                                )}
                               </td>
                             </tr>
                           ))
