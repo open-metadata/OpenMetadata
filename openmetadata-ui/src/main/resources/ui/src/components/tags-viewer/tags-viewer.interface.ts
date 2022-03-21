@@ -11,18 +11,9 @@
  *  limitations under the License.
  */
 
-import { TagLabel } from '../../generated/type/tagLabel';
+import { EntityTags } from 'Models';
 
-export type TagProps = {
-  className?: string;
-  editable?: boolean;
-  type?: 'contained' | 'outlined' | 'label';
-  startWith?: '#' | '+ ';
-  tag: string | TagLabel;
-  isRemovable?: boolean;
-  showOnlyName?: boolean;
-  removeTag?: (
-    event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => void;
-};
+export interface TagsViewerProps {
+  tags: Array<EntityTags>;
+  sizeCap?: number;
+}

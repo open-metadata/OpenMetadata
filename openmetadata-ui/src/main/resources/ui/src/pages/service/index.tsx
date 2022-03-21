@@ -60,7 +60,7 @@ import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
-import Tags from '../../components/tags/tags';
+import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
   getTeamDetailsPath,
@@ -697,23 +697,11 @@ const ServicePage: FunctionComponent = () => {
 
         return (
           <td className="tableBody-cell">
-            {topic.tags && topic.tags?.length > 0
-              ? topic.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
+            {topic.tags && topic.tags?.length > 0 ? (
+              <TagsViewer sizeCap={-1} tags={topic.tags} />
+            ) : (
+              '--'
+            )}
           </td>
         );
       }
@@ -722,23 +710,11 @@ const ServicePage: FunctionComponent = () => {
 
         return (
           <td className="tableBody-cell">
-            {dashboard.tags && dashboard.tags?.length > 0
-              ? dashboard.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
+            {dashboard.tags && dashboard.tags?.length > 0 ? (
+              <TagsViewer sizeCap={-1} tags={dashboard.tags} />
+            ) : (
+              '--'
+            )}
           </td>
         );
       }
@@ -747,23 +723,11 @@ const ServicePage: FunctionComponent = () => {
 
         return (
           <td className="tableBody-cell">
-            {pipeline.tags && pipeline.tags?.length > 0
-              ? pipeline.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
+            {pipeline.tags && pipeline.tags?.length > 0 ? (
+              <TagsViewer sizeCap={-1} tags={pipeline.tags} />
+            ) : (
+              '--'
+            )}
           </td>
         );
       }

@@ -49,7 +49,7 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
-import Tags from '../../components/tags/tags';
+import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getDatabaseDetailsPath,
   getExplorePathWithSearch,
@@ -658,31 +658,20 @@ const DatabaseDetails: FunctionComponent = () => {
                                 </p>
                               </td>
                               <td className="tableBody-cell">
-                                {table.tags?.map((tag, tagIndex) => (
-                                  <Tags
-                                    key={tagIndex}
-                                    startWith="#"
-                                    tag={{
+                                <TagsViewer
+                                  sizeCap={-1}
+                                  tags={[
+                                    ...(table.tags || []).map((tag) => ({
                                       ...tag,
                                       tagFQN: tag.tagFQN?.startsWith(
                                         'Tier.Tier'
                                       )
                                         ? tag.tagFQN.split('.')[1]
                                         : tag.tagFQN,
-                                    }}
-                                    type="label"
-                                  />
-                                ))}
-                                {getTableTags(table.columns).map(
-                                  (tag, tagIdx) => (
-                                    <Tags
-                                      key={tagIdx}
-                                      startWith="#"
-                                      tag={tag}
-                                      type="label"
-                                    />
-                                  )
-                                )}
+                                    })),
+                                    ...getTableTags(table.columns),
+                                  ]}
+                                />
                               </td>
                             </tr>
                           ))

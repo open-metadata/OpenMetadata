@@ -49,7 +49,7 @@ export const getEntityTags = (
     Partial<Pipeline> &
     Partial<Dashboard> &
     Partial<Topic>
-): Array<string | undefined> => {
+): Array<TagLabel | undefined> => {
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
@@ -57,13 +57,13 @@ export const getEntityTags = (
         ...(entityDetail.tags || []),
       ];
 
-      return tableTags.map((t) => t.tagFQN);
+      return tableTags;
     }
     case EntityType.PIPELINE: {
-      return entityDetail.tags?.map((t) => t.tagFQN) || [];
+      return entityDetail.tags || [];
     }
     case EntityType.DASHBOARD: {
-      return entityDetail.tags?.map((t) => t.tagFQN) || [];
+      return entityDetail.tags || [];
     }
 
     default:

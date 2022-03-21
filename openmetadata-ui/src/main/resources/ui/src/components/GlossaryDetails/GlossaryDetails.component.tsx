@@ -16,7 +16,6 @@ import { cloneDeep, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import {
-  LIST_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
@@ -34,10 +33,10 @@ import { Button } from '../buttons/Button/Button';
 import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import PopOver from '../common/popover/PopOver';
 import TabsPane from '../common/TabsPane/TabsPane';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
+import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
 
 type props = {
@@ -258,29 +257,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                   icon="icon-tag-grey"
                   width="16"
                 />
-                {glossary.tags.slice(0, LIST_SIZE).map((tag, index) => (
-                  <Tags key={index} startWith="#" tag={tag} type="label" />
-                ))}
-
-                {glossary.tags.slice(LIST_SIZE).length > 0 && (
-                  <PopOver
-                    html={
-                      <>
-                        {glossary.tags.slice(LIST_SIZE).map((tag, index) => (
-                          <p className="tw-text-left" key={index}>
-                            <Tags startWith="#" tag={tag} type="label" />
-                          </p>
-                        ))}
-                      </>
-                    }
-                    position="bottom"
-                    theme="light"
-                    trigger="click">
-                    <span className="tw-cursor-pointer tw-text-xs link-text v-align-sub tw--ml-1">
-                      •••
-                    </span>
-                  </PopOver>
-                )}
+                <TagsViewer tags={glossary.tags} />
               </>
             )}
           </>

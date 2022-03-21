@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -21,16 +23,21 @@ import {
   TagOption,
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
+import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { User } from '../../../generated/entity/teams/user';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getFollowerDetail } from '../../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import TagsContainer from '../../tags-container/tags-container';
+import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
 import Avatar from '../avatar/Avatar';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
@@ -38,12 +45,6 @@ import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../../utils/GlossaryUtils';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
@@ -130,14 +131,14 @@ const EntityPageInfo = ({
     return tier?.tagFQN
       ? [
           ...tags.map((tag) => ({
-            tagFQN: tag.tagFQN,
+            ...tag,
             isRemovable: true,
           })),
           { tagFQN: tier.tagFQN, isRemovable: false },
         ]
       : [
           ...tags.map((tag) => ({
-            tagFQN: tag.tagFQN,
+            ...tag,
             isRemovable: true,
           })),
         ];
@@ -371,50 +372,7 @@ const EntityPageInfo = ({
                 type="label"
               />
             )}
-            {tags.length > 0 && (
-              <>
-                {tags.slice(0, LIST_SIZE).map((tag, index) => (
-                  <Tags
-                    className={classNames(
-                      { 'diff-added tw-mx-1': tag?.added },
-                      { 'diff-removed': tag?.removed }
-                    )}
-                    key={index}
-                    startWith="#"
-                    tag={tag}
-                    type="label"
-                  />
-                ))}
-
-                {tags.slice(LIST_SIZE).length > 0 && (
-                  <PopOver
-                    html={
-                      <>
-                        {tags.slice(LIST_SIZE).map((tag, index) => (
-                          <p className="tw-text-left" key={index}>
-                            <Tags
-                              className={classNames(
-                                { 'diff-added tw-mx-1': tag?.added },
-                                { 'diff-removed': tag?.removed }
-                              )}
-                              startWith="#"
-                              tag={tag}
-                              type="label"
-                            />
-                          </p>
-                        ))}
-                      </>
-                    }
-                    position="bottom"
-                    theme="light"
-                    trigger="click">
-                    <span className="tw-cursor-pointer tw-text-xs link-text v-align-sub tw--ml-1">
-                      •••
-                    </span>
-                  </PopOver>
-                )}
-              </>
-            )}
+            {tags.length > 0 && <TagsViewer tags={tags} />}
           </>
         )}
         {isTagEditable && !deleted && (
