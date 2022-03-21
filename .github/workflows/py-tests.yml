@@ -51,7 +51,7 @@ jobs:
       run: |
         python3 -m venv env
         source env/bin/activate
-        make install_test install_dev generate
+        make install_test install_dev generate install_all
 
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
