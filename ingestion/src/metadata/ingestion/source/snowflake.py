@@ -81,9 +81,9 @@ class SnowflakeSource(SQLSource):
             config.connect_args["private_key"] = pkb
         super().__init__(config, metadata_config, ctx)
 
-    def get_inspectors(self) -> Iterable[Inspector]:
+    def get_databases(self) -> Iterable[Inspector]:
         if self.config.database != None:
-            yield from super().get_inspectors()
+            yield from super().get_databases()
         else:
             query = "SHOW DATABASES"
             results = self.connection.execute(query)

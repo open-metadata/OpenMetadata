@@ -196,14 +196,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
-    def get_inspectors(self) -> Iterable[Inspector]:
+    def get_databases(self) -> Iterable[Inspector]:
         yield inspect(self.engine)
 
     def get_table_fqn(self, service_name, schema, table_name) -> str:
         return f"{service_name}.{schema}.{table_name}"
 
     def next_record(self) -> Iterable[Entity]:
-        inspectors = self.get_inspectors()
+        inspectors = self.get_databases()
         for inspector in inspectors:
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
