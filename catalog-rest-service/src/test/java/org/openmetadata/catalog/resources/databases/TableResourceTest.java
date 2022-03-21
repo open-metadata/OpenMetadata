@@ -1182,9 +1182,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     verifyColumnTest(table, c1, List.of(createColumnTest, createColumnTest1));
 
     // delete the table test case
-    putResponse =
-        deleteTableTest(
-            table.getId(), createTableTest1.getTestCase().getTableTestType().toString(), ADMIN_AUTH_HEADERS);
+    deleteTableTest(table.getId(), createTableTest1.getTestCase().getTableTestType().toString(), ADMIN_AUTH_HEADERS);
     table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
     verifyTableTest(table.getName(), table.getTableTests(), List.of(createTableTest));
 

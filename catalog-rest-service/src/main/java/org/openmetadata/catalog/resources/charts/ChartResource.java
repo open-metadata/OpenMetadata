@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.charts;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,7 +52,9 @@ import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -71,17 +71,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
-public class ChartResource {
+public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
-  private final ChartRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Chart> addHref(UriInfo uriInfo, ResultList<Chart> charts) {
-    listOrEmpty(charts.getData()).forEach(i -> addHref(uriInfo, i));
-    return charts;
-  }
-
-  public static Chart addHref(UriInfo uriInfo, Chart chart) {
+  @Override
+  public Chart addHref(UriInfo uriInfo, Chart chart) {
     chart.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, chart.getId()));
     Entity.withHref(uriInfo, chart.getOwner());
     Entity.withHref(uriInfo, chart.getService());
@@ -90,8 +84,7 @@ public class ChartResource {
   }
 
   public ChartResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new ChartRepository(dao);
-    this.authorizer = authorizer;
+    super(Chart.class, new ChartRepository(dao), authorizer);
   }
 
   public static class ChartList extends ResultList<Chart> {
@@ -152,16 +145,9 @@ public class ChartResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Chart> charts;
-    if (before != null) { // Reverse paging
-      charts = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      charts = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, charts);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -199,8 +185,8 @@ public class ChartResource {
       })
   public Chart get(
       @Context UriInfo uriInfo,
-      @PathParam("id") String id,
       @Context SecurityContext securityContext,
+      @PathParam("id") String id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -213,8 +199,7 @@ public class ChartResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -230,7 +215,7 @@ public class ChartResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
       })
-  public Response getByName(
+  public Chart getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -246,10 +231,7 @@ public class ChartResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Chart chart = dao.getByName(uriInfo, fqn, fields, include);
-    addHref(uriInfo, chart);
-    return Response.ok(chart).build();
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

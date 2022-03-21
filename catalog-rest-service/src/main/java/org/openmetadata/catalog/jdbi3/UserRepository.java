@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -138,17 +137,13 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
     List<EntityReference> ownedEntities =
-        daoCollection
-            .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, Relationship.OWNS.ordinal(), toBoolean(toInclude(user)));
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
       ownedEntities.addAll(
-          daoCollection
-              .relationshipDAO()
-              .findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal(), user.getDeleted()));
+          daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal()));
     }
     // Populate details in entity reference
     return EntityUtil.populateEntityReferences(ownedEntities);
@@ -156,9 +151,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.populateEntityReferences(
-        daoCollection
-            .relationshipDAO()
-            .findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal(), toBoolean(toInclude(user))));
+        daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal()));
   }
 
   public List<EntityReference> validateRolesByIds(List<UUID> roleIds) throws IOException {
@@ -185,14 +178,13 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE, toBoolean(toInclude(user)));
+    List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
   }
 
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<String> teamIds =
-        findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM, toBoolean(toInclude(user)));
+    List<String> teamIds = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
     return EntityUtil.populateEntityReferences(teamIds, Entity.TEAM);
   }
 
@@ -275,7 +267,8 @@ public class UserRepository extends EntityRepository<User> {
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
           .withType(Entity.USER)
-          .withHref(getHref());
+          .withHref(getHref())
+          .withDeleted(isDeleted());
     }
 
     @Override

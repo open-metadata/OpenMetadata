@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -212,25 +213,29 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
-  /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields)
+  public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields) throws IOException, ParseException {
+    return getEntity(ref, fields, Include.NON_DELETED);
+  }
+
+  public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include)
       throws IOException, ParseException {
-    return getEntity(entityReference, fields, Include.NON_DELETED);
+    return getEntity(ref.getType(), ref.getId(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(EntityReference entityReference, EntityUtil.Fields fields, Include include)
+  public static <T> T getEntity(String entityType, UUID id, EntityUtil.Fields fields)
       throws IOException, ParseException {
-    if (entityReference == null) {
-      return null;
-    }
+    return getEntity(entityType, id, fields, Include.NON_DELETED);
+  }
 
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+  /** Retrieve the entity using id from given entity reference and fields */
+  public static <T> T getEntity(String entityType, UUID id, EntityUtil.Fields fields, Include include)
+      throws IOException, ParseException {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, entityReference.getId().toString(), fields, include);
+    T entity = (T) entityRepository.get(null, id.toString(), fields, include);
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound(entityReference.getType(), entityReference.getId()));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
     return entity;
   }
@@ -245,10 +250,11 @@ public final class Entity {
     return entityRepository;
   }
 
-  public static void deleteEntity(String updatedBy, String entityType, UUID entityId, boolean recursive)
+  public static void deleteEntity(
+      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean internal)
       throws IOException, ParseException {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.delete(updatedBy, entityId.toString(), recursive);
+    dao.delete(updatedBy, entityId.toString(), recursive, internal);
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId)
@@ -270,7 +276,7 @@ public final class Entity {
    */
   public static <T> List<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
-    return List.of(propertyOrder.value());
+    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */

@@ -161,7 +161,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.DASHBOARD_SERVICE);
+          .withType(Entity.DASHBOARD_SERVICE)
+          .withDeleted(isDeleted());
     }
 
     @Override

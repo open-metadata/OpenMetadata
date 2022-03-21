@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
-
 import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
@@ -71,8 +69,7 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   private EntityReference getPolicyForRole(@NonNull Role role) throws IOException {
-    List<String> result =
-        findTo(role.getId(), Entity.ROLE, Relationship.CONTAINS, Entity.POLICY, toBoolean(toInclude(role)));
+    List<String> result = findTo(role.getId(), Entity.ROLE, Relationship.CONTAINS, Entity.POLICY);
     if (result.size() != 1) {
       LOG.warn(
           "A role must have exactly one policy that is applicable to the role. Got {} policies for role {}",
@@ -84,12 +81,12 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   private List<EntityReference> getUsersForRole(@NonNull Role role) throws IOException {
-    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER, toBoolean(toInclude(role)));
+    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
   private List<EntityReference> getTeamsForRole(@NonNull Role role) throws IOException {
-    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM, toBoolean(Include.ALL));
+    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
     return EntityUtil.populateEntityReferences(ids, Entity.TEAM);
   }
 
@@ -257,7 +254,8 @@ public class RoleRepository extends EntityRepository<Role> {
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
           .withType(Entity.ROLE)
-          .withHref(getHref());
+          .withHref(getHref())
+          .withDeleted(isDeleted());
     }
 
     @Override
@@ -380,8 +378,9 @@ public class RoleRepository extends EntityRepository<Role> {
         // Assumptions:
         // - we will not have more than Integer.MAX_VALUE users in the system.
         // - we do not need to update deleted user's roles.
+        ListFilter filter = new ListFilter().addQueryParam("include", Include.NON_DELETED.value());
         return userRepository
-            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, null, Integer.MAX_VALUE - 1, null, Include.NON_DELETED)
+            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, filter, Integer.MAX_VALUE - 1, null)
             .getData();
       } catch (GeneralSecurityException | IOException | ParseException e) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));

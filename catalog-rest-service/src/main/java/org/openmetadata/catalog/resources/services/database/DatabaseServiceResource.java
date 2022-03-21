@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.services.database;
 
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,7 +26,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -55,7 +53,9 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -75,30 +75,22 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseServices")
-public class DatabaseServiceResource {
+public class DatabaseServiceResource extends EntityResource<DatabaseService, DatabaseServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-  private final DatabaseServiceRepository dao;
-  private final Authorizer authorizer;
 
   static final String FIELDS = "airflowPipeline,owner";
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(DatabaseService.class);
   private final Fernet fernet;
 
-  public static ResultList<DatabaseService> addHref(UriInfo uriInfo, ResultList<DatabaseService> dbServices) {
-    listOrEmpty(dbServices.getData()).forEach(i -> addHref(uriInfo, i));
-    return dbServices;
-  }
-
-  public static DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
+  @Override
+  public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
     return service;
   }
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "DatabaseServiceRepository must not be null");
-    this.dao = new DatabaseServiceRepository(dao);
-    this.authorizer = authorizer;
+    super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer);
     this.fernet = Fernet.getInstance();
   }
 
@@ -150,10 +142,14 @@ public class DatabaseServiceResource {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     ResultList<DatabaseService> dbServices;
+
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+
     if (before != null) {
-      dbServices = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
+      dbServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      dbServices = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
+      dbServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, dbServices));
   }
@@ -188,8 +184,8 @@ public class DatabaseServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, decryptOrNullify(securityContext, dao.get(uriInfo, id, fields, include)));
+    DatabaseService service = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, service);
   }
 
   @GET
@@ -222,8 +218,8 @@ public class DatabaseServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, decryptOrNullify(securityContext, dao.getByName(uriInfo, name, fields, include)));
+    DatabaseService service = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, service);
   }
 
   @GET

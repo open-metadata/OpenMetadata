@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -52,8 +51,10 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateMlModel;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -70,12 +71,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
-public class MlModelResource {
+public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  private final MlModelRepository dao;
-  private final Authorizer authorizer;
 
-  public static MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
+  @Override
+  public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
     mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
     Entity.withHref(uriInfo, mlmodel.getOwner());
     Entity.withHref(uriInfo, mlmodel.getDashboard());
@@ -84,9 +84,7 @@ public class MlModelResource {
   }
 
   public MlModelResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "ModelRepository must not be null");
-    this.dao = new MlModelRepository(dao);
-    this.authorizer = authorizer;
+    super(MlModel.class, new MlModelRepository(dao), authorizer);
   }
 
   public static class MlModelList extends ResultList<MlModel> {
@@ -145,17 +143,9 @@ public class MlModelResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<MlModel> mlmodels;
-    if (before != null) { // Reverse paging
-      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
-    } else { // Forward paging or first page
-      mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    mlmodels.getData().forEach(m -> addHref(uriInfo, m));
-    return mlmodels;
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -187,8 +177,7 @@ public class MlModelResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -220,8 +209,7 @@ public class MlModelResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST

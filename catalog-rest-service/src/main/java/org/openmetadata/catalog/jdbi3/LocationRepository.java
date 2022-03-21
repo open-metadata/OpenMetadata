@@ -306,7 +306,8 @@ public class LocationRepository extends EntityRepository<Location> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.LOCATION);
+          .withType(Entity.LOCATION)
+          .withDeleted(isDeleted());
     }
 
     @Override

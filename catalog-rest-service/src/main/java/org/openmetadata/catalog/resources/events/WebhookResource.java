@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -45,8 +44,10 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -66,10 +67,13 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "webhook")
-public class WebhookResource {
+public class WebhookResource extends EntityResource<Webhook, WebhookRepository> {
   public static final String COLLECTION_PATH = "v1/webhook/";
-  private final WebhookRepository dao;
-  private final Authorizer authorizer;
+
+  @Override
+  public Webhook addHref(UriInfo uriInfo, Webhook entity) {
+    return entity;
+  }
 
   public static class WebhookList extends ResultList<Webhook> {
 
@@ -82,9 +86,7 @@ public class WebhookResource {
   }
 
   public WebhookResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
-    this.dao = new WebhookRepository(dao);
-    this.authorizer = authorizer;
+    super(Webhook.class, new WebhookRepository(dao), authorizer);
   }
 
   @GET
@@ -121,11 +123,14 @@ public class WebhookResource {
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+
     ResultList<Webhook> webhooks;
     if (before != null) { // Reverse paging
-      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, before, include);
+      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
     } else { // Forward paging or first page
-      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, null, limitParam, after, include);
+      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, after);
     }
     webhooks.getData().forEach(t -> dao.withHref(uriInfo, t));
     return webhooks;
@@ -147,6 +152,7 @@ public class WebhookResource {
       })
   public Webhook get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
@@ -155,7 +161,7 @@ public class WebhookResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.get(uriInfo, id, Fields.EMPTY_FIELDS, include);
+    return getInternal(uriInfo, securityContext, id, "", include);
   }
 
   @GET
@@ -174,7 +180,7 @@ public class WebhookResource {
   public Webhook getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String fqn,
+      @Parameter(description = "Name of the webhook", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -182,7 +188,7 @@ public class WebhookResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    return dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS, include);
+    return getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
   @GET

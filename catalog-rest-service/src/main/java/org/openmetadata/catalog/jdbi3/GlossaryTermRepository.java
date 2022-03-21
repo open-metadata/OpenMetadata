@@ -78,25 +78,22 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
-    List<String> ids =
-        findFrom(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM, entity.getDeleted());
+    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM);
     return ids.size() == 1 ? Entity.getEntityReferenceById(GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
-    List<String> ids =
-        findTo(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM, entity.getDeleted());
+    List<String> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM);
     return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
-    List<String> ids =
-        findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM, entity.getDeleted());
+    List<String> ids = findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
     return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
-    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER, entity.getDeleted());
+    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
@@ -184,7 +181,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
-    List<String> refs = findFrom(term.getId(), GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY, null);
+    List<String> refs = findFrom(term.getId(), GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY);
     ensureSingleRelationship(GLOSSARY_TERM, term.getId(), refs, "glossaries", true);
     return getGlossary(refs.get(0));
   }
@@ -282,7 +279,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(GLOSSARY_TERM);
+          .withType(GLOSSARY_TERM)
+          .withDeleted(isDeleted());
     }
 
     @Override

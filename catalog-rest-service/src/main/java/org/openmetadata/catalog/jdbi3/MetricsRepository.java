@@ -189,7 +189,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.METRICS);
+          .withType(Entity.METRICS)
+          .withDeleted(isDeleted());
     }
 
     @Override

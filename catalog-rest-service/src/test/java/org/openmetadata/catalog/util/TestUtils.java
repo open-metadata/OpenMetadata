@@ -213,6 +213,10 @@ public final class TestUtils {
     assertEquals(Status.OK.getStatusCode(), response.getStatus());
   }
 
+  public static void assertDeleted(List<EntityReference> list, Boolean expected) {
+    listOrEmpty(list).forEach(e -> expected.equals(e.getDeleted()));
+  }
+
   public static void validateEntityReference(EntityReference ref) {
     assertNotNull(ref.getId());
     assertNotNull(ref.getHref());

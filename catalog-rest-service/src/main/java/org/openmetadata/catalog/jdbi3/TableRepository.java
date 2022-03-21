@@ -484,7 +484,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private EntityReference getLocation(Table table) throws IOException {
-    List<String> refs = findTo(table.getId(), TABLE, Relationship.HAS, LOCATION, null);
+    List<String> refs = findTo(table.getId(), TABLE, Relationship.HAS, LOCATION);
     ensureSingleRelationship(TABLE, table.getId(), refs, "location", false);
     return refs.isEmpty() ? null : Entity.getEntityReferenceById(LOCATION, UUID.fromString(refs.get(0)), Include.ALL);
   }
@@ -875,7 +875,8 @@ public class TableRepository extends EntityRepository<Table> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(TABLE);
+          .withType(TABLE)
+          .withDeleted(isDeleted());
     }
 
     @Override

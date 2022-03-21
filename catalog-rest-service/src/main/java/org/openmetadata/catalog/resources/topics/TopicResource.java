@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.topics;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -55,14 +54,15 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -73,17 +73,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "topics")
-public class TopicResource {
+public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
-  private final TopicRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Topic> addHref(UriInfo uriInfo, ResultList<Topic> topics) {
-    listOrEmpty(topics.getData()).forEach(i -> addHref(uriInfo, i));
-    return topics;
-  }
-
-  public static Topic addHref(UriInfo uriInfo, Topic topic) {
+  @Override
+  public Topic addHref(UriInfo uriInfo, Topic topic) {
     Entity.withHref(uriInfo, topic.getOwner());
     Entity.withHref(uriInfo, topic.getService());
     Entity.withHref(uriInfo, topic.getFollowers());
@@ -92,8 +86,7 @@ public class TopicResource {
 
   @Inject
   public TopicResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new TopicRepository(dao);
-    this.authorizer = authorizer;
+    super(Topic.class, new TopicRepository(dao), authorizer);
   }
 
   public static class TopicList extends ResultList<Topic> {
@@ -156,16 +149,9 @@ public class TopicResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Topic> topics;
-    if (before != null) { // Reverse paging
-      topics = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      topics = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, topics);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -217,8 +203,7 @@ public class TopicResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -234,7 +219,7 @@ public class TopicResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
-  public Response getByName(
+  public Topic getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -250,10 +235,7 @@ public class TopicResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Topic topic = dao.getByName(uriInfo, fqn, fields, include);
-    addHref(uriInfo, topic);
-    return Response.ok(topic).build();
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

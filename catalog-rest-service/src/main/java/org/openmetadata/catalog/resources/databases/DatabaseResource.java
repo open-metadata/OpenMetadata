@@ -25,9 +25,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -54,13 +52,14 @@ import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -71,23 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
-public class DatabaseResource {
+public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
-  private final DatabaseRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Database> addHref(UriInfo uriInfo, ResultList<Database> databases) {
-    Optional.ofNullable(databases.getData())
-        .orElse(Collections.emptyList())
-        .forEach(
-            i -> {
-              addHref(uriInfo, i);
-              i.setTables(null);
-            });
-    return databases;
-  }
-
-  public static Database addHref(UriInfo uriInfo, Database db) {
+  @Override
+  public Database addHref(UriInfo uriInfo, Database db) {
     Entity.withHref(uriInfo, db.getTables());
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getOwner());
@@ -96,8 +83,7 @@ public class DatabaseResource {
   }
 
   public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new DatabaseRepository(dao);
-    this.authorizer = authorizer;
+    super(Database.class, new DatabaseRepository(dao), authorizer);
   }
 
   public static class DatabaseList extends ResultList<Database> {
@@ -158,20 +144,9 @@ public class DatabaseResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Database> databases;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
-    if (before != null) { // Reverse paging
-      databases = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, databases);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -207,7 +182,7 @@ public class DatabaseResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
       })
-  public Response get(
+  public Database get(
       @Context UriInfo uriInfo,
       @PathParam("id") String id,
       @Context SecurityContext securityContext,
@@ -223,10 +198,7 @@ public class DatabaseResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Database database = dao.get(uriInfo, id, fields, include);
-    addHref(uriInfo, database);
-    return Response.ok(database).build();
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -242,7 +214,7 @@ public class DatabaseResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
       })
-  public Response getByName(
+  public Database getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -258,10 +230,7 @@ public class DatabaseResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Database database = dao.getByName(uriInfo, fqn, fields, include);
-    addHref(uriInfo, database);
-    return Response.ok(database).build();
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

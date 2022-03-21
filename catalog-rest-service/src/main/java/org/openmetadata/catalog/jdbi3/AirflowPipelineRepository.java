@@ -188,7 +188,8 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.AIRFLOW_PIPELINE);
+          .withType(Entity.AIRFLOW_PIPELINE)
+          .withDeleted(isDeleted());
     }
 
     @Override

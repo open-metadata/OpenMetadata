@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -29,7 +27,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
@@ -57,9 +54,11 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -76,12 +75,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "users")
-public class UserResource {
+public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
-  private final UserRepository dao;
-  private final Authorizer authorizer;
 
-  public static User addHref(UriInfo uriInfo, User user) {
+  @Override
+  public User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
     Entity.withHref(uriInfo, user.getOwns());
@@ -90,9 +88,7 @@ public class UserResource {
   }
 
   public UserResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "UserRepository must not be null");
-    this.dao = new UserRepository(dao);
-    this.authorizer = authorizer;
+    super(User.class, new UserRepository(dao), authorizer);
   }
 
   public static class UserList extends ResultList<User> {
@@ -152,17 +148,9 @@ public class UserResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<User> users;
-    if (before != null) { // Reverse paging
-      users = dao.listBefore(uriInfo, fields, teamParam, limitParam, before, include);
-    } else { // Forward paging or first page
-      users = dao.listAfter(uriInfo, fields, teamParam, limitParam, after, include);
-    }
-    listOrEmpty(users.getData()).forEach(u -> addHref(uriInfo, u));
-    return users;
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("team", teamParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -215,9 +203,7 @@ public class UserResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    User user = dao.get(uriInfo, id, fields, include);
-    return addHref(uriInfo, user);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -250,9 +236,7 @@ public class UserResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    User user = dao.getByName(uriInfo, name, fields, include);
-    return addHref(uriInfo, user);
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET

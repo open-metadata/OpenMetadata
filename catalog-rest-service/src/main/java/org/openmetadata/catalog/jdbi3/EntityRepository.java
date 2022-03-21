@@ -22,7 +22,6 @@ import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -275,19 +274,17 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final ResultList<T> listAfter(
-      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after, Include include)
+  public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
       throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
-    List<String> jsons =
-        dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after), include);
+    List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix, include);
+    int total = dao.listCount(filter);
 
     String beforeCursor;
     String afterCursor = null;
@@ -301,17 +298,17 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final ResultList<T> listBefore(
-      UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before, Include include)
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before)
       throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, RestUtil.decodeCursor(before), include);
+    List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
       entities.add(entity);
     }
-    int total = dao.listCount(fqnPrefix, include);
+    int total = dao.listCount(filter);
 
     String beforeCursor = null;
     String afterCursor;
@@ -456,16 +453,25 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final DeleteResponse<T> delete(String updatedBy, String id) throws IOException, ParseException {
-    return delete(updatedBy, id, false);
+    return delete(updatedBy, id, false, false);
+  }
+
+  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive)
+      throws IOException, ParseException {
+    return delete(updatedBy, id, recursive, false);
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive)
+  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean internal)
       throws IOException, ParseException {
     // Validate entity
     String json = dao.findJsonById(id, Include.NON_DELETED);
     if (json == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+      if (!internal) {
+        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+      } else {
+        return null; // Maybe already deleted
+      }
     }
 
     T original = JsonUtils.readValue(json, entityClass);
@@ -473,9 +479,7 @@ public abstract class EntityRepository<T> {
 
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityReference> contains =
-        daoCollection
-            .relationshipDAO()
-            .findTo(id, entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.NON_DELETED));
+        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
 
     if (!contains.isEmpty()) {
       if (!recursive) {
@@ -484,7 +488,7 @@ public abstract class EntityRepository<T> {
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
         LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
-        Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), recursive);
+        Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, true);
       }
     }
 
@@ -496,7 +500,6 @@ public abstract class EntityRepository<T> {
       entityInterface.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
       updater.update();
-      daoCollection.relationshipDAO().softDeleteAll(id, entityType);
       changeType = RestUtil.ENTITY_SOFT_DELETED;
     } else {
       // Hard delete
@@ -696,11 +699,6 @@ public abstract class EntityRepository<T> {
     return entityInterface.withHref(getHref(uriInfo, entityInterface.getId()));
   }
 
-  public Include toInclude(T entity) {
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    return entityInterface.isDeleted() ? DELETED : Include.NON_DELETED;
-  }
-
   public URI getHref(UriInfo uriInfo, UUID id) {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
@@ -708,9 +706,7 @@ public abstract class EntityRepository<T> {
   public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException, ParseException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityReference> contains =
-        daoCollection
-            .relationshipDAO()
-            .findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal(), toBoolean(Include.DELETED));
+        daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
 
     if (!contains.isEmpty()) {
       // Restore all the contained entities
@@ -719,9 +715,6 @@ public abstract class EntityRepository<T> {
         Entity.restoreEntity(updatedBy, entityReference.getType(), entityReference.getId());
       }
     }
-
-    // Restore all the relationships from and to the entity as not deleted
-    daoCollection.relationshipDAO().recoverSoftDeleteAll(id.toString());
 
     // Finally set entity deleted flag to false
     T entity = dao.findEntityById(id, DELETED);
@@ -755,28 +748,26 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public List<String> findBoth(
-      UUID entity1, String entityType1, Relationship relationship, String entity2, Boolean deleted) {
+  public List<String> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2) {
     // Find bidirectional relationship
     List<String> ids = new ArrayList<>();
-    ids.addAll(findFrom(entity1, entityType1, relationship, entity2, deleted));
-    ids.addAll(findTo(entity1, entityType1, relationship, entity2, deleted));
+    ids.addAll(findFrom(entity1, entityType1, relationship, entity2));
+    ids.addAll(findTo(entity1, entityType1, relationship, entity2));
     return ids;
   }
 
-  public List<String> findFrom(
-      UUID toId, String toEntityType, Relationship relationship, String fromEntityType, Boolean deleted) {
+  public List<String> findFrom(UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
     return daoCollection
         .relationshipDAO()
-        .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType, deleted);
+        .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
   }
 
-  public List<EntityReference> findFrom(UUID toId, String toEntityType, Relationship relationship, Boolean deleted) {
-    return daoCollection.relationshipDAO().findFrom(toId.toString(), toEntityType, relationship.ordinal(), deleted);
+  public List<EntityReference> findFrom(UUID toId, String toEntityType, Relationship relationship) {
+    return daoCollection.relationshipDAO().findFrom(toId.toString(), toEntityType, relationship.ordinal());
   }
 
   public EntityReference getContainer(UUID toId, String toEntityType) throws IOException {
-    List<EntityReference> refs = findFrom(toId, toEntityType, Relationship.CONTAINS, null);
+    List<EntityReference> refs = findFrom(toId, toEntityType, Relationship.CONTAINS);
     // An entity can have only one container
     ensureSingleRelationship(toEntityType, toId, refs, "container", true);
     return Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId());
@@ -797,16 +788,15 @@ public abstract class EntityRepository<T> {
   }
 
   public EntityReference getOwner(UUID id, String entityType) throws IOException, ParseException {
-    List<EntityReference> refs = findFrom(id, entityType, Relationship.OWNS, null);
+    List<EntityReference> refs = findFrom(id, entityType, Relationship.OWNS);
     ensureSingleRelationship(entityType, id, refs, "owners", false);
     return refs.isEmpty() ? null : Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId());
   }
 
-  public List<String> findTo(
-      UUID fromId, String fromEntityType, Relationship relationship, String toEntityType, Boolean deleted) {
+  public List<String> findTo(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
     return daoCollection
         .relationshipDAO()
-        .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType, deleted);
+        .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
   }
 
   public void deleteTo(UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {

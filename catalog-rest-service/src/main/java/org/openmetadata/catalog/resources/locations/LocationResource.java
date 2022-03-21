@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -52,8 +51,10 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -70,12 +71,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "locations")
-public class LocationResource {
+public class LocationResource extends EntityResource<Location, LocationRepository> {
   public static final String COLLECTION_PATH = "v1/locations/";
-  private final LocationRepository dao;
-  private final Authorizer authorizer;
 
-  public static Location addHref(UriInfo uriInfo, Location location) {
+  @Override
+  public Location addHref(UriInfo uriInfo, Location location) {
     Entity.withHref(uriInfo, location.getOwner());
     Entity.withHref(uriInfo, location.getService());
     Entity.withHref(uriInfo, location.getFollowers());
@@ -83,9 +83,7 @@ public class LocationResource {
   }
 
   public LocationResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "LocationRepository must not be null");
-    this.dao = new LocationRepository(dao);
-    this.authorizer = authorizer;
+    super(Location.class, new LocationRepository(dao), authorizer);
   }
 
   public static class LocationList extends ResultList<Location> {
@@ -146,17 +144,9 @@ public class LocationResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Location> locations;
-    if (before != null) { // Reverse paging
-      locations = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      locations = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    locations.getData().forEach(l -> addHref(uriInfo, l));
-    return locations;
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -208,8 +198,7 @@ public class LocationResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -262,8 +251,7 @@ public class LocationResource {
     } else { // Forward paging or first page
       locations = dao.listPrefixesAfter(fields, fqn, limitParam, after);
     }
-    locations.getData().forEach(l -> addHref(uriInfo, l));
-    return locations;
+    return addHref(uriInfo, locations);
   }
 
   @GET
@@ -299,8 +287,7 @@ public class LocationResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

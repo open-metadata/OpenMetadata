@@ -23,10 +23,10 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -42,8 +42,10 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -55,13 +57,16 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reports")
-public class ReportResource {
+public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
-  private final ReportRepository dao;
 
   public ReportResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "ReportRepository must not be null");
-    this.dao = new ReportRepository(dao);
+    super(Report.class, new ReportRepository(dao), authorizer);
+  }
+
+  @Override
+  public Report addHref(UriInfo uriInfo, Report entity) {
+    return entity;
   }
 
   public static class ReportList extends ResultList<Report> {
@@ -93,7 +98,8 @@ public class ReportResource {
           String fieldsParam)
       throws IOException, GeneralSecurityException, ParseException {
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return dao.listAfter(uriInfo, fields, null, 10000, null, Include.NON_DELETED);
+    ListFilter filter = new ListFilter();
+    return dao.listAfter(uriInfo, fields, filter, 10000, null);
   }
 
   @GET
@@ -111,15 +117,21 @@ public class ReportResource {
       })
   public Report get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @PathParam("id") String id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return dao.get(uriInfo, id, fields);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @POST

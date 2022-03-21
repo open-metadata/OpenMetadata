@@ -207,7 +207,8 @@ public class TopicRepository extends EntityRepository<Topic> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.TOPIC);
+          .withType(Entity.TOPIC)
+          .withDeleted(isDeleted());
     }
 
     @Override

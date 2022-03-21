@@ -55,8 +55,10 @@ import org.openmetadata.catalog.api.tests.CreateColumnTest;
 import org.openmetadata.catalog.api.tests.CreateTableTest;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.tests.ColumnTest;
@@ -69,7 +71,6 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -80,12 +81,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
-public class TableResource {
+public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
-  private final TableRepository dao;
-  private final Authorizer authorizer;
 
-  public static Table addHref(UriInfo uriInfo, Table table) {
+  @Override
+  public Table addHref(UriInfo uriInfo, Table table) {
     Entity.withHref(uriInfo, table.getDatabase());
     Entity.withHref(uriInfo, table.getLocation());
     Entity.withHref(uriInfo, table.getOwner());
@@ -94,8 +94,8 @@ public class TableResource {
   }
 
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new TableRepository(dao);
-    this.authorizer = authorizer;
+    super(Table.class, new TableRepository(dao), authorizer);
+    allowedFields.add("tests");
   }
 
   public static class TableList extends ResultList<Table> {
@@ -115,8 +115,7 @@ public class TableResource {
   public static final List<String> ALLOWED_FIELDS;
 
   static {
-    List<String> list = new ArrayList<>();
-    list.addAll(Entity.getEntityFields(Table.class));
+    List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
     list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
     ALLOWED_FIELDS = Collections.unmodifiableList(list);
   }
@@ -167,17 +166,9 @@ public class TableResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Table> tables;
-    if (before != null) { // Reverse paging
-      tables = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before, include);
-    } else { // Forward paging or first page
-      tables = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after, include);
-    }
-    tables.getData().forEach(t -> addHref(uriInfo, t));
-    return tables;
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("database", databaseParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -209,8 +200,7 @@ public class TableResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -243,8 +233,7 @@ public class TableResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields, include));
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET

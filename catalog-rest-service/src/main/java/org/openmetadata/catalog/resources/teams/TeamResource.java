@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -52,8 +51,10 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -69,12 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams")
-public class TeamResource {
+public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
-  private final TeamRepository dao;
-  private final Authorizer authorizer;
 
-  public static Team addHref(UriInfo uriInfo, Team team) {
+  @Override
+  public Team addHref(UriInfo uriInfo, Team team) {
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
@@ -82,9 +82,7 @@ public class TeamResource {
   }
 
   public TeamResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "TeamRepository must not be null");
-    this.dao = new TeamRepository(dao);
-    this.authorizer = authorizer;
+    super(Team.class, new TeamRepository(dao), authorizer);
   }
 
   public static class TeamList extends ResultList<Team> {
@@ -141,17 +139,9 @@ public class TeamResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Team> teams;
-    if (before != null) { // Reverse paging
-      teams = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      teams = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    teams.getData().forEach(team -> addHref(uriInfo, team));
-    return teams;
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -204,8 +194,7 @@ public class TeamResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -238,8 +227,7 @@ public class TeamResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET

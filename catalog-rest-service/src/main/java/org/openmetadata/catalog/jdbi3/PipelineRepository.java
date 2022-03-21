@@ -299,7 +299,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.PIPELINE);
+          .withType(Entity.PIPELINE)
+          .withDeleted(isDeleted());
     }
 
     @Override

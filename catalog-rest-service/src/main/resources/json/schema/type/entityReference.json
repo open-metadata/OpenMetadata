@@ -35,6 +35,10 @@
       "description": "Display Name that identifies this entity.",
       "type": "string"
     },
+    "deleted": {
+      "description": "If true the entity referred to has been soft-deleted.",
+      "type": "boolean"
+    },
     "href": {
       "description": "Link to the entity resource.",
       "$ref": "basic.json#/definitions/href"

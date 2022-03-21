@@ -165,7 +165,8 @@ public class ReportRepository extends EntityRepository<Report> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.REPORT);
+          .withType(Entity.REPORT)
+          .withDeleted(isDeleted());
     }
 
     @Override

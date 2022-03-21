@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,7 +26,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -55,13 +52,14 @@ import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -72,17 +70,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboards")
-public class DashboardResource {
+public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
-  private final DashboardRepository dao;
-  private final Authorizer authorizer;
 
-  public static ResultList<Dashboard> addHref(UriInfo uriInfo, ResultList<Dashboard> dashboards) {
-    listOrEmpty(dashboards.getData()).forEach(i -> addHref(uriInfo, i));
-    return dashboards;
-  }
-
-  public static Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
+  @Override
+  public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
     Entity.withHref(uriInfo, dashboard.getOwner());
     Entity.withHref(uriInfo, dashboard.getService());
     Entity.withHref(uriInfo, dashboard.getCharts());
@@ -91,9 +83,7 @@ public class DashboardResource {
   }
 
   public DashboardResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "DashboardRepository must not be null");
-    this.dao = new DashboardRepository(dao);
-    this.authorizer = authorizer;
+    super(Dashboard.class, new DashboardRepository(dao), authorizer);
   }
 
   public static class DashboardList extends ResultList<Dashboard> {
@@ -157,17 +147,9 @@ public class DashboardResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Dashboard> dashboards;
-    if (before != null) { // Reverse paging
-      dashboards =
-          dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      dashboards = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
-    return addHref(uriInfo, dashboards);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -219,8 +201,7 @@ public class DashboardResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -252,9 +233,7 @@ public class DashboardResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Dashboard dashboard = dao.getByName(uriInfo, fqn, fields, include);
-    return addHref(uriInfo, dashboard);
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
