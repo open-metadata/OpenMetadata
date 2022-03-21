@@ -9,9 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from typing import Iterable
+
+from sqlalchemy.inspection import inspect
+
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -36,3 +41,26 @@ class MysqlSource(SQLSource):
         config = MySQLConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
+
+    def prepare(self):
+        self.inspector = inspect(self.engine)
+        self.schema_names = (
+            self.inspector.get_schema_names()
+            if not self.config.database
+            else [self.config.database]
+        )
+        return super().prepare()
+
+    def next_record(self) -> Iterable[Entity]:
+        for schema in self.schema_names:
+            self.database_source_state.clear()
+            if not self.sql_config.schema_filter_pattern.included(schema):
+                self.status.filter(schema, "Schema pattern not allowed")
+                continue
+            if self.config.include_tables:
+                yield from self.fetch_tables(self.inspector, schema)
+            if self.config.include_views:
+                yield from self.fetch_views(self.inspector, schema)
+            if self.config.mark_deleted_tables_as_deleted:
+                schema_fqdn = f"{self.config.service_name}.{schema}"
+                yield from self.delete_tables(schema_fqdn)
