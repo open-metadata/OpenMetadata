@@ -11,11 +11,11 @@
 
 import logging
 import sys
-from typing import Optional, Iterable
+from typing import Iterable, Optional
 from urllib.parse import quote_plus
-from sqlalchemy.inspection import inspect
 
 import click
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -26,6 +26,7 @@ from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 logger = logging.getLogger(__name__)
+
 
 class TrinoConfig(SQLConnectionConfig):
     host_port = "localhost:8080"
@@ -46,7 +47,9 @@ class TrinoConfig(SQLConnectionConfig):
         url += f"/{self.catalog}"
         if self.params is not None:
             params = "&".join(
-                f"{key}={quote_plus(value)}" for (key, value) in self.params.items() if value
+                f"{key}={quote_plus(value)}"
+                for (key, value) in self.params.items()
+                if value
             )
             url = f"{url}?{params}"
         return url
