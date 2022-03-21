@@ -100,7 +100,9 @@ class OMetaPipelineTest(TestCase):
         )
 
         cls.metadata.delete(entity=Pipeline, entity_id=_id)
-        cls.metadata.delete(entity=PipelineService, entity_id=service_id)
+        cls.metadata.delete(
+            entity=PipelineService, entity_id=service_id, recursive=True
+        )
 
     def test_create(self):
         """

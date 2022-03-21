@@ -94,7 +94,9 @@ class OMetaTopicTest(TestCase):
         )
 
         cls.metadata.delete(entity=Topic, entity_id=_id)
-        cls.metadata.delete(entity=MessagingService, entity_id=service_id)
+        cls.metadata.delete(
+            entity=MessagingService, entity_id=service_id, recursive=True
+        )
 
     def test_create(self):
         """

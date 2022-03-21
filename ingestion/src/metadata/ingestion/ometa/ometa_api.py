@@ -523,7 +523,12 @@ class OpenMetadata(
 
         return [entity(**p) for p in resp["data"]]
 
-    def delete(self, entity: Type[T], entity_id: Union[str, basic.Uuid]) -> None:
+    def delete(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        recursive: bool = False,
+    ) -> None:
         """
         API call to delete an entity from entity ID
 
@@ -533,7 +538,9 @@ class OpenMetadata(
         Returns
             None
         """
-        self.client.delete(f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}")
+        url = f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}"
+        url += f"?recursive=true" if recursive else ""
+        self.client.delete(url)
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """
