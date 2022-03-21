@@ -425,7 +425,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   /**
-   * Calculates the updated tags, and updated table entity data for making API call
+   * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
    */
   const onTagUpdate = (selectedTags?: Array<EntityTags>) => {

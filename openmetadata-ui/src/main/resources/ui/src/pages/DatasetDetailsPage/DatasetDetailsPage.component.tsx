@@ -234,7 +234,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const msg =
-          err.response?.data.message ??
+          err.response?.data.message ||
           jsonData['api-error-messages']['fetch-lineage-error'];
         handleShowErrorToast(msg);
       })
@@ -250,10 +250,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
         const { data } = res.data;
         setEntityThread(data);
       })
-      .catch(() => {
-        handleShowErrorToast(
-          jsonData['api-error-messages']['fetch-entity-feed-error']
-        );
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-error'];
+        handleShowErrorToast(errMsg);
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -362,11 +363,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
               const { sampleData } = res.data;
               setSampleData(sampleData);
             })
-            .catch(() =>
-              handleShowErrorToast(
-                jsonData['api-error-messages']['fetch-sample-data-error']
-              )
-            )
+            .catch((err: AxiosError) => {
+              const errMsg =
+                err.response?.data.message ||
+                jsonData['api-error-messages']['fetch-sample-data-error'];
+              handleShowErrorToast(errMsg);
+            })
             .finally(() => setIsSampleDataLoading(false));
 
           break;
@@ -395,11 +397,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
               const { tableQueries } = res.data;
               setTableQueries(tableQueries);
             })
-            .catch(() =>
-              handleShowErrorToast(
-                jsonData['api-error-messages']['fetch-table-queries-error']
-              )
-            )
+            .catch((err: AxiosError) => {
+              const errMsg =
+                err.response?.data.message ||
+                jsonData['api-error-messages']['fetch-table-queries-error'];
+              handleShowErrorToast(errMsg);
+            })
             .finally(() => setIsTableQueriesLoading(false));
 
           break;
@@ -432,10 +435,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setFeedCount(res.data.totalCount);
         setEntityFieldThreadCount(res.data.counts);
       })
-      .catch(() => {
-        handleShowErrorToast(
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
