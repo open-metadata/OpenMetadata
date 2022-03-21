@@ -64,7 +64,6 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
         )
         auth_header = conf.get("lineage", "auth_header", fallback="Authorization")
         authority = conf.get("lineage", "authority", fallback=None)
-        callback_url = conf.get("lineage", "callback_url", fallback=None)
         scopes = conf.get("lineage", "scopes", fallback=None)
         return OpenMetadataLineageConfig.parse_obj(
             {
@@ -83,7 +82,6 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
                 "retry": retry,
                 "api_version": api_version,
                 "authority": authority,
-                "callback_url": callback_url,
                 "scopes": scopes,
             }
         )
