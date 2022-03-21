@@ -16,7 +16,14 @@ import React, { CSSProperties, Fragment } from 'react';
 import { Handle, HandleProps, Position } from 'react-flow-renderer';
 import { getConstraintIcon } from '../../utils/TableUtils';
 
-const handleStyles = { borderRadius: '50%', position: 'absolute', top: 10 };
+const handleStyles = {
+  width: '8px',
+  height: '8px',
+  borderRadius: '50%',
+  position: 'absolute',
+  top: 10,
+};
+
 const getHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
@@ -83,9 +90,13 @@ const CustomNode = (props: any) => {
     <div className="tw-relative nowheel ">
       {getHandle(type, isConnectable, isNewNode)}
       {/* Node label could be simple text or reactNode */}
-      <div className={classNames('tw-px-2')}>{label}</div>
+      <div className={classNames('tw-px-2')} data-testid="node-label">
+        {label}
+      </div>
 
-      {columns?.length ? <hr className="tw-my-2 tw--mx-3" /> : null}
+      {columns?.length ? (
+        <hr className="tw-my-2 tw--mx-3" data-testid="label-separator" />
+      ) : null}
       <section
         className={classNames('tw--mx-3 tw-px-3', {
           'tw-h-36 tw-overflow-y-auto': columns?.length,
@@ -97,6 +108,7 @@ const CustomNode = (props: any) => {
               <Fragment key={i}>
                 <div
                   className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
+                  data-testid="column"
                   key={c.name}>
                   {getConstraintIcon(c.constraint, 'tw-')}
                   {c.name}
