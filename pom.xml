@@ -37,7 +37,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mockito.version>4.3.1</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.13.1</jackson.version>
+    <jackson.version>2.13.2</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
