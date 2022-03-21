@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
 
 import java.io.IOException;
 import java.net.URI;
-import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,8 +36,8 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
@@ -54,10 +53,7 @@ public class LocationRepository extends EntityRepository<Location> {
         dao.locationDAO(),
         dao,
         LOCATION_PATCH_FIELDS,
-        LOCATION_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        LOCATION_UPDATE_FIELDS);
   }
 
   @Override
@@ -81,7 +77,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
-      throws GeneralSecurityException, IOException, ParseException {
+      throws IOException, ParseException {
     String service = fqn.split("\\.")[0];
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
@@ -93,7 +89,7 @@ public class LocationRepository extends EntityRepository<Location> {
                 fqn,
                 service,
                 limitParam + 1,
-                CipherText.instance().decrypt(before));
+                RestUtil.decodeCursor(before));
 
     List<Location> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -117,7 +113,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
-      throws GeneralSecurityException, IOException, ParseException {
+      throws IOException, ParseException {
     String service = fqn.split("\\.")[0];
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
@@ -129,7 +125,7 @@ public class LocationRepository extends EntityRepository<Location> {
                 fqn,
                 service,
                 limitParam + 1,
-                after == null ? "" : CipherText.instance().decrypt(after));
+                after == null ? "" : RestUtil.decodeCursor(after));
 
     List<Location> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -310,7 +306,8 @@ public class LocationRepository extends EntityRepository<Location> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.LOCATION);
+          .withType(Entity.LOCATION)
+          .withDeleted(isDeleted());
     }
 
     @Override

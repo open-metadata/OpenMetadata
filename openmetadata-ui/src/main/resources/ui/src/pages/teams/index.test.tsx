@@ -107,6 +107,7 @@ jest.mock('../../axiosAPIs/teamsAPI', () => ({
       Promise.resolve({ data: { data: mockTeamsData } })
     ),
   patchTeamDetail: jest.fn(),
+  deleteTeam: jest.fn(),
 }));
 
 jest.mock(
@@ -268,5 +269,31 @@ describe('Test Teams page', () => {
     );
 
     expect(await findByTestId(container, 'form-modal')).toBeInTheDocument();
+  });
+
+  it('onClick of delete team button, delete modal should open', async () => {
+    const { container } = render(<TeamsPage />);
+
+    const deleteTeamButton = await findByTestId(
+      container,
+      'delete-team-button'
+    );
+
+    expect(deleteTeamButton).toBeInTheDocument();
+
+    fireEvent.click(
+      deleteTeamButton,
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    const confirmationModal = await findByTestId(
+      container,
+      'confirmation-modal'
+    );
+
+    expect(confirmationModal).toBeInTheDocument();
   });
 });

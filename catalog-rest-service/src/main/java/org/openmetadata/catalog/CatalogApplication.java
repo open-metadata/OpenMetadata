@@ -227,7 +227,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
-    environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
+    if (config.getElasticSearchConfiguration() != null) {
+      environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
+    }
     environment.jersey().register(new JsonPatchProvider());
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

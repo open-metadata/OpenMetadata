@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getExplorePathWithSearch,
+  getTeamDetailsPath,
   ROUTES,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -103,7 +104,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
         count: userTeams.length,
-        link: ROUTES.TEAMS,
+        link: getTeamDetailsPath(),
         dataTestId: 'terms',
       },
     };

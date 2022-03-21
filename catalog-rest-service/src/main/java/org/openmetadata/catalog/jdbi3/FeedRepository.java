@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.text.ParseException;
@@ -45,7 +43,6 @@ import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -384,29 +381,23 @@ public class FeedRepository {
   private List<String> getThreadIdsByOwner(String userId) {
     List<String> threadIds = new ArrayList<>();
     // add threads on user or team owned entities
-    List<String> teamIds =
-        dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM, false);
+    List<String> teamIds = dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
     if (teamIds.isEmpty()) {
       teamIds = List.of(StringUtils.EMPTY);
     }
     threadIds.addAll(dao.feedDAO().listUserThreadsFromER(userId, teamIds, Relationship.OWNS.ordinal()));
 
     // add threads created by or replied to by the user
+    threadIds.addAll(dao.relationshipDAO().findTo(userId, Entity.USER, Relationship.CREATED.ordinal(), Entity.THREAD));
     threadIds.addAll(
-        dao.relationshipDAO()
-            .findTo(
-                userId, Entity.USER, Relationship.CREATED.ordinal(), Entity.THREAD, toBoolean(Include.NON_DELETED)));
-    threadIds.addAll(
-        dao.relationshipDAO()
-            .findTo(
-                userId, Entity.USER, Relationship.REPLIED_TO.ordinal(), Entity.THREAD, toBoolean(Include.NON_DELETED)));
+        dao.relationshipDAO().findTo(userId, Entity.USER, Relationship.REPLIED_TO.ordinal(), Entity.THREAD));
     return threadIds;
   }
 
   private List<String> getThreadIdsByMentions(String userId) throws IOException {
     List<EntityReference> teams =
         EntityUtil.populateEntityReferences(
-            dao.relationshipDAO().findFromEntity(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM, false));
+            dao.relationshipDAO().findFromEntity(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM));
     List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
     if (teamNames.isEmpty()) {
       teamNames = List.of(StringUtils.EMPTY);

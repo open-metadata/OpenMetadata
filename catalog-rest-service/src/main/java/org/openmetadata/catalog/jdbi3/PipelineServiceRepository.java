@@ -39,10 +39,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao.pipelineServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -162,7 +159,8 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.PIPELINE_SERVICE);
+          .withType(Entity.PIPELINE_SERVICE)
+          .withDeleted(isDeleted());
     }
 
     @Override

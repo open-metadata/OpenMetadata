@@ -27,6 +27,7 @@ import {
   Table,
   TableData,
   TableJoins,
+  TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
@@ -50,6 +51,7 @@ export interface DatasetDetailsProps {
   lineageLeafNodes: LeafNodes;
   version?: string;
   joins: TableJoins;
+  tableType: TableType;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
   users: Array<User>;
   tableDetails: Table;

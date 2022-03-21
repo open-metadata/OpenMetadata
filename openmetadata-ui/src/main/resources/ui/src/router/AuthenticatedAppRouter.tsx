@@ -21,6 +21,7 @@ import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
+import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
@@ -130,6 +131,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
           <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
           <Route exact component={RolesPage} path={ROUTES.ROLES} />
+          <Route exact component={CreateUserPage} path={ROUTES.CREATE_USER} />
           <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
         </>
       ) : null}

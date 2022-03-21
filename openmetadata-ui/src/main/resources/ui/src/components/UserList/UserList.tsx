@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { UserType } from '../../enums/user.enum';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
@@ -31,6 +35,7 @@ interface Props {
   roles: Array<Role>;
   allUsers: Array<User>;
   updateUser: (id: string, data: Operation[], updatedUser: User) => void;
+  handleAddUserClick: () => void;
   isLoading: boolean;
 }
 
@@ -38,6 +43,7 @@ const UserList: FunctionComponent<Props> = ({
   allUsers = [],
   isLoading,
   updateUser,
+  handleAddUserClick,
   teams = [],
   roles = [],
 }: Props) => {
@@ -231,47 +237,64 @@ const UserList: FunctionComponent<Props> = ({
 
   const getLeftPanel = () => {
     return (
-      <div className="tw-mt-5">
-        <div
-          className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
-          onClick={() => {
-            selectTeam();
-          }}>
-          <div
-            className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass()}`}>
-            <p className="tw-text-center tag-category tw-self-center">
-              All Users
-            </p>
-          </div>
-          {getCountBadge(allUsers.length || 0, '', isTeamBadgeActive())}
+      <Fragment>
+        <div className="tw-flex tw-justify-between tw-items-center tw-pt-2 tw-border-b">
+          <h6 className="tw-heading tw-text-base">Users</h6>
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              className="tw-h-7 tw-px-2 tw-mb-3"
+              data-testid="add-teams"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={handleAddUserClick}>
+              <FontAwesomeIcon icon="plus" />
+            </Button>
+          </NonAdminAction>
         </div>
-        {teams &&
-          teams.map((team: Team) => (
+
+        <div className="tw-mt-5">
+          <div
+            className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+            onClick={() => {
+              selectTeam();
+            }}>
             <div
-              className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
-              key={team.name}
-              onClick={() => {
-                selectTeam(team);
-                setSearchText('');
-              }}>
-              <div
-                className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass(
-                  team.name
-                )}`}>
-                <p
-                  className="tag-category tw-self-center tw-truncate tw-w-48"
-                  title={team.displayName}>
-                  {team.displayName}
-                </p>
-              </div>
-              {getCountBadge(
-                team.users?.length || 0,
-                '',
-                isTeamBadgeActive(team.name)
-              )}
+              className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass()}`}>
+              <p className="tw-text-center tag-category tw-self-center">
+                All Users
+              </p>
             </div>
-          ))}
-      </div>
+            {getCountBadge(allUsers.length || 0, '', isTeamBadgeActive())}
+          </div>
+          {teams &&
+            teams.map((team: Team) => (
+              <div
+                className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+                key={team.name}
+                onClick={() => {
+                  selectTeam(team);
+                  setSearchText('');
+                }}>
+                <div
+                  className={`tw-group tw-text-grey-body tw-text-body tw-flex tw-justify-between ${getCurrentTeamClass(
+                    team.name
+                  )}`}>
+                  <p
+                    className="tag-category tw-self-center tw-truncate tw-w-48"
+                    title={team.displayName}>
+                    {team.displayName}
+                  </p>
+                </div>
+                {getCountBadge(
+                  team.users?.length || 0,
+                  '',
+                  isTeamBadgeActive(team.name)
+                )}
+              </div>
+            ))}
+        </div>
+      </Fragment>
     );
   };
 
@@ -308,9 +331,11 @@ const UserList: FunctionComponent<Props> = ({
               isActiveUser: !user.deleted,
               profilePhoto: user.profile?.images?.image || '',
               teamCount:
-                user.teams
-                  ?.map((team) => team.displayName ?? team.name)
-                  ?.join(', ') ?? '',
+                user.teams && user.teams?.length
+                  ? user.teams
+                      ?.map((team) => team.displayName ?? team.name)
+                      ?.join(', ')
+                  : 'No teams',
             };
 
             return (
