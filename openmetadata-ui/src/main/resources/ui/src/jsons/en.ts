@@ -21,6 +21,7 @@ const jsonData = {
     'delete-team-error': 'Error while deleting team!',
     'elastic-search-error': 'Error while fetch data from Elasticsearch!',
     'fetch-data-error': 'Error while fetching data!',
+    'fetch-feed-error': 'Error while fetching messages',
     'fetch-glossary-error': 'Error while fetching glossary!',
     'fetch-glossary-list-error': 'Error while fetching glossaries!',
     'fetch-glossary-term-error': 'Error while fetching glossary term!',
