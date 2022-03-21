@@ -106,7 +106,7 @@ const DataQualityTab = ({
   };
 
   return (
-    <div>
+    <div data-testid="data-quality-tab">
       {showTestForm ? (
         <AddDataQualityTest
           columnOptions={columnOptions}
