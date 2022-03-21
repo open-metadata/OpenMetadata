@@ -75,7 +75,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       .filter((tag) => {
         return !tags.some((selectedTag) => selectedTag.tagFQN === tag.fqn);
       })
-      .filter((tag) => !tag.fqn?.startsWith('Tier.Tier'))
+      .filter((tag) => !tag.fqn?.startsWith('Tier.Tier')) // To filter out Tier tags
       .map((tag) => {
         return {
           name: tag.fqn,
