@@ -9,6 +9,7 @@ from datetime import timedelta
 import click
 import requests as requests
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -18,14 +19,15 @@ min_memory_limit = 6 * calc_gb
 
 
 def start_docker(docker, start_time, file_path):
-    logger.info("Running docker compose for Open Metadata....")
+    logger.info("Running docker compose for OpenMetadata..")
+    click.secho("It may take some time on the first run", fg="bright_yellow")
     if file_path:
         docker.compose.up(detach=True, build=True)
     else:
         docker.compose.up(detach=True)
 
     logger.info(
-        "Docker Compose for Open Metadata successful. Waiting for ingestion to complete...."
+        "Ran docker compose for OpenMetadata successfully.\nWaiting for ingestion to complete.."
     )
     metadata_config = MetadataServerConfig.parse_obj(
         {
@@ -33,14 +35,21 @@ def start_docker(docker, start_time, file_path):
             "auth_provider_type": "no-auth",
         }
     )
-    ometa_client = OpenMetadata(metadata_config).client
+    logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = True
+    ometa_client = OpenMetadata(metadata_config)
     while True:
         try:
-            ometa_client.get(f"/tables/name/bigquery_gcp.shopify.dim_customer")
+            resp = ometa_client.get_by_name(
+                entity=Table, fqdn="bigquery_gcp.shopify.dim_customer"
+            )
+            if not resp:
+                raise Exception("Error")
             break
-        except Exception as err:
+        except Exception:
+            sys.stdout.write(".")
             sys.stdout.flush()
             time.sleep(5)
+    logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = False
     elapsed = time.time() - start_time
     logger.info(
         f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
@@ -96,23 +105,23 @@ def file_path_check(file_path):
     return docker_compose_file_path
 
 
-def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
+def run_docker(start, stop, pause, resume, clean, file_path, env_file_path, reset_db):
     try:
         from python_on_whales import DockerClient
 
         docker = DockerClient(compose_project_name="openmetadata", compose_files=[])
 
-        logger.info("Checking if docker compose is installed....")
+        logger.info("Checking if docker compose is installed..")
         if not docker.compose.is_installed():
             raise Exception("Docker Compose CLI is not installed on the system.")
 
         docker_info = docker.info()
 
-        logger.info("Checking if docker service is running....")
+        logger.info("Checking if docker service is running..")
         if not docker_info.id:
             raise Exception("Docker Service is not up and running.")
 
-        logger.info("Checking openmetadata memory constraints....")
+        logger.info("Checking openmetadata memory constraints..")
         if docker_info.mem_total < min_memory_limit:
             raise MemoryError
 
@@ -129,24 +138,30 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
         if start:
             start_docker(docker, start_time, file_path)
         if pause:
-            logger.info("Pausing docker compose for Open Metadata....")
+            logger.info("Pausing docker compose for OpenMetadata..")
             docker.compose.pause()
-            logger.info("Pausing docker compose for Open Metadata Successful.")
+            logger.info("Pausing docker compose for OpenMetadata successful.")
         if resume:
-            logger.info("Resuming docker compose for Open Metadata....")
+            logger.info("Resuming docker compose for OpenMetadata..")
             docker.compose.unpause()
-            logger.info("Resuming docker compose for Open Metadata Successful.")
+            logger.info("Resuming docker compose for OpenMetadata Successful.")
         if stop:
-            logger.info("Stopping docker compose for Open Metadata....")
+            logger.info("Stopping docker compose for OpenMetadata..")
             docker.compose.stop()
-            logger.info("docker compose for Open Metadata stopped successfully.")
+            logger.info("Docker compose for OpenMetadata stopped successfully.")
+        if reset_db:
+            click.secho(
+                f"Resetting OpenMetadata.\nThis will clear out all the data",
+                fg="red",
+            )
+            reset_db_om(docker)
         if clean:
             logger.info(
-                "Stopping docker compose for Open Metadata and removing images, networks, volumes...."
+                "Stopping docker compose for OpenMetadata and removing images, networks, volumes.."
             )
             docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
             logger.info(
-                "Stopped docker compose for Open Metadata and removing images, networks, volumes."
+                "Stopped docker compose for OpenMetadata and removing images, networks, volumes."
             )
             if file_path is None:
                 docker_compose_file_path.unlink()
@@ -161,3 +176,13 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path):
         logger.debug(traceback.format_exc())
         logger.debug(traceback.print_exc())
         click.secho(str(err), fg="red")
+
+
+def reset_db_om(docker):
+    docker.container.execute(
+        container="openmetadata_server",
+        tty=True,
+        interactive=True,
+        privileged=True,
+        command="",
+    )
