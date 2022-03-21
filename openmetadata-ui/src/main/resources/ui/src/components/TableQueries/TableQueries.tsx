@@ -15,7 +15,7 @@ import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import QueryCard from './ QueryCard';
+import QueryCard from './QueryCard';
 
 interface TableQueriesProp extends HTMLAttributes<HTMLDivElement> {
   queries: Table['tableQueries'];

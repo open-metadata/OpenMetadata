@@ -14,7 +14,7 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import QueryCard from './ QueryCard';
+import QueryCard from './QueryCard';
 
 const mockQueryData = {
   query: 'select products from raw_product_catalog',
