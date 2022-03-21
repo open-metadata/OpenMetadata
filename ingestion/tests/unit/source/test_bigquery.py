@@ -16,7 +16,8 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from sqlalchemy.types import DATE, Float, String
+from sqlalchemy.types import ARRAY, DATE, Float, Integer, Numeric, String
+from sqlalchemy_bigquery._types import STRUCT
 
 from metadata.ingestion.api.workflow import Workflow
 
@@ -52,7 +53,7 @@ CONFIG = """
 
 
 MOCK_GET_TABLE_NAMES = [
-    "open_metadata.cloudaudit_googleapis_com_data_access_20220121",
+    "open_metadata.test1",
     "open_metadata.cloudaudit_googleapis_com_data_access_20220122",
     "open_metadata.cloudaudit_googleapis_com_data_access_20220124",
     "open_metadata.cloudaudit_googleapis_com_data_access_20220208",
@@ -248,7 +249,123 @@ MOCK_GET_COLUMN = [
         "raw_data_type": "FLOAT",
         "policy_tags": None,
     },
+    {
+        "name": "bigquery_test_datatype",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_2",
+        "type": Integer(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "INTEGER",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_3",
+        "type": ARRAY(
+            STRUCT(bigquery_test_datatype_31=ARRAY(STRUCT(record_test=String())))
+        ),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "ARRAY",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_3.bigquery_test_datatype_31",
+        "type": ARRAY(STRUCT(record_test=String())),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "ARRAY",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_3.bigquery_test_datatype_31.record_test",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_4",
+        "type": ARRAY(Numeric()),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "ARRAY",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_5",
+        "type": STRUCT(
+            bigquery_test_datatype_51=ARRAY(
+                STRUCT(bigquery_test_datatype_511=ARRAY(String()))
+            )
+        ),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "STRUCT<bigquery_test_datatype_51 ARRAY<STRUCT<bigquery_test_datatype_511 ARRAY<STRING>>>>",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_5.bigquery_test_datatype_51",
+        "type": ARRAY(STRUCT(bigquery_test_datatype_511=ARRAY(String()))),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "ARRAY",
+        "policy_tags": None,
+    },
+    {
+        "name": "bigquery_test_datatype_5.bigquery_test_datatype_51.bigquery_test_datatype_511",
+        "type": ARRAY(String()),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "ARRAY",
+        "policy_tags": None,
+    },
 ]
+
+column = []
 
 
 MOCK_GET_VIEW_NAMES = []
