@@ -234,7 +234,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const msg =
-          err.response?.data.message ||
+          err.response?.data?.message ||
           jsonData['api-error-messages']['fetch-lineage-error'];
         handleShowErrorToast(msg);
       })
@@ -252,7 +252,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const errMsg =
-          err.response?.data.message ||
+          err.response?.data?.message ||
           jsonData['api-error-messages']['fetch-entity-feed-error'];
         handleShowErrorToast(errMsg);
       })
@@ -365,7 +365,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             })
             .catch((err: AxiosError) => {
               const errMsg =
-                err.response?.data.message ||
+                err.response?.data?.message ||
                 jsonData['api-error-messages']['fetch-sample-data-error'];
               handleShowErrorToast(errMsg);
             })
@@ -399,7 +399,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             })
             .catch((err: AxiosError) => {
               const errMsg =
-                err.response?.data.message ||
+                err.response?.data?.message ||
                 jsonData['api-error-messages']['fetch-table-queries-error'];
               handleShowErrorToast(errMsg);
             })
@@ -437,7 +437,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const errMsg =
-          err.response?.data.message ||
+          err.response?.data?.message ||
           jsonData['api-error-messages']['fetch-entity-feed-count-error'];
         handleShowErrorToast(errMsg);
       });
@@ -463,7 +463,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const msg =
-          err.response?.data.message ||
+          err.response?.data?.message ||
           jsonData['api-error-messages']['update-description-error'];
         handleShowErrorToast(msg);
       });
@@ -480,7 +480,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const msg =
-          err.response?.data.message ||
+          err.response?.data?.message ||
           jsonData['api-error-messages']['update-entity-error'];
         handleShowErrorToast(msg);
       });
@@ -502,7 +502,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const errMsg =
-          err.response?.data.message ||
+          err.response?.data?.message ||
           jsonData['api-error-messages']['update-tags-error'];
         handleShowErrorToast(errMsg);
       });
@@ -522,7 +522,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         })
         .catch((err: AxiosError) => {
           const msg =
-            err.response?.data.message ||
+            err.response?.data?.message ||
             jsonData['api-error-messages']['update-entity-error'];
           handleShowErrorToast(msg);
           reject();
