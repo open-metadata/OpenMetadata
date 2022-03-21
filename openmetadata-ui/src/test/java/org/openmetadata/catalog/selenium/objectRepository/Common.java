@@ -132,7 +132,7 @@ public class Common {
   }
 
   public By exploreFilterCount(String filter) {
-    return By.xpath("//div[@data-testid='filter-container-" + filter + "']//span[@data-testid='filter-count']");
+    return By.xpath("//label[@data-testid='filter-container-" + filter + "']//span[@data-testid='filter-count']");
   }
 
   public By entityTabIndex(int index) {

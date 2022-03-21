@@ -132,7 +132,7 @@ public class TeamsPageTest {
       getUser.add(c.getText());
     }
     for (int i = 1; i <= checkUser.size(); i++) {
-      if (selectedUser != getUser) {
+      if (selectedUser.size() != getUser.size()) {
         Assert.fail("User Not added");
       }
     }

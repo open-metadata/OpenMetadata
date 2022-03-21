@@ -71,7 +71,7 @@ public class UsersPageTest {
     Thread.sleep(1000);
     Object afterUsersCount = webDriver.findElement(userPage.userFilterCount()).getAttribute("innerHTML");
     Thread.sleep(1000);
-    Assert.assertEquals(afterUsersCount, "14");
+    Assert.assertEquals(afterUsersCount, "15");
     Object afterAdminCount = webDriver.findElement(userPage.adminFilterCount()).getAttribute("innerHTML");
     Assert.assertEquals(afterAdminCount, "1");
   }
