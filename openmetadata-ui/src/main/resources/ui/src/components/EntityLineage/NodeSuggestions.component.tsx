@@ -19,6 +19,7 @@ import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { formatDataResponse } from '../../utils/APIUtils';
+import { serviceTypeLogo } from '../../utils/ServiceUtils';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -79,6 +80,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                     name: entity.fullyQualifiedName,
                   });
                 }}>
+                <img
+                  alt={entity.serviceType}
+                  className="tw-inline tw-h-4 tw-w-4 tw-mr-2"
+                  src={serviceTypeLogo(entity.serviceType as string)}
+                />
                 {entity.database
                   ? `${entity.database}.${entity.name}`
                   : entity.name}

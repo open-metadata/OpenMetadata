@@ -23,6 +23,7 @@ const jsonData = {
     'fetch-data-error': 'Error while fetching data!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
+    'fetch-feed-error': 'Error while fetching messages',
     'fetch-glossary-error': 'Error while fetching glossary!',
     'fetch-glossary-list-error': 'Error while fetching glossaries!',
     'fetch-glossary-term-error': 'Error while fetching glossary term!',
