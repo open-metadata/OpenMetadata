@@ -157,6 +157,7 @@ export const ROUTES = {
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   USER_LIST: '/user-list',
+  CREATE_USER: '/create-user',
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
   ROLES: '/roles',
   WEBHOOKS: '/webhooks',
@@ -274,9 +275,12 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   return path;
 };
 
-export const getTeamDetailsPath = (teamName: string) => {
-  let path = ROUTES.TEAM_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
+export const getTeamDetailsPath = (teamName?: string) => {
+  let path = ROUTES.TEAMS;
+  if (teamName) {
+    path = ROUTES.TEAM_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
+  }
 
   return path;
 };

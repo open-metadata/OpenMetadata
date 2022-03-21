@@ -44,3 +44,7 @@ export const patchTeamDetail: Function = (id: string, data: Team) => {
 
   return APIClient.patch(`/teams/${id}`, data, configOptions);
 };
+
+export const deleteTeam = (id: string): Promise<AxiosResponse> => {
+  return APIClient.delete(`/teams/${id}`);
+};

@@ -56,6 +56,11 @@
       "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "owner": {
+      "description": "Owner of this team. ",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

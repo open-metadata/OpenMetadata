@@ -186,6 +186,7 @@ export interface EntityReference {
 export enum DashboardServiceType {
   Looker = 'Looker',
   Metabase = 'Metabase',
+  PowerBI = 'PowerBI',
   Redash = 'Redash',
   Superset = 'Superset',
   Tableau = 'Tableau',

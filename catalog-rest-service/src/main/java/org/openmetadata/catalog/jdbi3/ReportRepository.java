@@ -44,10 +44,7 @@ public class ReportRepository extends EntityRepository<Report> {
         dao.reportDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        REPORT_UPDATE_FIELDS,
-        true,
-        true,
-        true);
+        REPORT_UPDATE_FIELDS);
   }
 
   @Override
@@ -168,7 +165,8 @@ public class ReportRepository extends EntityRepository<Report> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.REPORT);
+          .withType(Entity.REPORT)
+          .withDeleted(isDeleted());
     }
 
     @Override

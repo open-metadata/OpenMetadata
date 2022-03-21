@@ -42,12 +42,12 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.jdbi3.BotsRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/bots")
@@ -55,14 +55,16 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "bots")
-public class BotsResource {
+public class BotsResource extends EntityResource<Bots, BotsRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
-  private final BotsRepository dao;
-  private final Authorizer authorizer;
 
   public BotsResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new BotsRepository(dao);
-    this.authorizer = authorizer;
+    super(Bots.class, new BotsRepository(dao), authorizer);
+  }
+
+  @Override
+  public Bots addHref(UriInfo uriInfo, Bots entity) {
+    return entity;
   }
 
   public static class BotsList extends ResultList<Bots> {
@@ -85,7 +87,6 @@ public class BotsResource {
   public ResultList<Bots> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @QueryParam("name") String name,
       @DefaultValue("10") @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(description = "Returns list of bots before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -94,15 +95,7 @@ public class BotsResource {
           @QueryParam("after")
           String after)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-
-    ResultList<Bots> list;
-    if (before != null) { // Reverse paging
-      list = dao.listBefore(uriInfo, null, name, limitParam, before, Include.NON_DELETED);
-    } else { // Forward paging or first page
-      list = dao.listAfter(uriInfo, null, name, limitParam, after, Include.NON_DELETED);
-    }
-    return list;
+    return super.listInternal(uriInfo, securityContext, "", new ListFilter(), limitParam, before, after);
   }
 
   @GET

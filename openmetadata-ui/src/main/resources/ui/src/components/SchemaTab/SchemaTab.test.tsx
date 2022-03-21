@@ -19,6 +19,7 @@ import {
   Column,
   DataType,
   LabelType,
+  Source,
   State,
 } from '../../generated/entity/data/table';
 import SchemaTab from './SchemaTab.component';
@@ -29,10 +30,16 @@ const mockColumns: Column[] = [
     description: 'string',
     fullyQualifiedName: 'string',
     tags: [
-      { tagFQN: 'string', labelType: LabelType.Manual, state: State.Confirmed },
+      {
+        tagFQN: 'string',
+        labelType: LabelType.Manual,
+        source: Source.Tag,
+        state: State.Confirmed,
+      },
       {
         tagFQN: 'string2',
         labelType: LabelType.Derived,
+        source: Source.Tag,
         state: State.Confirmed,
       },
     ],

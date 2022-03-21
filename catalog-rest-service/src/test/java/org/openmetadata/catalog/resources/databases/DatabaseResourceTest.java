@@ -48,17 +48,7 @@ import org.openmetadata.catalog.util.TestUtils;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
-    super(
-        Entity.DATABASE,
-        Database.class,
-        DatabaseList.class,
-        "databases",
-        DatabaseResource.FIELDS,
-        false,
-        true,
-        false,
-        true,
-        true);
+    super(Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
   }
 
   @BeforeAll

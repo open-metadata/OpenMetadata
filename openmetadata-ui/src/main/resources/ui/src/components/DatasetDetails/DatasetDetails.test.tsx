@@ -19,6 +19,7 @@ import {
   ColumnJoins,
   Table,
   TableJoins,
+  TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
@@ -79,6 +80,7 @@ const DatasetDetailsProps = {
   tableDetails: {} as Table,
   tableProfile: [],
   tableTags: [],
+  tableType: TableType.Regular,
   tier: {} as TagLabel,
   unfollowTableHandler: jest.fn(),
   usageSummary: {} as TypeUsedToReturnUsageDetailsOfAnEntity,

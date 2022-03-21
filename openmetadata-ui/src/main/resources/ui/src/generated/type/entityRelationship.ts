@@ -40,7 +40,7 @@ export interface EntityRelationship {
    */
   relation?: number;
   /**
-   * Describes relationship between the two entities. Eg: Database --- Contains --> Table
+   * Describes relationship between the two entities. Eg: Database --- Contains --> Table.
    */
   relationshipType: RelationshipType;
   /**
@@ -59,7 +59,7 @@ export interface EntityRelationship {
 }
 
 /**
- * Describes relationship between the two entities. Eg: Database --- Contains --> Table
+ * Describes relationship between the two entities. Eg: Database --- Contains --> Table.
  *
  * This enum captures all the relationships between Catalog entities. Note that the
  * relationship from is a Strong entity and to is Weak entity when possible.

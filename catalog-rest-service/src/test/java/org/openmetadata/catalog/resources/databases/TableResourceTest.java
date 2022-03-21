@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidColumnFQN;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
@@ -134,7 +135,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public TableResourceTest() {
-    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true, true, true);
+    super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
   }
 
   @BeforeAll
@@ -1181,9 +1182,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     verifyColumnTest(table, c1, List.of(createColumnTest, createColumnTest1));
 
     // delete the table test case
-    putResponse =
-        deleteTableTest(
-            table.getId(), createTableTest1.getTestCase().getTableTestType().toString(), ADMIN_AUTH_HEADERS);
+    deleteTableTest(table.getId(), createTableTest1.getTestCase().getTableTestType().toString(), ADMIN_AUTH_HEADERS);
     table = getEntity(table.getId(), "tests", ADMIN_AUTH_HEADERS);
     verifyTableTest(table.getName(), table.getTableTests(), List.of(createTableTest));
 

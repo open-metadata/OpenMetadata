@@ -76,6 +76,7 @@ import {
   Table,
   TableData,
   TableJoins,
+  TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
@@ -140,6 +141,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     dayCount: 0,
     columnJoins: [],
   });
+  const [tableType, setTableType] = useState<TableType>(TableType.Regular);
   const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const { datasetFQN, tab } = useParams() as Record<string, string>;
@@ -272,6 +274,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tags,
           sampleData,
           tableProfile,
+          tableType,
           version,
           service,
           serviceType,
@@ -280,6 +283,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableId(id);
         setCurrentVersion(version);
         setTier(getTierTags(tags));
+        setTableType(tableType);
         setOwner(owner);
         setFollowers(followers);
         setDeleted(deleted);
@@ -890,6 +894,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tableQueries={tableQueries}
           tableTags={tableTags}
           tableTestCase={tableTestCase}
+          tableType={tableType}
           testMode={testMode}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}

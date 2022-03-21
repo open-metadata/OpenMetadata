@@ -86,6 +86,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   users,
   usageSummary,
   joins,
+  tableType,
   version,
   versionHandler,
   loadNodeHandler,
@@ -319,6 +320,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       openInNewTab: false,
     },
     { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
+    { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
     { value: `${weeklyUsageCount} queries` },
     {

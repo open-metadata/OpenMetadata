@@ -47,16 +47,16 @@ export interface Thread {
    */
   id: string;
   /**
-   * The main message of the thread in markdown format
+   * The main message of the thread in markdown format.
    */
-  message?: string;
-  posts: Post[];
+  message: string;
+  posts?: Post[];
   /**
-   * The total count of posts in the thread
+   * The total count of posts in the thread.
    */
   postsCount?: number;
   /**
-   * When `true` indicates the thread has been resolved
+   * When `true` indicates the thread has been resolved.
    */
   resolved?: boolean;
   /**
@@ -79,9 +79,13 @@ export interface Thread {
  */
 export interface Post {
   /**
-   * Name of the User posting the message
+   * Name of the User posting the message.
    */
   from: string;
+  /**
+   * Unique identifier that identifies the post.
+   */
+  id: string;
   /**
    * Message in markdown format. See markdown support for more details.
    */

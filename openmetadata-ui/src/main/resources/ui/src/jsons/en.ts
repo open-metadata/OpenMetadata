@@ -15,8 +15,10 @@ const jsonData = {
   'api-error-messages': {
     'add-glossary-error': 'Error while adding glossary!',
     'add-glossary-term-error': 'Error while adding glossary term!',
+    'create-user-error': 'Error while creating user!',
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
+    'delete-team-error': 'Error while deleting team!',
     'elastic-search-error': 'Error while fetch data from Elasticsearch!',
     'fetch-data-error': 'Error while fetching data!',
     'fetch-glossary-error': 'Error while fetching glossary!',
@@ -25,6 +27,10 @@ const jsonData = {
     'fetch-tags-error': 'Error while fetching tags!',
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-description-error': 'Error while updating description!',
+  },
+  'form-error-messages': {
+    'empty-email': 'Email is required.',
+    'invalid-email': 'Email is invalid.',
   },
 };
 

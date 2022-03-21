@@ -64,7 +64,9 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   public WebhookResourceTest() {
-    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "", false, false, false, false, false);
+    super(Entity.WEBHOOK, Webhook.class, WebhookList.class, "webhook", "");
+    supportsDots = false;
+    supportsAuthorizedMetadataOperations = false;
     supportsPatch = false;
     supportsFieldsQueryParam = false;
   }

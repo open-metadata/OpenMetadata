@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { isString, isUndefined, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
@@ -19,19 +21,18 @@ import AppState from '../../../AppState';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
+import { TableType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   name: string;
   owner?: string;
   description?: string;
-  tableType?: string;
+  tableType?: TableType;
   id?: string;
   tier?: string | TagLabel;
   usage?: number;
@@ -60,6 +61,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   indexType,
   matches,
   database,
+  tableType,
   deleted = false,
 }: Props) => {
   const location = useLocation();
@@ -84,6 +86,13 @@ const TableDataCard: FunctionComponent<Props> = ({
         indexType !== SearchIndex.DASHBOARD && usage !== undefined
           ? getUsagePercentile(usage, true)
           : undefined,
+    });
+  }
+  if (tableType) {
+    OtherDetails.push({
+      key: 'Type',
+      value: tableType,
+      showLabel: true,
     });
   }
   if (database) {

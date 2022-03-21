@@ -70,10 +70,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
         dao.webhookDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
-        false,
-        false,
-        false);
+        Fields.EMPTY_FIELDS);
   }
 
   @Override
@@ -226,7 +223,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.WEBHOOK);
+          .withType(Entity.WEBHOOK)
+          .withDeleted(isDeleted());
     }
 
     @Override

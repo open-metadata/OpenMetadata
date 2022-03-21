@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -26,11 +24,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -57,7 +53,9 @@ import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -75,17 +73,11 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "glossaries")
-public class GlossaryResource {
+public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
-  private final GlossaryRepository dao;
-  private final Authorizer authorizer;
 
-  public static List<Glossary> addHref(UriInfo uriInfo, List<Glossary> glossaries) {
-    listOrEmpty(glossaries).forEach(i -> addHref(uriInfo, i));
-    return glossaries;
-  }
-
-  public static Glossary addHref(UriInfo uriInfo, Glossary glossary) {
+  @Override
+  public Glossary addHref(UriInfo uriInfo, Glossary glossary) {
     glossary.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, glossary.getId()));
     Entity.withHref(uriInfo, glossary.getOwner());
     Entity.withHref(uriInfo, glossary.getReviewers());
@@ -94,9 +86,7 @@ public class GlossaryResource {
 
   @Inject
   public GlossaryResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "GlossaryRepository must not be null");
-    this.dao = new GlossaryRepository(dao);
-    this.authorizer = authorizer;
+    super(Glossary.class, new GlossaryRepository(dao), authorizer);
   }
 
   public static class GlossaryList extends ResultList<Glossary> {
@@ -105,8 +95,7 @@ public class GlossaryResource {
       // Empty constructor needed for deserialization
     }
 
-    public GlossaryList(List<Glossary> data, String beforeCursor, String afterCursor, int total)
-        throws GeneralSecurityException, UnsupportedEncodingException {
+    public GlossaryList(List<Glossary> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -156,17 +145,9 @@ public class GlossaryResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Glossary> glossary;
-    if (before != null) { // Reverse paging
-      glossary = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      glossary = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    addHref(uriInfo, glossary.getData());
-    return glossary;
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -198,8 +179,7 @@ public class GlossaryResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -231,9 +211,7 @@ public class GlossaryResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Glossary glossary = dao.getByName(uriInfo, name, fields, include);
-    return addHref(uriInfo, glossary);
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -331,7 +309,11 @@ public class GlossaryResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Glossary glossary = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(glossary).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(glossary).getEntityReference(),
+        dao.getOwnerReference(glossary),
+        patch);
     PatchResponse<Glossary> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

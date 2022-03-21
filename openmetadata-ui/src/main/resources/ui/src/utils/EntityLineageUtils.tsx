@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import {
+  faChevronLeft,
+  faChevronRight,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
@@ -46,11 +51,6 @@ import { EntityReference } from '../generated/type/entityReference';
 import { getPartialNameFromFQN } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
-import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export const getHeaderLabel = (
   v = '',
@@ -121,7 +121,10 @@ export const getLineageData = (
   ) => void
 ) => {
   const [x, y] = [0, 0];
-  const nodes = entityLineage['nodes'];
+  const nodes = [
+    ...(entityLineage['nodes'] as EntityReference[]),
+    entityLineage['entity'],
+  ];
   let upstreamEdges: Array<LineageEdge & { isMapped: boolean }> =
     entityLineage['upstreamEdges']?.map((up) => ({ isMapped: false, ...up })) ||
     [];
@@ -290,9 +293,16 @@ export const getLineageData = (
     return downNodesArr;
   };
 
-  getUpStreamData(mainNode);
+  /**
+   * Get upstream and downstream of each node and store it in
+   * UPStreamNodes
+   * DOWNStreamNodes
+   */
+  nodes?.forEach((node) => {
+    getUpStreamData(node);
 
-  getDownStreamData(mainNode);
+    getDownStreamData(node);
+  });
 
   const lineageData = [
     {
