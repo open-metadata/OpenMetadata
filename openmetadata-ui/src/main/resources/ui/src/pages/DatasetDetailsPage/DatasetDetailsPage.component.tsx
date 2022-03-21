@@ -89,6 +89,7 @@ import {
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
+import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -104,8 +105,7 @@ import {
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getTierTags } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
@@ -178,6 +178,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
   const [selectedColumn, setSelectedColumn] = useState<string>();
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
   const handleTestModeChange = (mode: DatasetTestModeType) => {
     setTestMode(mode);
   };
@@ -226,10 +233,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setEntityLineage(res.data);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message ?? 'Error while fetching lineage data.',
-        });
+        const msg =
+          err.response?.data.message ??
+          jsonData['api-error-messages']['fetch-lineage-error'];
+        handleShowErrorToast(msg);
       })
       .finally(() => {
         setIsLineageLoading(false);
@@ -244,10 +251,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setEntityThread(data);
       })
       .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching entity feeds',
-        });
+        handleShowErrorToast(
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -325,7 +331,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setColumns(columns || []);
         setSampleData(sampleData);
         setTableProfile(tableProfile || []);
-        setTableTags(getTableTags(columns || []));
+        setTableTags(getTagsWithoutTier(tags));
         setUsageSummary(usageSummary);
         setJoins(joins);
       })
@@ -333,11 +339,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg = err.message || 'Error while fetching table details.';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
+          const errMsg =
+            err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-table-details-error'];
+          handleShowErrorToast(errMsg);
         }
       })
       .finally(() => {
@@ -358,10 +363,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
               setSampleData(sampleData);
             })
             .catch(() =>
-              showToast({
-                variant: 'error',
-                body: 'Error while getting sample data.',
-              })
+              handleShowErrorToast(
+                jsonData['api-error-messages']['fetch-sample-data-error']
+              )
             )
             .finally(() => setIsSampleDataLoading(false));
 
@@ -392,10 +396,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
               setTableQueries(tableQueries);
             })
             .catch(() =>
-              showToast({
-                variant: 'error',
-                body: 'Error while getting table queries',
-              })
+              handleShowErrorToast(
+                jsonData['api-error-messages']['fetch-table-queries-error']
+              )
             )
             .finally(() => setIsTableQueriesLoading(false));
 
@@ -430,10 +433,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setEntityFieldThreadCount(res.data.counts);
       })
       .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching entity feed count',
-        });
+        handleShowErrorToast(
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
       });
   };
 
@@ -458,11 +460,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         const msg =
           err.response?.data.message ||
-          `Error while updating entity description.`;
-        showToast({
-          variant: 'error',
-          body: msg,
-        });
+          jsonData['api-error-messages']['update-description-error'];
+        handleShowErrorToast(msg);
       });
   };
 
@@ -473,16 +472,35 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setCurrentVersion(version);
         setTableDetails(res.data);
         setColumns(columns);
-        setTableTags(getTableTags(columns || []));
         getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
-          err.response?.data.message || `Error while updating entity.`;
-        showToast({
-          variant: 'error',
-          body: msg,
-        });
+          err.response?.data.message ||
+          jsonData['api-error-messages']['update-entity-error'];
+        handleShowErrorToast(msg);
+      });
+  };
+
+  const onTagUpdate = (updatedTable: Table) => {
+    saveUpdatedTableData(updatedTable)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setTier(getTierTags(res.data.tags));
+          setCurrentVersion(res.data.version);
+          setTableTags(getTagsWithoutTier(res.data.tags));
+          getEntityFeedCount();
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-tags-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data.message ||
+          jsonData['api-error-messages']['update-tags-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -500,15 +518,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         })
         .catch((err: AxiosError) => {
           const msg =
-            err.response?.data.message || `Error while updating entity.`;
+            err.response?.data.message ||
+            jsonData['api-error-messages']['update-entity-error'];
+          handleShowErrorToast(msg);
           reject();
-          showToast({
-            variant: 'error',
-            body: msg,
-          });
         });
     });
   };
+
+  // TODO: move all the error from below code to en.ts and use handleShowErrorToast to show error.
 
   const followTable = () => {
     addFollower(tableId, USERId).then((res: AxiosResponse) => {
@@ -895,6 +913,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tableTags={tableTags}
           tableTestCase={tableTestCase}
           tableType={tableType}
+          tagUpdateHandler={onTagUpdate}
           testMode={testMode}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}

@@ -30,7 +30,6 @@ import {
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
 import { getOwnerFromId } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -310,6 +309,47 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     }
   };
 
+  /**
+   * Calculates tags for selected version.
+   * @returns current version's tag.
+   */
+  const getTags = () => {
+    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
+    const oldTags: Array<TagLabel> = JSON.parse(
+      tagsDiff?.added?.oldValue ??
+        tagsDiff?.deleted?.oldValue ??
+        tagsDiff?.updated?.oldValue ??
+        '[]'
+    );
+    const newTags: Array<TagLabel> = JSON.parse(
+      tagsDiff?.added?.newValue ??
+        tagsDiff?.deleted?.newValue ??
+        tagsDiff?.updated?.newValue ??
+        '[]'
+    );
+    const flag: { [x: string]: boolean } = {};
+    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
+      [];
+
+    [
+      ...(getTagsDiff(oldTags, newTags) ?? []),
+      ...(currentVersionData.tags ?? []),
+    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+      if (!flag[elem.tagFQN as string]) {
+        flag[elem.tagFQN as string] = true;
+        uniqueTags.push(elem);
+      }
+    });
+
+    return [
+      ...uniqueTags.map((t) =>
+        t.tagFQN.startsWith('Tier')
+          ? { ...t, tagFQN: t.tagFQN.split('.')[1] }
+          : t
+      ),
+    ];
+  };
+
   const tabs = [
     {
       name: 'Schema',
@@ -346,7 +386,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
-              tags={getTableTags(currentVersionData.columns || [])}
+              tags={getTags()}
               tier={tier}
               titleLinks={slashedTableName}
               version={version}
