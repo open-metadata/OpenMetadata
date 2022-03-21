@@ -16,7 +16,7 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from sqlalchemy.types import JSON, SMALLINT, VARCHAR
+from sqlalchemy.types import DATE, Float, String
 
 from metadata.ingestion.api.workflow import Workflow
 
@@ -52,64 +52,207 @@ CONFIG = """
 
 
 MOCK_GET_TABLE_NAMES = [
-    "airflow_pipeline_entity",
-    "bot_entity",
-    "change_event",
-    "chart_entity",
-    "dashboard_entity",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220121",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220122",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220124",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220208",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220216",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220217",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220316",
+    "open_metadata.cloudaudit_googleapis_com_data_access_20220317",
+    "open_metadata.copy_covid",
 ]
+
 GET_TABLE_DESCRIPTIONS = {"text": None}
-MOCK_GET_SCHEMA_NAMES = ["test_openmetadata_db"]
-MOCK_UNIQUE_CONSTRAINTS = [
-    {"name": "unique_name", "column_names": ["name"], "duplicates_index": "unique_name"}
-]
-MOCK_PK_CONSTRAINT = {"constrained_columns": ["id"], "name": None}
+MOCK_GET_SCHEMA_NAMES = ["open_metadata"]
+MOCK_UNIQUE_CONSTRAINTS = []
+MOCK_PK_CONSTRAINT = {"constrained_columns": []}
 MOCK_GET_COLUMN = [
     {
-        "name": "id",
-        "type": VARCHAR(length=36),
-        "default": None,
-        "comment": None,
+        "name": "country_name",
+        "type": String(),
         "nullable": True,
-        "computed": {
-            "sqltext": "(json_unquote(json_extract(`json`,_utf8mb4'$.id')))",
-            "persisted": True,
-        },
+        "comment": "Name of the country",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
     },
     {
-        "name": "name",
-        "type": VARCHAR(length=256),
-        "default": None,
-        "comment": None,
+        "name": "alpha_3_code",
+        "type": String(),
         "nullable": True,
-        "computed": {
-            "sqltext": "(json_unquote(json_extract(`json`,_utf8mb4'$.name')))",
-            "persisted": False,
-        },
+        "comment": "3-letter alpha code abbreviation of the country/region. See `bigquery-public-data.utility_us.country_code_iso` for more details",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
     },
     {
-        "name": "deleted",
-        "type": SMALLINT(),
-        "default": None,
-        "comment": None,
+        "name": "region_name",
+        "type": String(),
         "nullable": True,
-        "autoincrement": False,
-        "computed": {
-            "sqltext": "(json_extract(`json`,_utf8mb4'$.deleted'))",
-            "persisted": False,
-        },
+        "comment": "Name of the region within the country",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
     },
     {
-        "name": "json",
-        "type": JSON(),
+        "name": "region_code",
+        "type": String(),
+        "nullable": True,
+        "comment": "Code of the region within the country",
         "default": None,
-        "comment": None,
-        "nullable": False,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "date",
+        "type": DATE(),
+        "nullable": True,
+        "comment": "Date of the measured policy action status",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "DATE",
+        "policy_tags": None,
+    },
+    {
+        "name": "close_public_transit",
+        "type": String(),
+        "nullable": True,
+        "comment": "C5 - Ordinal scale to record closing of public transportation; 0 - No measures 1 - Recommend closing (or significantly reduce volume/route/means of transport available) 2 - Require closing (or prohibit most citizens from using it)",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "close_public_transit_flag",
+        "type": String(),
+        "nullable": True,
+        "comment": "Are C5 actions targeted at specific areas or general:  0 - Targeted 1- General No data - blank",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "close_public_transit_notes",
+        "type": String(),
+        "nullable": True,
+        "comment": "Additional details about C5 policy actions",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "stay_at_home_requirements",
+        "type": String(),
+        "nullable": True,
+        "comment": "C6 - Ordinal scale record of orders to “shelter-in- place” and otherwise confine to home.",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "stay_at_home_requirements_flag",
+        "type": String(),
+        "nullable": True,
+        "comment": 'Are C6 actions targeted at specific areas or general:  0 - Targeted 1- General No data - blank"\\',
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "testing_policy",
+        "type": String(),
+        "nullable": True,
+        "comment": "H2 - Ordinal scale record of who can get tested;  0 – No testing policy 1 – Only those who both (a) have symptoms AND (b) meet specific criteria (eg key workers, admitted to hospital, came into contact with a known case, returned from overseas) 2 – testing of anyone showing COVID-19 symptoms 3 – open public testing (eg “drive through” testing available to asymptomatic people) No data Nb we are looking for policies about testing for having an infection (PCR tests) - not for policies about testing for immunity (antibody tests).",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "testing_policy_notes",
+        "type": String(),
+        "nullable": True,
+        "comment": "Additional details about H2 policy actions",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "contact_tracing",
+        "type": String(),
+        "nullable": True,
+        "comment": "H3 - Ordinal scale record if governments doing contact tracing; 0 - No contact tracing 1 - Limited contact tracing - not done for all cases 2 - Comprehensive contact tracing - done for all cases No data",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "contact_tracing_notes",
+        "type": String(),
+        "nullable": True,
+        "comment": "Additional details about H3 policy actions",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "VARCHAR",
+        "policy_tags": None,
+    },
+    {
+        "name": "emergency_healthcare_investment",
+        "type": Float(),
+        "nullable": True,
+        "comment": "H4 - Short-term spending on, e.g, hospitals, masks, etc in USD; Record monetary value in USD of new short-term spending on health. If none, enter 0. No data - blank Please use the exchange rate of the date you are coding, not the current date.",
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "raw_data_type": "FLOAT",
+        "policy_tags": None,
     },
 ]
 
-MOCK_GET_VIEW_NAMES = ["test_view"]
-MOCK_GET_VIEW_DEFINITION = "SELECT failedpn.metric_date, failedpn.metric_hour, failedpn.game_id, failedpn.game_id_str, failedpn.user_id, failedpn.event_ts, failedpn.bundle_id, failedpn.mkt, failedpn.mkt_str, failedpn.device_token FROM bi_pipeline.failedpn"
+
+MOCK_GET_VIEW_NAMES = []
+MOCK_GET_VIEW_DEFINITION = ""
 
 
 class BigQueryIngestionTest(TestCase):
@@ -121,12 +264,12 @@ class BigQueryIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_unique_constraints")
     @patch("sqlalchemy.engine.reflection.Inspector.get_pk_constraint")
     @patch("sqlalchemy.engine.reflection.Inspector.get_columns")
-    @patch("metadata.utils.engines.get_engine")
     @patch("sqlalchemy.engine.base.Engine.connect")
+    @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
     def test_bigquery_ingestion(
         self,
-        mock_get_engine,
         mock_connect,
+        mock_create_bigquery_client,
         get_columns,
         get_pk_constraint,
         get_unique_constraints,
