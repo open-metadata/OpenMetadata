@@ -42,23 +42,25 @@ class MysqlSource(SQLSource):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
 
-    def next_record(self) -> Iterable[Entity]:
-        inspector = inspect(self.engine)
-        schema_names = (
-            inspector.get_schema_names()
+    def prepare(self):
+        self.inspector = inspect(self.engine)
+        self.schema_names = (
+            self.inspector.get_schema_names()
             if not self.config.database
             else [self.config.database]
         )
-        for schema in schema_names:
-            # clear any previous source database state
+        return super().prepare()
+
+    def next_record(self) -> Iterable[Entity]:
+        for schema in self.schema_names:
             self.database_source_state.clear()
             if not self.sql_config.schema_filter_pattern.included(schema):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
             if self.config.include_tables:
-                yield from self.fetch_tables(inspector, schema)
+                yield from self.fetch_tables(self.inspector, schema)
             if self.config.include_views:
-                yield from self.fetch_views(inspector, schema)
+                yield from self.fetch_views(self.inspector, schema)
             if self.config.mark_deleted_tables_as_deleted:
                 schema_fqdn = f"{self.config.service_name}.{schema}"
                 yield from self.delete_tables(schema_fqdn)
