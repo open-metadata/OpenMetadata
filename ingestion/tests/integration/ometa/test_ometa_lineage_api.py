@@ -140,8 +140,10 @@ class OMetaLineageTest(TestCase):
         )
 
         cls.metadata.delete(entity=Table, entity_id=table_id)
-        cls.metadata.delete(entity=Database, entity_id=database_id)
-        cls.metadata.delete(entity=DatabaseService, entity_id=db_service_id)
+        cls.metadata.delete(entity=Database, entity_id=database_id, recursive=True)
+        cls.metadata.delete(
+            entity=DatabaseService, entity_id=db_service_id, recursive=True
+        )
 
         pipeline_id = str(
             cls.metadata.get_by_name(
@@ -156,7 +158,9 @@ class OMetaLineageTest(TestCase):
         )
 
         cls.metadata.delete(entity=Pipeline, entity_id=pipeline_id)
-        cls.metadata.delete(entity=PipelineService, entity_id=pipeline_service_id)
+        cls.metadata.delete(
+            entity=PipelineService, entity_id=pipeline_service_id, recursive=True
+        )
 
     def test_create(self):
         """

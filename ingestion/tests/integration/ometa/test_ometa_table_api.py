@@ -141,8 +141,10 @@ class OMetaTableTest(TestCase):
         )
 
         cls.metadata.delete(entity=Table, entity_id=_id)
-        cls.metadata.delete(entity=Database, entity_id=database_id)
-        cls.metadata.delete(entity=DatabaseService, entity_id=service_id)
+        cls.metadata.delete(entity=Database, entity_id=database_id, recursive=True)
+        cls.metadata.delete(
+            entity=DatabaseService, entity_id=service_id, recursive=True
+        )
 
     def test_create(self):
         """
