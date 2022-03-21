@@ -15,8 +15,18 @@ Query parser utils tests
 import json
 from unittest import TestCase
 from unittest.mock import patch
+from uuid import UUID
 
-from sqlalchemy.types import JSON, SMALLINT, VARCHAR
+from sqlalchemy.types import (
+    CHAR,
+    DATE,
+    FLOAT,
+    INTEGER,
+    JSON,
+    SMALLINT,
+    TIMESTAMP,
+    VARCHAR,
+)
 
 from metadata.ingestion.api.workflow import Workflow
 
@@ -50,7 +60,7 @@ MOCK_GET_TABLE_NAMES = [
     "chart_entity",
     "dashboard_entity",
 ]
-GET_TABLE_DESCRIPTIONS = {"text": None}
+GET_TABLE_DESCRIPTIONS = {"text": "Test Description"}
 MOCK_GET_SCHEMA_NAMES = ["test_openmetadata_db"]
 MOCK_UNIQUE_CONSTRAINTS = [
     {"name": "unique_name", "column_names": ["name"], "duplicates_index": "unique_name"}
@@ -98,7 +108,206 @@ MOCK_GET_COLUMN = [
         "comment": None,
         "nullable": False,
     },
+    {
+        "name": "cust_id",
+        "type": UUID,
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "lname",
+        "type": VARCHAR(length=36),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "fname",
+        "type": VARCHAR(length=24),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "date_key",
+        "type": INTEGER(),
+        "nullable": False,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": True,
+    },
+    {
+        "name": "date",
+        "type": DATE(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "full_date_description",
+        "type": VARCHAR(length=18),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_week_number_in_year",
+        "type": INTEGER(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_month_name",
+        "type": VARCHAR(length=9),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_month_number_in_year",
+        "type": INTEGER(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_year_month",
+        "type": CHAR(length=7),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_quarter",
+        "type": INTEGER(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_year_quarter",
+        "type": CHAR(length=7),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_half_year",
+        "type": INTEGER(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "calendar_year",
+        "type": INTEGER(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "holiday_indicator",
+        "type": VARCHAR(length=10),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "weekday_indicator",
+        "type": CHAR(length=7),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "selling_season",
+        "type": VARCHAR(length=32),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "ts",
+        "type": TIMESTAMP(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "symbol",
+        "type": VARCHAR(length=8),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "bid",
+        "type": FLOAT(),
+        "nullable": True,
+        "default": "1.00",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "test_col",
+        "type": INTEGER(),
+        "nullable": True,
+        "default": "20",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "column_5",
+        "type": VARCHAR(length=20),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
 ]
+
 
 MOCK_GET_VIEW_NAMES = ["test_view"]
 MOCK_GET_VIEW_DEFINITION = "SELECT failedpn.metric_date, failedpn.metric_hour, failedpn.game_id, failedpn.game_id_str, failedpn.user_id, failedpn.event_ts, failedpn.bundle_id, failedpn.mkt, failedpn.mkt_str, failedpn.device_token FROM bi_pipeline.failedpn"
