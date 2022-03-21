@@ -150,10 +150,7 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path, rese
             docker.compose.stop()
             logger.info("Docker compose for OpenMetadata stopped successfully.")
         if reset_db:
-            click.secho(
-                f"Resetting OpenMetadata.\nThis will clear out all the data",
-                fg="red",
-            )
+
             reset_db_om(docker)
         if clean:
             logger.info(
@@ -179,10 +176,19 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path, rese
 
 
 def reset_db_om(docker):
-    docker.container.execute(
-        container="openmetadata_server",
-        tty=True,
-        interactive=True,
-        privileged=True,
-        command="",
-    )
+    if docker.container.inspect("openmetadata_server").state.running:
+        click.secho(
+            f"Resetting OpenMetadata.\nThis will clear out all the data",
+            fg="red",
+        )
+        docker.container.execute(
+            container="openmetadata_server",
+            tty=True,
+            command=[
+                "/bin/bash",
+                "-c",
+                "./openmetadata-*/bootstrap/bootstrap_storage.sh drop-create-all",
+            ],
+        )
+    else:
+        click.secho("OpenMetadata Instance is not up and running", fg="yellow")
