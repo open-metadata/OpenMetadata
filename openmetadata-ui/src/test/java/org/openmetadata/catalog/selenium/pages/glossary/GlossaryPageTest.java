@@ -266,7 +266,7 @@ public class GlossaryPageTest {
     Events.click(webDriver, common.containsText(termName));
     Events.click(webDriver, glossary.editGlossaryTag());
     for (int i = 0; i < 2; i++) {
-      Events.click(webDriver, common.removeAssociatedTag(i));
+      Events.click(webDriver, common.removeAssociatedTag());
     }
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
