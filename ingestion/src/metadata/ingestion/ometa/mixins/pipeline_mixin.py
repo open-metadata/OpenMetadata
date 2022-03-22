@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.ingestion.ometa.client import REST
+from metadata.utils.constants import DOT
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ class OMetaPipelineMixin:
 
         return self.create_or_update(updated_pipeline)
 
-    def clean_pipeline_tasks(self, pipeline: Pipeline, tasks: List[Task]) -> Pipeline:
+    def clean_pipeline_tasks(self, pipeline: Pipeline, task_ids: List[str]) -> Pipeline:
         """
         Given a list of tasks, remove from the
         Pipeline Entity those that are not received
@@ -104,8 +105,6 @@ class OMetaPipelineMixin:
         remove the task B from the entity
         """
 
-        names = {task.name for task in tasks}
-
         updated_pipeline = CreatePipelineRequest(
             name=pipeline.name,
             displayName=pipeline.displayName,
@@ -115,7 +114,11 @@ class OMetaPipelineMixin:
             pipelineLocation=pipeline.pipelineLocation,
             startDate=pipeline.startDate,
             service=pipeline.service,
-            tasks=[task for task in pipeline.tasks if task.name in names],
+            tasks=[
+                task
+                for task in pipeline.tasks
+                if task.name.replace(DOT, ".") in task_ids
+            ],
             owner=pipeline.owner,
             tags=pipeline.tags,
         )

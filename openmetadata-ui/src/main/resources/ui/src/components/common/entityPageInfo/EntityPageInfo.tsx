@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -27,6 +29,10 @@ import { User } from '../../../generated/entity/teams/user';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getFollowerDetail } from '../../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
@@ -38,12 +44,6 @@ import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../../utils/GlossaryUtils';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
@@ -435,6 +435,7 @@ const EntityPageInfo = ({
                   setIsEditable(true);
                 }}>
                 <TagsContainer
+                  dropDownHorzPosRight={false}
                   editable={isEditable}
                   isLoading={isTagLoading}
                   selectedTags={getSelectedTags()}

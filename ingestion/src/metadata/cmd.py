@@ -197,13 +197,16 @@ def report(config: str) -> None:
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
-def docker(start, stop, pause, resume, clean, file_path, env_file_path) -> None:
+@click.option("--reset-db", help="Reset OpenMetadata Data", is_flag=True)
+def docker(
+    start, stop, pause, resume, clean, file_path, env_file_path, reset_db
+) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
-    run_docker(start, stop, pause, resume, clean, file_path, env_file_path)
+    run_docker(start, stop, pause, resume, clean, file_path, env_file_path, reset_db)
 
 
 @metadata.command()
