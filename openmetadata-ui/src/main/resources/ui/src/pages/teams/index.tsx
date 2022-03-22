@@ -584,7 +584,7 @@ const TeamsPage = () => {
             variant: 'error',
             body:
               message ??
-              `Error while updating owner for ${
+              `${jsonData['api-error-messages']['update-owner-error']} for ${
                 currentTeam?.displayName ?? currentTeam?.name
               }`,
           });
