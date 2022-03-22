@@ -105,7 +105,9 @@ def file_path_check(file_path):
     return docker_compose_file_path
 
 
-def run_docker(start, stop, pause, resume, clean, file_path, env_file_path, reset_db):
+def run_docker(
+    start, stop, pause, resume, clean, file_path, env_file_path, reset_db, ingest_data
+):
     try:
         from python_on_whales import DockerClient
 
@@ -162,6 +164,10 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path, rese
             )
             if file_path is None:
                 docker_compose_file_path.unlink()
+        if ingest_data:
+            logger.info("Starting data ingestion")
+            ingest(docker)
+            logger.info("Data ingestion completed")
 
     except MemoryError:
         click.secho(
@@ -190,5 +196,48 @@ def reset_db_om(docker):
                 "./openmetadata-*/bootstrap/bootstrap_storage.sh drop-create-all",
             ],
         )
+    else:
+        click.secho("OpenMetadata Instance is not up and running", fg="yellow")
+
+
+def ingest(docker):
+    if docker.container.inspect("openmetadata_server").state.running:
+        AIRFLOW_ADMIN_USER = "admin"
+        AIRFLOW_ADMIN_PASSWORD = "admin"
+
+        headers = {
+            "Content-type": "application/json",
+        }
+
+        json_sample_data = {
+            "dag_run_id": "sample_data_6",
+        }
+        response_sample_data = requests.post(
+            "http://localhost:8080/api/v1/dags/sample_data/dagRuns",
+            headers=headers,
+            json=json_sample_data,
+            auth=(AIRFLOW_ADMIN_USER, AIRFLOW_ADMIN_PASSWORD),
+        )
+
+        json_sample_usage = {
+            "dag_run_id": "sample_usage_6",
+        }
+        response_sample_useage = requests.post(
+            "http://localhost:8080/api/v1/dags/sample_usage/dagRuns",
+            headers=headers,
+            json=json_sample_usage,
+            auth=(AIRFLOW_ADMIN_USER, AIRFLOW_ADMIN_PASSWORD),
+        )
+
+        json_index_metadata = {
+            "dag_run_id": "index_metadata_6",
+        }
+        response_index_metadata = requests.post(
+            "http://localhost:8080/api/v1/dags/index_metadata/dagRuns",
+            headers=headers,
+            json=json_index_metadata,
+            auth=(AIRFLOW_ADMIN_PASSWORD, AIRFLOW_ADMIN_PASSWORD),
+        )
+
     else:
         click.secho("OpenMetadata Instance is not up and running", fg="yellow")
