@@ -15,7 +15,7 @@ without having an import mess
 """
 import sqlalchemy
 from sqlalchemy import Integer, Numeric
-from sqlalchemy.sql.sqltypes import Concatenable
+from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
 from metadata.orm_profiler.orm.types.uuid import UUIDString
@@ -27,6 +27,37 @@ class CustomTypes(TypeRegistry):
     UUID = UUIDString
 
 
+class Dialects(Enum):
+    """
+    Map the service types from DatabaseServiceType
+    to the dialect scheme name used for ingesting
+    and profiling data.
+    """
+
+    Hive = b"hive"
+    Postgres = "postgresql"
+    BigQuery = "bigquery"
+    MySQL = "mysql"
+    Redshift = "redshift"
+    Snowflake = "snowflake"
+    MSSQL = "mssql"
+    Oracle = "oracle"
+    Athena = "athena"
+    Presto = "presto"
+    Trino = "Trino"
+    Vertica = "vertica"
+    Glue = "glue"
+    MariaDB = "mariadb"
+    Druid = "druid"
+    Db2 = "db2"
+    ClickHouse = "clickhouse"
+    Databricks = "databricks"
+    DynamoDB = "dynamoDB"
+    AzureSQL = "azuresql"
+    SingleStore = "singlestore"
+    SQLite = "sqlite"
+
+
 # Sometimes we want to skip certain types for computing metrics.
 # If the type is NULL, then we won't run the metric execution
 # in the profiler.
@@ -34,6 +65,7 @@ class CustomTypes(TypeRegistry):
 NOT_COMPUTE = {
     sqlalchemy.types.NullType,
     sqlalchemy.ARRAY,
+    sqlalchemy.JSON,
 }
 
 
