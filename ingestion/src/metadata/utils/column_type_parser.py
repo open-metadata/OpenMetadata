@@ -70,6 +70,7 @@ class ColumnTypeParser:
         "DATETIMEOFFSET": "DATETIME",
         "DECIMAL": "DECIMAL",
         "DOUBLE PRECISION": "DOUBLE",
+        "DOUBLE_PRECISION": "DOUBLE",
         "DOUBLE": "DOUBLE",
         "ENUM": "ENUM",
         "FLOAT": "FLOAT",
