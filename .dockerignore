@@ -1,0 +1,9 @@
+**/node_modules/*
+**/target/*
+**/__pycache__/*
+**/.pytest_cache/*
+**/*.egg
+**/.mypy_cache/
+.git/
+.cache/
+.gitbook/

@@ -1,0 +1,102 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+version: "3.9"
+services:
+  mysql:
+    image: mysql/mysql-server:latest
+    hostname: mysql.example.com
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_HOST: "%"
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ${PWD}/scripts/mysql/:/docker-entrypoint-initdb.d/
+    ports:
+      - "3306:3306"
+    networks:
+      - om
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    hostname: elasticsearch.example.com
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - om
+
+  openmetadata:
+    build:
+      context: .
+      target: openmetadata
+    image: openmetadata:latest
+    hostname: openmetadata.example.com
+    environment:
+      - "ELASTICSEARCH_HOST=elasticsearch.example.com"
+      - "MYSQL_HOST=mysql.example.com"
+      - "AIRFLOW_HOST=airflow.example.com"
+      - "SERVER_HOST=openmetadata.example.com"
+    container_name: openmetadata
+    ports:
+      - "8585:8585"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ${PWD}:/desperate-feynman
+    entrypoint: /desperate-feynman/scripts/openmetadata/run.sh
+    networks:
+      - om
+
+  metadata:
+    build:
+      context: .
+      target: metadata
+    image: metadata:latest
+    container_name: metadata
+    hostname: metadata.example.com
+    volumes:
+      - ${PWD}:/desperate-feynman
+    entrypoint: /desperate-feynman/scripts/metadata/run.sh
+    environment:
+      - SINGLE_STORE_PASSWORD
+    networks:
+      - om
+
+  airflow:
+    build:
+      context: .
+      target: airflow
+    image: airflow:latest
+    container_name: airflow
+    hostname: airflow.example.com
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${PWD}:/desperate-feynman
+    entrypoint: /desperate-feynman/scripts/airflow/run.sh
+    networks:
+      - om
+
+networks:
+  om:
