@@ -32,6 +32,7 @@ const jsonData = {
     'fetch-table-details-error': 'Error while fetching table details!',
     'fetch-table-queries-error': 'Error while fetching table queries!',
     'fetch-tags-error': 'Error while fetching tags!',
+    'fetch-thread-error': 'Error while fetching threads',
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-description-error': 'Error while updating description!',
     'update-entity-error': 'Error while updating entity!',

@@ -11,194 +11,25 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityThread, Post } from 'Models';
+import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
-import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
-import {
-  getEntityField,
-  getFeedListWithRelativeDays,
-  getReplyText,
-} from '../../../utils/FeedUtils';
-import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import useToastContext from '../../../hooks/useToastContext';
+import jsonData from '../../../jsons/en';
+import { getEntityField } from '../../../utils/FeedUtils';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
 import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
-import {
-  ActivityThreadListProp,
-  ActivityThreadPanelProp,
-  ActivityThreadProp,
-} from './ActivityThreadPanel.interface';
-
-const ActivityThreadList: FC<ActivityThreadListProp> = ({
-  className,
-  threads,
-  selectedThreadId,
-  postFeed,
-  onThreadIdSelect,
-  onThreadSelect,
-  onConfirmation,
-}) => {
-  const { updatedFeedList: updatedThreads, relativeDays } =
-    getFeedListWithRelativeDays(threads);
-
-  return (
-    <div className={className}>
-      {relativeDays.map((d, i) => {
-        return (
-          <Fragment key={i}>
-            <FeedListSeparator
-              className="tw-relative tw-mt-1 tw-mb-3.5"
-              relativeDay={d}
-            />
-            {updatedThreads
-              .filter((f) => f.relativeDay === d)
-              .map((thread, index) => {
-                const mainFeed = {
-                  message: thread.message,
-                  postTs: thread.threadTs,
-                  from: thread.createdBy,
-                  id: thread.id,
-                };
-                const postLength = thread.posts.length;
-                const replies = thread.postsCount - 1;
-                const repliedUsers = thread.posts
-                  .map((f) => f.from)
-                  .slice(0, postLength >= 3 ? 2 : 1);
-                const lastPost = thread.posts[postLength - 1];
-
-                return (
-                  <Fragment key={index}>
-                    <ActivityFeedCard
-                      isEntityFeed
-                      className="tw-mb-6"
-                      entityLink={thread.about}
-                      feed={mainFeed}
-                    />
-                    {postLength > 0 ? (
-                      <Fragment>
-                        {postLength > 1 ? (
-                          <div className="tw-mb-6">
-                            <div className="tw-ml-9 tw-flex tw-mb-6">
-                              <FeedCardFooter
-                                isFooterVisible
-                                className="tw--mt-4"
-                                lastReplyTimeStamp={lastPost?.postTs}
-                                repliedUsers={repliedUsers}
-                                replies={replies}
-                                threadId={thread.id}
-                                onThreadSelect={() => onThreadSelect(thread.id)}
-                              />
-                            </div>
-                          </div>
-                        ) : null}
-                        <ActivityFeedCard
-                          isEntityFeed
-                          className="tw-mb-6 tw-ml-9"
-                          feed={lastPost}
-                          threadId={thread.id}
-                          onConfirmation={onConfirmation}
-                        />
-                        <p
-                          className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
-                          onClick={() => {
-                            onThreadIdSelect(thread.id);
-                          }}>
-                          Reply
-                        </p>
-                      </Fragment>
-                    ) : (
-                      <p
-                        className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6"
-                        onClick={() => onThreadSelect(thread.id)}>
-                        Reply
-                      </p>
-                    )}
-                    {selectedThreadId === thread.id ? (
-                      <ActivityFeedEditor
-                        buttonClass="tw-mr-4"
-                        className="tw-ml-5 tw-mr-2 tw-mb-6"
-                        onSave={postFeed}
-                      />
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-          </Fragment>
-        );
-      })}
-    </div>
-  );
-};
-
-const ActivityThread: FC<ActivityThreadProp> = ({
-  className,
-  selectedThread,
-  postFeed,
-  onConfirmation,
-}) => {
-  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
-  const repliesLength = threadData?.posts?.length ?? 0;
-  const mainThread = {
-    message: threadData.message,
-    from: threadData.createdBy,
-    postTs: threadData.threadTs,
-    id: threadData.id,
-  };
-
-  useEffect(() => {
-    getFeedById(selectedThread.id).then((res: AxiosResponse) => {
-      setThreadData(res.data);
-    });
-  }, [selectedThread]);
-
-  return (
-    <Fragment>
-      <div className={className}>
-        {threadData ? (
-          <ActivityFeedCard
-            isEntityFeed
-            className="tw-mb-3"
-            feed={mainThread as Post}
-          />
-        ) : null}
-        {repliesLength > 0 ? (
-          <Fragment>
-            <div className="tw-mb-3 tw-flex">
-              <span>{getReplyText(repliesLength, 'reply', 'replies')}</span>
-              <span className="tw-flex-auto tw-self-center tw-ml-1.5">
-                <hr />
-              </span>
-            </div>
-            {threadData?.posts?.map((reply, key) => (
-              <ActivityFeedCard
-                isEntityFeed
-                className="tw-mb-3"
-                feed={reply}
-                key={key}
-                threadId={threadData.id}
-                onConfirmation={onConfirmation}
-              />
-            ))}
-          </Fragment>
-        ) : null}
-        <ActivityFeedEditor
-          buttonClass="tw-mr-4"
-          className="tw-ml-5 tw-mr-2 tw-my-6"
-          onSave={postFeed}
-        />
-      </div>
-    </Fragment>
-  );
-};
+import ActivityThread from './ActivityThread';
+import ActivityThreadList from './ActivityThreadList';
+import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 
 const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   threadLink,
@@ -209,6 +40,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   createThread,
   deletePostHandler,
 }) => {
+  const showToast = useToastContext();
   const [threads, setThreads] = useState<EntityThread[]>([]);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -220,10 +52,18 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   );
 
   const getThreads = () => {
-    getAllFeeds(threadLink).then((res: AxiosResponse) => {
-      const { data } = res.data;
-      setThreads(data);
-    });
+    getAllFeeds(threadLink)
+      .then((res: AxiosResponse) => {
+        const { data } = res.data;
+        setThreads(data);
+      })
+      .catch((err: AxiosError) => {
+        const message = err.response?.data?.message;
+        showToast({
+          variant: 'error',
+          body: message || jsonData['api-error-messages']['fetch-thread-error'],
+        });
+      });
   };
 
   const onDiscard = () => {
