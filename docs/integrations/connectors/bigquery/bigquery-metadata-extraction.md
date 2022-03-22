@@ -49,17 +49,18 @@ python3 --version
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
-1. Create a configuration file using template JSON
-2. Configure service settings
-3. Configure data filters (optional)
-4. Configure sample data (optional)
-5. Configure DBT (optional)
-6. Confirm sink settings
-7. Confirm metadata\_server settings
-8. Install the OpenMetadata Bigquery Python module
-9. Edit a Python script to define your ingestion DAG
-10. Copy your configuration JSON into the ingestion script
-11. Run the script to create your ingestion DAG
+1. Prepare a Python virtual environment
+2. Install the Python module for this connector
+3. Create a configuration file using template JSON
+4. Configure service settings
+5. Configure data filters (optional)
+6. Configure sample data (optional)
+7. Configure DBT (optional)
+8. Confirm sink settings
+9. Confirm metadata\_server settings
+10. Edit a Python script to define your ingestion DAG
+11. Copy your configuration JSON into the ingestion script
+12. Run the script to create your ingestion DAG
 
 
 
