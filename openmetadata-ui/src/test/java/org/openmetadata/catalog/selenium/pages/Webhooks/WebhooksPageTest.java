@@ -76,7 +76,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     actions.click();
     actions.perform();
-    Events.click(webDriver, webhooks.saveWebhook());
+    Events.click(webDriver, common.saveWebhook());
     Thread.sleep(2000);
     WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook()));
     Assert.assertTrue(checkName.isDisplayed());
@@ -100,7 +100,7 @@ public class WebhooksPageTest {
       Events.click(webDriver, webhooks.allEntities());
       actions.click();
       actions.perform();
-      Events.click(webDriver, webhooks.saveWebhook());
+      Events.click(webDriver, common.saveWebhook());
       Thread.sleep(2000);
     }
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
@@ -124,7 +124,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     actions.click();
     actions.perform();
-    Events.click(webDriver, webhooks.saveWebhook());
+    Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Webhook name is required.");
@@ -145,7 +145,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     actions.click();
     actions.perform();
-    Events.click(webDriver, webhooks.saveWebhook());
+    Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Webhook endpoint is required.");
@@ -161,7 +161,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.test.com");
-    Events.click(webDriver, webhooks.saveWebhook());
+    Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Webhook event filters are required.");
