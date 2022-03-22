@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
-from metadata.orm_profiler.orm.registry import is_quantifiable
+from metadata.orm_profiler.orm.registry import Dialects, is_quantifiable
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -36,12 +36,12 @@ def _(element, compiler, **kw):
     return "STDDEV_POP(%s)" % compiler.process(element.clauses, **kw)
 
 
-@compiles(StdDevFn, DatabaseServiceType.MSSQL.value.lower())
+@compiles(StdDevFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
     return "STDEVP(%s)" % compiler.process(element.clauses, **kw)
 
 
-@compiles(StdDevFn, DatabaseServiceType.SQLite.value.lower())  # Needed for unit tests
+@compiles(StdDevFn, Dialects.SQLite)  # Needed for unit tests
 def _(element, compiler, **kw):
     """
     This actually returns the squared STD, but as

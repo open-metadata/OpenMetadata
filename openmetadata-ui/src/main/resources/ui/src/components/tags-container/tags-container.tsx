@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isNull } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { Source } from '../../generated/type/tagLabel';
 import { withLoader } from '../../hoc/withLoader';
 import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
@@ -140,6 +141,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         removeTag={(_e, removedTag: string) => {
           handleTagRemoval(removedTag, index);
         }}
+        showOnlyName={tag.source === Source.Glossary}
         startWith="#"
         tag={tag}
         type={editable ? 'contained' : type}

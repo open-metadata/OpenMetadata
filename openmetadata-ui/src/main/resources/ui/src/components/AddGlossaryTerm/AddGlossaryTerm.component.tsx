@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import {
@@ -37,7 +38,6 @@ import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import Tags from '../tags/tags';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Field = ({
   children,
@@ -447,6 +447,7 @@ const AddGlossaryTerm = ({
             <p className="w-form-label tw-mr-3">Reviewers </p>
             <Button
               className="tw-h-5 tw-px-2"
+              data-testid="add-reviewers"
               size="x-small"
               theme="primary"
               variant="contained"

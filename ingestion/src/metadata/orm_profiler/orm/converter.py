@@ -32,7 +32,7 @@ _TYPE_MAP = {
     DataType.INT: sqlalchemy.INT,
     DataType.BIGINT: sqlalchemy.BIGINT,
     DataType.BYTEINT: sqlalchemy.SMALLINT,
-    DataType.BYTES: CustomTypes.BYTES,
+    DataType.BYTES: CustomTypes.BYTES.value,
     DataType.FLOAT: sqlalchemy.FLOAT,
     DataType.DOUBLE: sqlalchemy.DECIMAL,
     DataType.DECIMAL: sqlalchemy.DECIMAL,
@@ -61,7 +61,7 @@ _TYPE_MAP = {
     # DataType.GEOGRAPHY: ...,
     DataType.ENUM: sqlalchemy.Enum,
     DataType.JSON: sqlalchemy.JSON,
-    DataType.UUID: CustomTypes.UUID,
+    DataType.UUID: CustomTypes.UUID.value,
 }
 
 

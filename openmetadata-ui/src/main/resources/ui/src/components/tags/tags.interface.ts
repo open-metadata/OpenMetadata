@@ -20,6 +20,7 @@ export type TagProps = {
   startWith?: '#' | '+ ';
   tag: string | TagLabel;
   isRemovable?: boolean;
+  showOnlyName?: boolean;
   removeTag?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string

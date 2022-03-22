@@ -6,7 +6,7 @@
       "password": "password",
       "host_port": "host:port",
       "service_name": "local_metabase",
-      "database_service_name": "Optional - Create Lineage by adding relevant Database Service Name"
+      "db_service_name": "Optional - Create Lineage by adding relevant Database Service Name"
     }
   },
   "sink": {

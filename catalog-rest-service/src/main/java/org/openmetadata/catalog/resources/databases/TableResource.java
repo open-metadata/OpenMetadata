@@ -52,6 +52,7 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.tests.CreateColumnTest;
+import org.openmetadata.catalog.api.tests.CreateCustomMetric;
 import org.openmetadata.catalog.api.tests.CreateTableTest;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -62,6 +63,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.tests.ColumnTest;
+import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -96,6 +98,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
     allowedFields.add("tests");
+    allowedFields.add("customMetrics");
   }
 
   public static class TableList extends ResultList<Table> {
@@ -110,13 +113,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   static final String FIELDS =
-      "tableConstraints,usageSummary,owner,profileSample,"
+      "tableConstraints,usageSummary,owner,profileSample,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
   public static final List<String> ALLOWED_FIELDS;
 
   static {
     List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
     list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
+    list.add("customMetrics"); // Add a field parameter to add customMetrics information to the columns
     ALLOWED_FIELDS = Collections.unmodifiableList(list);
   }
 
@@ -539,7 +543,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/columnTest")
-  @Operation(summary = "Add table test cases", tags = "tables", description = "Add test cases to the table.")
+  @Operation(summary = "Add column test cases", tags = "tables", description = "Add column test cases to the table.")
   public Table addColumnTest(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -549,6 +553,21 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     ColumnTest columnTest = getColumnTest(securityContext, createColumnTest);
     Table table = dao.addColumnTest(UUID.fromString(id), columnTest);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/customMetric")
+  @Operation(summary = "Add column custom metrics", tags = "tables", description = "Add column custom metrics.")
+  public Table addCustomMetric(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      CreateCustomMetric createCustomMetric)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
+    Table table = dao.addCustomMetric(UUID.fromString(id), customMetric);
     return addHref(uriInfo, table);
   }
 
@@ -569,6 +588,26 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = dao.deleteColumnTest(UUID.fromString(id), columnName, columnTestType);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
+  @Path("/{id}/customMetric/{columnName}/{customMetricName}")
+  @Operation(
+      summary = "delete custom metric from a column",
+      tags = "tables",
+      description = "Delete a custom metric from a column.")
+  public Table deleteCustomMetric(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "column of the table", schema = @Schema(type = "string")) @PathParam("columnName")
+          String columnName,
+      @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("customMetricName")
+          String customMetricName)
+      throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Table table = dao.deleteCustomMetric(UUID.fromString(id), columnName, customMetricName);
     return addHref(uriInfo, table);
   }
 
@@ -651,6 +690,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .withOwner(create.getOwner())
         .withExecutionFrequency(create.getExecutionFrequency())
         .withResults(create.getResult() != null ? List.of(create.getResult()) : new ArrayList<>())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {
+    return new CustomMetric()
+        .withId(UUID.randomUUID())
+        .withDescription(create.getDescription())
+        .withName(create.getName())
+        .withColumnName(create.getColumnName())
+        .withOwner(create.getOwner())
+        .withExpression(create.getExpression())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }

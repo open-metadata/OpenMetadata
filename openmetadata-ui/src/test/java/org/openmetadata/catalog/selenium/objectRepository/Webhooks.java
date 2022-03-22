@@ -19,7 +19,6 @@ public class Webhooks {
   By checkbox = By.xpath("//input[@data-testid='checkbox']");
   By entityCreatedMenu = By.xpath("(//button[@id='menu-button-select entities'])[1]");
   By allEntities = By.xpath("(//input[@type='checkbox'])[2]");
-  By saveWebhook = By.xpath("//button[@data-testid='save-webhook']");
   By checkWebhook = By.xpath("//button[@data-testid='webhook-link']");
   By toast = By.xpath("(//div[@data-testid='toast']/div)[2]");
 }
