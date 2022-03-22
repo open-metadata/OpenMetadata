@@ -74,6 +74,7 @@ class TableUsageStage(Stage[QueryParserData]):
         self.metadata_config = metadata_config
         self.status = StageStatus()
         self.table_usage = {}
+        self.table_queries = {}
         fpath = pathlib.Path(self.config.filename)
         self.file = fpath.open("w")
         self.wrote_something = False
@@ -121,7 +122,15 @@ class TableUsageStage(Stage[QueryParserData]):
                         date=record.date,
                         joins=joins,
                         service_name=record.service_name,
+                        sql_queries=[],
                     )
+                    fqn = f"{table_usage_count.service_name}.{table_usage_count.table}"
+                    try:
+                        self.table_queries[fqn].append(record.sql)
+
+                    except KeyError:
+                        self.table_queries[fqn] = [record.sql]
+
             except Exception as exc:
                 logger.error("Error in staging record {}".format(exc))
             self.table_usage[table] = table_usage_count
@@ -132,6 +141,12 @@ class TableUsageStage(Stage[QueryParserData]):
 
     def close(self):
         for key, value in self.table_usage.items():
+            try:
+                value.sql_queries = self.table_queries[
+                    f"{value.service_name}.{value.table}"
+                ]
+            except KeyError:
+                pass
             data = value.json()
             self.file.write(json.dumps(data))
             self.file.write("\n")

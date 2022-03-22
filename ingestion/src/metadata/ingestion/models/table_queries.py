@@ -61,6 +61,7 @@ class TableUsageCount(BaseModel):
     table: str
     date: str
     database: str
+    sql_queries: List[str]
     count: int = 1
     joins: TableColumnJoins
     service_name: str
