@@ -76,7 +76,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   public TeamResourceTest() {
     super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
-    this.supportsOwner = false; // TODO fix the test failures after removing this
+    this.supportsOwner = true;
     this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
@@ -345,7 +345,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         .withName(name)
         .withDescription(description)
         .withDisplayName(displayName)
-        .withProfile(PROFILE);
+        .withProfile(PROFILE)
+        .withOwner(owner);
   }
 
   @Override
@@ -360,7 +361,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public void validateCreatedEntity(Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(team),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        createRequest.getOwner());
 
     assertEquals(createRequest.getProfile(), team.getProfile());
     TestUtils.validateEntityReferences(team.getOwns());
@@ -401,7 +405,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(updated), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(updated),
+        expected.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        expected.getOwner());
 
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());

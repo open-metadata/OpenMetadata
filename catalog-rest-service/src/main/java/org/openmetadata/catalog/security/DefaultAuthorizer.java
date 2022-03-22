@@ -155,11 +155,8 @@ public class DefaultAuthorizer implements Authorizer {
 
       Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
-      if (Entity.shouldHaveOwner(entityReference.getType()) && owner == null) {
-        // Entity does not have an owner.
-        return true;
-      }
-      if (Entity.shouldHaveOwner(entityReference.getType()) && isOwnedByUser(user, owner)) {
+
+      if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
         // Entity is owned by the user.
         return true;
       }
