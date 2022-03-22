@@ -57,7 +57,7 @@ class MetabaseSourceConfig(ConfigModel):
     chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     service_name: str
     service_type: str = DashboardServiceType.Metabase.value
-    db_service_name: Optional[str]
+    db_service_name: Optional[str] = None
 
     def get_connection_url(self):
         """get connection url (not implemented)"""
