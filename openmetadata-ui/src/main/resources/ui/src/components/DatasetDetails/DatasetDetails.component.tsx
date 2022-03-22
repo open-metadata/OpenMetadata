@@ -86,6 +86,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   users,
   usageSummary,
   joins,
+  tableType,
   version,
   versionHandler,
   loadNodeHandler,
@@ -93,6 +94,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isNodeLoading,
   dataModel,
   deleted,
+  tagUpdateHandler,
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
@@ -319,6 +321,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       openInNewTab: false,
     },
     { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
+    { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
     { value: `${weeklyUsageCount} queries` },
     {
@@ -421,6 +424,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  /**
+   * Formulates updated tags and updates table entity data for API call
+   * @param selectedTags
+   */
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...tableDetails, tags: updatedTags };
+      tagUpdateHandler(updatedTable);
+    }
+  };
+
   const followTable = () => {
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
@@ -485,18 +500,28 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
+          isTagEditable
           deleted={deleted}
+          entityFieldThreads={getEntityFieldThreadCounts(
+            'tags',
+            entityFieldThreadCount
+          )}
+          entityFqn={datasetFQN}
           entityName={entityName}
+          entityType={EntityType.DATASET}
           extraInfo={extraInfo}
           followHandler={followTable}
           followers={followersCount}
           followersList={followers}
+          hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
           tags={tableTags}
+          tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedTableName}
           version={version}
           versionHandler={versionHandler}
+          onThreadLinkSelect={onThreadLinkSelect}
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
@@ -636,6 +661,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     dataType: col.dataType as string,
                     colTests: col.columnTests,
                   }))}
+                  isTableDeleted={deleted}
                   qualityTestFormHandler={qualityTestFormHandler}
                   tableProfiles={tableProfile}
                 />
@@ -652,6 +678,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 handleSelectedColumn={handleSelectedColumn}
                 handleShowTestForm={handleShowTestForm}
                 handleTestModeChange={handleTestModeChange}
+                isTableDeleted={deleted}
                 selectedColumn={selectedColumn}
                 showTestForm={showTestForm}
                 tableTestCase={tableTestCase}

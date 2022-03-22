@@ -22,7 +22,7 @@ import {
 } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
-import { LabelType, State } from '../../generated/type/tagLabel';
+import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
 import {
@@ -104,6 +104,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
+          source: Source.Tag,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];

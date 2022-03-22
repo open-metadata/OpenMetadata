@@ -12,6 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { cloneDeep, isEmpty } from 'lodash';
 import {
   FormattedGlossarySuggestion,
   FormattedGlossaryTermData,
@@ -37,6 +38,10 @@ export interface GlossaryTermTreeNode {
   name: string;
 }
 
+/**
+ * To get all glossary terms
+ * @returns promise of list of formatted glossary terms
+ */
 export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
   return new Promise<FormattedGlossaryTermData[]>((resolve, reject) => {
     searchData(WILD_CARD_CHAR, 1, 1000, '', '', '', SearchIndex.GLOSSARY)
@@ -50,12 +55,22 @@ export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
   });
 };
 
+/**
+ * To get list of fqns from list of glossary terms
+ * @param terms formatted glossary terms
+ * @returns list of term fqns
+ */
 export const getGlossaryTermlist = (
   terms: Array<FormattedGlossaryTermData> = []
 ): Array<string> => {
   return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
 };
 
+/**
+ * To get child terms of any node if available
+ * @param listTermFQN fqn of targeted child terms
+ * @returns promise of list of glossary terms
+ */
 export const getChildGlossaryTerms = (
   listTermFQN: Array<string>
 ): Promise<GlossaryTerm[]> => {
@@ -76,6 +91,11 @@ export const getChildGlossaryTerms = (
   });
 };
 
+/**
+ * To recursively generate RcTree data from glossary list
+ * @param data list of glossary or glossary terms
+ * @returns RcTree data node
+ */
 export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
   return data.map((d) => {
     return d.children?.length
@@ -93,6 +113,13 @@ export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
   });
 };
 
+/**
+ * Creates glossary term tree node from fqn
+ * and root node name
+ * @param leafFqn node fqn
+ * @param name root node name
+ * @returns node for glossary tree
+ */
 const createGlossaryTermNode = (
   leafFqn: string,
   name: string
@@ -112,6 +139,12 @@ const createGlossaryTermNode = (
       };
 };
 
+/**
+ * To merge the duplicate glossaries and terms
+ * to generate optimised tree
+ * @param treeNodes list of glossary nodes with duplicate items
+ * @returns list of glossary nodes with unique items
+ */
 const optimiseGlossaryTermTree = (treeNodes?: GlossaryTermTreeNode[]) => {
   if (treeNodes) {
     for (let i = 0; i < treeNodes.length; i++) {
@@ -139,6 +172,11 @@ const optimiseGlossaryTermTree = (treeNodes?: GlossaryTermTreeNode[]) => {
   return treeNodes;
 };
 
+/**
+ * To generate glossry tree from searched terms
+ * @param searchedTerms list of formatted searched terms
+ * @returns list of glossary tree
+ */
 export const getSearchedGlossaryTermTree = (
   searchedTerms: FormattedGlossarySuggestion[]
 ): GlossaryTermTreeNode[] => {
@@ -153,6 +191,12 @@ export const getSearchedGlossaryTermTree = (
   return termTree;
 };
 
+/**
+ * To get Tree of glossaries based on search result
+ * @param glossaries list of glossaries
+ * @param searchedTerms list of formatted searched terms
+ * @returns glossary list based on searched terms
+ */
 export const updateGlossaryListBySearchedTerms = (
   glossaries: ModifiedGlossaryData[],
   searchedTerms: FormattedGlossarySuggestion[]
@@ -171,6 +215,10 @@ export const updateGlossaryListBySearchedTerms = (
   }, [] as ModifiedGlossaryData[]);
 };
 
+/**
+ * To get actions for action dropdown button
+ * @returns list of action items
+ */
 export const getActionsList = () => {
   return [
     {
@@ -180,6 +228,12 @@ export const getActionsList = () => {
   ];
 };
 
+/**
+ * To get hierarchy of fqns from glossary to targeted term
+ * from given fqn
+ * @param fqn fqn of glossary or glossary term
+ * @returns list of fqns
+ */
 export const getHierarchicalKeysByFQN = (fqn: string) => {
   const keys = fqn.split('.').reduce((prev, curr) => {
     const currFqn = prev.length ? `${prev[prev.length - 1]}.${curr}` : curr;
@@ -190,12 +244,80 @@ export const getHierarchicalKeysByFQN = (fqn: string) => {
   return keys;
 };
 
+/**
+ * To get glossary term data from glossary object
+ * @param glossary parent glossary
+ * @param termFqn fqn of targeted glossary term
+ * @returns Glossary term or {}
+ */
+export const getTermDataFromGlossary = (
+  glossary: ModifiedGlossaryData,
+  termFqn: string
+) => {
+  let data: ModifiedGlossaryData | GlossaryTerm = cloneDeep(glossary);
+  const arrFQN = getHierarchicalKeysByFQN(termFqn);
+  for (let i = 1; i < arrFQN.length; i++) {
+    data = data?.children
+      ? ((data.children as unknown as GlossaryTerm[])?.find(
+          (item) =>
+            item.fullyQualifiedName === arrFQN[i] || item.name === arrFQN[i]
+        ) as GlossaryTerm)
+      : ({} as GlossaryTerm);
+    if (isEmpty(data)) {
+      break;
+    }
+  }
+
+  return data;
+};
+
+/**
+ * To get relative indexed position of
+ * glossary term from tree of glossaries
+ * @param arrGlossary list of glossary
+ * @param termFqn fqn of target glossary term
+ * @returns array of numbered positions
+ */
+export const getTermPosFromGlossaries = (
+  arrGlossary: ModifiedGlossaryData[],
+  termFqn: string
+) => {
+  const arrFQN = getHierarchicalKeysByFQN(termFqn);
+  const glossaryIdx = arrGlossary.findIndex((item) => item.name === arrFQN[0]);
+  const pos = [];
+  if (glossaryIdx !== -1) {
+    pos.push(glossaryIdx);
+    let data: ModifiedGlossaryData | GlossaryTerm = arrGlossary[glossaryIdx];
+    for (let i = 1; i < arrFQN.length; i++) {
+      const index = data?.children
+        ? (data.children as unknown as GlossaryTerm[])?.findIndex(
+            (item) =>
+              item.fullyQualifiedName === arrFQN[i] || item.name === arrFQN[i]
+          )
+        : -1;
+
+      if (index === -1) {
+        break;
+      }
+      data = (data?.children ? data?.children[index] : {}) as GlossaryTerm;
+      pos.push(index);
+    }
+  }
+
+  return pos;
+};
+
+/**
+ * Fetches and adds root terms to each glossary
+ * @param glossaries list of glossaries
+ * @returns promise of list of glossaries with root terms
+ */
 const getRootTermEmbeddedGlossary = (
   glossaries: Array<ModifiedGlossaryData>
 ): Promise<Array<ModifiedGlossaryData>> => {
   return new Promise<Array<ModifiedGlossaryData>>((resolve, reject) => {
     const promises = glossaries.map((glossary) =>
-      getGlossaryTerms(glossary.id, 100, [
+      getGlossaryTerms(glossary.id, 1000, [
         'children',
         'relatedTerms',
         'reviewers',
@@ -222,6 +344,13 @@ const getRootTermEmbeddedGlossary = (
   });
 };
 
+/**
+ * Fetches list of glossaries with root terms in each of them
+ * @param paging pagination cursor
+ * @param limit result count
+ * @param arrQueryFields api query-string
+ * @returns promise of api response
+ */
 export const getGlossariesWithRootTerms = (
   paging = '',
   limit = 10,

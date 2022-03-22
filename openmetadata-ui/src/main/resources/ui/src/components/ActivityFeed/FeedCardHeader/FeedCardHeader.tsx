@@ -41,7 +41,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
-  const onMousEnterHandler = () => {
+  const onClickHandler = () => {
     getUserByName(createdBy, 'profile,roles,teams,follows,owns')
       .then((res: AxiosResponse) => {
         setUserData(res.data);
@@ -95,7 +95,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                       <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
                         Teams
                       </span>
-                      <span>
+                      <span className="tw-flex tw-flex-wrap tw-mt-1">
                         {teams.map((team, i) => (
                           <span
                             className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
@@ -116,7 +116,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                       <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
                         Roles
                       </span>
-                      <span>
+                      <span className="tw-flex tw-flex-wrap tw-mt-1">
                         {roles.map((role, i) => (
                           <span
                             className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
@@ -143,16 +143,25 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         html={getUserData()}
         position="top"
         theme="light"
-        trigger="mouseenter">
+        trigger="click">
         <span
           className="tw-cursor-pointer"
           data-testid="authorAvatar"
-          onMouseEnter={onMousEnterHandler}>
+          onClick={onClickHandler}>
           <Avatar name={createdBy} type="square" width="30" />
         </span>
       </PopOver>
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-        {createdBy}
+        <PopOver
+          hideDelay={500}
+          html={getUserData()}
+          position="top"
+          theme="light"
+          trigger="click">
+          <span className="tw-cursor-pointer" onClick={onClickHandler}>
+            {createdBy}
+          </span>
+        </PopOver>
         {entityFQN && entityType ? (
           <span className="tw-pl-1 tw-font-normal" data-testid="headerText">
             posted on{' '}

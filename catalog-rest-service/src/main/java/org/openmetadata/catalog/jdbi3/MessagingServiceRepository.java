@@ -42,10 +42,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         dao.messagingServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
   }
 
   @Override
@@ -165,7 +162,8 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.MESSAGING_SERVICE);
+          .withType(Entity.MESSAGING_SERVICE)
+          .withDeleted(isDeleted());
     }
 
     @Override

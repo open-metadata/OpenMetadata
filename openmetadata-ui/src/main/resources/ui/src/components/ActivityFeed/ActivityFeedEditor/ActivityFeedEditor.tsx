@@ -77,6 +77,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
               'tw-py-0.5 tw-px-1 tw-rounded tw-bg-none',
               buttonClass
             )}
+            data-testid="send-button"
             disabled={editorValue.length === 0}
             size="custom"
             variant="text"

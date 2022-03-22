@@ -27,7 +27,6 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
-  deletePostById,
   getAllFeeds,
   getFeedCount,
   postFeedById,
@@ -54,11 +53,18 @@ import {
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import {
+  COMMON_ERROR_MSG,
   getDatabaseDetailsPath,
   getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
+import { TEST_DELETE_MSG } from '../../constants/DatasetDetails.constants';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
 import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -70,6 +76,7 @@ import {
   Table,
   TableData,
   TableJoins,
+  TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
@@ -82,6 +89,7 @@ import {
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
+import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -95,9 +103,9 @@ import {
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getTierTags } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
@@ -133,6 +141,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     dayCount: 0,
     columnJoins: [],
   });
+  const [tableType, setTableType] = useState<TableType>(TableType.Regular);
   const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const { datasetFQN, tab } = useParams() as Record<string, string>;
@@ -168,6 +177,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [showTestForm, setShowTestForm] = useState(false);
   const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
   const [selectedColumn, setSelectedColumn] = useState<string>();
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const handleTestModeChange = (mode: DatasetTestModeType) => {
     setTestMode(mode);
@@ -217,10 +233,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setEntityLineage(res.data);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message ?? 'Error while fetching lineage data.',
-        });
+        const msg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-lineage-error'];
+        handleShowErrorToast(msg);
       })
       .finally(() => {
         setIsLineageLoading(false);
@@ -234,11 +250,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
         const { data } = res.data;
         setEntityThread(data);
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching entity feeds',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-error'];
+        handleShowErrorToast(errMsg);
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -265,6 +281,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tags,
           sampleData,
           tableProfile,
+          tableType,
           version,
           service,
           serviceType,
@@ -273,6 +290,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableId(id);
         setCurrentVersion(version);
         setTier(getTierTags(tags));
+        setTableType(tableType);
         setOwner(owner);
         setFollowers(followers);
         setDeleted(deleted);
@@ -314,7 +332,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setColumns(columns || []);
         setSampleData(sampleData);
         setTableProfile(tableProfile || []);
-        setTableTags(getTableTags(columns || []));
+        setTableTags(getTagsWithoutTier(tags));
         setUsageSummary(usageSummary);
         setJoins(joins);
       })
@@ -322,11 +340,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg = err.message || 'Error while fetching table details.';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
+          const errMsg =
+            err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-table-details-error'];
+          handleShowErrorToast(errMsg);
         }
       })
       .finally(() => {
@@ -346,12 +363,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
               const { sampleData } = res.data;
               setSampleData(sampleData);
             })
-            .catch(() =>
-              showToast({
-                variant: 'error',
-                body: 'Error while getting sample data.',
-              })
-            )
+            .catch((err: AxiosError) => {
+              const errMsg =
+                err.response?.data?.message ||
+                jsonData['api-error-messages']['fetch-sample-data-error'];
+              handleShowErrorToast(errMsg);
+            })
             .finally(() => setIsSampleDataLoading(false));
 
           break;
@@ -380,12 +397,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
               const { tableQueries } = res.data;
               setTableQueries(tableQueries);
             })
-            .catch(() =>
-              showToast({
-                variant: 'error',
-                body: 'Error while getting table queries',
-              })
-            )
+            .catch((err: AxiosError) => {
+              const errMsg =
+                err.response?.data?.message ||
+                jsonData['api-error-messages']['fetch-table-queries-error'];
+              handleShowErrorToast(errMsg);
+            })
             .finally(() => setIsTableQueriesLoading(false));
 
           break;
@@ -418,11 +435,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setFeedCount(res.data.totalCount);
         setEntityFieldThreadCount(res.data.counts);
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching entity feed count',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -446,12 +463,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         const msg =
-          err.response?.data.message ||
-          `Error while updating entity description.`;
-        showToast({
-          variant: 'error',
-          body: msg,
-        });
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['update-description-error'];
+        handleShowErrorToast(msg);
       });
   };
 
@@ -462,16 +476,35 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setCurrentVersion(version);
         setTableDetails(res.data);
         setColumns(columns);
-        setTableTags(getTableTags(columns || []));
         getEntityFeedCount();
       })
       .catch((err: AxiosError) => {
         const msg =
-          err.response?.data.message || `Error while updating entity.`;
-        showToast({
-          variant: 'error',
-          body: msg,
-        });
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['update-entity-error'];
+        handleShowErrorToast(msg);
+      });
+  };
+
+  const onTagUpdate = (updatedTable: Table) => {
+    saveUpdatedTableData(updatedTable)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setTier(getTierTags(res.data.tags));
+          setCurrentVersion(res.data.version);
+          setTableTags(getTagsWithoutTier(res.data.tags));
+          getEntityFeedCount();
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-tags-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['update-tags-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -489,15 +522,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         })
         .catch((err: AxiosError) => {
           const msg =
-            err.response?.data.message || `Error while updating entity.`;
+            err.response?.data?.message ||
+            jsonData['api-error-messages']['update-entity-error'];
+          handleShowErrorToast(msg);
           reject();
-          showToast({
-            variant: 'error',
-            body: msg,
-          });
         });
     });
   };
+
+  // TODO: move all the error from below code to en.ts and use handleShowErrorToast to show error.
 
   const followTable = () => {
     addFollower(tableId, USERId).then((res: AxiosResponse) => {
@@ -659,13 +692,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         handleShowTestForm(false);
         showToast({
           variant: 'success',
-          body: `Test ${data.testCase.tableTestType} for ${name} has been added.`,
+          body: `Test ${data.testCase.tableTestType} for ${name} has been ${
+            itsNewTest ? 'added' : 'updated'
+          } successfully.`,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -673,6 +708,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const handleAddColumnTestCase = (data: ColumnTest) => {
     addColumnTestCase(tableDetails.id, data)
       .then((res: AxiosResponse) => {
+        let itsNewTest = true;
         const columnTestRes = res.data.columns.find(
           (d: Column) => d.name === data.columnName
         );
@@ -682,6 +718,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
               (d as ModifiedTableColumn)?.columnTests?.filter(
                 (test) => test.id !== columnTestRes.columnTests[0].id
               ) || [];
+
+            itsNewTest =
+              oldTest.length ===
+              (d as ModifiedTableColumn)?.columnTests?.length;
 
             return {
               ...d,
@@ -696,13 +736,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setSelectedColumn(undefined);
         showToast({
           variant: 'success',
-          body: `Test ${data.testCase.columnTestType} for ${data.columnName} has been added.`,
+          body: `Test ${data.testCase.columnTestType} for ${
+            data.columnName
+          } has been ${itsNewTest ? 'added' : 'updated'} successfully.`,
         });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -714,11 +756,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
           (d) => d.testCase.tableTestType !== testType
         );
         setTableTestCase(updatedTest);
+        showToast({
+          variant: 'success',
+          body: TEST_DELETE_MSG,
+        });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
@@ -745,39 +791,56 @@ const DatasetDetailsPage: FunctionComponent = () => {
           return d;
         });
         setColumns(updatedColumns);
+        showToast({
+          variant: 'success',
+          body: TEST_DELETE_MSG,
+        });
       })
       .catch(() => {
         showToast({
           variant: 'error',
-          body: 'Something went wrong.',
+          body: COMMON_ERROR_MSG,
         });
       });
   };
 
   const deletePostHandler = (threadId: string, postId: string) => {
-    deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id } = res.data;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              const posts = thread.posts.filter((post) => post.id !== id);
-
-              return { ...thread, posts: posts };
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
             });
           });
-          getEntityFeedCount();
-          showToast({
-            variant: 'success',
-            body: 'Post got deleted successfully',
-          });
-        }
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
       })
-      .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting post' });
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
       });
   };
-
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -853,6 +916,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tableQueries={tableQueries}
           tableTags={tableTags}
           tableTestCase={tableTestCase}
+          tableType={tableType}
+          tagUpdateHandler={onTagUpdate}
           testMode={testMode}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}

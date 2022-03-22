@@ -16,13 +16,14 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -50,10 +51,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao.dbServiceDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        UPDATE_FIELDS);
     fernet = Fernet.getInstance();
   }
 
@@ -61,7 +59,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     if (!fernet.isKeyDefined()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.FERNET_KEY_NULL);
     }
-    List<String> jsons = dao.listAfter(null, Integer.MAX_VALUE, "", Include.ALL);
+    ListFilter filter = new ListFilter().addQueryParam("include", Include.ALL.value());
+    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
     for (String json : jsons) {
       DatabaseService databaseService = JsonUtils.readValue(json, DatabaseService.class);
       DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
@@ -86,12 +85,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
       return null;
     }
     List<String> airflowPipelineIds =
-        findTo(
-            service.getId(),
-            Entity.DATABASE_SERVICE,
-            Relationship.CONTAINS,
-            Entity.AIRFLOW_PIPELINE,
-            toBoolean(toInclude(service)));
+        findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.AIRFLOW_PIPELINE);
     List<EntityReference> airflowPipelines = new ArrayList<>();
     for (String airflowPipelineId : airflowPipelineIds) {
       airflowPipelines.add(
@@ -218,7 +212,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.DATABASE_SERVICE);
+          .withType(Entity.DATABASE_SERVICE)
+          .withDeleted(isDeleted());
     }
 
     @Override
@@ -277,6 +272,25 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   public class DatabaseServiceUpdater extends EntityUpdater {
     public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateDatabaseConnectionConfig();
+    }
+
+    private void updateDatabaseConnectionConfig() throws JsonProcessingException {
+      DatabaseConnection origConn = original.getEntity().getDatabaseConnection();
+      DatabaseConnection updatedConn = updated.getEntity().getDatabaseConnection();
+      if (origConn != null
+          && updatedConn != null
+          && Objects.equals(
+              Fernet.decryptIfTokenized(origConn.getPassword()),
+              Fernet.decryptIfTokenized(updatedConn.getPassword()))) {
+        // Password in clear didn't change. The tokenized changed because it's time-dependent.
+        updatedConn.setPassword(origConn.getPassword());
+      }
+      recordChange("databaseConnection", origConn, updatedConn, true);
     }
   }
 }

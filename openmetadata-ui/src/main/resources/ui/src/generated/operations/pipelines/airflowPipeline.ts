@@ -210,11 +210,11 @@ export interface EntityReference {
  * OpenMetadata Pipeline Config.
  */
 export interface PipelineConfig {
-  config?: any[] | boolean | ConfigObject | number | null | string;
+  config?: any[] | boolean | ConfigClass | number | null | string;
   schema?: Schema;
 }
 
-export interface ConfigObject {
+export interface ConfigClass {
   /**
    * Sample data extraction query.
    */

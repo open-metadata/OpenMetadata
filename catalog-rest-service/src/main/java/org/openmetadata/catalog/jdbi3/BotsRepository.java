@@ -33,10 +33,7 @@ public class BotsRepository extends EntityRepository<Bots> {
         dao.botsDAO(),
         dao,
         Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS,
-        false,
-        false,
-        false);
+        Fields.EMPTY_FIELDS);
   }
 
   @Override
@@ -131,7 +128,8 @@ public class BotsRepository extends EntityRepository<Bots> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.BOTS);
+          .withType(Entity.BOTS)
+          .withDeleted(isDeleted());
     }
 
     @Override

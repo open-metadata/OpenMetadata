@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isNull } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -20,7 +21,6 @@ import { Button } from '../buttons/Button/Button';
 import DropDownList from '../dropdown/DropDownList';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 // const INPUT_COLLAPED = '1px';
 // const INPUT_EXPANDED = '150px';
@@ -75,7 +75,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       .filter((tag) => {
         return !tags.some((selectedTag) => selectedTag.tagFQN === tag.fqn);
       })
-      .filter((tag) => !tag.fqn?.includes('Tier'))
+      .filter((tag) => !tag.fqn?.startsWith('Tier.Tier')) // To filter out Tier tags
       .map((tag) => {
         return {
           name: tag.fqn,

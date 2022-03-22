@@ -64,13 +64,10 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         PipelineService.class,
         PipelineServiceList.class,
         "services/pipelineServices",
-        "owner",
-        false,
-        true,
-        false,
-        false,
-        false);
+        "owner");
     this.supportsPatch = false;
+    this.supportsDots = false;
+    this.supportsAuthorizedMetadataOperations = false;
   }
 
   @BeforeAll

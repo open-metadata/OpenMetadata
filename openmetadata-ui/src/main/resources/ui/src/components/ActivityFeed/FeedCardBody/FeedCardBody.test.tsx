@@ -64,9 +64,9 @@ describe('Test FeedCardBody component', () => {
     expect(deleteButton).not.toBeInTheDocument();
   });
 
-  it('Check if FeedCardBody has deletePostHandler as undefined', async () => {
+  it('Check if FeedCardBody has onConfirmation as undefined', async () => {
     const { container } = render(
-      <FeedCardBody {...mockFeedCardBodyProps} deletePostHandler={undefined} />,
+      <FeedCardBody {...mockFeedCardBodyProps} onConfirmation={undefined} />,
       {
         wrapper: MemoryRouter,
       }

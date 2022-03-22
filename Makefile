@@ -25,6 +25,11 @@ install_test:  ## Install the ingestion module with test dependencies
 install_dev:  ## Install the ingestion module with dev dependencies
 	python -m pip install "ingestion[dev]/"
 
+.PHONY: install_all
+install_all:  ## Install the ingestion module with all dependencies
+	python -m pip install "ingestion[all]/"
+
+
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
 	@echo "Installing pre-commit hooks"

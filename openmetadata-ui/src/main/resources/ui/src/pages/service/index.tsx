@@ -66,6 +66,11 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -93,7 +98,11 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getEntityFieldThreadCounts,
+  getUpdatedThread,
+} from '../../utils/FeedUtils';
 import {
   getCurrentServiceTab,
   getIsIngestionEnable,
@@ -983,6 +992,44 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
+            });
+          });
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
+      })
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
+      });
+  };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -1133,6 +1180,7 @@ const ServicePage: FunctionComponent = () => {
                       isEntityFeed
                       withSidePanel
                       className=""
+                      deletePostHandler={deletePostHandler}
                       entityName={serviceFQN}
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
@@ -1195,6 +1243,7 @@ const ServicePage: FunctionComponent = () => {
             {threadLink ? (
               <ActivityThreadPanel
                 createThread={createThread}
+                deletePostHandler={deletePostHandler}
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}

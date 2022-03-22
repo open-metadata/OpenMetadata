@@ -16,6 +16,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
+import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
@@ -134,6 +135,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     name: string,
     index: string
   ) => {
+    const database =
+      index === SearchIndex.TABLE
+        ? getPartialNameFromFQN(fqdn, ['database'])
+        : undefined;
+
     return (
       <div
         className="tw-flex tw-items-center hover:tw-bg-body-hover"
@@ -149,7 +155,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           id={fqdn.replace(/\./g, '')}
           to={getEntityLink(index, fqdn)}
           onClick={() => setIsOpen(false)}>
-          {name}
+          {database ? `${database}.${name}` : name}
         </Link>
       </div>
     );

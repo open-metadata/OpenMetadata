@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +24,6 @@ import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 
 public class LineageRepository {
@@ -112,8 +109,7 @@ public class LineageRepository {
     }
     // from this id ---> find other ids
     List<EntityReference> upstreamEntities =
-        dao.relationshipDAO()
-            .findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal(), toBoolean(Include.NON_DELETED));
+        dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
     lineage.getNodes().addAll(upstreamEntities);
 
     upstreamDepth--;
@@ -133,8 +129,7 @@ public class LineageRepository {
     }
     // from other ids ---> to this id
     List<EntityReference> downStreamEntities =
-        dao.relationshipDAO()
-            .findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal(), toBoolean(Include.NON_DELETED));
+        dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
     lineage.getNodes().addAll(downStreamEntities);
 
     downstreamDepth--;

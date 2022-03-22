@@ -54,6 +54,11 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -75,6 +80,7 @@ import {
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 type ChartType = {
@@ -569,6 +575,44 @@ const DashboardDetailsPage = () => {
       });
   };
 
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
+            });
+          });
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
+      })
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
+      });
+  };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -602,6 +646,7 @@ const DashboardDetailsPage = () => {
           dashboardFQN={dashboardFQN}
           dashboardTags={tags}
           dashboardUrl={dashboardUrl}
+          deletePostHandler={deletePostHandler}
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}

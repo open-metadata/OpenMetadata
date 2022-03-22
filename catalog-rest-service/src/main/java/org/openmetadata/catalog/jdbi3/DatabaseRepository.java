@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import java.io.IOException;
 import java.net.URI;
@@ -50,10 +49,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         dao.databaseDAO(),
         dao,
         DATABASE_PATCH_FIELDS,
-        DATABASE_UPDATE_FIELDS,
-        false,
-        true,
-        false);
+        DATABASE_UPDATE_FIELDS);
   }
 
   public static String getFQN(Database database) {
@@ -107,8 +103,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (database == null) {
       return null;
     }
-    List<String> tableIds =
-        findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.TABLE, toBoolean(toInclude(database)));
+    List<String> tableIds = findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.TABLE);
     return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 
@@ -141,8 +136,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (database == null) {
       return null;
     }
-    List<String> result =
-        findTo(database.getId(), Entity.DATABASE, Relationship.HAS, Entity.LOCATION, toBoolean(toInclude(database)));
+    List<String> result = findTo(database.getId(), Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
     if (result.size() == 1) {
       String locationId = result.get(0);
       return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
@@ -250,7 +244,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withName(getFullyQualifiedName())
           .withDescription(getDescription())
           .withDisplayName(getDisplayName())
-          .withType(Entity.DATABASE);
+          .withType(Entity.DATABASE)
+          .withDeleted(isDeleted());
     }
 
     @Override

@@ -24,6 +24,7 @@ import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
 
 type RelatedTermsModalProp = {
+  glossaryTermFQN?: string;
   relatedTerms?: Array<FormattedGlossaryTermData>;
   onCancel: () => void;
   onSave: (terms: Array<FormattedGlossaryTermData>) => void;
@@ -31,6 +32,7 @@ type RelatedTermsModalProp = {
 };
 
 const RelatedTermsModal = ({
+  glossaryTermFQN = '',
   relatedTerms,
   onCancel,
   onSave,
@@ -56,9 +58,11 @@ const RelatedTermsModal = ({
     setIsLoading(true);
     searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
       .then((res: SearchResponse) => {
-        const termResult = formatSearchGlossaryTermResponse(
-          res?.data?.hits?.hits || []
-        );
+        const termResult = (
+          formatSearchGlossaryTermResponse(
+            res?.data?.hits?.hits || []
+          ) as FormattedGlossaryTermData[]
+        ).filter((item) => item.fqdn !== glossaryTermFQN);
         const data = !searchText ? getSearchedTerms(termResult) : termResult;
         setOptions(data);
       })

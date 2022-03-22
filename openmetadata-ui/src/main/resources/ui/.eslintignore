@@ -19,6 +19,9 @@ node_modules/
 build/
 dist/
 
+# mockups
+mock-api/
+
 # macOS
 .DS_Store
 

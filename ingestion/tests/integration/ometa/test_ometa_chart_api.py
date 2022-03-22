@@ -92,7 +92,9 @@ class OMetaChartTest(TestCase):
         )
 
         cls.metadata.delete(entity=Chart, entity_id=_id)
-        cls.metadata.delete(entity=DashboardService, entity_id=service_id)
+        cls.metadata.delete(
+            entity=DashboardService, entity_id=service_id, recursive=True
+        )
 
     def test_create(self):
         """

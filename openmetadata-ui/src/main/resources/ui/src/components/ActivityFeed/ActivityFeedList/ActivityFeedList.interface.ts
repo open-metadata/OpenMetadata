@@ -13,6 +13,7 @@
 
 import { EntityThread } from 'Models';
 import { HTMLAttributes } from 'react';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: EntityThread[];
@@ -41,4 +42,5 @@ export interface FeedListBodyProp
   onThreadSelect: (value: string) => void;
   postFeed: (value: string) => void;
   onViewMore: () => void;
+  onConfirmation?: (data: ConfirmState) => void;
 }

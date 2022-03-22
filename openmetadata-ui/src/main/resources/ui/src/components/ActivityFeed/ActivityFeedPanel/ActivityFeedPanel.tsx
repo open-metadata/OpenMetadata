@@ -11,139 +11,22 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { EntityThread, Post } from 'Models';
-import React, { FC, Fragment, useEffect, useState } from 'react';
+import { EntityThread } from 'Models';
+import React, { FC, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { getEntityField, getReplyText } from '../../../utils/FeedUtils';
-import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
-import Loader from '../../Loader/Loader';
-import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import useToastContext from '../../../hooks/useToastContext';
+import jsonData from '../../../jsons/en';
+import { getEntityField } from '../../../utils/FeedUtils';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import {
-  ActivityFeedPanelProp,
-  FeedPanelBodyProp,
-  FeedPanelHeaderProp,
-  FeedPanelOverlayProp,
-} from './ActivityFeedPanel.interface';
-
-export const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
-  onCancel,
-  entityField,
-  className,
-  noun,
-  onShowNewConversation,
-}) => {
-  return (
-    <header className={className}>
-      <div className="tw-flex tw-justify-between tw-py-3">
-        <p>
-          {noun ? noun : 'Conversation'} on{' '}
-          <span className="tw-heading">{entityField}</span>
-        </p>
-        <div className="tw-flex">
-          {onShowNewConversation ? (
-            <PopOver
-              position="bottom"
-              title="Start conversation"
-              trigger="mouseenter">
-              <Button
-                className={classNames('tw-h-7 tw-px-2')}
-                data-testid="add-teams"
-                size="small"
-                theme="primary"
-                variant="outlined"
-                onClick={() => {
-                  onShowNewConversation?.(true);
-                }}>
-                <FontAwesomeIcon icon="plus" />
-              </Button>
-            </PopOver>
-          ) : null}
-          <svg
-            className="tw-w-5 tw-h-5 tw-ml-2 tw-cursor-pointer tw-self-center"
-            data-testid="closeDrawer"
-            fill="none"
-            stroke="#6B7280"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            onClick={onCancel}>
-            <path
-              d="M6 18L18 6M6 6l12 12"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-        </div>
-      </div>
-      <hr className="tw--mx-4" />
-    </header>
-  );
-};
-
-export const FeedPanelOverlay: FC<FeedPanelOverlayProp> = ({
-  className,
-  onCancel,
-}) => {
-  return <button className={className} onClick={onCancel} />;
-};
-
-const FeedPanelBody: FC<FeedPanelBodyProp> = ({
-  threadData,
-  className,
-  isLoading,
-  deletePostHandler,
-}) => {
-  const repliesLength = threadData?.posts?.length ?? 0;
-  const mainThread = {
-    message: threadData.message,
-    from: threadData.createdBy,
-    postTs: threadData.threadTs,
-    id: threadData.id,
-  };
-
-  return (
-    <Fragment>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <div className={className}>
-          {threadData ? (
-            <ActivityFeedCard
-              isEntityFeed
-              className="tw-mb-3"
-              feed={mainThread as Post}
-            />
-          ) : null}
-          {repliesLength > 0 ? (
-            <Fragment>
-              <div className="tw-mb-3 tw-flex">
-                <span>{getReplyText(repliesLength, 'reply', 'replies')}</span>
-                <span className="tw-flex-auto tw-self-center tw-ml-1.5">
-                  <hr />
-                </span>
-              </div>
-              {threadData?.posts?.map((reply, key) => (
-                <ActivityFeedCard
-                  isEntityFeed
-                  className="tw-mb-3"
-                  deletePostHandler={deletePostHandler}
-                  feed={reply}
-                  key={key}
-                  threadId={threadData.id}
-                />
-              ))}
-            </Fragment>
-          ) : null}
-        </div>
-      )}
-    </Fragment>
-  );
-};
+import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
+import { ActivityFeedPanelProp } from './ActivityFeedPanel.interface';
+import FeedPanelBody from './FeedPanelBody';
+import FeedPanelHeader from './FeedPanelHeader';
+import FeedPanelOverlay from './FeedPanelOverlay';
 
 const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   open,
@@ -153,14 +36,41 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   postFeed,
   deletePostHandler,
 }) => {
+  const showToast = useToastContext();
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
+
+  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
+    confirmStateInitialValue
+  );
+
+  const onDiscard = () => {
+    setConfirmationState(confirmStateInitialValue);
+  };
+
+  const onPostDelete = () => {
+    if (confirmationState.postId && confirmationState.threadId) {
+      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
+    }
+    onDiscard();
+  };
+
+  const onConfirmation = (data: ConfirmState) => {
+    setConfirmationState(data);
+  };
 
   useEffect(() => {
     getFeedById(selectedThread.id)
       .then((res: AxiosResponse) => {
         setThreadData(res.data);
+      })
+      .catch((err: AxiosError) => {
+        const message = err.response?.data?.message;
+        showToast({
+          variant: 'error',
+          body: message || jsonData['api-error-messages']['fetch-feed-error'],
+        });
       })
       .finally(() => setIsLoading(false));
   }, [selectedThread]);
@@ -173,7 +83,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-10',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
@@ -190,6 +100,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           deletePostHandler={deletePostHandler}
           isLoading={isLoading}
           threadData={threadData as EntityThread}
+          onConfirmation={onConfirmation}
         />
         <ActivityFeedEditor
           buttonClass="tw-mr-4"
@@ -197,6 +108,12 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           onSave={postFeed}
         />
       </div>
+      {confirmationState.state && (
+        <DeleteConfirmationModal
+          onDelete={onPostDelete}
+          onDiscard={onDiscard}
+        />
+      )}
     </div>
   );
 };
