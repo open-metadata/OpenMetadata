@@ -17,6 +17,6 @@ public class DashboardDetails {
   By descriptionBox = By.xpath("(//div[@data-testid='description'])[2]");
   By addChartTag = By.xpath("(//span[@data-testid='tags'])[2]");
   By selectedTag = By.xpath("//span[@class='tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1']");
-  By chartTags = By.xpath("//div[@data-testid='tag-conatiner']/div/div");
+  By chartTags = By.xpath("//div[@data-testid='tag-container']/div/div");
   By breadCrumbTags = By.xpath("//div[@data-testid='breadcrumb-tags']/div");
 }
