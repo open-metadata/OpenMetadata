@@ -508,7 +508,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           )}
           entityFqn={datasetFQN}
           entityName={entityName}
-          entityType={EntityType.DATASET}
+          entityType={EntityType.TABLE}
           extraInfo={extraInfo}
           followHandler={followTable}
           followers={followersCount}
