@@ -48,6 +48,7 @@ import IconError from '../assets/svg/error.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFitView from '../assets/svg/fitview.svg';
+import IconGithubStar from '../assets/svg/github-star.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
@@ -261,6 +262,7 @@ export const Icons = {
   WEBHOOK: 'icon-webhook',
   WEBHOOK_GREY: 'icon-webhook-grey',
   WEBHOOK_PRIMARY: 'icon-webhook-primary',
+  GITHUB_STAR: 'icon-github-star',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -755,6 +757,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.WEBHOOK_PRIMARY:
       IconComponent = IconWebhookPrimary;
+
+      break;
+    case Icons.GITHUB_STAR:
+      IconComponent = IconGithubStar;
 
       break;
 

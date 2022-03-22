@@ -27,6 +27,7 @@ import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import {
@@ -261,6 +262,9 @@ const MyDataPage = () => {
       ) : (
         <Loader />
       )}
+      {location.pathname.includes('sandbox.open-metadata.org') ? (
+        <GithubStarButton />
+      ) : null}
     </PageContainerV1>
   );
 };
