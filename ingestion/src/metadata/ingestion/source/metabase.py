@@ -14,7 +14,7 @@ import json
 import logging
 import traceback
 import uuid
-from typing import Iterable
+from typing import Iterable, Optional
 from urllib.parse import quote
 
 import requests
@@ -57,7 +57,7 @@ class MetabaseSourceConfig(ConfigModel):
     chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     service_name: str
     service_type: str = DashboardServiceType.Metabase.value
-    db_service_name: str = None
+    db_service_name: Optional[str]
 
     def get_connection_url(self):
         """get connection url (not implemented)"""
