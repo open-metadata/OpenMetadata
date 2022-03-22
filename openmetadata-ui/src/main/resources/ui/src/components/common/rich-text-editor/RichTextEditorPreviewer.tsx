@@ -89,7 +89,7 @@ const RichTextEditorPreviewer = ({
       {enableSeeMoreVariant && markdown.length > MAX_LENGTH && (
         <div
           className={classNames(
-            'tw-absolute tw-flex tw-h-full tw-w-full tw-inset-x-0',
+            'tw-absolute tw-flex tw-h-full tw-w-full tw-inset-x-0 tw-pointer-events-none',
             !displayMoreText ? blurClasses : null,
             {
               'tw-top-0 tw-bottom-0': !displayMoreText,
