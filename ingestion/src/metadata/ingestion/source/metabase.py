@@ -14,7 +14,7 @@ import json
 import logging
 import traceback
 import uuid
-from typing import Iterable
+from typing import Iterable, Optional
 from urllib.parse import quote
 
 import requests
@@ -57,7 +57,7 @@ class MetabaseSourceConfig(ConfigModel):
     chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     service_name: str
     service_type: str = DashboardServiceType.Metabase.value
-    database_service_name: str = None
+    db_service_name: Optional[str] = None
 
     def get_connection_url(self):
         """get connection url (not implemented)"""
@@ -200,7 +200,7 @@ class MetabaseSource(Source[Entity]):
                         id=self.dashboard_service.id, type="dashboardService"
                     ),
                 )
-                if self.config.database_service_name:
+                if self.config.db_service_name:
                     yield from self.get_lineage(
                         dashboard_details["ordered_cards"], dashboard_details["name"]
                     )
@@ -221,7 +221,7 @@ class MetabaseSource(Source[Entity]):
                 resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
-                    table_fqdn = f"{self.config.database_service_name}.\
+                    table_fqdn = f"{self.config.db_service_name}.\
                                     {table['schema']}.{table['name']}"
                     dashboard_fqdn = (
                         f"{self.dashboard_service.name}.{quote(dashboard_name)}"
