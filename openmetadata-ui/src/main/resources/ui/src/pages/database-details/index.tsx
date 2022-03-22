@@ -88,7 +88,6 @@ import {
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   // User Id for getting followers
@@ -660,17 +659,12 @@ const DatabaseDetails: FunctionComponent = () => {
                               <td className="tableBody-cell">
                                 <TagsViewer
                                   sizeCap={-1}
-                                  tags={[
-                                    ...(table.tags || []).map((tag) => ({
-                                      ...tag,
-                                      tagFQN: tag.tagFQN?.startsWith(
-                                        'Tier.Tier'
-                                      )
-                                        ? tag.tagFQN.split('.')[1]
-                                        : tag.tagFQN,
-                                    })),
-                                    ...getTableTags(table.columns),
-                                  ]}
+                                  tags={(table.tags || []).map((tag) => ({
+                                    ...tag,
+                                    tagFQN: tag.tagFQN?.startsWith('Tier.Tier')
+                                      ? tag.tagFQN.split('.')[1]
+                                      : tag.tagFQN,
+                                  }))}
                                 />
                               </td>
                             </tr>

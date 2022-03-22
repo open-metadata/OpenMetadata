@@ -224,6 +224,7 @@ const TourPage = () => {
             tableTags={mockDatasetData.tableTags}
             tableTestCase={[]}
             tableType={mockDatasetData.tableType as TableType}
+            tagUpdateHandler={handleCountChange}
             testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}

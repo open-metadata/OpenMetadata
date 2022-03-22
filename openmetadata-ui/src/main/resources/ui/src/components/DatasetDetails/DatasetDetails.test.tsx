@@ -112,6 +112,7 @@ const DatasetDetailsProps = {
   handleTestModeChange: jest.fn(),
   qualityTestFormHandler: jest.fn(),
   deletePostHandler: jest.fn(),
+  tagUpdateHandler: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);

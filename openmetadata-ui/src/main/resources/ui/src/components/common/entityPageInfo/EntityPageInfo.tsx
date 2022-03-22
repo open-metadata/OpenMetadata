@@ -393,6 +393,7 @@ const EntityPageInfo = ({
                   setIsEditable(true);
                 }}>
                 <TagsContainer
+                  dropDownHorzPosRight={false}
                   editable={isEditable}
                   isLoading={isTagLoading}
                   selectedTags={getSelectedTags()}
