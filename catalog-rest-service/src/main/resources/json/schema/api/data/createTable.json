@@ -31,6 +31,9 @@
       },
       "default": null
     },
+    "tablePartition": {
+      "$ref": "../../entity/data/table.json#/definitions/tablePartition"
+    },
     "profileSample": {
       "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100].",
       "type": "number",
