@@ -86,6 +86,10 @@ public class Common {
   By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
   By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p]");
   By home = By.cssSelector("[data-testid='image']");
+  By saveWebhook = By.xpath("//button[@data-testid='save-webhook']");
+  By reviewCount = By.cssSelector("[data-testid='user-card-container']");
+  By tagsCount = By.xpath("(//div[@data-testid='tags']/div)");
+  By addGlossaryReviewer = By.cssSelector("[data-testid='add-new-reviewer']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);

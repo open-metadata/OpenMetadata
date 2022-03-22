@@ -21,4 +21,5 @@ until curl -s -f -o /dev/null "http://localhost:8585/api/v1/tables/name/bigquery
     printf '.'
     sleep 2
 done
+curl -u "admin:admin" --data '{"dag_run_id":"es_index_1"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/index_metadata/dagRuns
 tput setaf 2; echo "✔ OpenMetadata is up and running"

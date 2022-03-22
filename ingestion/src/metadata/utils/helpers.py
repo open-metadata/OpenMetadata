@@ -191,9 +191,9 @@ def datetime_to_ts(date: datetime) -> int:
 
 def create_lineage(from_table, to_table, query_info, metadata):
     try:
-        from_fqdn = f"{query_info.get('service_name')}.{from_table}"
+        from_fqdn = f"{query_info.get('service_name')}.{_get_formmated_table_name(str(from_table))}"
         from_entity: Table = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
-        to_fqdn = f"{query_info.get('service_name')}.{to_table}"
+        to_fqdn = f"{query_info.get('service_name')}.{_get_formmated_table_name(str(to_table))}"
         to_entity: Table = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
         if not from_entity or not to_entity:
             return None
@@ -217,6 +217,10 @@ def create_lineage(from_table, to_table, query_info, metadata):
     except Exception as err:
         logger.debug(traceback.print_exc())
         logger.error(err)
+
+
+def _get_formmated_table_name(table_name):
+    return table_name.replace("[", "").replace("]", "")
 
 
 def ingest_lineage(query_info, metadata_config):

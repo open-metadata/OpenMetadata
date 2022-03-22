@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
@@ -39,6 +41,10 @@ import {
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
 import { getThreadValue } from '../../utils/FeedUtils';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
@@ -51,13 +57,8 @@ import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
+import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 
 type Props = {
   owner: Table['owner'];
@@ -493,26 +494,10 @@ const EntityTable = ({
                         <>
                           {isReadOnly ? (
                             <div className="tw-flex tw-flex-wrap">
-                              {cell.value?.map(
-                                (
-                                  tag: TagLabel & {
-                                    added: boolean;
-                                    removed: boolean;
-                                  },
-                                  i: number
-                                ) => (
-                                  <Tags
-                                    className={classNames(
-                                      { 'diff-added': tag?.added },
-                                      { 'diff-removed': tag?.removed }
-                                    )}
-                                    key={i}
-                                    startWith="#"
-                                    tag={tag}
-                                    type="label"
-                                  />
-                                )
-                              )}
+                              <TagsViewer
+                                sizeCap={-1}
+                                tags={cell.value || []}
+                              />
                             </div>
                           ) : (
                             <div

@@ -574,3 +574,28 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 3
+
+    def test_histogram_empty(self):
+        """
+        Run the histogram on an empty table
+        """
+
+        class EmptyUser(Base):
+            __tablename__ = "empty_users"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(256))
+            fullname = Column(String(256))
+            nickname = Column(String(256))
+            comments = Column(TEXT)
+            age = Column(Integer)
+
+        EmptyUser.__table__.create(bind=self.engine)
+
+        hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+        res = (
+            Profiler(hist, session=self.session, table=EmptyUser, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.age.name).get(Metrics.HISTOGRAM.name) is None

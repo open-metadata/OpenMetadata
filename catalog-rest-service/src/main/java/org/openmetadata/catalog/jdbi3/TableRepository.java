@@ -52,6 +52,7 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.tests.ColumnTest;
+import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -115,6 +116,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setProfileSample(fields.contains("profileSample") ? table.getProfileSample() : null);
     table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
     getColumnTests(fields.contains("tests"), table);
+    getCustomMetrics(fields.contains("customMetrics"), table);
     return table;
   }
 
@@ -397,6 +399,79 @@ public class TableRepository extends EntityRepository<Table> {
     for (Column column : table.getColumns()) {
       if (column.getName().equals(columnName)) {
         column.setColumnTests(List.of(deleteColumnTest));
+      }
+    }
+    return table;
+  }
+
+  @Transaction
+  public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException, ParseException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    String columnName = customMetric.getColumnName();
+    validateColumn(table, columnName);
+
+    // Override any custom metric definition with the same name
+    List<CustomMetric> storedCustomMetrics = getCustomMetrics(table, columnName);
+    Map<String, CustomMetric> storedMapCustomMetrics = new HashMap<>();
+    if (storedCustomMetrics != null) {
+      for (CustomMetric cm : storedCustomMetrics) {
+        storedMapCustomMetrics.put(cm.getName(), cm);
+      }
+    }
+
+    // existing metric use the previous UUID
+    if (storedMapCustomMetrics.containsKey(customMetric.getName())) {
+      CustomMetric prevMetric = storedMapCustomMetrics.get(customMetric.getName());
+      customMetric.setId(prevMetric.getId());
+    }
+
+    storedMapCustomMetrics.put(customMetric.getName(), customMetric);
+    List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
+    String extension = "table.column." + columnName + ".customMetrics";
+    daoCollection
+        .entityExtensionDAO()
+        .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
+    setFields(table, Fields.EMPTY_FIELDS);
+    // return the newly created/updated custom metric only
+    for (Column column : table.getColumns()) {
+      if (column.getName().equals(columnName)) {
+        column.setCustomMetrics(List.of(customMetric));
+      }
+    }
+    return table;
+  }
+
+  @Transaction
+  public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) throws IOException {
+    // Validate the request content
+    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    validateColumn(table, columnName);
+
+    // Override any custom metric definition with the same name
+    List<CustomMetric> storedCustomMetrics = getCustomMetrics(table, columnName);
+    Map<String, CustomMetric> storedMapCustomMetrics = new HashMap<>();
+    if (storedCustomMetrics != null) {
+      for (CustomMetric cm : storedCustomMetrics) {
+        storedMapCustomMetrics.put(cm.getName(), cm);
+      }
+    }
+
+    if (!storedMapCustomMetrics.containsKey(metricName)) {
+      throw new EntityNotFoundException(String.format("Failed to find %s for %s", metricName, table.getName()));
+    }
+
+    CustomMetric deleteCustomMetric = storedMapCustomMetrics.get(metricName);
+    storedMapCustomMetrics.remove(metricName);
+    List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
+    String extension = "table.column." + columnName + ".customMetrics";
+    daoCollection
+        .entityExtensionDAO()
+        .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
+    // return the newly created/updated custom metric test only
+    for (Column column : table.getColumns()) {
+      if (column.getName().equals(columnName)) {
+        column.setCustomMetrics(List.of(deleteCustomMetric));
       }
     }
     return table;
@@ -803,6 +878,20 @@ public class TableRepository extends EntityRepository<Table> {
     List<Column> columns = table.getColumns();
     for (Column c : listOrEmpty(columns)) {
       c.setColumnTests(setTests ? getColumnTests(table, c.getName()) : null);
+    }
+  }
+
+  private List<CustomMetric> getCustomMetrics(Table table, String columnName) throws IOException {
+    String extension = "table.column." + columnName + ".customMetrics";
+    return JsonUtils.readObjects(
+        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
+  }
+
+  private void getCustomMetrics(boolean setMetrics, Table table) throws IOException {
+    // Add custom metrics info to columns if requested
+    List<Column> columns = table.getColumns();
+    for (Column c : listOrEmpty(columns)) {
+      c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : null);
     }
   }
 

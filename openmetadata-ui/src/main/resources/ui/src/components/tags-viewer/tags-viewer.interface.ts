@@ -11,4 +11,9 @@
  *  limitations under the License.
  */
 
-export const TEST_DELETE_MSG = 'Test deleted successfully.';
+import { EntityTags } from 'Models';
+
+export interface TagsViewerProps {
+  tags: Array<EntityTags>;
+  sizeCap?: number;
+}
