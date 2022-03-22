@@ -728,6 +728,7 @@ const TeamsPage = () => {
                         {currentTab === 4 && (
                           <ManageTabComponent
                             hideTier
+                            allowTeamOwner={false}
                             currentUser={currentTeam?.owner?.id}
                             hasEditAccess={isOwner()}
                             onSave={handleUpdateOwner}
