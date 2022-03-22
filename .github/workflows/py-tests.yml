@@ -55,7 +55,7 @@ jobs:
 
     - name: Start Server and Ingest Sample Data
       run: ./docker/run_local_docker.sh
-      timeout-minutes: 20
+      timeout-minutes: 30
 
     - name: Run Python Tests & record coverage
       run: |
