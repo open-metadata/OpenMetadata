@@ -76,6 +76,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.tests.CreateColumnTest;
+import org.openmetadata.catalog.api.tests.CreateCustomMetric;
 import org.openmetadata.catalog.api.tests.CreateTableTest;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
@@ -91,6 +92,7 @@ import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.ColumnTestCase;
+import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.tests.TableTestCase;
 import org.openmetadata.catalog.tests.column.ColumnValueLengthsToBeBetween;
@@ -1053,6 +1055,49 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void createUpdateDelete_tableCustomMetrics_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Column c1 = table.getColumns().get(0);
+
+    CreateCustomMetric createMetric =
+        new CreateCustomMetric()
+            .withName("custom")
+            .withColumnName(c1.getName())
+            .withExpression("SELECT SUM(xyz) FROM abc");
+    Table putResponse = putCustomMetric(table.getId(), createMetric, ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(putResponse, c1, List.of(createMetric));
+
+    table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(table, c1, List.of(createMetric));
+
+    // Update Custom Metric
+    CreateCustomMetric updatedMetric =
+        new CreateCustomMetric()
+            .withName("custom")
+            .withColumnName(c1.getName())
+            .withExpression("Another select statement");
+    putResponse = putCustomMetric(table.getId(), updatedMetric, ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(putResponse, c1, List.of(updatedMetric));
+
+    // Add another Custom Metric
+    CreateCustomMetric createMetric2 =
+        new CreateCustomMetric()
+            .withName("custom2")
+            .withColumnName(c1.getName())
+            .withExpression("Yet another statement");
+    putResponse = putCustomMetric(table.getId(), createMetric2, ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(putResponse, c1, List.of(createMetric2));
+
+    table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(table, c1, List.of(updatedMetric, createMetric2));
+
+    // Delete Custom Metric
+    putResponse = deleteCustomMetric(table.getId(), c1.getName(), updatedMetric.getName(), ADMIN_AUTH_HEADERS);
+    table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(table, c1, List.of(createMetric2));
+  }
+
+  @Test
   void createUpdateDelete_tableColumnTests_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     TableRowCountToEqual tableRowCountToEqual = new TableRowCountToEqual().withValue(100);
@@ -1706,6 +1751,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
+  public static Table putCustomMetric(UUID tableId, CreateCustomMetric data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/customMetric");
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public static Table deleteCustomMetric(
+      UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target =
+        CatalogApplicationTest.getResource("tables/" + tableId + "/customMetric/" + columnName + "/" + metricName);
+    return TestUtils.delete(target, Table.class, authHeaders);
+  }
+
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
     return TagResourceTest.getTag(tagFQN, "usageCount", authHeaders).getUsageCount();
   }
@@ -1804,6 +1863,29 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       if (test.getResult() != null) {
         verifyTestCaseResults(test.getResult(), storedTest.getResults());
       }
+    }
+  }
+
+  private void verifyCustomMetrics(Table table, Column column, List<CreateCustomMetric> expectedMetrics) {
+    List<CustomMetric> actualMetrics = new ArrayList<>();
+    for (Column c : table.getColumns()) {
+      if (c.getName().equals(column.getName())) {
+        actualMetrics = c.getCustomMetrics();
+      }
+    }
+    assertEquals(actualMetrics.size(), expectedMetrics.size());
+
+    Map<String, CustomMetric> columnMetricMap = new HashMap<>();
+    for (CustomMetric metric : actualMetrics) {
+      columnMetricMap.put(metric.getName(), metric);
+    }
+
+    for (CreateCustomMetric metric : expectedMetrics) {
+      CustomMetric storedMetric = columnMetricMap.get(metric.getName());
+      assertNotNull(storedMetric);
+      assertEquals(metric.getDescription(), storedMetric.getDescription());
+      assertEquals(metric.getOwner(), storedMetric.getOwner());
+      assertEquals(metric.getExpression(), storedMetric.getExpression());
     }
   }
 
