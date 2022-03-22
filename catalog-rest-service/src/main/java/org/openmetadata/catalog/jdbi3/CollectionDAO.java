@@ -478,11 +478,105 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity ORDER BY updatedAt DESC")
     List<String> list();
 
+    @SqlQuery("SELECT count(id) FROM thread_entity WHERE resolved = :resolved")
+    int listCount(@Bind("resolved") boolean resolved);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity "
+            + "WHERE updatedAt > :before AND resolved = :resolved "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listBefore(@Bind("limit") int limit, @Bind("before") long before, @Bind("resolved") boolean resolved);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity "
+            + "WHERE updatedAt < :after AND resolved = :resolved "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listAfter(@Bind("limit") int limit, @Bind("after") long after, @Bind("resolved") boolean resolved);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "
+            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByOwnerBefore(
+        @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("limit") int limit,
+        @Bind("before") long before,
+        @Bind("resolved") boolean resolved);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND "
+            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByOwnerAfter(
+        @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("limit") int limit,
+        @Bind("after") long after,
+        @Bind("resolved") boolean resolved);
+
+    @SqlQuery(
+        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND "
+            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) ")
+    int listCountThreadsByOwner(
+        @Bind("userId") String userId, @BindList("teamIds") List<String> teamIds, @Bind("resolved") boolean resolved);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "
+            + "id in (SELECT fromFQN FROM field_relationship WHERE "
+            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType='THREAD' AND toType LIKE CONCAT(:toType, '%') AND relation= :relation) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByEntityLinkBefore(
+        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("toType") String toType,
+        @Bind("limit") int limit,
+        @Bind("before") long before,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND "
+            + "id in (SELECT fromFQN FROM field_relationship WHERE "
+            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType='THREAD' AND toType LIKE CONCAT(:toType, '%') AND relation= :relation) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByEntityLinkAfter(
+        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("toType") String toType,
+        @Bind("limit") int limit,
+        @Bind("after") long after,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND "
+            + "id in (SELECT fromFQN FROM field_relationship WHERE "
+            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType='THREAD' AND toType LIKE CONCAT(:toType, '%') AND relation= :relation)")
+    int listCountThreadsByEntityLink(
+        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("toType") String toType,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
+
     @SqlUpdate("UPDATE thread_entity SET json = :json where id = :id")
     void update(@Bind("id") String id, @Bind("json") String json);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(*) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQN=te.id "
+        "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQN=te.id "
             + "WHERE fr.toFQN LIKE CONCAT(:fqnPrefix, '%') AND fr.toType like concat(:toType, '%') AND fr.fromType = :fromType "
             + "AND fr.relation = :relation AND te.resolved= :isResolved "
             + "GROUP BY entityLink")
@@ -495,29 +589,98 @@ public interface CollectionDAO {
         @Bind("isResolved") boolean isResolved);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(*) count FROM thread_entity WHERE (id IN (<threadIds>)) "
+        "SELECT entityLink, COUNT(id) count FROM thread_entity WHERE resolved = :resolved AND "
+            + "id in (SELECT toId FROM entity_relationship WHERE "
+            + "(((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+            + "(fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+            + "GROUP BY entityLink")
+    @RegisterRowMapper(CountFieldMapper.class)
+    List<List<String>> listCountByOwner(
+        @Bind("userId") String userId, @BindList("teamIds") List<String> teamIds, @Bind("resolved") boolean resolved);
+
+    @SqlQuery(
+        "SELECT entityLink, COUNT(id) count FROM thread_entity WHERE (id IN (<threadIds>)) "
             + "AND resolved= :isResolved GROUP BY entityLink")
     @RegisterRowMapper(CountFieldMapper.class)
     List<List<String>> listCountByThreads(
         @BindList("threadIds") List<String> threadIds, @Bind("isResolved") boolean isResolved);
 
     @SqlQuery(
-        "SELECT id FROM thread_entity WHERE entityId in ("
+        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND entityId in ("
+            + "SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByFollowsBefore(
+        @Bind("userId") String userId,
+        @Bind("limit") int limit,
+        @Bind("before") long before,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND entityId in ("
+            + "SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByFollowsAfter(
+        @Bind("userId") String userId,
+        @Bind("limit") int limit,
+        @Bind("after") long after,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND entityId in ("
             + "SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation)")
-    List<String> listUserThreadsFromER(
-        @Bind("userId") String userId, @BindList("teamIds") List<String> teamIds, @Bind("relation") int relation);
+    int listCountThreadsByFollows(
+        @Bind("userId") String userId, @Bind("resolved") boolean resolved, @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT id FROM thread_entity WHERE id in ("
+        "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND id in ("
             + "SELECT toFQN FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQN= :userName) OR "
-            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType = :toType AND relation = :relation)")
-    List<String> listUserThreadsFromFR(
+            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByMentionsBefore(
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
-        @Bind("toType") String toType,
+        @Bind("limit") int limit,
+        @Bind("before") long before,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND id in ("
+            + "SELECT toFQN FROM field_relationship WHERE "
+            + "((fromType='user' AND fromFQN= :userName) OR "
+            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByMentionsAfter(
+        @Bind("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("limit") int limit,
+        @Bind("after") long after,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND id in ("
+            + "SELECT toFQN FROM field_relationship WHERE "
+            + "((fromType='user' AND fromFQN= :userName) OR "
+            + "(fromType='team' AND fromFQN IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) ")
+    int listCountThreadsByMentions(
+        @Bind("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("resolved") boolean resolved,
         @Bind("relation") int relation);
 
     class CountFieldMapper implements RowMapper<List<String>> {

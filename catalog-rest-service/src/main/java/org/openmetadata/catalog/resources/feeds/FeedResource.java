@@ -56,6 +56,7 @@ import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.jdbi3.FeedRepository.FilterType;
+import org.openmetadata.catalog.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -130,7 +131,7 @@ public class FeedResource {
             description = "List of threads",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ThreadList.class)))
       })
-  public ThreadList list(
+  public ResultList<Thread> list(
       @Context UriInfo uriInfo,
       @Parameter(
               description = "Limit the number of posts sorted by chronological order (1 to 1000000, default = 3)",
@@ -140,6 +141,18 @@ public class FeedResource {
           @DefaultValue("3")
           @QueryParam("limitPosts")
           int limitPosts,
+      @Parameter(description = "Limit the number of threads returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of threads before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of threads after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after,
       @Parameter(
               description = "Filter threads by entity link",
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
@@ -147,7 +160,7 @@ public class FeedResource {
           String entityLink,
       @Parameter(
               description =
-                  "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'",
+                  "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'. This filter cannot be combined with the entityLink filter.",
               schema = @Schema(type = "string"))
           @QueryParam("userId")
           String userId,
@@ -156,9 +169,24 @@ public class FeedResource {
                   "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
               schema = @Schema(implementation = FilterType.class))
           @QueryParam("filterType")
-          FilterType filterType)
-      throws IOException {
-    return new ThreadList(addHref(uriInfo, dao.listThreads(entityLink, limitPosts, userId, filterType)));
+          FilterType filterType,
+      @Parameter(description = "Filter threads by whether they are resolved or not. By default resolved is false")
+          @DefaultValue("false")
+          @QueryParam("resolved")
+          boolean resolved)
+      throws IOException, ParseException {
+    RestUtil.validateCursors(before, after);
+
+    ResultList<Thread> threads;
+    if (before != null) { // Reverse paging
+      threads =
+          dao.list(entityLink, limitPosts, userId, filterType, limitParam, before, resolved, PaginationType.BEFORE);
+    } else { // Forward paging or first page
+      threads = dao.list(entityLink, limitPosts, userId, filterType, limitParam, after, resolved, PaginationType.AFTER);
+    }
+    threads.getData().forEach(thread -> addHref(uriInfo, thread));
+
+    return threads;
   }
 
   @GET
