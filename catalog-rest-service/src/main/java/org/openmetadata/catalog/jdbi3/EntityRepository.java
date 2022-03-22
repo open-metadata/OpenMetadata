@@ -276,24 +276,29 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
       throws GeneralSecurityException, IOException, ParseException {
-    // forward scrolling, if after == null then first page is being asked
-    List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
-
-    List<T> entities = new ArrayList<>();
-    for (String json : jsons) {
-      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
-      entities.add(entity);
-    }
     int total = dao.listCount(filter);
+    List<T> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
 
-    String beforeCursor;
-    String afterCursor = null;
-    beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
-    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      entities.remove(limitParam);
-      afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+      for (String json : jsons) {
+        T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+        entities.add(entity);
+      }
+
+      String beforeCursor;
+      String afterCursor = null;
+      beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
+      if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+        entities.remove(limitParam);
+        afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+      }
+      return getResultList(entities, beforeCursor, afterCursor, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return getResultList(entities, null, null, total);
     }
-    return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
   @Transaction

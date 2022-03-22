@@ -135,7 +135,7 @@ public class FeedResource {
       @Parameter(
               description = "Limit the number of posts sorted by chronological order (1 to 1000000, default = 3)",
               schema = @Schema(type = "integer"))
-          @Min(1)
+          @Min(0)
           @Max(1000000)
           @DefaultValue("3")
           @QueryParam("limitPosts")

@@ -719,12 +719,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     assertResponse(
         () -> listEntities(null, -1, null, null, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[query param limit must be greater than or equal to 1]");
+        "[query param limit must be greater than or equal to 0]");
 
     assertResponse(
-        () -> listEntities(null, 0, null, null, ADMIN_AUTH_HEADERS),
+        () -> listEntities(null, -1, null, null, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[query param limit must be greater than or equal to 1]");
+        "[query param limit must be greater than or equal to 0]");
 
     assertResponse(
         () -> listEntities(null, 1000001, null, null, ADMIN_AUTH_HEADERS),

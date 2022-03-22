@@ -368,9 +368,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // limit 0 is not supported and should throw an exception
     assertResponse(
-        () -> listThreads(null, 0, AUTH_HEADERS),
+        () -> listThreads(null, -1, AUTH_HEADERS),
         BAD_REQUEST,
-        "[query param limitPosts must be greater than or equal to 1]");
+        "[query param limitPosts must be greater than or equal to 0]");
 
     // limit greater than total number of posts should return correct response
     threads = listThreads(null, 100, AUTH_HEADERS);

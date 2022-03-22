@@ -130,7 +130,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           String fieldsParam,
       @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(1)
+          @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
