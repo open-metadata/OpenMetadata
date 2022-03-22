@@ -61,6 +61,11 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
+    "isJoinable": {
+      "description": "Can any user join this team during sign up? Value of true indicates yes, and false no.",
+      "type": "boolean",
+      "default": true
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

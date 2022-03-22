@@ -39,11 +39,11 @@ import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.TestUtils;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class PermisssionsResourceTest extends CatalogApplicationTest {
+class PermissionsResourceTest extends CatalogApplicationTest {
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
-  private static final String DATA_STEWARD_USER_NAME = "user-data-steward";
-  private static final String DATA_CONSUMER_USER_NAME = "user-data-consumer";
+  private static final String DATA_STEWARD_USER_NAME = "puser-data-steward";
+  private static final String DATA_CONSUMER_USER_NAME = "puser-data-consumer";
 
   @BeforeAll
   static void setup() throws IOException {
@@ -69,7 +69,7 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
 
   @ParameterizedTest
   @MethodSource("getPermissionsTestParams")
-  void get_permissions(String username, Map<MetadataOperation, Boolean> expectedOperations)
+  void get_permissiofns(String username, Map<MetadataOperation, Boolean> expectedOperations)
       throws HttpResponseException {
     WebTarget target = getResource("permissions");
     Map<String, String> authHeaders = SecurityUtil.authHeaders(username + "@open-metadata.org");
@@ -99,12 +99,12 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
             DATA_STEWARD_USER_NAME,
             new HashMap<MetadataOperation, Boolean>() {
               {
-                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
-                put(MetadataOperation.SuggestTags, Boolean.FALSE);
                 put(MetadataOperation.UpdateDescription, Boolean.TRUE);
                 put(MetadataOperation.UpdateLineage, Boolean.TRUE);
                 put(MetadataOperation.UpdateOwner, Boolean.TRUE);
                 put(MetadataOperation.UpdateTags, Boolean.TRUE);
+                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
+                put(MetadataOperation.SuggestTags, Boolean.FALSE);
                 put(MetadataOperation.DecryptTokens, Boolean.FALSE);
                 put(MetadataOperation.UpdateTeam, Boolean.FALSE);
               }
@@ -115,10 +115,10 @@ class PermisssionsResourceTest extends CatalogApplicationTest {
               {
                 put(MetadataOperation.SuggestDescription, Boolean.FALSE);
                 put(MetadataOperation.SuggestTags, Boolean.FALSE);
-                put(MetadataOperation.UpdateDescription, Boolean.FALSE);
+                put(MetadataOperation.UpdateDescription, Boolean.TRUE);
                 put(MetadataOperation.UpdateLineage, Boolean.FALSE);
-                put(MetadataOperation.UpdateOwner, Boolean.FALSE);
-                put(MetadataOperation.UpdateTags, Boolean.FALSE);
+                put(MetadataOperation.UpdateOwner, Boolean.TRUE);
+                put(MetadataOperation.UpdateTags, Boolean.TRUE);
                 put(MetadataOperation.DecryptTokens, Boolean.FALSE);
                 put(MetadataOperation.UpdateTeam, Boolean.FALSE);
               }

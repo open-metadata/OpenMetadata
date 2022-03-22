@@ -75,6 +75,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
+    Entity.withHref(uriInfo, team.getOwner());
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
@@ -94,7 +95,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     }
   }
 
-  static final String FIELDS = "profile,users,owns,defaultRoles";
+  static final String FIELDS = "owner,profile,users,owns,defaultRoles";
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Team.class);
 
   @GET
@@ -294,7 +295,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException, ParseException {
     Team team = getTeam(ct, securityContext);
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(team));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(team));
     RestUtil.PutResponse<Team> response = dao.createOrUpdate(uriInfo, team);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -361,6 +362,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withDisplayName(ct.getDisplayName())
         .withProfile(ct.getProfile())
         .withOwner(ct.getOwner())
+        .withIsJoinable(ct.getIsJoinable())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
         .withUsers(dao.getEntityReferences(ct.getUsers()))
