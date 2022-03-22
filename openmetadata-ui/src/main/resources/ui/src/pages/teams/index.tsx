@@ -340,7 +340,7 @@ const TeamsPage = () => {
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(4)}`}
-            data-testid="roles"
+            data-testid="manage"
             onClick={() => {
               setCurrentTab(4);
             }}>

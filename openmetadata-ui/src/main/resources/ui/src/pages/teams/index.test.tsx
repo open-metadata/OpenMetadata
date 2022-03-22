@@ -177,6 +177,10 @@ jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<div>Description</div>);
 });
 
+jest.mock('../../components/ManageTab/ManageTab.component', () => {
+  return jest.fn().mockReturnValue(<div>ManageTab</div>);
+});
+
 describe('Test Teams page', () => {
   it('Component should render', async () => {
     const { container } = render(<TeamsPage />);
@@ -226,18 +230,20 @@ describe('Test Teams page', () => {
     expect(await findByTestId(container, 'add-user-modal')).toBeInTheDocument();
   });
 
-  it('Should have 3 tabs in the page', async () => {
+  it('Should have 4 tabs in the page', async () => {
     const { container } = render(<TeamsPage />);
 
     const tabs = await findByTestId(container, 'tabs');
     const user = await findByTestId(container, 'users');
     const asstes = await findByTestId(container, 'assets');
     const roles = await findByTestId(container, 'roles');
+    const manage = await findByTestId(container, 'manage');
 
-    expect(tabs.childElementCount).toBe(3);
+    expect(tabs.childElementCount).toBe(4);
     expect(user).toBeInTheDocument();
     expect(asstes).toBeInTheDocument();
     expect(roles).toBeInTheDocument();
+    expect(manage).toBeInTheDocument();
   });
 
   it('Description should be in document', async () => {
@@ -295,5 +301,20 @@ describe('Test Teams page', () => {
     );
 
     expect(confirmationModal).toBeInTheDocument();
+  });
+
+  it('OnClick of manage tab, manage tab content should render', async () => {
+    const { container } = render(<TeamsPage />);
+    const assets = await findByTestId(container, 'manage');
+
+    fireEvent.click(
+      assets,
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    expect(await findByText(container, /ManageTab/i)).toBeInTheDocument();
   });
 });
