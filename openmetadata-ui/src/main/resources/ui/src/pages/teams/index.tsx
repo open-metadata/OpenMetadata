@@ -114,6 +114,13 @@ const TeamsPage = () => {
     },
   ];
 
+  const isOwner = () => {
+    return hasEditAccess(
+      currentTeam?.owner?.type || '',
+      currentTeam?.owner?.id || ''
+    );
+  };
+
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
@@ -629,6 +636,7 @@ const TeamsPage = () => {
                                 You do not have permission to update the team.
                               </Fragment>
                             }
+                            isOwner={isOwner()}
                             permission={Operation.UpdateTeam}
                             position="bottom">
                             <Button
@@ -638,7 +646,8 @@ const TeamsPage = () => {
                                   'tw-opacity-40':
                                     !isAdminUser &&
                                     !isAuthDisabled &&
-                                    !userPermissions[Operation.UpdateTeam],
+                                    !userPermissions[Operation.UpdateTeam] &&
+                                    !isOwner(),
                                 }
                               )}
                               data-testid="add-new-user-button"
@@ -655,13 +664,16 @@ const TeamsPage = () => {
                                 You do not have permission to delete the team.
                               </Fragment>
                             }
+                            isOwner={isOwner()}
                             position="bottom">
                             <Button
                               className={classNames(
                                 'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
                                 {
                                   'tw-opacity-40':
-                                    !isAdminUser && !isAuthDisabled,
+                                    !isAdminUser &&
+                                    !isAuthDisabled &&
+                                    !isOwner(),
                                 }
                               )}
                               data-testid="delete-team-button"
@@ -717,10 +729,7 @@ const TeamsPage = () => {
                           <ManageTabComponent
                             hideTier
                             currentUser={currentTeam?.owner?.id}
-                            hasEditAccess={hasEditAccess(
-                              currentTeam?.owner?.type || '',
-                              currentTeam?.owner?.id || ''
-                            )}
+                            hasEditAccess={isOwner()}
                             onSave={handleUpdateOwner}
                           />
                         )}
