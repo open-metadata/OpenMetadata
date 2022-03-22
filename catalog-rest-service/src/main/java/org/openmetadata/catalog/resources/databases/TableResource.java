@@ -98,6 +98,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public TableResource(CollectionDAO dao, Authorizer authorizer) {
     super(Table.class, new TableRepository(dao), authorizer);
     allowedFields.add("tests");
+    allowedFields.add("customMetrics");
   }
 
   public static class TableList extends ResultList<Table> {
