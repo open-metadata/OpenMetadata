@@ -31,7 +31,7 @@ import { getEntityIcon } from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
-import Tags from '../tags/tags';
+import TagsViewer from '../tags-viewer/tags-viewer';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.css';
 
@@ -219,9 +219,10 @@ const EntityInfoDrawer = ({
             <span className="tw-text-grey-muted">Tags</span>
             <div className="tw-flex tw-flex-wrap tw-pt-1.5">
               {getEntityTags(selectedNode.type, entityDetail).length > 0 ? (
-                getEntityTags(selectedNode.type, entityDetail).map((t) => {
-                  return <Tags key={t} startWith="#" tag={t ? t : ''} />;
-                })
+                <TagsViewer
+                  sizeCap={-1}
+                  tags={getEntityTags(selectedNode.type, entityDetail)}
+                />
               ) : (
                 <p className="tw-text-xs tw-text-grey-muted">No Tags added</p>
               )}

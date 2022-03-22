@@ -52,6 +52,7 @@ import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsContainer from '../tags-container/tags-container';
+import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
 
@@ -536,16 +537,10 @@ const DashboardDetails = ({
                               }}>
                               {deleted ? (
                                 <div className="tw-flex tw-flex-wrap">
-                                  {chart.tags?.map(
-                                    (tag: TagLabel, i: number) => (
-                                      <Tags
-                                        key={i}
-                                        startWith="#"
-                                        tag={tag}
-                                        type="label"
-                                      />
-                                    )
-                                  )}
+                                  <TagsViewer
+                                    sizeCap={-1}
+                                    tags={chart.tags || []}
+                                  />
                                 </div>
                               ) : (
                                 <NonAdminAction
