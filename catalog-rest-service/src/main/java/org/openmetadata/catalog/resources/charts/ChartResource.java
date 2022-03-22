@@ -129,7 +129,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(1)
+          @Min(0)
           @Max(1000000)
           int limitParam,
       @Parameter(description = "Returns list of charts before this cursor", schema = @Schema(type = "string"))
