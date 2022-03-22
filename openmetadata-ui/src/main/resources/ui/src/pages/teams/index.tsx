@@ -603,7 +603,7 @@ const TeamsPage = () => {
       {error ? (
         <ErrorPlaceHolder />
       ) : (
-        <PageContainerV1 className="tw-my-4">
+        <PageContainerV1 className="tw-pt-4 tw-mb-4">
           <PageLayout classes="tw-h-full" leftPanel={fetchLeftPanel()}>
             {isLoading ? (
               <Loader />
