@@ -28,6 +28,12 @@ class CustomTypes(TypeRegistry):
 
 
 class Dialects(Enum):
+    """
+    Map the service types from DatabaseServiceType
+    to the dialect scheme name used for ingesting
+    and profiling data.
+    """
+
     Hive = b"hive"
     Postgres = "postgresql"
     BigQuery = "bigquery"
