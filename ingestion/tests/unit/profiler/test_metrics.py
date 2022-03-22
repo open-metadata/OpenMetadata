@@ -594,8 +594,8 @@ class MetricsTest(TestCase):
         hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
         res = (
             Profiler(hist, session=self.session, table=EmptyUser, use_cols=[User.age])
-                .execute()
-                ._column_results
+            .execute()
+            ._column_results
         )
 
         assert res.get(User.age.name).get(Metrics.HISTOGRAM.name) is None

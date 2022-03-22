@@ -33,9 +33,7 @@ def _(element, compiler, **kw):
 
 @compiles(LenFn, Dialects.SQLite)
 @compiles(LenFn, Dialects.Vertica)
-@compiles(
-    LenFn, Dialects.Hive
-)  # For some reason hive's dialect is in bytes...
+@compiles(LenFn, Dialects.Hive)  # For some reason hive's dialect is in bytes...
 @compiles(LenFn, Dialects.Postgres)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)

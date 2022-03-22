@@ -30,26 +30,26 @@ class CustomTypes(TypeRegistry):
 class Dialects(Enum):
     Hive = b"hive"
     Postgres = "postgresql"
-    BigQuery = 'bigquery'
-    MySQL = 'mysql'
-    Redshift = 'redshift'
-    Snowflake = 'snowflake'
-    MSSQL = 'mssql'
-    Oracle = 'oracle'
-    Athena = 'athena'
-    Presto = 'presto'
-    Trino = 'Trino'
-    Vertica = 'vertica'
-    Glue = 'glue'
-    MariaDB = 'mariadb'
-    Druid = 'druid'
-    Db2 = 'db2'
-    ClickHouse = 'clickhouse'
-    Databricks = 'databricks'
-    DynamoDB = 'dynamoDB'
-    AzureSQL = 'azuresql'
-    SingleStore = 'singlestore'
-    SQLite = 'sqlite'
+    BigQuery = "bigquery"
+    MySQL = "mysql"
+    Redshift = "redshift"
+    Snowflake = "snowflake"
+    MSSQL = "mssql"
+    Oracle = "oracle"
+    Athena = "athena"
+    Presto = "presto"
+    Trino = "Trino"
+    Vertica = "vertica"
+    Glue = "glue"
+    MariaDB = "mariadb"
+    Druid = "druid"
+    Db2 = "db2"
+    ClickHouse = "clickhouse"
+    Databricks = "databricks"
+    DynamoDB = "dynamoDB"
+    AzureSQL = "azuresql"
+    SingleStore = "singlestore"
+    SQLite = "sqlite"
 
 
 # Sometimes we want to skip certain types for computing metrics.
