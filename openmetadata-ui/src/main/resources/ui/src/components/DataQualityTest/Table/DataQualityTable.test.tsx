@@ -15,6 +15,12 @@ jest.mock('../../common/non-admin-action/NonAdminAction', () => {
     ));
 });
 
+jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>RichTextEditorPreviewerComponent</div>);
+});
+
 describe('Test DataQualityTable component', () => {
   it('DataQualityTable component should be render properly', async () => {
     const { container } = render(
