@@ -37,18 +37,10 @@ import org.openmetadata.catalog.util.TestUtils;
 @Slf4j
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
   public StorageServiceResourceTest() {
-    super(
-        Entity.STORAGE_SERVICE,
-        StorageService.class,
-        StorageServiceList.class,
-        "services/storageServices",
-        "owner",
-        false,
-        true,
-        false,
-        false,
-        false);
+    super(Entity.STORAGE_SERVICE, StorageService.class, StorageServiceList.class, "services/storageServices", "owner");
     this.supportsPatch = false;
+    this.supportsDots = false;
+    this.supportsAuthorizedMetadataOperations = false;
   }
 
   @Test

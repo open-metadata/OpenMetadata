@@ -52,11 +52,6 @@ const getIntialContent = (format: string, content?: string) => {
 
         return EditorState.createWithContent(state);
 
-      case Format.JSON:
-        const jsonData = convertFromRaw(JSON.parse(content));
-
-        return EditorState.createWithContent(jsonData);
-
       default:
         return EditorState.createEmpty();
     }
@@ -83,15 +78,9 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
     };
 
     useImperativeHandle(ref, () => ({
-      getEditorContent(format: 'json' | 'markdown') {
-        switch (format) {
-          case Format.MARKDOWN:
-            return draftjsToMd(convertToRaw(editorState.getCurrentContent()));
-
-          case Format.JSON:
-          default:
-            return convertToRaw(editorState.getCurrentContent());
-        }
+      getEditorContent(_format: 'json' | 'markdown') {
+        // use switch case for multiple format support
+        return draftjsToMd(convertToRaw(editorState.getCurrentContent()));
       },
     }));
 

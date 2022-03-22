@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import {
@@ -20,15 +21,12 @@ import {
   GlossaryTermAssets,
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import {
-  LIST_SIZE,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
-import { LabelType, State } from '../../generated/type/tagLabel';
+import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import UserCard from '../../pages/teams/UserCard';
 import SVGIcons from '../../utils/SvgUtils';
 import {
@@ -39,22 +37,22 @@ import {
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import PopOver from '../common/popover/PopOver';
 import TabsPane from '../common/TabsPane/TabsPane';
 import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
+import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
   glossaryTerm: GlossaryTerm;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
   onAssetPaginate: (num: number) => void;
+  onRelatedTermClick?: (fqn: string) => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -63,6 +61,7 @@ const GlossaryTermsV1 = ({
   glossaryTerm,
   handleGlossaryTermUpdate,
   onAssetPaginate,
+  onRelatedTermClick,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -176,6 +175,7 @@ const GlossaryTermsV1 = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
+          source: Source.Tag,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];
@@ -508,31 +508,7 @@ const GlossaryTermsV1 = ({
                   icon="icon-tag-grey"
                   width="16"
                 />
-                {glossaryTerm.tags.slice(0, LIST_SIZE).map((tag, index) => (
-                  <Tags key={index} startWith="#" tag={tag} type="label" />
-                ))}
-
-                {glossaryTerm.tags.slice(LIST_SIZE).length > 0 && (
-                  <PopOver
-                    html={
-                      <>
-                        {glossaryTerm.tags
-                          .slice(LIST_SIZE)
-                          .map((tag, index) => (
-                            <p className="tw-text-left" key={index}>
-                              <Tags startWith="#" tag={tag} type="label" />
-                            </p>
-                          ))}
-                      </>
-                    }
-                    position="bottom"
-                    theme="light"
-                    trigger="click">
-                    <span className="tw-cursor-pointer tw-text-xs link-text v-align-sub tw--ml-1">
-                      •••
-                    </span>
-                  </PopOver>
-                )}
+                <TagsViewer tags={glossaryTerm.tags} />
               </>
             )}
           </>
@@ -613,6 +589,7 @@ const GlossaryTermsV1 = ({
             <RelationshipTab
               addButton={<>{AddRelatedTermButton()}</>}
               data={relatedTerms}
+              onRelatedTermClick={onRelatedTermClick}
             />
           )}
           {activeTab === 2 && (
@@ -626,6 +603,7 @@ const GlossaryTermsV1 = ({
 
         {showRelatedTermsModal && (
           <RelatedTermsModal
+            glossaryTermFQN={glossaryTerm.fullyQualifiedName}
             header="Add Related Terms"
             relatedTerms={relatedTerms}
             onCancel={onRelatedTermsModalCancel}

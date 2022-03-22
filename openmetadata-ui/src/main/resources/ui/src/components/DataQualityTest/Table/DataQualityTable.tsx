@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
 import { ColumnTestType } from '../../../enums/columnTest.enum';
@@ -35,6 +35,7 @@ import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal'
 type Props = {
   testCase: TableTestDataType[];
   isTableTest: boolean;
+  isTableDeleted?: boolean;
   handleEditTest: (mode: DatasetTestModeType, obj: TableTestDataType) => void;
   handleRemoveTableTest?: (testType: TableTestType) => void;
   handleRemoveColumnTest?: (
@@ -46,6 +47,7 @@ type Props = {
 const DataQualityTable = ({
   testCase,
   isTableTest,
+  isTableDeleted,
   handleEditTest,
   handleRemoveTableTest,
   handleRemoveColumnTest,
@@ -86,16 +88,16 @@ const DataQualityTable = ({
   const getConfigInfo = (config: TestCaseConfigType) => {
     return !isEmpty(config) && config
       ? Object.entries(config).map((d, i) => (
-          <p key={i}>{`${d[0]}: ${d[1] || '--'}`}</p>
+          <p key={i}>{`${d[0]}: ${!isUndefined(d[1]) ? d[1] : '--'}`}</p>
         ))
       : '--';
   };
 
   return (
-    <div className="tw-table-responsive">
+    <div className="tw-table-responsive" data-testid="table-container">
       <table className="tw-w-full">
         <thead>
-          <tr className="tableHead-row">
+          <tr className="tableHead-row" data-testid="table-header">
             <th className="tableHead-cell">Test Case</th>
             <th className="tableHead-cell">Description</th>
             <th className="tableHead-cell">Config</th>
@@ -168,8 +170,11 @@ const DataQualityTable = ({
                       position="left"
                       title={TITLE_FOR_NON_ADMIN_ACTION}>
                       <button
-                        className="link-text tw-mr-2"
+                        className={classNames('link-text tw-mr-2', {
+                          'tw-opacity-50 tw-cursor-not-allowed': isTableDeleted,
+                        })}
                         data-testid="edit"
+                        disabled={isTableDeleted}
                         onClick={() =>
                           handleEditTest(
                             isTableTest ? 'table' : 'column',
@@ -183,8 +188,11 @@ const DataQualityTable = ({
                       position="left"
                       title={TITLE_FOR_NON_ADMIN_ACTION}>
                       <button
-                        className="link-text tw-mr-2"
+                        className={classNames('link-text tw-mr-2', {
+                          'tw-opacity-50 tw-cursor-not-allowed': isTableDeleted,
+                        })}
                         data-testid="delete"
+                        disabled={isTableDeleted}
                         onClick={() => confirmDelete(column)}>
                         {deleteSelection.data?.id === column.id ? (
                           deleteSelection.state === 'success' ? (

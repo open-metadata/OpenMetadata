@@ -20,7 +20,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 const MAX_LENGTH = 300;
 
 const RichTextEditorPreviewer = ({
-  markdown,
+  markdown = '',
   className = '',
   blurClasses = 'see-more-blur',
   maxHtClass = 'tw-h-24',
@@ -37,7 +37,10 @@ const RichTextEditorPreviewer = ({
   const [content, setContent] = useState<string>('');
   const [displayMoreText, setDisplayMoreText] = useState(false);
   useEffect(() => {
-    setContent(markdown);
+    const modifiedContent = markdown
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>');
+    setContent(modifiedContent);
   }, [markdown]);
 
   return (
@@ -86,7 +89,7 @@ const RichTextEditorPreviewer = ({
       {enableSeeMoreVariant && markdown.length > MAX_LENGTH && (
         <div
           className={classNames(
-            'tw-absolute tw-flex tw-h-full tw-w-full tw-inset-x-0',
+            'tw-absolute tw-flex tw-h-full tw-w-full tw-inset-x-0 tw-pointer-events-none',
             !displayMoreText ? blurClasses : null,
             {
               'tw-top-0 tw-bottom-0': !displayMoreText,

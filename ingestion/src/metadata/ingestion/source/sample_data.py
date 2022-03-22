@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import random
+import traceback
 import uuid
 from collections import namedtuple
 from dataclasses import dataclass, field
@@ -80,12 +81,18 @@ def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
     fqn = edge["fqn"]
     if edge["type"] == "table":
         table = metadata.get_by_name(entity=Table, fqdn=fqn)
+        if not table:
+            return
         return EntityReference(id=table.id, type="table")
     elif edge["type"] == "pipeline":
         pipeline = metadata.get_by_name(entity=Pipeline, fqdn=fqn)
+        if not pipeline:
+            return
         return EntityReference(id=pipeline.id, type="pipeline")
     elif edge["type"] == "dashboard":
         dashboard = metadata.get_by_name(entity=Dashboard, fqdn=fqn)
+        if not dashboard:
+            return
         return EntityReference(id=dashboard.id, type="dashboard")
 
 
@@ -368,16 +375,20 @@ class SampleDataSource(Source[Entity]):
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
         for table in self.tables["tables"]:
-            for sql_object in table["tableQueries"]:
-                user_entity = self.user_entity[random.choice(range(5))]
-                user_dict = {
-                    "id": user_entity.id,
-                    "name": user_entity.name.__root__,
-                    "displayName": user_entity.displayName,
-                    "href": user_entity.href,
-                    "description": user_entity.description,
-                }
-                sql_object["user"] = EntityReference(**user_dict, type="user")
+            try:
+                for sql_object in table["tableQueries"]:
+                    user_entity = self.user_entity[random.choice(range(5))]
+                    user_dict = {
+                        "id": user_entity.id,
+                        "name": user_entity.name.__root__,
+                        "displayName": user_entity.displayName,
+                        "href": user_entity.href,
+                        "description": user_entity.description,
+                    }
+                    sql_object["user"] = EntityReference(**user_dict, type="user")
+            except Exception as err:
+                logger.debug(traceback.print_exc())
+                logger.debug(err)
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned("table", table_metadata.name.__root__)
@@ -457,25 +468,29 @@ class SampleDataSource(Source[Entity]):
         from metadata.generated.schema.entity.data.dashboard import Dashboard
 
         for model in self.models:
-            # Fetch linked dashboard ID from name
-            fqdn = model["dashboard"]
-            dashboard = self.metadata.get_by_name(entity=Dashboard, fqdn=fqdn)
+            try:
+                # Fetch linked dashboard ID from name
+                fqdn = model["dashboard"]
+                dashboard = self.metadata.get_by_name(entity=Dashboard, fqdn=fqdn)
 
-            if not dashboard:
-                raise InvalidSampleDataException(
-                    f"Cannot find {fqdn} in Sample Dashboards"
+                if not dashboard:
+                    raise InvalidSampleDataException(
+                        f"Cannot find {fqdn} in Sample Dashboards"
+                    )
+
+                dashboard_id = str(dashboard.id.__root__)
+
+                model_ev = CreateMlModelRequest(
+                    name=model["name"],
+                    displayName=model["displayName"],
+                    description=model["description"],
+                    algorithm=model["algorithm"],
+                    dashboard=EntityReference(id=dashboard_id, type="dashboard"),
                 )
-
-            dashboard_id = str(dashboard.id.__root__)
-
-            model_ev = CreateMlModelRequest(
-                name=model["name"],
-                displayName=model["displayName"],
-                description=model["description"],
-                algorithm=model["algorithm"],
-                dashboard=EntityReference(id=dashboard_id, type="dashboard"),
-            )
-            yield model_ev
+                yield model_ev
+            except Exception as err:
+                logger.debug(traceback.print_exc())
+                logger.error(err)
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         try:

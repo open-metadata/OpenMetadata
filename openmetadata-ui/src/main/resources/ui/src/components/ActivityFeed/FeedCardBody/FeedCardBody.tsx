@@ -24,7 +24,6 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   className,
   threadId,
   postId,
-  deletePostHandler,
   onConfirmation,
 }) => {
   return (
@@ -35,7 +34,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           enableSeeMoreVariant={false}
           markdown={getFrontEndFormat(message)}
         />
-        {threadId && postId && deletePostHandler && isAuthor ? (
+        {threadId && postId && onConfirmation && isAuthor ? (
           <span
             className="tw-opacity-0 group-hover:tw-opacity-100 tw-cursor-pointer"
             data-testid="delete-button"

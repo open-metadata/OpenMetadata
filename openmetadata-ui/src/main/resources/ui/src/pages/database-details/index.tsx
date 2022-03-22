@@ -49,7 +49,7 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
-import Tags from '../../components/tags/tags';
+import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getDatabaseDetailsPath,
   getExplorePathWithSearch,
@@ -58,6 +58,11 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -76,10 +81,13 @@ import {
 } from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getEntityFieldThreadCounts,
+  getUpdatedThread,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
-import { getTableTags } from '../../utils/TagsUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   // User Id for getting followers
@@ -437,6 +445,43 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
 
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
+            });
+          });
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
+      })
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
+      });
+  };
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -612,31 +657,15 @@ const DatabaseDetails: FunctionComponent = () => {
                                 </p>
                               </td>
                               <td className="tableBody-cell">
-                                {table.tags?.map((tag, tagIndex) => (
-                                  <Tags
-                                    key={tagIndex}
-                                    startWith="#"
-                                    tag={{
-                                      ...tag,
-                                      tagFQN: tag.tagFQN?.startsWith(
-                                        'Tier.Tier'
-                                      )
-                                        ? tag.tagFQN.split('.')[1]
-                                        : tag.tagFQN,
-                                    }}
-                                    type="label"
-                                  />
-                                ))}
-                                {getTableTags(table.columns).map(
-                                  (tag, tagIdx) => (
-                                    <Tags
-                                      key={tagIdx}
-                                      startWith="#"
-                                      tag={tag}
-                                      type="label"
-                                    />
-                                  )
-                                )}
+                                <TagsViewer
+                                  sizeCap={-1}
+                                  tags={(table.tags || []).map((tag) => ({
+                                    ...tag,
+                                    tagFQN: tag.tagFQN?.startsWith('Tier.Tier')
+                                      ? tag.tagFQN.split('.')[1]
+                                      : tag.tagFQN,
+                                  }))}
+                                />
                               </td>
                             </tr>
                           ))
@@ -670,6 +699,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       isEntityFeed
                       withSidePanel
                       className=""
+                      deletePostHandler={deletePostHandler}
                       entityName={databaseName}
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
@@ -694,6 +724,7 @@ const DatabaseDetails: FunctionComponent = () => {
             {threadLink ? (
               <ActivityThreadPanel
                 createThread={createThread}
+                deletePostHandler={deletePostHandler}
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}

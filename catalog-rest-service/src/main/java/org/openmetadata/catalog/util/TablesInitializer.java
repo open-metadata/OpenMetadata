@@ -255,8 +255,7 @@ public final class TablesInitializer {
     formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
   }
 
-  public static void rotate(DataSourceFactory dataSourceFactory)
-      throws GeneralSecurityException, IOException, ParseException {
+  public static void rotate(DataSourceFactory dataSourceFactory) throws IOException, ParseException {
     String user = dataSourceFactory.getUser() != null ? dataSourceFactory.getUser() : "";
     String password = dataSourceFactory.getPassword() != null ? dataSourceFactory.getPassword() : "";
     Jdbi jdbi = Jdbi.create(dataSourceFactory.getUrl(), user, password);

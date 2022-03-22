@@ -18,7 +18,10 @@ from unittest import TestCase
 
 # The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
+from airflow.models import TaskInstance
 from airflow.operators.bash import BashOperator
+from airflow.operators.dummy import DummyOperator
+from airflow.utils.task_group import TaskGroup
 
 from airflow_provider_openmetadata.lineage.openmetadata import (
     OpenMetadataLineageBackend,
@@ -56,6 +59,8 @@ class AirflowLineageTest(TestCase):
         databaseConnection=DatabaseConnection(hostPort="localhost"),
     )
     service_type = "databaseService"
+
+    backend = OpenMetadataLineageBackend()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -137,12 +142,19 @@ class AirflowLineageTest(TestCase):
         Test end to end
         """
 
-        backend = OpenMetadataLineageBackend()
-        backend.send_lineage(
+        self.backend.send_lineage(
             operator=self.dag.get_task("task1"),
             context={
                 "dag": self.dag,
                 "task": self.dag.get_task("task1"),
+                "task_instance": TaskInstance(
+                    task=self.dag.get_task("task1"),
+                    execution_date=datetime.strptime(
+                        "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
+                    ),
+                    run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
+                    state="running",
+                ),
             },
         )
 
@@ -156,3 +168,51 @@ class AirflowLineageTest(TestCase):
 
         nodes = {node["id"] for node in lineage["nodes"]}
         self.assertIn(str(self.table.id.__root__), nodes)
+
+    def test_lineage_task_group(self):
+        """
+        Test end to end for task groups
+        """
+
+        with DAG(
+            "task_group_lineage",
+            description="A lineage test DAG",
+            schedule_interval=timedelta(days=1),
+            start_date=datetime(2021, 1, 1),
+        ) as dag:
+            t0 = DummyOperator(task_id="start")
+
+            # Start Task Group definition
+            with TaskGroup(group_id="group1") as tg1:
+                t1 = DummyOperator(task_id="task1")
+                t2 = DummyOperator(task_id="task2")
+
+                t1 >> t2
+            # End Task Group definition
+
+            t3 = DummyOperator(task_id="end")
+
+            # Set Task Group's (tg1) dependencies
+            t0 >> tg1 >> t3
+
+            self.backend.send_lineage(
+                operator=dag.get_task("group1.task1"),
+                context={
+                    "dag": dag,
+                    "task": dag.get_task("group1.task1"),
+                    "task_instance": TaskInstance(
+                        task=dag.get_task("group1.task1"),
+                        execution_date=datetime.strptime(
+                            "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
+                        ),
+                        run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
+                        state="running",
+                    ),
+                },
+            )
+
+        pipeline = self.metadata.get_by_name(
+            entity=Pipeline, fqdn="local_airflow_3.task_group_lineage", fields=["tasks"]
+        )
+        self.assertIsNotNone(pipeline)
+        self.assertIn("group1_DOT_task1", {task.name for task in pipeline.tasks})

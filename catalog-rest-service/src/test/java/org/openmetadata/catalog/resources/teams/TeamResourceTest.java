@@ -18,11 +18,11 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
@@ -75,7 +75,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
+    this.supportsDots = false;
+    this.supportsAuthorizedMetadataOperations = false;
   }
 
   @Test
@@ -167,7 +169,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Ensure that the user does not have relationship to this team
     User user = userResourceTest.getEntity(user1.getId(), "teams", ADMIN_AUTH_HEADERS);
-    assertTrue(user.getTeams().isEmpty());
+    assertDeleted(user.getTeams(), true);
 
     // Ensure that the role is not deleted
     Role role = roleResourceTest.getEntity(role1.getId(), "", ADMIN_AUTH_HEADERS);
@@ -342,7 +344,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         .withName(name)
         .withDescription(description)
         .withDisplayName(displayName)
-        .withProfile(PROFILE);
+        .withProfile(PROFILE)
+        .withOwner(owner);
   }
 
   @Override
@@ -357,7 +360,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public void validateCreatedEntity(Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(team), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(team),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        createRequest.getOwner());
 
     assertEquals(createRequest.getProfile(), team.getProfile());
     TestUtils.validateEntityReferences(team.getOwns());
@@ -398,7 +404,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(updated), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(updated),
+        expected.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        expected.getOwner());
 
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());

@@ -30,8 +30,9 @@ import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 
 type Props = {
-  data: TableTest;
+  data?: TableTest;
   tableTestCase: TableTest[];
+  isTableDeleted?: boolean;
   handleAddTableTestCase: (data: CreateTableTest) => void;
   onFormCancel: () => void;
 };
@@ -49,6 +50,7 @@ export const Field = ({
 const TableTestForm = ({
   data,
   tableTestCase,
+  isTableDeleted,
   handleAddTableTestCase,
   onFormCancel,
 }: Props) => {
@@ -64,7 +66,7 @@ const TableTestForm = ({
     data?.testCase?.config?.maxValue
   );
   const [value, setValue] = useState<number | undefined>(
-    data?.testCase.config?.value
+    data?.testCase.config?.value || data?.testCase.config?.columnCount
   );
   const [frequency, setFrequency] = useState<TestCaseExecutionFrequency>(
     data?.executionFrequency
@@ -292,6 +294,7 @@ const TableTestForm = ({
               className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
+              data-testid="tableTestType"
               disabled={!isUndefined(data)}
               id="tableTestType"
               name="tableTestType"
@@ -335,6 +338,7 @@ const TableTestForm = ({
             </label>
             <select
               className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="frequency"
               id="frequency"
               name="frequency"
               value={frequency}
@@ -358,7 +362,8 @@ const TableTestForm = ({
           </Button>
           <Button
             className="tw-w-16 tw-h-10"
-            disabled={isShowError.allTestAdded}
+            data-testid="save-test"
+            disabled={isShowError.allTestAdded || isTableDeleted}
             size="regular"
             theme="primary"
             variant="contained"

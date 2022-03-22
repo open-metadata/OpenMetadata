@@ -90,6 +90,7 @@ const DashboardDetailsProps = {
   entityFieldThreadCount: [],
   createThread: jest.fn(),
   dashboardFQN: '',
+  deletePostHandler: jest.fn(),
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {

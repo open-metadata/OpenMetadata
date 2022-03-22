@@ -103,11 +103,17 @@ public final class SecurityUtil {
    * metadata operations that can be derived from JSON patch.
    */
   public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference, JsonPatch patch) {
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      EntityReference entityReference,
+      EntityReference ownerReference,
+      JsonPatch patch) {
     Principal principal = securityContext.getUserPrincipal();
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
 
-    if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
+    if (authorizer.isAdmin(authenticationCtx)
+        || authorizer.isBot(authenticationCtx)
+        || authorizer.hasPermissions(authenticationCtx, ownerReference)) {
       return;
     }
 

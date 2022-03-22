@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.type.Include.ALL;
-import static org.openmetadata.catalog.type.Include.DELETED;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,7 +53,6 @@ import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Relationship;
@@ -231,7 +229,8 @@ public final class EntityUtil {
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
-        populateEntityReference(ref);
+        EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+        ref.withDescription(ref2.getDescription()).withName(ref2.getName()).withDisplayName(ref2.getDisplayName());
       }
     }
     return list;
@@ -241,15 +240,9 @@ public final class EntityUtil {
       throws IOException {
     List<EntityReference> refs = new ArrayList<>(ids.size());
     for (String id : ids) {
-      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id)));
+      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
     }
     return refs;
-  }
-
-  public static EntityReference populateEntityReference(EntityReference ref) throws IOException {
-    // Note href to entity reference is not added here
-    EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId());
-    return ref.withDescription(ref2.getDescription()).withName(ref2.getName()).withDisplayName(ref2.getDisplayName());
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
@@ -314,11 +307,7 @@ public final class EntityUtil {
       throws IOException {
     List<String> followerIds =
         entityRelationshipDAO.findFrom(
-            followedEntityInterface.getId().toString(),
-            name,
-            Relationship.FOLLOWS.ordinal(),
-            Entity.USER,
-            toBoolean(ALL));
+            followedEntityInterface.getId().toString(), name, Relationship.FOLLOWS.ordinal(), Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
       User user = userDAO.findEntityById(UUID.fromString(followerId), ALL);
@@ -393,16 +382,6 @@ public final class EntityUtil {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = EntityUtil.getLocalColumnName(column.getFullyQualifiedName());
     return "columns." + localColumnName + (columnField == null ? "" : "." + columnField);
-  }
-
-  public static Boolean toBoolean(Include include) {
-    if (include.equals(DELETED)) {
-      return Boolean.TRUE;
-    } else if (include.equals(ALL)) {
-      return null;
-    } else { // "non-deleted"
-      return Boolean.FALSE;
-    }
   }
 
   public static Double nextVersion(Double version) {

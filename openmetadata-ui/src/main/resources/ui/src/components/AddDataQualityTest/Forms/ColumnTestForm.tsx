@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
@@ -35,11 +36,11 @@ import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
-  data: ColumnTest;
+  data?: ColumnTest;
   selectedColumn: string;
+  isTableDeleted?: boolean;
   column: ModifiedTableColumn[];
   handleAddColumnTestCase: (data: ColumnTest) => void;
   onFormCancel: () => void;
@@ -59,6 +60,7 @@ const ColumnTestForm = ({
   selectedColumn,
   data,
   column,
+  isTableDeleted,
   handleAddColumnTestCase,
   onFormCancel,
 }: Props) => {
@@ -66,7 +68,7 @@ const ColumnTestForm = ({
   const [description] = useState(data?.description || '');
   const isAcceptedTypeIsString = useRef<boolean>(true);
   const [columnTest, setColumnTest] = useState<ColumnTestType>(
-    data?.testCase?.columnTestType
+    data?.testCase?.columnTestType || ('' as ColumnTestType)
   );
   const [columnOptions, setColumnOptions] = useState<Table['columns']>([]);
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>([]);
@@ -95,7 +97,7 @@ const ColumnTestForm = ({
     notSupported: false,
   });
 
-  const [columnName, setColumnName] = useState(data?.columnName);
+  const [columnName, setColumnName] = useState(data?.columnName || '');
   const [missingValueMatch, setMissingValueMatch] = useState<string[]>(
     data?.testCase?.config?.missingValueMatch || ['']
   );
@@ -603,6 +605,7 @@ const ColumnTestForm = ({
               className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
+              data-testid="columnName"
               disabled={!isUndefined(data)}
               id="columnName"
               name="columnName"
@@ -630,6 +633,7 @@ const ColumnTestForm = ({
               className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
+              data-testid="columTestType"
               disabled={!isUndefined(data)}
               id="columTestType"
               name="columTestType"
@@ -668,6 +672,7 @@ const ColumnTestForm = ({
             </label>
             <select
               className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="frequency"
               id="frequency"
               name="frequency"
               value={frequency}
@@ -692,7 +697,12 @@ const ColumnTestForm = ({
             </Button>
             <Button
               className="tw-w-16 tw-h-10"
-              disabled={isShowError.allTestAdded || isShowError.notSupported}
+              data-testid="save-test"
+              disabled={
+                isShowError.allTestAdded ||
+                isShowError.notSupported ||
+                isTableDeleted
+              }
               size="regular"
               theme="primary"
               variant="contained"

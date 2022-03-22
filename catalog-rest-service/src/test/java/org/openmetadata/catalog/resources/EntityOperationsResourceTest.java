@@ -24,23 +24,8 @@ public abstract class EntityOperationsResourceTest<T, K> extends EntityResourceT
       Class<T> entityClass,
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
-      String fields,
-      boolean supportsFollowers,
-      boolean supportsOwner,
-      boolean supportsTags,
-      boolean supportsAuthorizedMetadataOperations,
-      boolean supportsDots) {
-    super(
-        entityType,
-        entityClass,
-        entityListClass,
-        collectionName,
-        fields,
-        supportsFollowers,
-        supportsOwner,
-        supportsTags,
-        supportsAuthorizedMetadataOperations,
-        supportsDots);
+      String fields) {
+    super(entityType, entityClass, entityListClass, collectionName, fields);
   }
 
   // Override the resource path name of regular entities api/v1/<entities> to api/operations/v1/<operations>

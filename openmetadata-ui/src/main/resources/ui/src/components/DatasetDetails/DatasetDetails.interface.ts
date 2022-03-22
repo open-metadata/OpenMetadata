@@ -27,6 +27,7 @@ import {
   Table,
   TableData,
   TableJoins,
+  TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
@@ -50,6 +51,7 @@ export interface DatasetDetailsProps {
   lineageLeafNodes: LeafNodes;
   version?: string;
   joins: TableJoins;
+  tableType: TableType;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
   users: Array<User>;
   tableDetails: Table;
@@ -94,6 +96,7 @@ export interface DatasetDetailsProps {
   settingsUpdateHandler: (updatedTable: Table) => Promise<void>;
   columnsUpdateHandler: (updatedTable: Table) => void;
   descriptionUpdateHandler: (updatedTable: Table) => void;
+  tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
   handleSelectedColumn: (value: string | undefined) => void;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;

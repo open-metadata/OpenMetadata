@@ -26,13 +26,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -61,14 +59,15 @@ import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -80,28 +79,20 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "airflowPipelines")
-public class AirflowPipelineResource {
+public class AirflowPipelineResource extends EntityResource<AirflowPipeline, AirflowPipelineRepository> {
   public static final String COLLECTION_PATH = "operations/v1/airflowPipeline/";
-  private final AirflowPipelineRepository dao;
-  private final Authorizer authorizer;
   private AirflowRESTClient airflowRESTClient;
   private CatalogApplicationConfig config;
 
-  public static ResultList<AirflowPipeline> addHref(UriInfo uriInfo, ResultList<AirflowPipeline> ingestions) {
-    listOrEmpty(ingestions.getData()).forEach(i -> addHref(uriInfo, i));
-    return ingestions;
-  }
-
-  public static AirflowPipeline addHref(UriInfo uriInfo, AirflowPipeline airflowPipeline) {
+  @Override
+  public AirflowPipeline addHref(UriInfo uriInfo, AirflowPipeline airflowPipeline) {
     Entity.withHref(uriInfo, airflowPipeline.getOwner());
     Entity.withHref(uriInfo, airflowPipeline.getService());
     return airflowPipeline;
   }
 
   public AirflowPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "AirflowPipelineRepository must not be null");
-    this.dao = new AirflowPipelineRepository(dao);
-    this.authorizer = authorizer;
+    super(AirflowPipeline.class, new AirflowPipelineRepository(dao), authorizer);
   }
 
   public void initialize(CatalogApplicationConfig config) {
@@ -115,8 +106,7 @@ public class AirflowPipelineResource {
       // Empty constructor needed for deserialization
     }
 
-    public AirflowPipelineList(List<AirflowPipeline> data, String beforeCursor, String afterCursor, int total)
-        throws GeneralSecurityException, UnsupportedEncodingException {
+    public AirflowPipelineList(List<AirflowPipeline> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -179,20 +169,14 @@ public class AirflowPipelineResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<AirflowPipeline> airflowPipelines;
-    if (before != null) { // Reverse paging
-      airflowPipelines =
-          dao.listBefore(uriInfo, fields, serviceParam, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      airflowPipelines = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after, include);
-    }
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ResultList<AirflowPipeline> airflowPipelines =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       addStatus(airflowPipelines.getData());
     }
-    return addHref(uriInfo, airflowPipelines);
+    return airflowPipelines;
   }
 
   @GET
@@ -245,12 +229,11 @@ public class AirflowPipelineResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    AirflowPipeline airflowPipeline = dao.get(uriInfo, id, fields, include);
+    AirflowPipeline airflowPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       airflowPipeline = addStatus(airflowPipeline);
     }
-    return addHref(uriInfo, airflowPipeline);
+    return airflowPipeline;
   }
 
   @GET
@@ -312,12 +295,11 @@ public class AirflowPipelineResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    AirflowPipeline airflowPipeline = dao.getByName(uriInfo, fqn, fields, include);
+    AirflowPipeline airflowPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains("status")) {
       airflowPipeline = addStatus(airflowPipeline);
     }
-    return addHref(uriInfo, airflowPipeline);
+    return airflowPipeline;
   }
 
   @POST
@@ -370,7 +352,11 @@ public class AirflowPipelineResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     AirflowPipeline airflowPipeline = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(airflowPipeline).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(airflowPipeline).getEntityReference(),
+        dao.getOriginalOwner(airflowPipeline),
+        patch);
 
     PatchResponse<AirflowPipeline> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);

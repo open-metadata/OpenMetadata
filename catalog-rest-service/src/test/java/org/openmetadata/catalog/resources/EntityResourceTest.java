@@ -160,13 +160,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   private final Class<? extends ResultList<T>> entityListClass;
   protected final String collectionName;
   private final String allFields;
-  private final boolean supportsFollowers;
-  private final boolean supportsOwner;
-  private final boolean supportsTags;
-  private final boolean supportsDots;
+  protected final boolean supportsFollowers;
+  protected boolean supportsOwner;
+  protected final boolean supportsTags;
+  protected boolean supportsDots = true;
   protected boolean supportsPatch = true;
   protected boolean supportsSoftDelete = true;
-  private final boolean supportsAuthorizedMetadataOperations;
+  protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
@@ -234,32 +234,27 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   public static boolean runWebhookTests;
 
   public EntityResourceTest(
-      String entityTYpe,
+      String entityType,
       Class<T> entityClass,
       Class<? extends ResultList<T>> entityListClass,
       String collectionName,
-      String fields,
-      boolean supportsFollowers,
-      boolean supportsOwner,
-      boolean supportsTags,
-      boolean supportsAuthorizedMetadataOperations,
-      boolean supportsDots) {
-
-    this.entityType = entityTYpe;
+      String fields) {
+    this.entityType = entityType;
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
     this.collectionName = collectionName;
     this.allFields = fields;
-    this.supportsFollowers = supportsFollowers;
-    this.supportsOwner = supportsOwner;
-    this.supportsTags = supportsTags;
-    this.supportsAuthorizedMetadataOperations = supportsAuthorizedMetadataOperations;
-    this.supportsDots = supportsDots;
-    ENTITY_RESOURCE_TEST_MAP.put(entityTYpe, this);
+
+    List<String> allowedFields = Entity.getEntityFields(entityClass);
+    this.supportsFollowers = allowedFields.contains("followers");
+    this.supportsOwner = allowedFields.contains("owner");
+    this.supportsTags = allowedFields.contains("tags");
+    ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
   }
 
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
+
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
@@ -267,15 +262,21 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       webhookResourceTest.startWebhookSubscription();
       webhookResourceTest.startWebhookEntitySubscriptions(entityType);
     }
-
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    DATA_CONSUMER_ROLE =
+        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_ROLE_REFERENCE = new RoleEntityInterface(DATA_CONSUMER_ROLE).getEntityReference();
     UserResourceTest userResourceTest = new UserResourceTest();
-    USER1 = userResourceTest.createEntity(userResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    USER1 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
     USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
 
-    USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    USER2 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
     USER_OWNER2 = new UserEntityInterface(USER2).getEntityReference();
 
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
     DATA_STEWARD_ROLE =
         roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_STEWARD_ROLE_REFERENCE = new RoleEntityInterface(DATA_STEWARD_ROLE).getEntityReference();
@@ -285,9 +286,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
                 .createRequest("user-data-steward", "", "", null)
                 .withRoles(List.of(DATA_STEWARD_ROLE.getId())),
             ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_ROLE =
-        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_ROLE_REFERENCE = new RoleEntityInterface(DATA_CONSUMER_ROLE).getEntityReference();
+
     USER_WITH_DATA_CONSUMER_ROLE =
         userResourceTest.createEntity(
             userResourceTest
@@ -1130,12 +1129,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     T entity = createEntity(createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
 
-    // Anyone can update description on unowned entity.
+    // Admins, Owner or a User with policy can update the entity
     entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), TestUtils.ADMIN_USER_NAME, false);
-    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER1.getName(), false);
     entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_STEWARD_ROLE.getName(), false);
     entity =
         patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
+    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER1.getName(), false);
 
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
@@ -1160,7 +1159,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), TestUtils.ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER1.getName(), false);
     entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
+    patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
   }
 
   @Test

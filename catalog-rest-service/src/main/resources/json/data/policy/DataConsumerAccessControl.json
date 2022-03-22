@@ -6,5 +6,30 @@
   "policyType": "AccessControl",
   "enabled": true,
   "deleted": false,
-  "rules": []
+  "rules": [
+    {
+      "name": "DataConsumerRoleAccessControlPolicy-UpdateDescription",
+      "userRoleAttr": "DataConsumer",
+      "operation": "UpdateDescription",
+      "allow": true,
+      "enabled": true,
+      "priority": 1000
+    },
+    {
+      "name": "DataConsumerRoleAccessControlPolicy-UpdateOwner",
+      "userRoleAttr": "DataConsumer",
+      "operation": "UpdateOwner",
+      "allow": true,
+      "enabled": true,
+      "priority": 1000
+    },
+    {
+      "name": "DataConsumerRoleAccessControlPolicy-UpdateTags",
+      "userRoleAttr": "DataConsumer",
+      "operation": "UpdateTags",
+      "allow": true,
+      "enabled": true,
+      "priority": 1000
+    }
+  ]
 }

@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import json
 import logging
 import os
@@ -23,14 +22,18 @@ from sqlalchemy_bigquery._types import (
     _get_transitive_schema_fields,
 )
 
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
+from metadata.utils.helpers import get_start_and_end
 
 logger = logging.getLogger(__name__)
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
@@ -78,6 +81,7 @@ class BigQueryConfig(SQLConnectionConfig):
     project_id: Optional[str] = None
     duration: int = 1
     service_type = DatabaseServiceType.BigQuery.value
+    partition_query: str = 'select * from {}.{} WHERE DATE({}) >= "{}" LIMIT 1000'
     enable_policy_tags: bool = False
     tag_category_name: str = "BigqueryPolicyTags"
 
@@ -97,7 +101,7 @@ class BigquerySource(SQLSource):
         try:
             if self.config.enable_policy_tags:
                 self.metadata.create_tag_category(
-                    TagCategory(
+                    CreateTagCategoryRequest(
                         name=self.config.tag_category_name,
                         description="",
                         categoryType="Classification",
@@ -144,6 +148,33 @@ class BigquerySource(SQLSource):
         if segments[0] != schema:
             raise ValueError(f"schema {schema} does not match table {table}")
         return segments[0], segments[1]
+
+    def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
+        resp_sample_data = super().fetch_sample_data(schema, table)
+        if not resp_sample_data and self.config.partition_query:
+            try:
+                logger.info("Using Query for Partitioned Tables")
+                partition_details = self.inspector.get_indexes(table, schema)
+                start, end = get_start_and_end(self.config.duration)
+
+                query = self.config.partition_query.format(
+                    schema,
+                    table,
+                    partition_details[0]["column_names"][0],
+                    start.strftime("%Y-%m-%d"),
+                )
+                logger.info(query)
+                results = self.connection.execute(query)
+                cols = []
+                for col in results.keys():
+                    cols.append(col.replace(".", "_DOT_"))
+                rows = []
+                for res in results:
+                    row = list(res)
+                    rows.append(row)
+                return TableData(columns=cols, rows=rows)
+            except Exception as err:
+                logger.error(err)
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()

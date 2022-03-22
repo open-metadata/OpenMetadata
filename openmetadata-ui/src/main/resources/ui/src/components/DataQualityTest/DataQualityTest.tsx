@@ -34,6 +34,7 @@ type Props = {
   tableTestCase: TableTest[];
   columns: ModifiedTableColumn[];
   showDropDown: boolean;
+  isTableDeleted?: boolean;
   handleEditTest: (mode: DatasetTestModeType, obj: TableTestDataType) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
   haandleDropDownClick: (
@@ -51,6 +52,7 @@ const DataQualityTest = ({
   showDropDown,
   tableTestCase,
   columns,
+  isTableDeleted,
   handleEditTest,
   handleShowDropDown,
   handleRemoveTableTest,
@@ -64,10 +66,12 @@ const DataQualityTest = ({
     {
       name: 'Table Test',
       value: 'table',
+      disabled: isTableDeleted,
     },
     {
       name: 'Column Test',
       value: 'column',
+      disabled: isTableDeleted,
     },
   ];
 
@@ -91,7 +95,7 @@ const DataQualityTest = ({
                 className={classNames('tw-h-8 tw-rounded tw-mb-1 tw--mt-2', {
                   'tw-opacity-40': !isAuthDisabled && !isAdminUser,
                 })}
-                data-testid="add-new-tag-button"
+                data-testid="add-new-test-button"
                 size="small"
                 theme="primary"
                 variant="contained"
@@ -131,30 +135,36 @@ const DataQualityTest = ({
   };
 
   return (
-    <>
+    <div data-testid="data-quality-test-container">
       {tableTestCase.length > 0 || columnsData.length > 0 ? (
-        <div>
+        <div data-testid="test-container">
           {addTestButton(true)}
           {tableTestCase.length > 0 && (
-            <div className="tw-mb-5">
-              <p className="tw-form-label">Table Tests</p>
+            <div className="tw-mb-5" data-testid="table-level-test-container">
+              <p className="tw-form-label" data-testid="table-test-label">
+                Table Tests
+              </p>
               <DataQualityTable
                 isTableTest
                 handleEditTest={handleEditTest}
                 handleRemoveTableTest={handleRemoveTableTest}
+                isTableDeleted={isTableDeleted}
                 testCase={tableTestCase}
               />
             </div>
           )}
 
-          <div>
+          <div data-testid="column-level-test-container">
             {columnsData.map((data, index) => {
               return (
                 <div className="tw-mb-5" key={index}>
-                  <p className="tw-form-label">{`Column Tests - ${data?.name}`}</p>
+                  <p
+                    className="tw-form-label"
+                    data-testid="column-test-label">{`Column Tests - ${data?.name}`}</p>
                   <DataQualityTable
                     handleEditTest={handleEditTest}
                     handleRemoveColumnTest={handleRemoveColumnTest}
+                    isTableDeleted={isTableDeleted}
                     isTableTest={false}
                     testCase={
                       data.columnTests && data.columnTests?.length > 0
@@ -173,7 +183,7 @@ const DataQualityTest = ({
           {addTestButton(false)}
         </ErrorPlaceHolder>
       )}
-    </>
+    </div>
   );
 };
 

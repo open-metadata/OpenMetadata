@@ -10,7 +10,7 @@
 #  limitations under the License.
 import logging
 import os
-from typing import Optional
+from typing import Iterable, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -18,16 +18,21 @@ from cryptography.hazmat.primitives.asymmetric import dsa, rsa
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
+from metadata.utils.engines import get_engine
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -39,8 +44,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 class SnowflakeConfig(SQLConnectionConfig):
     scheme = "snowflake"
     account: str
-    database: str
-    warehouse: str
+    database: Optional[str]
+    warehouse: Optional[str]
     result_limit: int = 1000
     role: Optional[str]
     duration: Optional[int]
@@ -75,6 +80,31 @@ class SnowflakeSource(SQLSource):
             )
             config.connect_args["private_key"] = pkb
         super().__init__(config, metadata_config, ctx)
+
+    def get_databases(self) -> Iterable[Inspector]:
+        if self.config.database != None:
+            yield from super().get_databases()
+        else:
+            query = "SHOW DATABASES"
+            results = self.connection.execute(query)
+            for res in results:
+
+                row = list(res)
+                use_db_query = f"USE DATABASE {row[1]}"
+                self.connection.execute(use_db_query)
+                logger.info(f"Ingesting from database: {row[1]}")
+                self.config.database = row[1]
+                self.engine = get_engine(self.config)
+                yield inspect(self.engine)
+
+    def get_table_fqn(self, service_name, schema, table_name) -> str:
+        return f"{service_name}.{self.config.database}_{schema}.{table_name}"
+
+    def _get_database(self, schema: str) -> Database:
+        return Database(
+            name=self.config.database + "_" + schema.replace(".", "_DOT_"),
+            service=EntityReference(id=self.service.id, type=self.config.service_type),
+        )
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         resp_sample_data = super().fetch_sample_data(schema, table)
@@ -116,4 +146,10 @@ def _get_table_comment(self, connection, table_name, schema=None, **kw):
     return cursor.fetchone()  # pylint: disable=protected-access
 
 
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    return []
+
+
 SnowflakeDialect._get_table_comment = _get_table_comment
+SnowflakeDialect.get_unique_constraints = get_unique_constraints

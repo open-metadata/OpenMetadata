@@ -16,10 +16,12 @@ package org.openmetadata.catalog.util;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
@@ -133,6 +135,14 @@ public final class RestUtil {
     }
   }
 
+  public static String encodeCursor(String cursor) {
+    return cursor == null ? null : Base64.getUrlEncoder().encodeToString(cursor.getBytes(StandardCharsets.UTF_8));
+  }
+
+  public static String decodeCursor(String cursor) {
+    return cursor == null ? null : new String(Base64.getUrlDecoder().decode(cursor));
+  }
+
   public static class PutResponse<T> {
     private T entity;
     private ChangeEvent changeEvent;
@@ -197,7 +207,7 @@ public final class RestUtil {
   }
 
   public static class DeleteResponse<T> {
-    private T entity;
+    private final T entity;
     private final String changeType;
 
     /**

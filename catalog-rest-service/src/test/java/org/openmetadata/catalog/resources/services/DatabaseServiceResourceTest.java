@@ -70,13 +70,10 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         DatabaseService.class,
         DatabaseServiceList.class,
         "services/databaseServices",
-        "owner",
-        false,
-        true,
-        false,
-        false,
-        false);
+        "owner");
     this.supportsPatch = false;
+    this.supportsDots = false;
+    this.supportsAuthorizedMetadataOperations = false;
   }
 
   @Test
@@ -123,11 +120,14 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     databaseConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
     update.withDatabaseConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    // Get the recently updated entity and verify the changes
+    service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(databaseConnection, service.getDatabaseConnection());
+    assertEquals("description1", service.getDescription());
   }
 
   @Test
-  void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException, ParseException {
+  void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException {
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     EntityReference serviceRef = new DatabaseServiceEntityInterface(service).getEntityReference();
 
@@ -145,6 +145,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             .withUsername("username");
     update.withDatabaseConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    // Get the recently updated entity and verify the changes
+    service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(databaseConnection, service.getDatabaseConnection());
     ConnectionArguments connectionArguments =
         new ConnectionArguments()
@@ -155,6 +157,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     databaseConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
     update.withDatabaseConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    // Get the recently updated entity and verify the changes
+    service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(databaseConnection, service.getDatabaseConnection());
 
     AirflowPipelineResourceTest airflowPipelineResourceTest = new AirflowPipelineResourceTest();

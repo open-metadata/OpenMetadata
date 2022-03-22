@@ -13,7 +13,7 @@
  */
 
 /**
- * This schema defines webhook for receiving events from OpenMetadata
+ * This schema defines webhook for receiving events from OpenMetadata.
  */
 export interface Webhook {
   /**

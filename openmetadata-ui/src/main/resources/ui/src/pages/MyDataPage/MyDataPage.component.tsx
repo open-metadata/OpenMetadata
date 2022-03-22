@@ -24,15 +24,16 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
-import {
-  deletePostById,
-  getFeedsWithFilter,
-  postFeedById,
-} from '../../axiosAPIs/feedsAPI';
+import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
 import {
   myDataEntityCounts,
   myDataSearchIndex,
@@ -42,6 +43,7 @@ import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getEntityCountByType } from '../../utils/EntityUtils';
+import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 
@@ -181,28 +183,42 @@ const MyDataPage = () => {
   };
 
   const deletePostHandler = (threadId: string, postId: string) => {
-    deletePostById(threadId, postId)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id } = res.data;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              const posts = thread.posts.filter((post) => post.id !== id);
-
-              return { ...thread, posts: posts };
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
             });
           });
-          showToast({
-            variant: 'success',
-            body: 'Post got deleted successfully',
-          });
-        }
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
       })
-      .catch(() => {
-        showToast({ variant: 'error', body: 'Error while deleting post' });
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
       });
   };
-
   useEffect(() => {
     fetchData(true);
   }, []);

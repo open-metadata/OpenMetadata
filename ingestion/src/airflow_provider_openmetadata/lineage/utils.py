@@ -151,6 +151,9 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
     )
 
     # Check if the pipeline already exists
+    operator.log.info(
+        f"Checking if the pipeline {airflow_service_entity.name}.{dag.dag_id} exists. If not, we will create it."
+    )
     current_pipeline: Pipeline = client.get_by_name(
         entity=Pipeline,
         fqdn=f"{airflow_service_entity.name}.{dag.dag_id}",
@@ -184,8 +187,7 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
     # Clean pipeline
     try:
         operator.log.info("Cleaning pipeline tasks...")
-        dag_tasks = [Task(name=name) for name in dag.task_group.children.keys()]
-        updated_pipeline = client.clean_pipeline_tasks(updated_pipeline, dag_tasks)
+        updated_pipeline = client.clean_pipeline_tasks(updated_pipeline, dag.task_ids)
     except Exception as exc:  # pylint: disable=broad-except
         operator.log.warning(f"Error cleaning pipeline tasks {exc}")
 
@@ -266,7 +268,7 @@ def add_status(
     updated_status = PipelineStatus(
         executionDate=execution_date,
         executionStatus=get_dag_status(
-            all_tasks=list(dag.task_group.children.keys()),
+            all_tasks=dag.task_ids,
             task_status=updated_task_status,
         ),
         taskStatus=updated_task_status,

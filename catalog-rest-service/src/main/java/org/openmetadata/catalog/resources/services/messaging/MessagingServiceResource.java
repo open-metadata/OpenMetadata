@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.resources.services.messaging;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,11 +22,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -51,13 +48,14 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -68,37 +66,28 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices")
-public class MessagingServiceResource {
+public class MessagingServiceResource extends EntityResource<MessagingService, MessagingServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
-  private final MessagingServiceRepository dao;
-  private final Authorizer authorizer;
 
   public static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(MessagingService.class);
 
-  public static ResultList<MessagingService> addHref(UriInfo uriInfo, ResultList<MessagingService> services) {
-    listOrEmpty(services.getData()).forEach(i -> addHref(uriInfo, i));
-    return services;
-  }
-
-  public static MessagingService addHref(UriInfo uriInfo, MessagingService service) {
+  @Override
+  public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
     return service;
   }
 
   public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "MessagingServiceRepository must not be null");
-    this.dao = new MessagingServiceRepository(dao);
-    this.authorizer = authorizer;
+    super(MessagingService.class, new MessagingServiceRepository(dao), authorizer);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
     @SuppressWarnings("unused") /* Required for tests */
     public MessagingServiceList() {}
 
-    public MessagingServiceList(List<MessagingService> data, String beforeCursor, String afterCursor, int total)
-        throws GeneralSecurityException, UnsupportedEncodingException {
+    public MessagingServiceList(List<MessagingService> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -144,16 +133,9 @@ public class MessagingServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    ResultList<MessagingService> services;
-    if (before != null) { // Reverse paging
-      services = dao.listBefore(uriInfo, fields, null, limitParam, before, include);
-    } else {
-      // Forward paging or first page
-      services = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    return addHref(uriInfo, services);
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -186,8 +168,7 @@ public class MessagingServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -220,8 +201,7 @@ public class MessagingServiceResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET

@@ -50,17 +50,7 @@ import org.openmetadata.catalog.util.TestUtils;
 @Slf4j
 public class LocationResourceTest extends EntityResourceTest<Location, CreateLocation> {
   public LocationResourceTest() {
-    super(
-        Entity.LOCATION,
-        Location.class,
-        LocationList.class,
-        "locations",
-        LocationResource.FIELDS,
-        true,
-        true,
-        true,
-        true,
-        true);
+    super(Entity.LOCATION, Location.class, LocationList.class, "locations", LocationResource.FIELDS);
   }
 
   @BeforeAll

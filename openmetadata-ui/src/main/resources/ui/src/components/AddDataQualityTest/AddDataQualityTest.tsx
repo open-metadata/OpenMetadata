@@ -24,6 +24,7 @@ import TableTestForm from './Forms/TableTestForm';
 
 type Props = {
   data?: TableTestDataType;
+  isTableDeleted?: boolean;
   testMode: 'table' | 'column';
   columnOptions: Table['columns'];
   tableTestCase: TableTest[];
@@ -39,16 +40,20 @@ const AddDataQualityTest = ({
   testMode,
   columnOptions = [],
   selectedColumn,
+  isTableDeleted,
   handleAddTableTestCase,
   handleAddColumnTestCase,
   onFormCancel,
 }: Props) => {
   return (
-    <div className="tw-max-w-xl tw-mx-auto tw-pb-6">
+    <div
+      className="tw-max-w-xl tw-mx-auto tw-pb-6"
+      data-testid="add-data-quality-test">
       {testMode === 'table' ? (
         <TableTestForm
           data={data as TableTest}
           handleAddTableTestCase={handleAddTableTestCase}
+          isTableDeleted={isTableDeleted}
           tableTestCase={tableTestCase}
           onFormCancel={onFormCancel}
         />
@@ -57,6 +62,7 @@ const AddDataQualityTest = ({
           column={columnOptions}
           data={data as ColumnTest}
           handleAddColumnTestCase={handleAddColumnTestCase}
+          isTableDeleted={isTableDeleted}
           selectedColumn={selectedColumn}
           onFormCancel={onFormCancel}
         />

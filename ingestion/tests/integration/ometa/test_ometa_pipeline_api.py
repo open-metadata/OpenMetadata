@@ -100,7 +100,9 @@ class OMetaPipelineTest(TestCase):
         )
 
         cls.metadata.delete(entity=Pipeline, entity_id=_id)
-        cls.metadata.delete(entity=PipelineService, entity_id=service_id)
+        cls.metadata.delete(
+            entity=PipelineService, entity_id=service_id, recursive=True
+        )
 
     def test_create(self):
         """
@@ -340,7 +342,7 @@ class OMetaPipelineTest(TestCase):
         pipeline = self.metadata.create_or_update(data=create_pipeline)
 
         updated_pipeline = self.metadata.clean_pipeline_tasks(
-            pipeline=pipeline, tasks=[Task(name="task3"), Task(name="task4")]
+            pipeline=pipeline, task_ids=["task3", "task4"]
         )
 
         assert len(updated_pipeline.tasks) == 2

@@ -14,6 +14,7 @@
 import { EntityThread } from 'Models';
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../../generated/api/feed/createThread';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityThreadPanelProp
   extends HTMLAttributes<HTMLDivElement> {
@@ -33,10 +34,12 @@ export interface ActivityThreadListProp
   postFeed: (value: string) => void;
   onThreadIdSelect: (value: string) => void;
   onThreadSelect: (value: string) => void;
+  onConfirmation?: (data: ConfirmState) => void;
 }
 export interface ActivityThreadProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<ActivityThreadPanelProp, 'deletePostHandler'> {
   selectedThread: EntityThread;
   postFeed: (value: string) => void;
+  onConfirmation?: (data: ConfirmState) => void;
 }

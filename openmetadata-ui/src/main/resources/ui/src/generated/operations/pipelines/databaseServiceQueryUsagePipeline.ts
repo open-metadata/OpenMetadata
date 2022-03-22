@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-export interface DatabaseServiceQueryUsagePipelineObject {
+export interface DatabaseServiceQueryUsagePipelineClass {
   /**
    * Configuration to tune how far we want to look back in query logs to process usage data.
    */

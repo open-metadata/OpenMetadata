@@ -127,9 +127,12 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public boolean hasPermissions(AuthenticationContext ctx, EntityReference owner) {
     validateAuthenticationContext(ctx);
-    // To encourage users to claim or update changes to tables when a non-owner or un-claimed datasets.
+    // Since we have roles and operations. An Admin could enable updateDescription, tags, ownership permissions to
+    // a role and assign that to the users who can update the entities. With this we can look at the owner as a strict
+    // requirement to manage entities. So if owner is null we will not allow users to update entities. They can get a
+    // role that allows them to update the entity.
     if (owner == null) {
-      return true;
+      return false;
     }
     try {
       User user = getUserFromAuthenticationContext(ctx);
@@ -152,11 +155,8 @@ public class DefaultAuthorizer implements Authorizer {
 
       Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
-      if (Entity.shouldHaveOwner(entityReference.getType()) && owner == null) {
-        // Entity does not have an owner.
-        return true;
-      }
-      if (Entity.shouldHaveOwner(entityReference.getType()) && isOwnedByUser(user, owner)) {
+
+      if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
         // Entity is owned by the user.
         return true;
       }

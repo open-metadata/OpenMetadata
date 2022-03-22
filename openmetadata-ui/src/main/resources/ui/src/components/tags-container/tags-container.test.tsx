@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
+import {
+  fireEvent,
+  getAllByTestId,
+  getByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import TagsContainer from './tags-container';
 
@@ -20,12 +26,15 @@ const tagList = [
   { fqn: 'tag 2', source: 'Tag' },
   { fqn: 'tag 3', source: 'Glossary' },
 ];
+
+const tagListWithTier = [
+  { fqn: 'Tier.Tier1', source: 'Tag' },
+  { fqn: 'Data.Tier1Data', source: 'Tag' },
+  { fqn: 'Tier.Tier2', source: 'Glossary' },
+  { fqn: 'Count.Tier2Count', source: 'Glossary' },
+];
 const onCancel = jest.fn();
 const onSelectionChange = jest.fn();
-
-jest.mock('../dropdown/DropDownList', () => {
-  return jest.fn().mockReturnValue(<p>DropDownList</p>);
-});
 
 jest.mock('../tags/tags', () => {
   return jest.fn().mockReturnValue(<p>tags</p>);
@@ -47,7 +56,23 @@ describe('Test TagsContainer Component', () => {
     expect(TagContainer).toBeInTheDocument();
   });
 
-  it('should have two buttons', () => {
+  it('Should have one input', () => {
+    const { container } = render(
+      <TagsContainer
+        editable
+        selectedTags={[]}
+        tagList={tagList}
+        onCancel={onCancel}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+
+    const input = getByTestId(container, 'associatedTagName');
+
+    expect(input).toBeInTheDocument();
+  });
+
+  it('Should have two buttons', () => {
     const { container } = render(
       <TagsContainer
         editable
@@ -60,5 +85,73 @@ describe('Test TagsContainer Component', () => {
     const buttons = getByTestId(container, 'buttons');
 
     expect(buttons.childElementCount).toBe(2);
+  });
+
+  it('Should suggest tags on typing', () => {
+    const { container } = render(
+      <TagsContainer
+        editable
+        selectedTags={[]}
+        tagList={tagList}
+        onCancel={onCancel}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+
+    const input = getByTestId(container, 'associatedTagName');
+
+    fireEvent.change(input, { target: { value: 'tag' } });
+
+    const tagSuggestions = getByTestId(container, 'dropdown-list');
+
+    expect(tagSuggestions).toBeInTheDocument();
+
+    const tagItems = getAllByTestId(tagSuggestions, 'list-item');
+
+    expect(tagItems).toHaveLength(3);
+  });
+
+  it('Should only exclude Tier tags from suggestions', () => {
+    const { container } = render(
+      <TagsContainer
+        editable
+        selectedTags={[]}
+        tagList={tagListWithTier}
+        onCancel={onCancel}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+
+    const input = getByTestId(container, 'associatedTagName');
+
+    fireEvent.change(input, { target: { value: 'tier' } });
+
+    const tagSuggestions = getByTestId(container, 'dropdown-list');
+
+    expect(tagSuggestions).toBeInTheDocument();
+
+    const tagItems = getAllByTestId(tagSuggestions, 'list-item');
+
+    expect(tagItems).toHaveLength(2);
+  });
+
+  it('Should not suggest tags on typing unmatched tag name', () => {
+    const { container } = render(
+      <TagsContainer
+        editable
+        selectedTags={[]}
+        tagList={tagList}
+        onCancel={onCancel}
+        onSelectionChange={onSelectionChange}
+      />
+    );
+
+    const input = getByTestId(container, 'associatedTagName');
+
+    fireEvent.change(input, { target: { value: 'qwerty' } });
+
+    const tagSuggestions = queryByTestId(container, 'dropdown-list');
+
+    expect(tagSuggestions).not.toBeInTheDocument();
   });
 });

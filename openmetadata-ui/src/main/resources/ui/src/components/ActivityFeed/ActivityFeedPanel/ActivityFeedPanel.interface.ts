@@ -13,6 +13,7 @@
 
 import { EntityThread } from 'Models';
 import { HTMLAttributes } from 'react';
+import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
   selectedThread: EntityThread;
@@ -37,4 +38,5 @@ export interface FeedPanelBodyProp
     Pick<ActivityFeedPanelProp, 'deletePostHandler'> {
   threadData: EntityThread;
   isLoading: boolean;
+  onConfirmation?: (data: ConfirmState) => void;
 }

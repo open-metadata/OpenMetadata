@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.EntityUtil.toBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -48,33 +47,23 @@ public interface EntityDAO<T> {
   @SqlUpdate("UPDATE <table> SET  json = :json WHERE id = :id")
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
-  @SqlQuery("SELECT json FROM <table> WHERE id = :id AND (deleted = :deleted OR :deleted IS NULL)")
-  String findById(@Define("table") String table, @Bind("id") String id, @Bind("deleted") Boolean deleted);
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
+  String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);
 
-  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name AND (deleted = :deleted OR :deleted IS NULL)")
+  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name <cond>")
   String findByName(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
       @Bind("name") String name,
-      @Bind("deleted") Boolean deleted);
+      @Define("cond") String cond);
 
-  @SqlQuery(
-      "SELECT count(*) FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "(deleted = :deleted OR :deleted IS NULL)")
-  int listCount(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
-      @Bind("deleted") Boolean deleted);
+  @SqlQuery("SELECT count(*) FROM <table> <cond>")
+  int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
 
   @SqlQuery(
       "SELECT json FROM ("
-          + "SELECT <nameColumn>, json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + // Filter by service name
-          "<nameColumn> < :before AND "
-          + "deleted = false "
+          + "SELECT <nameColumn>, json FROM <table> <cond> AND "
+          + "<nameColumn> < :before "
           + // Pagination by chart fullyQualifiedName
           "ORDER BY <nameColumn> DESC "
           + // Pagination ordering by chart fullyQualifiedName
@@ -83,58 +72,18 @@ public interface EntityDAO<T> {
   List<String> listBefore(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
+      @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("before") String before);
 
   @SqlQuery(
-      "SELECT json FROM ("
-          + "SELECT <nameColumn>, json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + // Filter by service name
-          "<nameColumn> < :before AND "
-          + "(deleted = :deleted OR :deleted IS NULL) "
-          + // Pagination by chart fullyQualifiedName
-          "ORDER BY <nameColumn> DESC "
-          + // Pagination ordering by chart fullyQualifiedName
-          "LIMIT :limit"
-          + ") last_rows_subquery ORDER BY <nameColumn>")
-  List<String> listBefore(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
-      @Bind("limit") int limit,
-      @Bind("before") String before,
-      @Bind("deleted") Boolean deleted);
-
-  @SqlQuery(
-      "SELECT json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "<nameColumn> > :after AND "
-          + "deleted = false "
-          + "ORDER BY <nameColumn> "
-          + "LIMIT :limit")
+      "SELECT json FROM <table> <cond> AND " + "<nameColumn> > :after " + "ORDER BY <nameColumn> " + "LIMIT :limit")
   List<String> listAfter(
       @Define("table") String table,
       @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
+      @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("after") String after);
-
-  @SqlQuery(
-      "SELECT json FROM <table> WHERE "
-          + "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND "
-          + "<nameColumn> > :after AND "
-          + "(deleted = :deleted OR :deleted IS NULL) "
-          + "ORDER BY <nameColumn> "
-          + "LIMIT :limit")
-  List<String> listAfter(
-      @Define("table") String table,
-      @Define("nameColumn") String nameColumn,
-      @Bind("fqnPrefix") String fqnPrefix,
-      @Bind("limit") int limit,
-      @Bind("after") String after,
-      @Bind("deleted") Boolean deleted);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
@@ -151,9 +100,19 @@ public interface EntityDAO<T> {
     update(getTableName(), id.toString(), json);
   }
 
+  default String getCondition(Include include) {
+    if (include == null || include == Include.NON_DELETED) {
+      return "AND deleted = false";
+    }
+    if (include == Include.DELETED) {
+      return " AND deleted = true";
+    }
+    return "";
+  }
+
   default T findEntityById(UUID id, Include include) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id.toString(), toBoolean(include));
+    String json = findById(getTableName(), id.toString(), getCondition(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -175,7 +134,7 @@ public interface EntityDAO<T> {
 
   default T findEntityByName(String fqn, Include include) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
+    String json = findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -204,23 +163,24 @@ public interface EntityDAO<T> {
   }
 
   default String findJsonById(String id, Include include) {
-    return findById(getTableName(), id, toBoolean(include));
+    return findById(getTableName(), id, getCondition(include));
   }
 
   default String findJsonByFqn(String fqn, Include include) {
-    return findByName(getTableName(), getNameColumn(), fqn, toBoolean(include));
+    return findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
   }
 
-  default int listCount(String databaseFQN, Include include) {
-    return listCount(getTableName(), getNameColumn(), databaseFQN, toBoolean(include));
+  default int listCount(ListFilter filter) {
+    return listCount(getTableName(), getNameColumn(), filter.getCondition());
   }
 
-  default List<String> listBefore(String parentFQN, int limit, String before, Include include) {
-    return listBefore(getTableName(), getNameColumn(), parentFQN, limit, before, toBoolean(include));
+  default List<String> listBefore(ListFilter filter, int limit, String before) {
+
+    return listBefore(getTableName(), getNameColumn(), filter.getCondition(), limit, before);
   }
 
-  default List<String> listAfter(String databaseFQN, int limit, String after, Include include) {
-    return listAfter(getTableName(), getNameColumn(), databaseFQN, limit, after, toBoolean(include));
+  default List<String> listAfter(ListFilter filter, int limit, String after) {
+    return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
   }
 
   default boolean exists(UUID id) {

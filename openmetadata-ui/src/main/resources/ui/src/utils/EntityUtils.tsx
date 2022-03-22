@@ -49,7 +49,7 @@ export const getEntityTags = (
     Partial<Pipeline> &
     Partial<Dashboard> &
     Partial<Topic>
-): Array<string | undefined> => {
+): Array<TagLabel | undefined> => {
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
@@ -57,13 +57,13 @@ export const getEntityTags = (
         ...(entityDetail.tags || []),
       ];
 
-      return tableTags.map((t) => t.tagFQN);
+      return tableTags;
     }
     case EntityType.PIPELINE: {
-      return entityDetail.tags?.map((t) => t.tagFQN) || [];
+      return entityDetail.tags || [];
     }
     case EntityType.DASHBOARD: {
-      return entityDetail.tags?.map((t) => t.tagFQN) || [];
+      return entityDetail.tags || [];
     }
 
     default:
@@ -228,8 +228,14 @@ export const getEntityOverview = (
       return overview;
     }
     case EntityType.DASHBOARD: {
-      const { owner, tags, dashboardUrl, service, fullyQualifiedName } =
-        entityDetail;
+      const {
+        owner,
+        tags,
+        dashboardUrl,
+        service,
+        fullyQualifiedName,
+        displayName,
+      } = entityDetail;
       const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
 
@@ -260,7 +266,7 @@ export const getEntityOverview = (
         },
         {
           name: `${serviceType} url`,
-          value: fullyQualifiedName?.split('.')[1] as string,
+          value: displayName || (fullyQualifiedName?.split('.')[1] as string),
           url: dashboardUrl as string,
           isLink: true,
           isExternal: true,
@@ -421,7 +427,7 @@ export const getInfoElements = (data: ExtraInfo) => {
   }
 
   return (
-    <>
+    <span>
       <span className="tw-text-grey-muted">{retVal}</span>
       {displayVal ? (
         <span>
@@ -470,7 +476,7 @@ export const getInfoElements = (data: ExtraInfo) => {
           )}
         </span>
       ) : null}
-    </>
+    </span>
   );
 };
 

@@ -27,6 +27,13 @@ export enum EntityType {
   WEBHOOK = 'webhook',
 }
 
+export enum AssetsType {
+  TABLE = 'table',
+  TOPIC = 'topic',
+  DASHBOARD = 'dashboard',
+  PIPELINE = 'pipeline',
+}
+
 export enum ChangeType {
   ADDED = 'Added',
   UPDATED = 'Updated',

@@ -139,7 +139,8 @@ SNOWFLAKE_SQL_STATEMENT = """
         schema_name,start_time,end_time
         from table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz('{start_date}'),
-        end_time_range_end=>to_timestamp_ltz('{end_date}'),RESULT_LIMIT=>{result_limit}));
+        end_time_range_end=>to_timestamp_ltz('{end_date}'),RESULT_LIMIT=>{result_limit}))
+        WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES');
         """
 
 NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(

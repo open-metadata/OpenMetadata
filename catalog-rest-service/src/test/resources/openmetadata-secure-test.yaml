@@ -107,9 +107,9 @@ database:
 migrationConfiguration:
   path: "../bootstrap/sql/mysql"
 
-elasticsearch:
-  host: localhost
-  port: 0
+#elasticsearch:
+#  host: localhost
+#  port: 0
 
 health:
   delayedShutdownHandlerEnabled: true

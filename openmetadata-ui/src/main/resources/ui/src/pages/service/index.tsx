@@ -60,12 +60,17 @@ import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
-import Tags from '../../components/tags/tags';
+import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -93,7 +98,11 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getEntityFieldThreadCounts,
+  getUpdatedThread,
+} from '../../utils/FeedUtils';
 import {
   getCurrentServiceTab,
   getIsIngestionEnable,
@@ -688,23 +697,11 @@ const ServicePage: FunctionComponent = () => {
 
         return (
           <td className="tableBody-cell">
-            {topic.tags && topic.tags?.length > 0
-              ? topic.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
+            {topic.tags && topic.tags?.length > 0 ? (
+              <TagsViewer sizeCap={-1} tags={topic.tags} />
+            ) : (
+              '--'
+            )}
           </td>
         );
       }
@@ -713,23 +710,11 @@ const ServicePage: FunctionComponent = () => {
 
         return (
           <td className="tableBody-cell">
-            {dashboard.tags && dashboard.tags?.length > 0
-              ? dashboard.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
+            {dashboard.tags && dashboard.tags?.length > 0 ? (
+              <TagsViewer sizeCap={-1} tags={dashboard.tags} />
+            ) : (
+              '--'
+            )}
           </td>
         );
       }
@@ -738,23 +723,11 @@ const ServicePage: FunctionComponent = () => {
 
         return (
           <td className="tableBody-cell">
-            {pipeline.tags && pipeline.tags?.length > 0
-              ? pipeline.tags.map((tag, tagIndex) => (
-                  <Tags
-                    className="tw-bg-gray-200"
-                    key={tagIndex}
-                    startWith="#"
-                    tag={{
-                      ...tag,
-                      tagFQN: `${
-                        tag.tagFQN?.startsWith('Tier.Tier')
-                          ? tag.tagFQN.split('.')[1]
-                          : tag.tagFQN
-                      }`,
-                    }}
-                  />
-                ))
-              : '--'}
+            {pipeline.tags && pipeline.tags?.length > 0 ? (
+              <TagsViewer sizeCap={-1} tags={pipeline.tags} />
+            ) : (
+              '--'
+            )}
           </td>
         );
       }
@@ -983,6 +956,44 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showToast({
+              variant: 'error',
+              body: message ?? onUpdatedConversastionError,
+            });
+          });
+
+        showToast({
+          variant: 'success',
+          body: onConfirmText,
+        });
+      })
+      .catch((error) => {
+        const message = error?.message;
+        showToast({ variant: 'error', body: message ?? onErrorText });
+      });
+  };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -1133,6 +1144,7 @@ const ServicePage: FunctionComponent = () => {
                       isEntityFeed
                       withSidePanel
                       className=""
+                      deletePostHandler={deletePostHandler}
                       entityName={serviceFQN}
                       feedList={entityThread}
                       isLoading={isentityThreadLoading}
@@ -1195,6 +1207,7 @@ const ServicePage: FunctionComponent = () => {
             {threadLink ? (
               <ActivityThreadPanel
                 createThread={createThread}
+                deletePostHandler={deletePostHandler}
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}

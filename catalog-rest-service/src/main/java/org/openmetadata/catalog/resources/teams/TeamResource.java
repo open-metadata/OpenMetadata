@@ -24,11 +24,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -53,8 +51,10 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -70,12 +70,12 @@ import org.openmetadata.catalog.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams")
-public class TeamResource {
+public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
-  private final TeamRepository dao;
-  private final Authorizer authorizer;
 
-  public static Team addHref(UriInfo uriInfo, Team team) {
+  @Override
+  public Team addHref(UriInfo uriInfo, Team team) {
+    Entity.withHref(uriInfo, team.getOwner());
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
     Entity.withHref(uriInfo, team.getOwns());
@@ -83,22 +83,19 @@ public class TeamResource {
   }
 
   public TeamResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "TeamRepository must not be null");
-    this.dao = new TeamRepository(dao);
-    this.authorizer = authorizer;
+    super(Team.class, new TeamRepository(dao), authorizer);
   }
 
   public static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
     TeamList() {}
 
-    public TeamList(List<Team> teams, String beforeCursor, String afterCursor, int total)
-        throws GeneralSecurityException, UnsupportedEncodingException {
+    public TeamList(List<Team> teams, String beforeCursor, String afterCursor, int total) {
       super(teams, beforeCursor, afterCursor, total);
     }
   }
 
-  static final String FIELDS = "profile,users,owns,defaultRoles";
+  static final String FIELDS = "owner,profile,users,owns,defaultRoles";
   public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Team.class);
 
   @GET
@@ -143,17 +140,9 @@ public class TeamResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-
-    ResultList<Team> teams;
-    if (before != null) { // Reverse paging
-      teams = dao.listBefore(uriInfo, fields, null, limitParam, before, include); // Ask for one extra entry
-    } else { // Forward paging or first page
-      teams = dao.listAfter(uriInfo, fields, null, limitParam, after, include);
-    }
-    teams.getData().forEach(team -> addHref(uriInfo, team));
-    return teams;
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("include", include.value());
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -206,8 +195,7 @@ public class TeamResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -240,8 +228,7 @@ public class TeamResource {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
@@ -307,8 +294,8 @@ public class TeamResource {
   public Response createOrUpdateTeam(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(team));
     RestUtil.PutResponse<Team> response = dao.createOrUpdate(uriInfo, team);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -339,7 +326,11 @@ public class TeamResource {
     Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
     Team team = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, dao.getEntityInterface(team).getEntityReference(), patch);
+        authorizer,
+        securityContext,
+        dao.getEntityInterface(team).getEntityReference(),
+        dao.getOriginalOwner(team),
+        patch);
     PatchResponse<Team> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -370,6 +361,8 @@ public class TeamResource {
         .withDescription(ct.getDescription())
         .withDisplayName(ct.getDisplayName())
         .withProfile(ct.getProfile())
+        .withOwner(ct.getOwner())
+        .withIsJoinable(ct.getIsJoinable())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
         .withUsers(dao.getEntityReferences(ct.getUsers()))
