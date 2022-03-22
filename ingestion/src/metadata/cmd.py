@@ -198,15 +198,26 @@ def report(config: str) -> None:
     required=False,
 )
 @click.option("--reset-db", help="Reset OpenMetadata Data", is_flag=True)
+@click.option("--ingest-data", help="Start data ingestion", is_flag=True)
 def docker(
-    start, stop, pause, resume, clean, file_path, env_file_path, reset_db
+    start, stop, pause, resume, clean, file_path, env_file_path, reset_db, ingest_data
 ) -> None:
     """
     Checks Docker Memory Allocation
     Run Latest Release Docker - metadata docker --start
     Run Local Docker - metadata docker --start -f path/to/docker-compose.yml
     """
-    run_docker(start, stop, pause, resume, clean, file_path, env_file_path, reset_db)
+    run_docker(
+        start,
+        stop,
+        pause,
+        resume,
+        clean,
+        file_path,
+        env_file_path,
+        reset_db,
+        ingest_data,
+    )
 
 
 @metadata.command()
