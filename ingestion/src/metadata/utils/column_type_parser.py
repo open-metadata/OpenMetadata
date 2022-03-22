@@ -101,7 +101,6 @@ class ColumnTypeParser:
         "INTERVAL DAY TO SECOND": "INTERVAL",
         "INTERVAL YEAR TO MONTH": "INTERVAL",
         "INTERVAL": "INTERVAL",
-        "JSON": "JSON",
         "LONG RAW": "BINARY",
         "LONG VARCHAR": "VARCHAR",
         "LONGBLOB": "LONGBLOB",
