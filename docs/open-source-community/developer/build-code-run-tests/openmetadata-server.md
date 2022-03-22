@@ -1,4 +1,10 @@
-# Build the code & run tests
+---
+description: >-
+  Learn how to run the OpenMetadata server in development mode by using Docker
+  and IntelliJ.
+---
+
+# OpenMetadata Server
 
 ## Prerequisites
 
@@ -11,7 +17,7 @@
     ```
 *   Bootstrap MySQL with tables
 
-    1. Create a distribution as explained [here](build-code-run-tests.md#create-a-distribution-packaging)
+    1. Create a distribution as explained [here](openmetadata-server.md#create-a-distribution-packaging)
     2. Extract the distribution tar.gz file and run the following command
 
     ```
@@ -20,7 +26,7 @@
     ```
 *   Bootstrap ES with indexes and load sample data into MySQL
 
-    1. Run OpenMetadata service instances through IntelliJ IDEA following the instructions [here](build-code-run-tests.md#run-instance-through-intellij-idea)
+    1. Run OpenMetadata service instances through IntelliJ IDEA following the instructions [here](openmetadata-server.md#run-instance-through-intellij-idea)
     2. Once the logs indicate that the instance is up, run the following commands from the top-level directory
 
     ```
@@ -34,7 +40,7 @@
     metadata ingest -c ./pipelines/sample_usage.json
     metadata ingest -c ./pipelines/metadata_to_es.json
     ```
-* You are now ready to explore the app by going to http://localhost:8585 \*If the web page doesn't work as intended, please take a look at the troubleshooting steps [here](build-code-run-tests.md#troubleshooting)
+* You are now ready to explore the app by going to http://localhost:8585 \*If the web page doesn't work as intended, please take a look at the troubleshooting steps [here](openmetadata-server.md#troubleshooting)
 
 ## Building
 
@@ -67,33 +73,33 @@ Add a new Run/Debug configuration like the below screenshot.
 2. Click on "Edit Configurations"
 3. Click + sign and Select Application and make sure your config looks similar to the below image
 
-![Intellij Runtime Configuration](<../../.gitbook/assets/Intellij-Runtime Config.png>)
+![Intellij Runtime Configuration](<../../../.gitbook/assets/Intellij-Runtime Config.png>)
 
 ## Add missing dependency
 
 Right-click on catalog-rest-service
 
-![](../../../.gitbook/assets/image-1-.png)
+![](../../../../.gitbook/assets/image-1-.png)
 
 Click on "Open Module Settings"
 
-![](../../../.gitbook/assets/image-2-.png)
+![](../../../../.gitbook/assets/image-2-.png)
 
 Go to "Dependencies"
 
-![](../../../.gitbook/assets/image-3-.png)
+![](../../../../.gitbook/assets/image-3-.png)
 
 Click “+” at the bottom of the dialog box and click "Add"
 
-![](../../../.gitbook/assets/image-4-.png)
+![](../../../../.gitbook/assets/image-4-.png)
 
 Click on Library
 
-![](../../../.gitbook/assets/image-5-.png)
+![](../../../../.gitbook/assets/image-5-.png)
 
 In that list look for "jersey-client:2.25.1"
 
-![](../../../.gitbook/assets/image-6-.png)
+![](../../../../.gitbook/assets/image-6-.png)
 
 Select it and click "OK". Now run/debug the application.
 
@@ -104,7 +110,7 @@ Select it and click "OK". Now run/debug the application.
     * If ElasticSearch in Docker on Mac is crashing, try changing Preferences -> Resources -> Memory to 4GB
     * If ElasticSearch logs show `high disk watermark [90%] exceeded`, try changing Preferences -> Resources -> Disk Image Size to at least 16GB
   * `Public Key Retrieval is not allowed` - verify that the JDBC connect URL in `conf/openmetadata.yaml` is configured with the parameter `allowPublicKeyRetrieval=true`
-  * Browser console shows javascript errors, try doing a [clean build](build-code-run-tests.md#building). Some npm packages may not have been built properly.
+  * Browser console shows javascript errors, try doing a [clean build](openmetadata-server.md#building). Some npm packages may not have been built properly.
 
 ## Coding Style
 

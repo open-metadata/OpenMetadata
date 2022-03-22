@@ -18,8 +18,8 @@ This document summarizes information relevant to OpenMetadata committers and con
 [backend](backend/)
 {% endcontent-ref %}
 
-{% content-ref url="build-code-run-tests.md" %}
-[build-code-run-tests.md](build-code-run-tests.md)
+{% content-ref url="build-code-run-tests/" %}
+[build-code-run-tests](build-code-run-tests/)
 {% endcontent-ref %}
 
 {% content-ref url="quick-start-guide.md" %}
