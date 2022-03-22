@@ -71,7 +71,9 @@ class OMetaDatabaseServiceTest(TestCase):
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=DatabaseService, entity_id=service_db_id)
+        cls.metadata.delete(
+            entity=DatabaseService, entity_id=service_db_id, recursive=True
+        )
 
     def test_create_database_service(self):
         """
@@ -163,7 +165,9 @@ class OMetaDatabaseServiceTest(TestCase):
         )
 
         # Delete
-        self.metadata.delete(entity=DatabaseService, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(
+            entity=DatabaseService, entity_id=str(res_id.id.__root__), recursive=True
+        )
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Database)

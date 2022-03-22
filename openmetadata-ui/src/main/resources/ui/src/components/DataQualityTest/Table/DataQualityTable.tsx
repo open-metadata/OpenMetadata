@@ -94,10 +94,10 @@ const DataQualityTable = ({
   };
 
   return (
-    <div className="tw-table-responsive">
+    <div className="tw-table-responsive" data-testid="table-container">
       <table className="tw-w-full">
         <thead>
-          <tr className="tableHead-row">
+          <tr className="tableHead-row" data-testid="table-header">
             <th className="tableHead-cell">Test Case</th>
             <th className="tableHead-cell">Description</th>
             <th className="tableHead-cell">Config</th>

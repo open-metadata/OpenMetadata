@@ -196,23 +196,29 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
-    def next_record(self) -> Iterable[Entity]:
-        inspector = inspect(self.engine)
-        schema_names = inspector.get_schema_names()
+    def get_databases(self) -> Iterable[Inspector]:
+        yield inspect(self.engine)
 
-        for schema in schema_names:
-            # clear any previous source database state
-            self.database_source_state.clear()
-            if not self.sql_config.schema_filter_pattern.included(schema):
-                self.status.filter(schema, "Schema pattern not allowed")
-                continue
-            if self.config.include_tables:
-                yield from self.fetch_tables(inspector, schema)
-            if self.config.include_views:
-                yield from self.fetch_views(inspector, schema)
-            if self.config.mark_deleted_tables_as_deleted:
-                schema_fqdn = f"{self.config.service_name}.{schema}"
-                yield from self.delete_tables(schema_fqdn)
+    def get_table_fqn(self, service_name, schema, table_name) -> str:
+        return f"{service_name}.{schema}.{table_name}"
+
+    def next_record(self) -> Iterable[Entity]:
+        inspectors = self.get_databases()
+        for inspector in inspectors:
+            schema_names = inspector.get_schema_names()
+            for schema in schema_names:
+                # clear any previous source database state
+                self.database_source_state.clear()
+                if not self.sql_config.schema_filter_pattern.included(schema):
+                    self.status.filter(schema, "Schema pattern not allowed")
+                    continue
+                if self.config.include_tables:
+                    yield from self.fetch_tables(inspector, schema)
+                if self.config.include_views:
+                    yield from self.fetch_views(inspector, schema)
+                if self.config.mark_deleted_tables_as_deleted:
+                    schema_fqdn = f"{self.config.service_name}.{schema}"
+                    yield from self.delete_tables(schema_fqdn)
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
@@ -240,7 +246,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     continue
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = f"{self.config.service_name}.{schema}.{table_name}"
+                fqn = self.get_table_fqn(self.config.service_name, schema, table_name)
                 self.database_source_state.add(fqn)
                 self.table_constraints = None
                 table_columns = self._get_columns(schema, table_name, inspector)
@@ -322,7 +328,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-                fqn = f"{self.config.service_name}.{schema}.{view_name}"
+                fqn = self.get_table_fqn(self.config.service_name, schema, view_name)
                 self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
@@ -425,7 +431,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 try:
                     _, database, table = node.split(".", 2)
                     table = table.replace(".", "_DOT_")
-                    table_fqn = f"{self.config.service_name}.{database}.{table}"
+                    table_fqn = self.get_table_fqn(
+                        self.config.service_name, database, table
+                    )
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(

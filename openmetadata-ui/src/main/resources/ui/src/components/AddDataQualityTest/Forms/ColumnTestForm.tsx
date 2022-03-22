@@ -38,7 +38,7 @@ import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 
 type Props = {
-  data: ColumnTest;
+  data?: ColumnTest;
   selectedColumn: string;
   isTableDeleted?: boolean;
   column: ModifiedTableColumn[];
@@ -68,7 +68,7 @@ const ColumnTestForm = ({
   const [description] = useState(data?.description || '');
   const isAcceptedTypeIsString = useRef<boolean>(true);
   const [columnTest, setColumnTest] = useState<ColumnTestType>(
-    data?.testCase?.columnTestType
+    data?.testCase?.columnTestType || ('' as ColumnTestType)
   );
   const [columnOptions, setColumnOptions] = useState<Table['columns']>([]);
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>([]);
@@ -97,7 +97,7 @@ const ColumnTestForm = ({
     notSupported: false,
   });
 
-  const [columnName, setColumnName] = useState(data?.columnName);
+  const [columnName, setColumnName] = useState(data?.columnName || '');
   const [missingValueMatch, setMissingValueMatch] = useState<string[]>(
     data?.testCase?.config?.missingValueMatch || ['']
   );
@@ -605,6 +605,7 @@ const ColumnTestForm = ({
               className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
+              data-testid="columnName"
               disabled={!isUndefined(data)}
               id="columnName"
               name="columnName"
@@ -632,6 +633,7 @@ const ColumnTestForm = ({
               className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
+              data-testid="columTestType"
               disabled={!isUndefined(data)}
               id="columTestType"
               name="columTestType"
@@ -670,6 +672,7 @@ const ColumnTestForm = ({
             </label>
             <select
               className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="frequency"
               id="frequency"
               name="frequency"
               value={frequency}
@@ -694,6 +697,7 @@ const ColumnTestForm = ({
             </Button>
             <Button
               className="tw-w-16 tw-h-10"
+              data-testid="save-test"
               disabled={
                 isShowError.allTestAdded ||
                 isShowError.notSupported ||

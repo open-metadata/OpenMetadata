@@ -94,6 +94,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isNodeLoading,
   dataModel,
   deleted,
+  tagUpdateHandler,
   addLineageHandler,
   removeLineageHandler,
   entityLineageHandler,
@@ -423,6 +424,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  /**
+   * Formulates updated tags and updates table entity data for API call
+   * @param selectedTags
+   */
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...tableDetails, tags: updatedTags };
+      tagUpdateHandler(updatedTable);
+    }
+  };
+
   const followTable = () => {
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
@@ -487,18 +500,28 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
+          isTagEditable
           deleted={deleted}
+          entityFieldThreads={getEntityFieldThreadCounts(
+            'tags',
+            entityFieldThreadCount
+          )}
+          entityFqn={datasetFQN}
           entityName={entityName}
+          entityType={EntityType.DATASET}
           extraInfo={extraInfo}
           followHandler={followTable}
           followers={followersCount}
           followersList={followers}
+          hasEditAccess={hasEditAccess()}
           isFollowing={isFollowing}
           tags={tableTags}
+          tagsHandler={onTagUpdate}
           tier={tier}
           titleLinks={slashedTableName}
           version={version}
           versionHandler={versionHandler}
+          onThreadLinkSelect={onThreadLinkSelect}
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

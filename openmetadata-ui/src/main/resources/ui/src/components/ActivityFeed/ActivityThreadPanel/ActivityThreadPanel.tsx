@@ -28,10 +28,8 @@ import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
-import {
-  FeedPanelHeader,
-  FeedPanelOverlay,
-} from '../ActivityFeedPanel/ActivityFeedPanel';
+import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
+import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
 import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import {

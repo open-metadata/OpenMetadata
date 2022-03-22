@@ -282,8 +282,12 @@ class OMetaModelTest(TestCase):
 
         self.metadata.delete(entity=Table, entity_id=table1_entity.id)
         self.metadata.delete(entity=Table, entity_id=table2_entity.id)
-        self.metadata.delete(entity=Database, entity_id=create_db_entity.id)
-        self.metadata.delete(entity=DatabaseService, entity_id=service_entity.id)
+        self.metadata.delete(
+            entity=Database, entity_id=create_db_entity.id, recursive=True
+        )
+        self.metadata.delete(
+            entity=DatabaseService, entity_id=service_entity.id, recursive=True
+        )
 
     def test_list_versions(self):
         """

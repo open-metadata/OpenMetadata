@@ -46,7 +46,9 @@ const AddDataQualityTest = ({
   onFormCancel,
 }: Props) => {
   return (
-    <div className="tw-max-w-xl tw-mx-auto tw-pb-6">
+    <div
+      className="tw-max-w-xl tw-mx-auto tw-pb-6"
+      data-testid="add-data-quality-test">
       {testMode === 'table' ? (
         <TableTestForm
           data={data as TableTest}
