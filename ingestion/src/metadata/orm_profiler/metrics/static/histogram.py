@@ -69,9 +69,9 @@ class Histogram(QueryMetric):
 
         step = dict(bins.first())["step"]
 
-        if step == 0:
+        if not step:  # step == 0 or None for empty tables
             logger.debug(
-                f"MIN({col.name}) == MAX({col.name}). Aborting histogram computation."
+                f"MIN({col.name}) == MAX({col.name}) or EMPTY table. Aborting histogram computation."
             )
             return None
 
