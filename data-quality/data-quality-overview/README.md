@@ -37,17 +37,27 @@ This section will show you how to configure and run Data Profiling and Quality p
 
 ## Data Profiling
 
-The Ingestion Framework currently supports two types of pipelines:
+### Workflows
 
-* **Ingestion:** Captures metadata from the sources and updates the Entities' instances.
-* **Profiling:** Extracts metrics from SQL sources and configures and runs Data Quality tests. It requires previous executions of the Ingestion Pipeline.
+The **Ingestion Framework** currently supports two types of workflows:
+
+* **Ingestion:** Captures metadata from the sources and updates the Entities' instances. This is a lightweight process that can be scheduled to have fast feedback on metadata changes in our sources.
+* **Profiling:** Extracts metrics from SQL sources and sets up and runs Data Quality tests. It requires previous executions of the Ingestion Pipeline. This is a more time-consuming workflow that will run metrics and compare their result to the configured tests of both Tables and Columns.
 
 > Note that you can configure Ingestion pipelines with `source.config.data_profiler_enabled` as `"true"` or `"false"` to run the profiler as well during the metadata ingestion. This, however, **does not support** Quality Tests.
+
+### Profiling Overview
+
+#### Requirements
+
+The source layer of the Profiling workflow is the OpenMetadata API. Based on the source configuration, this process lists the tables to be executed.
+
+#### Description
 
 The steps of the **Profiling** pipeline are the following:
 
 1. First, use the source configuration to create a connection.
-2. Next, iterate over the selected tables and schemas that the Ingestion has previously added.
+2. Next, iterate over the selected tables and schemas that the Ingestion has previously recorded to OpenMetadata.
 3. Run a default set of metrics to all the table's columns. (We will add more customization in further releases).
 4. Finally, compare the metrics' results against the configured Data Quality tests.
 
