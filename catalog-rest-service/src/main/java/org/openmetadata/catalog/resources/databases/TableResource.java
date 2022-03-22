@@ -113,7 +113,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics"
+      "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
   public static final List<String> ALLOWED_FIELDS;
 
