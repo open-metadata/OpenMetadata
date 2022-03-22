@@ -440,7 +440,7 @@ export const getInfoElements = (data: ExtraInfo) => {
               <>
                 <span
                   className={classNames(
-                    'tw-mr-1 tw-inline-block tw-truncate link-text',
+                    'tw-mr-1 tw-inline-block tw-truncate link-text tw-align-middle',
                     {
                       'tw-w-52': (displayVal as string).length > 32,
                     }

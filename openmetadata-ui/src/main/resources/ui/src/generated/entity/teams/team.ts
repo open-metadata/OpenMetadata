@@ -42,7 +42,15 @@ export interface Team {
    */
   href: string;
   id: string;
+  /**
+   * Can any user join this team during sign up? Value of true indicates yes, and false no.
+   */
+  isJoinable?: boolean;
   name: string;
+  /**
+   * Owner of this team.
+   */
+  owner?: EntityReference;
   /**
    * List of entities owned by the team.
    */
@@ -118,8 +126,14 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Owner of this team.
  */
 export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */
