@@ -50,13 +50,26 @@ CONFIG = """
 """
 
 
+def execute_workflow():
+    workflow = Workflow.create(json.loads(CONFIG))
+    workflow.execute()
+    workflow.print_status()
+    workflow.stop()
+
+
 class Table:
     def __init__(self, name, attribute_definitions):
         self.name = name
         self.attribute_definitions = attribute_definitions
 
 
-MOCK_GET_COLUMNS = [{"AttributeName": "Name", "AttributeType": "S"}]
+MOCK_GET_COLUMNS = [
+    {"AttributeName": "Name", "AttributeType": "S"},
+    {"AttributeName": "Location", "AttributeType": "L"},
+]
+
+MOCK_GET_COLUMNS_TWO = [{"AttributeName": 1234, "AttributeType": "S"}]
+
 
 MOCK_GET_TABLE_NAMES = [
     Table(name="Forum", attribute_definitions=MOCK_GET_COLUMNS),
@@ -66,17 +79,42 @@ MOCK_GET_TABLE_NAMES = [
     Table(name="Thread", attribute_definitions=MOCK_GET_COLUMNS),
 ]
 
+MOCK_GET_TABLE_NAMES_CHECK_TABLE = [
+    Table(name=1234, attribute_definitions=MOCK_GET_COLUMNS),
+]
+
+MOCK_GET_TABLE_NAMES_CHECK_COLUMN = [
+    Table(name="Thread", attribute_definitions=MOCK_GET_COLUMNS_TWO),
+]
+
+MOCK_GET_TABLE_NAMES_EMPTY = []
+
+MOCK_GET_TABLE_NAMES_OTHER_DATATYPE = None
+
 EXCLUDED_TABLE_NAMES = [
     Table(name="Music", attribute_definitions=MOCK_GET_COLUMNS),
 ]
 
 
+@patch("boto3.resources.collection.CollectionManager.all")
+@patch("sqlalchemy.engine.base.Engine.connect")
 class DynamoDbIngestionTest(TestCase):
-    @patch("metadata.ingestion.source.dynamodb.DynamodbSource.get_tables")
-    @patch("sqlalchemy.engine.base.Engine.connect")
-    def test_dynamodb_ingestion(self, mock_connect, get_tables):
-        get_tables.return_value = MOCK_GET_TABLE_NAMES
-        workflow = Workflow.create(json.loads(CONFIG))
-        workflow.execute()
-        workflow.print_status()
-        workflow.stop()
+    def test_dynamodb_ingestion(self, mock_connect, all):
+        all.return_value = MOCK_GET_TABLE_NAMES
+        execute_workflow()
+
+    def test_dynamodb_table(self, mock_connect, all):
+        all.return_value = MOCK_GET_TABLE_NAMES_CHECK_TABLE
+        execute_workflow()
+
+    def test_dynamodb_columm(self, mock_connect, all):
+        all.return_value = MOCK_GET_TABLE_NAMES_CHECK_COLUMN
+        execute_workflow()
+
+    def test_dynamodb_empty_table(self, mock_connect, all):
+        all.return_value = MOCK_GET_TABLE_NAMES_EMPTY
+        execute_workflow()
+
+    def test_dynamodb_other_datatype_table(self, mock_connect, all):
+        all.return_value = MOCK_GET_TABLE_NAMES_OTHER_DATATYPE
+        execute_workflow()

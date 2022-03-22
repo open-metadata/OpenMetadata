@@ -62,7 +62,7 @@ class DynamodbSource(Source[Entity]):
 
     def next_record(self) -> Iterable[Entity]:
         try:
-            table_list = self.get_tables()
+            table_list = list(self.dynamodb.tables.all())
             if not table_list:
                 return
             yield from self.ingest_tables()
@@ -73,7 +73,7 @@ class DynamodbSource(Source[Entity]):
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
         try:
-            tables = self.get_tables()
+            tables = list(self.dynamodb.tables.all())
             for table in tables:
                 if not self.config.table_filter_pattern.included(table.name):
                     self.status.filter(
@@ -109,15 +109,11 @@ class DynamodbSource(Source[Entity]):
     def get_columns(self, column_data):
         for column in column_data:
             try:
-                if "S" in column["AttributeType"].lower():
+                if "S" in column["AttributeType"].upper():
                     column["AttributeType"] = column["AttributeType"].replace(" ", "")
                 parsed_string = ColumnTypeParser._parse_datatype_string(
                     column["AttributeType"].lower()
                 )
-                if isinstance(parsed_string, list):
-                    parsed_string = {}
-                    parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
-                    parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                 yield Column(**parsed_string)
@@ -131,6 +127,3 @@ class DynamodbSource(Source[Entity]):
 
     def get_status(self) -> SourceStatus:
         return self.status
-
-    def get_tables(self):
-        return list(self.dynamodb.tables.all())
