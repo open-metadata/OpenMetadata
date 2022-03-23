@@ -76,19 +76,15 @@ pip3 install 'openmetadata-ingestion[bigquery]'
 
 Please follow the steps relevant to your use case.
 
-1. [Create a configuration file using template JSON](./#3.-create-a-configuration-file-using-template-json)
-2. [Configure service settings](./#4.-configure-service-settings)
-3. [Enable/disable the data profiler](./#5.-enable-disable-the-data-profiler)
-4. [Install the data profiler Python module (optional)](./#6.-install-the-data-profiler-python-module-optional)
-5. [Configure data filters (optional)](./#7.-configure-data-filters-optional)
+1. [Create a configuration file using template JSON](./#1.-create-a-configuration-file-using-template-json)
+2. [Configure service settings](./#2.-configure-service-settings)
+3. [Enable/disable the data profiler](./#3.-enable-disable-the-data-profiler)
+4. [Install the data profiler Python module (optional)](./#4.-install-the-data-profiler-python-module-optional)
+5. [Configure data filters (optional)](./#5.-configure-data-filters-optional)
 6. [Configure sample data (optional)](./#8.-configure-sample-data-optional)
-7. [Configure DBT (optional)](./#9.-configure-dbt-optional)
-8. [Confirm sink settings](./#10.-confirm-sink-settings)
-9. [Confirm metadata\_server settings](./#11.-confirm-metadata\_server-settings)
-10. [Run ingestion workflow](./#12.-run-ingestion-workflow)
-11. [Ingest metadata in production (optional)](./#13.-productionize-ingestion-optional)
-
-****
+7. [Configure DBT (optional)](./#7.-configure-dbt-optional)
+8. [Confirm sink settings](./#8.-confirm-sink-settings)
+9. [Confirm metadata\_server settings](./#9.-confirm-metadata\_server-settings)
 
 ### **1. Create a configuration file using template JSON**
 
