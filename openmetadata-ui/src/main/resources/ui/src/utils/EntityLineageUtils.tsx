@@ -54,6 +54,7 @@ import { getEntityLink } from './TableUtils';
 
 export const getHeaderLabel = (
   v = '',
+  fqn: string,
   type: string,
   isMainNode: boolean,
   separator = '.'
@@ -72,7 +73,7 @@ export const getHeaderLabel = (
         <span
           className="tw-break-words description-text tw-self-center link-text tw-font-medium"
           data-testid="lineage-entity">
-          <Link to={getEntityLink(type, v)}>
+          <Link to={getEntityLink(type, fqn)}>
             {v.split(separator)[length - 1]}
           </Link>
         </span>
