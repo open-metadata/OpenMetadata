@@ -369,7 +369,7 @@ const ServicePage: FunctionComponent = () => {
         })
         .catch((error: AxiosError) => {
           const message =
-            error.response?.data.message ||
+            error.response?.data?.message ||
             `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
           handleShowErrorToast(message);
           reject();
@@ -390,7 +390,7 @@ const ServicePage: FunctionComponent = () => {
         })
         .catch((error: AxiosError) => {
           const message =
-            error.response?.data.message ||
+            error.response?.data?.message ||
             `${jsonData['api-error-messages']['delete-ingestion-error']} ${displayName}`;
 
           handleShowErrorToast(message);
@@ -416,7 +416,7 @@ const ServicePage: FunctionComponent = () => {
           if (triggerIngestion) {
             triggerIngestionById(id, displayName).catch((error: AxiosError) => {
               const message =
-                error.response?.data.message ||
+                error.response?.data?.message ||
                 `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
               handleShowErrorToast(message);
             });
@@ -424,7 +424,7 @@ const ServicePage: FunctionComponent = () => {
         })
         .catch((error: AxiosError) => {
           const message =
-            error.response?.data.message ||
+            error.response?.data?.message ||
             `${jsonData['api-error-messages']['update-ingestion-error']}`;
           handleShowErrorToast(message);
           reject();
@@ -460,7 +460,7 @@ const ServicePage: FunctionComponent = () => {
           if (triggerIngestion) {
             triggerIngestionById(id, displayName).catch((error: AxiosError) => {
               const message =
-                error.response?.data.message ||
+                error.response?.data?.message ||
                 `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
 
               handleShowErrorToast(message);
@@ -517,7 +517,7 @@ const ServicePage: FunctionComponent = () => {
         .catch((error: AxiosError) => {
           reject();
           const message =
-            error.response?.data.message ||
+            error.response?.data?.message ||
             `${jsonData['api-error-messages']['update-service-config-error']}`;
           handleShowErrorToast(message);
         });
@@ -786,7 +786,7 @@ const ServicePage: FunctionComponent = () => {
           setIsError(true);
         } else {
           const message =
-            error.response?.data.message ||
+            error.response?.data?.message ||
             jsonData['api-error-messages']['fetch-service-error'];
           handleShowErrorToast(message);
         }
@@ -865,7 +865,7 @@ const ServicePage: FunctionComponent = () => {
         })
         .catch((error: AxiosError) => {
           const message =
-            error.response?.data.message ||
+            error.response?.data?.message ||
             jsonData['api-error-messages']['update-description-error'];
           handleShowErrorToast(message);
         });
@@ -896,7 +896,7 @@ const ServicePage: FunctionComponent = () => {
         })
         .catch((error: AxiosError) => {
           const message =
-            error.response?.data.message ||
+            error.response?.data?.message ||
             jsonData['api-error-messages']['update-owner-error'];
           handleShowErrorToast(message);
           reject();
@@ -937,7 +937,7 @@ const ServicePage: FunctionComponent = () => {
       })
       .catch((error: AxiosError) => {
         const message =
-          error.response?.data.message ||
+          error.response?.data?.message ||
           jsonData['api-error-messages']['fetch-entity-feed-error'];
         handleShowErrorToast(message);
       })
@@ -972,7 +972,7 @@ const ServicePage: FunctionComponent = () => {
       })
       .catch((error: AxiosError) => {
         const message =
-          error.response?.data.message ||
+          error.response?.data?.message ||
           jsonData['api-error-messages']['create-message-error'];
         handleShowErrorToast(message);
       });
@@ -996,7 +996,7 @@ const ServicePage: FunctionComponent = () => {
       })
       .catch((error: AxiosError) => {
         const message =
-          error.response?.data.message ||
+          error.response?.data?.message ||
           jsonData['api-error-messages']['create-conversation-error'];
         handleShowErrorToast(message);
       });
@@ -1031,7 +1031,7 @@ const ServicePage: FunctionComponent = () => {
           })
           .catch((error: AxiosError) => {
             const message =
-              error.response?.data.message ||
+              error.response?.data?.message ||
               jsonData['api-error-messages'][
                 'fetch-updated-conversation-error'
               ];
@@ -1044,7 +1044,7 @@ const ServicePage: FunctionComponent = () => {
       })
       .catch((error: AxiosError) => {
         const message =
-          error.response?.data.message ||
+          error.response?.data?.message ||
           jsonData['api-error-messages']['delete-message-error'];
         handleShowErrorToast(message);
       });
