@@ -5,7 +5,7 @@
       "host_port": "localhost:1433",
       "service_name": "local_mssql",
       "database": "catalog_test",
-      "query": "select top 50 * from {}.{}",
+      "query": "select top 50 * from [{}].[{}]",
       "username": "sa",
       "password": "test!Password",
       "duration":2,

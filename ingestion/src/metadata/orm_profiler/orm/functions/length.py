@@ -15,10 +15,8 @@ Define Length function
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.orm_profiler.metrics.core import CACHE
+from metadata.orm_profiler.orm.registry import Dialects
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -33,10 +31,9 @@ def _(element, compiler, **kw):
     return "LEN(%s)" % compiler.process(element.clauses, **kw)
 
 
-@compiles(LenFn, DatabaseServiceType.SQLite.value.lower())
-@compiles(LenFn, DatabaseServiceType.Vertica.value.lower())
-@compiles(
-    LenFn, DatabaseServiceType.Hive.value.lower().encode()
-)  # For some reason hive's dialect is in bytes...
+@compiles(LenFn, Dialects.SQLite)
+@compiles(LenFn, Dialects.Vertica)
+@compiles(LenFn, Dialects.Hive)  # For some reason hive's dialect is in bytes...
+@compiles(LenFn, Dialects.Postgres)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)

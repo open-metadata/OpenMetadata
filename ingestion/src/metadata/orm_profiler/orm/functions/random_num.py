@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.orm_profiler.metrics.core import CACHE
+from metadata.orm_profiler.orm.registry import Dialects
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -43,12 +44,12 @@ def _(*_, **__):
     return "ABS(RANDOM()) * 100"
 
 
-@compiles(RandomNumFn, DatabaseServiceType.MySQL.value.lower())
+@compiles(RandomNumFn, Dialects.MySQL)
 def _(*_, **__):
     return "ABS(RAND()) * 100"
 
 
-@compiles(RandomNumFn, DatabaseServiceType.SQLite.value.lower())
+@compiles(RandomNumFn, Dialects.SQLite)
 def _(*_, **__):
     """
     SQLite random returns a number between -9223372036854775808
@@ -57,7 +58,7 @@ def _(*_, **__):
     return "ABS(RANDOM()) % 100"
 
 
-@compiles(RandomNumFn, DatabaseServiceType.MSSQL.value.lower())
+@compiles(RandomNumFn, Dialects.MSSQL)
 def _(*_, **__):
     """
     MSSQL RANDOM() function returns the same single

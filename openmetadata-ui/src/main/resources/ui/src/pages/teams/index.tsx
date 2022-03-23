@@ -17,8 +17,8 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormErrorData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import { ExtraInfo, FormErrorData } from 'Models';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
@@ -36,6 +36,7 @@ import NonAdminAction from '../../components/common/non-admin-action/NonAdminAct
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
+import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import {
@@ -56,8 +57,10 @@ import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
+  hasEditAccess,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
+import { getInfoElements } from '../../utils/EntityUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -95,9 +98,32 @@ const TeamsPage = () => {
     });
   };
 
+  const extraInfo: Array<ExtraInfo> = [
+    {
+      key: 'Owner',
+      value:
+        currentTeam?.owner?.type === 'team'
+          ? getTeamDetailsPath(
+              currentTeam?.owner?.displayName || currentTeam?.owner?.name || ''
+            )
+          : currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
+      placeholderText:
+        currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
+      isLink: currentTeam?.owner?.type === 'team',
+      openInNewTab: false,
+    },
+  ];
+
+  const isOwner = () => {
+    return hasEditAccess(
+      currentTeam?.owner?.type || '',
+      currentTeam?.owner?.id || ''
+    );
+  };
+
   const fetchTeams = () => {
     setIsLoading(true);
-    getTeams(['users', 'owns', 'defaultRoles'])
+    getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
         if (!team) {
           setCurrentTeam(res.data.data[0]);
@@ -127,7 +153,7 @@ const TeamsPage = () => {
   const fetchCurrentTeam = (name: string, update = false) => {
     if (currentTeam?.name !== name || update) {
       setIsLoading(true);
-      getTeamByName(name, ['users', 'owns', 'defaultRoles'])
+      getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
         .then((res: AxiosResponse) => {
           setCurrentTeam(res.data);
           if (teams.length <= 0) {
@@ -284,7 +310,7 @@ const TeamsPage = () => {
 
   const getTabs = () => {
     return (
-      <div className="tw-mb-3 ">
+      <div className="tw-mb-3 tw-flex-initial">
         <nav
           className="tw-flex tw-flex-row tw-gh-tabs-container"
           data-testid="tabs">
@@ -318,6 +344,14 @@ const TeamsPage = () => {
               '',
               currentTab === 3
             )}
+          </button>
+          <button
+            className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(4)}`}
+            data-testid="manage"
+            onClick={() => {
+              setCurrentTab(4);
+            }}>
+            Manage
           </button>
         </nav>
       </div>
@@ -531,6 +565,33 @@ const TeamsPage = () => {
     return uniqueList;
   };
 
+  const handleUpdateOwner = (owner: Team['owner']) => {
+    const updatedTeam = {
+      ...currentTeam,
+      owner,
+    };
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+
+    return new Promise<void>((_, reject) => {
+      patchTeamDetail(currentTeam?.id, jsonPatch)
+        .then((res: AxiosResponse) => {
+          fetchCurrentTeam(res.data.name, true);
+        })
+        .catch((err: AxiosError) => {
+          reject();
+          const message = err.response?.data?.message;
+          showToast({
+            variant: 'error',
+            body:
+              message ??
+              `${jsonData['api-error-messages']['update-owner-error']} for ${
+                currentTeam?.displayName ?? currentTeam?.name
+              }`,
+          });
+        });
+    });
+  };
+
   useEffect(() => {
     setUserList(AppState.users);
   }, [AppState.users]);
@@ -549,90 +610,132 @@ const TeamsPage = () => {
       {error ? (
         <ErrorPlaceHolder />
       ) : (
-        <PageContainerV1 className="tw-py-4">
-          <PageLayout leftPanel={fetchLeftPanel()}>
+        <PageContainerV1 className="tw-pt-4 tw-mb-4">
+          <PageLayout classes="tw-h-full" leftPanel={fetchLeftPanel()}>
             {isLoading ? (
               <Loader />
             ) : (
-              <div className="tw-pb-3" data-testid="team-container">
+              <div
+                className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col"
+                data-testid="team-container">
                 {teams.length > 0 ? (
-                  <>
-                    <div
-                      className="tw-flex tw-justify-between tw-items-center"
-                      data-testid="header">
+                  <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
+                    <Fragment>
                       <div
-                        className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-52"
-                        title={currentTeam?.displayName ?? currentTeam?.name}>
-                        {currentTeam?.displayName ?? currentTeam?.name}
+                        className="tw-flex tw-justify-between tw-items-center"
+                        data-testid="header">
+                        <div
+                          className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-52"
+                          title={currentTeam?.displayName ?? currentTeam?.name}>
+                          {currentTeam?.displayName ?? currentTeam?.name}
+                        </div>
+                        <div>
+                          <NonAdminAction
+                            html={
+                              <Fragment>
+                                You do not have permission to update the team.
+                              </Fragment>
+                            }
+                            isOwner={isOwner()}
+                            permission={Operation.UpdateTeam}
+                            position="bottom">
+                            <Button
+                              className={classNames(
+                                'tw-h-8 tw-rounded tw-mb-3',
+                                {
+                                  'tw-opacity-40':
+                                    !isAdminUser &&
+                                    !isAuthDisabled &&
+                                    !userPermissions[Operation.UpdateTeam] &&
+                                    !isOwner(),
+                                }
+                              )}
+                              data-testid="add-new-user-button"
+                              size="small"
+                              theme="primary"
+                              variant="contained"
+                              onClick={() => setIsAddingUsers(true)}>
+                              Add new user
+                            </Button>
+                          </NonAdminAction>
+                          <NonAdminAction
+                            html={
+                              <Fragment>
+                                You do not have permission to delete the team.
+                              </Fragment>
+                            }
+                            isOwner={isOwner()}
+                            position="bottom">
+                            <Button
+                              className={classNames(
+                                'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
+                                {
+                                  'tw-opacity-40':
+                                    !isAdminUser &&
+                                    !isAuthDisabled &&
+                                    !isOwner(),
+                                }
+                              )}
+                              data-testid="delete-team-button"
+                              size="small"
+                              theme="primary"
+                              variant="contained"
+                              onClick={() => deleteTeamHandler()}>
+                              Delete Team
+                            </Button>
+                          </NonAdminAction>
+                        </div>
                       </div>
-                      <div>
-                        <NonAdminAction
-                          html={
-                            <>You do not have permission to update the team.</>
+                      <div className="tw-flex tw-gap-1 tw-mb-2 tw-flex-wrap">
+                        {extraInfo.map((info, index) => (
+                          <span className="tw-flex" key={index}>
+                            {getInfoElements(info)}
+                            {extraInfo.length !== 1 &&
+                            index < extraInfo.length - 1 ? (
+                              <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                                |
+                              </span>
+                            ) : null}
+                          </span>
+                        ))}
+                      </div>
+                      <div
+                        className="tw-mb-3 tw--ml-5"
+                        data-testid="description-container">
+                        <Description
+                          blurWithBodyBG
+                          description={currentTeam?.description || ''}
+                          entityName={
+                            currentTeam?.displayName ?? currentTeam?.name
                           }
-                          permission={Operation.UpdateTeam}
-                          position="bottom">
-                          <Button
-                            className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                              'tw-opacity-40':
-                                !isAdminUser &&
-                                !isAuthDisabled &&
-                                !userPermissions[Operation.UpdateTeam],
-                            })}
-                            data-testid="add-new-user-button"
-                            size="small"
-                            theme="primary"
-                            variant="contained"
-                            onClick={() => setIsAddingUsers(true)}>
-                            Add new user
-                          </Button>
-                        </NonAdminAction>
-                        <NonAdminAction
-                          html={
-                            <>You do not have permission to delete the team.</>
-                          }
-                          position="bottom">
-                          <Button
-                            className={classNames(
-                              'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
-                              {
-                                'tw-opacity-40':
-                                  !isAdminUser && !isAuthDisabled,
-                              }
-                            )}
-                            data-testid="delete-team-button"
-                            size="small"
-                            theme="primary"
-                            variant="contained"
-                            onClick={() => deleteTeamHandler()}>
-                            Delete Team
-                          </Button>
-                        </NonAdminAction>
+                          isEdit={isEditable}
+                          onCancel={onCancel}
+                          onDescriptionEdit={onDescriptionEdit}
+                          onDescriptionUpdate={onDescriptionUpdate}
+                        />
+                      </div>
+                    </Fragment>
+                    <div className="tw-flex tw-flex-col tw-flex-grow">
+                      {getTabs()}
+
+                      <div className="tw-flex-grow">
+                        {currentTab === 1 && getUserCards()}
+
+                        {currentTab === 2 && getDatasetCards()}
+
+                        {currentTab === 3 && getDefaultRoles()}
+
+                        {currentTab === 4 && (
+                          <ManageTabComponent
+                            hideTier
+                            allowTeamOwner={false}
+                            currentUser={currentTeam?.owner?.id}
+                            hasEditAccess={isOwner()}
+                            onSave={handleUpdateOwner}
+                          />
+                        )}
                       </div>
                     </div>
-                    <div
-                      className="tw-mb-3 tw--ml-5"
-                      data-testid="description-container">
-                      <Description
-                        blurWithBodyBG
-                        description={currentTeam?.description || ''}
-                        entityName={
-                          currentTeam?.displayName ?? currentTeam?.name
-                        }
-                        isEdit={isEditable}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                      />
-                    </div>
-
-                    {getTabs()}
-
-                    {currentTab === 1 && getUserCards()}
-
-                    {currentTab === 2 && getDatasetCards()}
-
-                    {currentTab === 3 && getDefaultRoles()}
 
                     {isAddingUsers && (
                       <AddUsersModal
@@ -644,7 +747,7 @@ const TeamsPage = () => {
                         onSave={(data) => createUsers(data)}
                       />
                     )}
-                  </>
+                  </div>
                 ) : (
                   <ErrorPlaceHolder>
                     <p className="tw-text-lg tw-text-center">No Teams Added.</p>

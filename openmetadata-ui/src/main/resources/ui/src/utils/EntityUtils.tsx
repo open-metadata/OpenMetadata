@@ -49,7 +49,7 @@ export const getEntityTags = (
     Partial<Pipeline> &
     Partial<Dashboard> &
     Partial<Topic>
-): Array<string | undefined> => {
+): Array<TagLabel | undefined> => {
   switch (type) {
     case EntityType.TABLE: {
       const tableTags: Array<TagLabel> = [
@@ -57,13 +57,13 @@ export const getEntityTags = (
         ...(entityDetail.tags || []),
       ];
 
-      return tableTags.map((t) => t.tagFQN);
+      return tableTags;
     }
     case EntityType.PIPELINE: {
-      return entityDetail.tags?.map((t) => t.tagFQN) || [];
+      return entityDetail.tags || [];
     }
     case EntityType.DASHBOARD: {
-      return entityDetail.tags?.map((t) => t.tagFQN) || [];
+      return entityDetail.tags || [];
     }
 
     default:
@@ -440,7 +440,7 @@ export const getInfoElements = (data: ExtraInfo) => {
               <>
                 <span
                   className={classNames(
-                    'tw-mr-1 tw-inline-block tw-truncate link-text',
+                    'tw-mr-1 tw-inline-block tw-truncate link-text tw-align-middle',
                     {
                       'tw-w-52': (displayVal as string).length > 32,
                     }

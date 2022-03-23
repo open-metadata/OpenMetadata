@@ -17,7 +17,7 @@ import React, { FunctionComponent } from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import Tag from '../../tags/tags';
+import TagsViewer from '../../tags-viewer/tags-viewer';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
@@ -81,14 +81,10 @@ const TableDataCardBody: FunctionComponent<Props> = ({
               width="14"
             />
             <div className="tw-ml-4">
-              {tags?.map((tag, index) => (
-                <Tag
-                  key={index}
-                  startWith="#"
-                  tag={getTagValue(tag)}
-                  type="label"
-                />
-              ))}
+              <TagsViewer
+                sizeCap={-1}
+                tags={(tags || []).map((tag) => getTagValue(tag))}
+              />
             </div>
           </div>
         </div>

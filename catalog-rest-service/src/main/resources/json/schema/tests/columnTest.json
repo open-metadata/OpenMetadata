@@ -97,6 +97,6 @@
       "type": "string"
     }
   },
-  "required": ["name", "column", "testCase"],
+  "required": ["name", "columnName", "testCase"],
   "additionalProperties": false
 }

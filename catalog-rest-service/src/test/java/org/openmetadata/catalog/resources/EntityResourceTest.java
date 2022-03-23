@@ -92,6 +92,7 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.api.services.CreateStorageService;
+import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Glossary;
@@ -719,12 +720,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     assertResponse(
         () -> listEntities(null, -1, null, null, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[query param limit must be greater than or equal to 1]");
+        "[query param limit must be greater than or equal to 0]");
 
     assertResponse(
-        () -> listEntities(null, 0, null, null, ADMIN_AUTH_HEADERS),
+        () -> listEntities(null, -1, null, null, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[query param limit must be greater than or equal to 1]");
+        "[query param limit must be greater than or equal to 0]");
 
     assertResponse(
         () -> listEntities(null, 1000001, null, null, ADMIN_AUTH_HEADERS),
@@ -845,11 +846,24 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (!supportsOwner) {
       return;
     }
+
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test);
+    Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
+    EntityReference teamReference = new TeamEntityInterface(team).getEntityReference();
+
     // Entity with user as owner is created successfully
     createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER_OWNER1), ADMIN_AUTH_HEADERS);
 
     // Entity with team as owner is created successfully
-    createAndCheckEntity(createRequest(getEntityName(test, 2), "", "", TEAM_OWNER1), ADMIN_AUTH_HEADERS);
+    T entity = createAndCheckEntity(createRequest(getEntityName(test, 2), "", "", teamReference), ADMIN_AUTH_HEADERS);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Delete team and ensure the entity still exists but with owner as deleted
+    teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
+    entity = getEntity(entityInterface.getId(), "owner", ADMIN_AUTH_HEADERS);
+    entityInterface = getEntityInterface(entity);
+    assertTrue(entityInterface.getOwner().getDeleted());
   }
 
   @Test

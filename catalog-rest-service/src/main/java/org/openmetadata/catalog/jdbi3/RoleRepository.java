@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.type.Include.ALL;
+
 import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
@@ -62,13 +64,13 @@ public class RoleRepository extends EntityRepository<Role> {
 
   @Override
   public Role setFields(Role role, Fields fields) throws IOException {
-    role.setPolicy(fields.contains("policy") ? getPolicyForRole(role) : null);
-    role.setTeams(fields.contains("teams") ? getTeamsForRole(role) : null);
-    role.setUsers(fields.contains("users") ? getUsersForRole(role) : null);
+    role.setPolicy(fields.contains("policy") ? getPolicy(role) : null);
+    role.setTeams(fields.contains("teams") ? getTeams(role) : null);
+    role.setUsers(fields.contains("users") ? getUsers(role) : null);
     return role;
   }
 
-  private EntityReference getPolicyForRole(@NonNull Role role) throws IOException {
+  private EntityReference getPolicy(@NonNull Role role) throws IOException {
     List<String> result = findTo(role.getId(), Entity.ROLE, Relationship.CONTAINS, Entity.POLICY);
     if (result.size() != 1) {
       LOG.warn(
@@ -77,15 +79,15 @@ public class RoleRepository extends EntityRepository<Role> {
           role.getName());
       return null;
     }
-    return Entity.getEntityReferenceById(Entity.POLICY, UUID.fromString(result.get(0)));
+    return Entity.getEntityReferenceById(Entity.POLICY, UUID.fromString(result.get(0)), ALL);
   }
 
-  private List<EntityReference> getUsersForRole(@NonNull Role role) throws IOException {
+  private List<EntityReference> getUsers(@NonNull Role role) throws IOException {
     List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
-  private List<EntityReference> getTeamsForRole(@NonNull Role role) throws IOException {
+  private List<EntityReference> getTeams(@NonNull Role role) throws IOException {
     List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
     return EntityUtil.populateEntityReferences(ids, Entity.TEAM);
   }

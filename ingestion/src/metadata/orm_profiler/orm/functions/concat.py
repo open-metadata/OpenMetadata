@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.orm_profiler.metrics.core import CACHE
+from metadata.orm_profiler.orm.registry import Dialects
 from metadata.orm_profiler.utils import logger
 
 logger = logger()
@@ -33,9 +34,9 @@ def _(element, compiler, **kw):
     return "CONCAT(%s)" % compiler.process(element.clauses, **kw)
 
 
-@compiles(ConcatFn, DatabaseServiceType.Redshift.value.lower())
-@compiles(ConcatFn, DatabaseServiceType.SQLite.value.lower())
-@compiles(ConcatFn, DatabaseServiceType.Vertica.value.lower())
+@compiles(ConcatFn, Dialects.Redshift)
+@compiles(ConcatFn, Dialects.SQLite)
+@compiles(ConcatFn, Dialects.Vertica)
 def _(element, compiler, **kw):
     """
     This actually returns the squared STD, but as

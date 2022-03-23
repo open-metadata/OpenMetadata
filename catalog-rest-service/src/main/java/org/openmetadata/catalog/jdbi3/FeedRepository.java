@@ -18,10 +18,8 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -50,6 +48,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
+import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class FeedRepository {
@@ -63,6 +62,11 @@ public class FeedRepository {
     OWNER,
     MENTIONS,
     FOLLOWS
+  }
+
+  public enum PaginationType {
+    BEFORE,
+    AFTER
   }
 
   @Transaction
@@ -226,9 +230,15 @@ public class FeedRepository {
     } else {
       EntityLink entityLink = EntityLink.parse(link);
       EntityReference reference = EntityUtil.validateEntityLink(entityLink);
-      if (reference.getType().equals(Entity.USER)) {
-        List<String> threadIds = getThreadIdsByOwner(reference.getId().toString());
-        result = dao.feedDAO().listCountByThreads(threadIds, isResolved);
+      if (reference.getType().equals(Entity.USER) || reference.getType().equals(Entity.TEAM)) {
+        if (reference.getType().equals(Entity.USER)) {
+          String userId = reference.getId().toString();
+          List<String> teamIds = getTeamIds(userId);
+          result = dao.feedDAO().listCountByOwner(userId, teamIds, isResolved);
+        } else {
+          // team is not supported
+          result = new ArrayList<>();
+        }
       } else {
         result =
             dao.feedDAO()
@@ -256,72 +266,133 @@ public class FeedRepository {
     return thread.getPosts();
   }
 
+  /**
+   * List threads based on the filters and limits in the order of the updated timestamp.
+   *
+   * @param link entity link filter
+   * @param limitPosts the number of posts to limit per thread
+   * @param userId UUID of the user. Enables UserId filter
+   * @param filterType Type of the filter to be applied with userId filter
+   * @param limit the number of threads to limit in the response
+   * @param pageMarker the before/after updatedTime to be used as pagination marker for queries
+   * @param isResolved whether the thread is resolved or open
+   * @param paginationType before or after
+   * @return a list of threads as ResultList
+   * @throws IOException on error
+   * @throws ParseException on error
+   */
   @Transaction
-  public List<Thread> listThreads(String link, int limitPosts, String userId, FilterType filterType)
-      throws IOException {
-    List<Thread> threads = new ArrayList<>();
+  public final ResultList<Thread> list(
+      String link,
+      int limitPosts,
+      String userId,
+      FilterType filterType,
+      int limit,
+      String pageMarker,
+      boolean isResolved,
+      PaginationType paginationType)
+      throws IOException, ParseException {
+    List<Thread> threads;
+    int total;
+    // Here updatedAt time is used for page marker since threads are sorted by last update time
+    long time = Long.MAX_VALUE;
+    // if paginationType is "before", it must have a pageMarker time.
+    // "after" could be null to get the first page. In this case we set time to MAX_VALUE
+    // to get any entry with updatedTime < MAX_VALUE
+    if (pageMarker != null) {
+      time = Long.parseLong(RestUtil.decodeCursor(pageMarker));
+    }
+
+    // No filters are enabled. Listing all the threads
     if (link == null && userId == null) {
-      // No filters are enabled. Listing all the threads
-      threads = JsonUtils.readObjects(dao.feedDAO().list(), Thread.class);
+      // Get one extra result used for computing before cursor
+      List<String> jsons;
+      if (paginationType == PaginationType.BEFORE) {
+        jsons = dao.feedDAO().listBefore(limit + 1, time, isResolved);
+      } else {
+        jsons = dao.feedDAO().listAfter(limit + 1, time, isResolved);
+      }
+      threads = JsonUtils.readObjects(jsons, Thread.class);
+      total = dao.feedDAO().listCount(isResolved);
     } else {
       // Either one or both the filters are enabled
-      List<String> threadIds = new ArrayList<>();
+      // we don't support both the filters together. If both are not null, entity link takes precedence
 
       if (link != null) {
         EntityLink entityLink = EntityLink.parse(link);
         EntityReference reference = EntityUtil.validateEntityLink(entityLink);
-        List<List<String>> result;
 
         // For a user entityLink get created or replied relationships to the thread
         if (reference.getType().equals(Entity.USER)) {
-          threadIds.addAll(getThreadIdsByOwner(reference.getId().toString()));
+          FilteredThreads filteredThreads =
+              getThreadsByOwner(reference.getId().toString(), limit + 1, time, isResolved, paginationType);
+          threads = filteredThreads.getThreads();
+          total = filteredThreads.getTotalCount();
         } else {
           // Only data assets are added as about
-          result =
-              dao.fieldRelationshipDAO()
-                  .listFromByAllPrefix(
-                      entityLink.getFullyQualifiedFieldValue(),
-                      Entity.THREAD,
-                      entityLink.getFullyQualifiedFieldType(),
-                      Relationship.IS_ABOUT.ordinal());
-          result.forEach(l -> threadIds.add(l.get(1)));
-        }
-      }
-
-      if (userId != null) {
-        List<String> userThreadIds;
-        if (filterType == FilterType.FOLLOWS) {
-          userThreadIds = getThreadIdsByFollows(userId);
-        } else if (filterType == FilterType.MENTIONS) {
-          userThreadIds = getThreadIdsByMentions(userId);
-        } else {
-          userThreadIds = getThreadIdsByOwner(userId);
-        }
-
-        // if both link and user filters are enabled, the filters should be applied as "AND"
-        if (!threadIds.isEmpty()) {
-          // apply user filter on top of the link filter
-          if (!userThreadIds.isEmpty()) {
-            userThreadIds = userThreadIds.stream().filter(threadIds::contains).collect(Collectors.toList());
+          List<String> jsons;
+          if (paginationType == PaginationType.BEFORE) {
+            jsons =
+                dao.feedDAO()
+                    .listThreadsByEntityLinkBefore(
+                        entityLink.getFullyQualifiedFieldValue(),
+                        entityLink.getFullyQualifiedFieldType(),
+                        limit + 1,
+                        time,
+                        isResolved,
+                        Relationship.IS_ABOUT.ordinal());
+          } else {
+            jsons =
+                dao.feedDAO()
+                    .listThreadsByEntityLinkAfter(
+                        entityLink.getFullyQualifiedFieldValue(),
+                        entityLink.getFullyQualifiedFieldType(),
+                        limit + 1,
+                        time,
+                        isResolved,
+                        Relationship.IS_ABOUT.ordinal());
           }
+          threads = JsonUtils.readObjects(jsons, Thread.class);
+          total =
+              dao.feedDAO()
+                  .listCountThreadsByEntityLink(
+                      entityLink.getFullyQualifiedFieldValue(),
+                      entityLink.getFullyQualifiedFieldType(),
+                      isResolved,
+                      Relationship.IS_ABOUT.ordinal());
         }
-
-        threadIds.addAll(userThreadIds);
-      }
-
-      Set<String> uniqueValues = new HashSet<>();
-      for (String t : threadIds) {
-        // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same thread
-        // Don't send duplicated copies of the thread in response
-        if (uniqueValues.add(t)) {
-          threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));
+      } else {
+        FilteredThreads filteredThreads;
+        if (filterType == FilterType.FOLLOWS) {
+          filteredThreads = getThreadsByFollows(userId, limit + 1, time, isResolved, paginationType);
+        } else if (filterType == FilterType.MENTIONS) {
+          filteredThreads = getThreadsByMentions(userId, limit + 1, time, isResolved, paginationType);
+        } else {
+          filteredThreads = getThreadsByOwner(userId, limit + 1, time, isResolved, paginationType);
         }
+        threads = filteredThreads.getThreads();
+        total = filteredThreads.getTotalCount();
       }
-
-      // sort the list by thread updated timestamp before returning
-      threads.sort(Comparator.comparing(Thread::getUpdatedAt, Comparator.reverseOrder()));
     }
-    return limitPostsInThreads(threads, limitPosts);
+
+    limitPostsInThreads(threads, limitPosts);
+
+    String beforeCursor = null;
+    String afterCursor = null;
+    if (paginationType == PaginationType.BEFORE) {
+      if (threads.size() > limit) { // If extra result exists, then previous page exists - return before cursor
+        threads.remove(0);
+        beforeCursor = threads.get(0).getUpdatedAt().toString();
+      }
+      afterCursor = threads.get(threads.size() - 1).getUpdatedAt().toString();
+    } else {
+      beforeCursor = pageMarker == null ? null : threads.get(0).getUpdatedAt().toString();
+      if (threads.size() > limit) { // If extra result exists, then next page exists - return after cursor
+        threads.remove(limit);
+        afterCursor = threads.get(limit - 1).getUpdatedAt().toString();
+      }
+    }
+    return new ResultList<>(threads, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -365,7 +436,13 @@ public class FeedRepository {
     return original.getResolved() != updated.getResolved() || !original.getMessage().equals(updated.getMessage());
   }
 
-  private List<Thread> limitPostsInThreads(List<Thread> threads, int limitPosts) {
+  /**
+   * Limit the number of posts within each thread.
+   *
+   * @param threads list of threads
+   * @param limitPosts the number of posts to limit per thread
+   */
+  private void limitPostsInThreads(List<Thread> threads, int limitPosts) {
     for (Thread t : threads) {
       List<Post> posts = t.getPosts();
       if (posts.size() > limitPosts) {
@@ -375,26 +452,62 @@ public class FeedRepository {
         t.withPosts(posts);
       }
     }
-    return threads;
   }
 
-  private List<String> getThreadIdsByOwner(String userId) {
-    List<String> threadIds = new ArrayList<>();
+  /**
+   * Return the threads associated with user/team owned entities and the threads that were created by or replied to by
+   * the user.
+   *
+   * @param userId UUID of the user
+   * @param limit number of threads to limit
+   * @param time updatedTime before/after which the results should be filtered for pagination
+   * @param isResolved whether the thread is resolved or open
+   * @param paginationType before or after
+   * @return a list of threads and the total count of threads
+   * @throws IOException on error
+   */
+  private FilteredThreads getThreadsByOwner(
+      String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
     // add threads on user or team owned entities
+    // and threads created by or replied to by the user
+    List<String> teamIds = getTeamIds(userId);
+    List<String> jsons;
+    if (paginationType == PaginationType.BEFORE) {
+      jsons = dao.feedDAO().listThreadsByOwnerBefore(userId, teamIds, limit, time, isResolved);
+    } else {
+      jsons = dao.feedDAO().listThreadsByOwnerAfter(userId, teamIds, limit, time, isResolved);
+    }
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+    int totalCount = dao.feedDAO().listCountThreadsByOwner(userId, teamIds, isResolved);
+    return new FilteredThreads(threads, totalCount);
+  }
+
+  /**
+   * Get a list of team ids that the given user is a part of.
+   *
+   * @param userId UUID of the user.
+   * @return list of team ids.
+   */
+  private List<String> getTeamIds(String userId) {
     List<String> teamIds = dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
     if (teamIds.isEmpty()) {
       teamIds = List.of(StringUtils.EMPTY);
     }
-    threadIds.addAll(dao.feedDAO().listUserThreadsFromER(userId, teamIds, Relationship.OWNS.ordinal()));
-
-    // add threads created by or replied to by the user
-    threadIds.addAll(dao.relationshipDAO().findTo(userId, Entity.USER, Relationship.CREATED.ordinal(), Entity.THREAD));
-    threadIds.addAll(
-        dao.relationshipDAO().findTo(userId, Entity.USER, Relationship.REPLIED_TO.ordinal(), Entity.THREAD));
-    return threadIds;
+    return teamIds;
   }
-
-  private List<String> getThreadIdsByMentions(String userId) throws IOException {
+  /**
+   * Returns the threads where the user or the team they belong to were mentioned by other users with @mention.
+   *
+   * @param userId UUID of the user
+   * @param limit number of threads to limit
+   * @param time updatedTime before/after which the results should be filtered for pagination
+   * @param isResolved whether the thread is resolved or open
+   * @param paginationType before or after
+   * @return a list of threads and the total count of threads
+   * @throws IOException on error
+   */
+  private FilteredThreads getThreadsByMentions(
+      String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
     List<EntityReference> teams =
         EntityUtil.populateEntityReferences(
             dao.relationshipDAO().findFromEntity(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM));
@@ -404,13 +517,65 @@ public class FeedRepository {
     }
     User user = dao.userDAO().findEntityById(UUID.fromString(userId));
 
-    // Return all the thread ids where the user or team was mentioned
-    return new ArrayList<>(
+    // Return the threads where the user or team was mentioned
+    List<String> jsons;
+    if (paginationType == PaginationType.BEFORE) {
+      jsons =
+          dao.feedDAO()
+              .listThreadsByMentionsBefore(
+                  user.getName(), teamNames, limit, time, isResolved, Relationship.MENTIONED_IN.ordinal());
+    } else {
+      jsons =
+          dao.feedDAO()
+              .listThreadsByMentionsAfter(
+                  user.getName(), teamNames, limit, time, isResolved, Relationship.MENTIONED_IN.ordinal());
+    }
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+    int totalCount =
         dao.feedDAO()
-            .listUserThreadsFromFR(user.getName(), teamNames, Entity.THREAD, Relationship.MENTIONED_IN.ordinal()));
+            .listCountThreadsByMentions(user.getName(), teamNames, isResolved, Relationship.MENTIONED_IN.ordinal());
+    return new FilteredThreads(threads, totalCount);
   }
 
-  private List<String> getThreadIdsByFollows(String userId) {
-    return dao.feedDAO().listUserThreadsFromER(userId, List.of(StringUtils.EMPTY), Relationship.FOLLOWS.ordinal());
+  /**
+   * Returns the threads that are associated with the entities followed by the user.
+   *
+   * @param userId UUID of the user
+   * @param limit number of threads to limit
+   * @param time updatedTime before/after which the results should be filtered for pagination
+   * @param isResolved whether the thread is resolved or open
+   * @param paginationType before or after
+   * @return a list of threads and the total count of threads
+   * @throws IOException on error
+   */
+  private FilteredThreads getThreadsByFollows(
+      String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
+    List<String> jsons;
+    if (paginationType == PaginationType.BEFORE) {
+      jsons = dao.feedDAO().listThreadsByFollowsBefore(userId, limit, time, isResolved, Relationship.FOLLOWS.ordinal());
+    } else {
+      jsons = dao.feedDAO().listThreadsByFollowsAfter(userId, limit, time, isResolved, Relationship.FOLLOWS.ordinal());
+    }
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+    int totalCount = dao.feedDAO().listCountThreadsByFollows(userId, isResolved, Relationship.FOLLOWS.ordinal());
+    return new FilteredThreads(threads, totalCount);
+  }
+
+  public static class FilteredThreads {
+    List<Thread> threads;
+    int totalCount;
+
+    public FilteredThreads(List<Thread> threads, int totalCount) {
+      this.threads = threads;
+      this.totalCount = totalCount;
+    }
+
+    public List<Thread> getThreads() {
+      return threads;
+    }
+
+    public int getTotalCount() {
+      return totalCount;
+    }
   }
 }

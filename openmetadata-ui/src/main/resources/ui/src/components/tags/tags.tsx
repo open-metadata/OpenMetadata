@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
@@ -18,7 +19,6 @@ import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Tags: FunctionComponent<TagProps> = ({
   className,
@@ -28,6 +28,7 @@ const Tags: FunctionComponent<TagProps> = ({
   type = 'contained',
   removeTag,
   isRemovable = true,
+  showOnlyName = false,
 }: TagProps) => {
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
@@ -40,6 +41,8 @@ const Tags: FunctionComponent<TagProps> = ({
   };
 
   const getTag = (tag: string, startWith = '') => {
+    const tagName = showOnlyName ? tag.split('.').pop() : tag;
+
     return (
       <span
         className={classNames(baseStyle, layoutStyles, className)}
@@ -50,7 +53,7 @@ const Tags: FunctionComponent<TagProps> = ({
             textLayoutStyles,
             textEditStyles
           )}>
-          {`${startWith}${tag}`}
+          {`${startWith}${tagName}`}
         </span>
         {editable && isRemovable && (
           <span

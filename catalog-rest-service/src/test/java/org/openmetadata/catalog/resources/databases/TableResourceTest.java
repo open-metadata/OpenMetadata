@@ -29,6 +29,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
+import static org.openmetadata.catalog.type.ColumnDataType.DATE;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
@@ -76,6 +77,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.tests.CreateColumnTest;
+import org.openmetadata.catalog.api.tests.CreateCustomMetric;
 import org.openmetadata.catalog.api.tests.CreateTableTest;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
@@ -91,6 +93,7 @@ import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.ColumnTestCase;
+import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.tests.TableTestCase;
 import org.openmetadata.catalog.tests.column.ColumnValueLengthsToBeBetween;
@@ -120,6 +123,7 @@ import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TablePartition;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
@@ -227,6 +231,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void post_tableWithPartition(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withTableConstraints(null);
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("user_id", INT, null));
+    columns.add(getColumn("date", DATE, null));
+    TablePartition partition =
+        new TablePartition()
+            .withColumns(List.of(columns.get(1).getName()))
+            .withIntervalType(TablePartition.IntervalType.TIME_UNIT)
+            .withInterval("daily");
+    create.setColumns(columns);
+    create.setTablePartition(partition);
+    Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertTablePartition(partition, created.getTablePartition());
+  }
+
+  @Test
   void put_tableWithColumnWithOrdinalPositionAndWithoutOrdinalPosition(TestInfo test) throws IOException {
     CreateTable create = createRequest(test);
     List<Column> columns = new ArrayList<>();
@@ -240,12 +261,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(column2);
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(columns.get(0).getName()));
+    TablePartition partition =
+        new TablePartition()
+            .withColumns(List.of(columns.get(0).getName(), columns.get(1).getName()))
+            .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
+            .withInterval("column");
     create.setColumns(columns);
     create.setTableConstraints(List.of(constraint));
+    create.setTablePartition(partition);
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Column column = created.getColumns().get(0);
     assertEquals("column1", column.getName());
     assertEquals("column1", column.getDescription());
+    assertTablePartition(partition, created.getTablePartition());
 
     // keep original ordinalPosition add a column at the end and do not pass descriptions for the first 2 columns
     // we should retain the original description
@@ -261,15 +289,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(updateColumn1);
     columns.add(updateColumn2);
     columns.add(column3);
+    partition =
+        new TablePartition()
+            .withColumns(List.of(columns.get(2).getName()))
+            .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
+            .withInterval("column");
     create.setColumns(columns);
     create.setTableConstraints(List.of(constraint));
-
+    create.setTablePartition(partition);
     // Update the table with constraints and ensure minor version change
     ChangeDescription change = getChangeDescription(created.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(column3)));
     Table updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
     origColumns.add(column3);
     assertColumns(origColumns, updatedTable.getColumns());
+    assertTablePartition(partition, updatedTable.getTablePartition());
+    Table getTable = getEntity(updatedTable.getId(), "tablePartition", ADMIN_AUTH_HEADERS);
+    assertTablePartition(partition, getTable.getTablePartition());
+
     TestUtils.validateUpdate(created.getVersion(), updatedTable.getVersion(), MINOR_UPDATE);
     // keep ordinalPosition and add a column in between
     updateColumn1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("");
@@ -1053,6 +1090,49 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void createUpdateDelete_tableCustomMetrics_200(TestInfo test) throws IOException {
+    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Column c1 = table.getColumns().get(0);
+
+    CreateCustomMetric createMetric =
+        new CreateCustomMetric()
+            .withName("custom")
+            .withColumnName(c1.getName())
+            .withExpression("SELECT SUM(xyz) FROM abc");
+    Table putResponse = putCustomMetric(table.getId(), createMetric, ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(putResponse, c1, List.of(createMetric));
+
+    table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(table, c1, List.of(createMetric));
+
+    // Update Custom Metric
+    CreateCustomMetric updatedMetric =
+        new CreateCustomMetric()
+            .withName("custom")
+            .withColumnName(c1.getName())
+            .withExpression("Another select statement");
+    putResponse = putCustomMetric(table.getId(), updatedMetric, ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(putResponse, c1, List.of(updatedMetric));
+
+    // Add another Custom Metric
+    CreateCustomMetric createMetric2 =
+        new CreateCustomMetric()
+            .withName("custom2")
+            .withColumnName(c1.getName())
+            .withExpression("Yet another statement");
+    putResponse = putCustomMetric(table.getId(), createMetric2, ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(putResponse, c1, List.of(createMetric2));
+
+    table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(table, c1, List.of(updatedMetric, createMetric2));
+
+    // Delete Custom Metric
+    putResponse = deleteCustomMetric(table.getId(), c1.getName(), updatedMetric.getName(), ADMIN_AUTH_HEADERS);
+    table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
+    verifyCustomMetrics(table, c1, List.of(createMetric2));
+  }
+
+  @Test
   void createUpdateDelete_tableColumnTests_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     TableRowCountToEqual tableRowCountToEqual = new TableRowCountToEqual().withValue(100);
@@ -1706,6 +1786,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.delete(target, Table.class, authHeaders);
   }
 
+  public static Table putCustomMetric(UUID tableId, CreateCustomMetric data, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/customMetric");
+    return TestUtils.put(target, data, Table.class, OK, authHeaders);
+  }
+
+  public static Table deleteCustomMetric(
+      UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target =
+        CatalogApplicationTest.getResource("tables/" + tableId + "/customMetric/" + columnName + "/" + metricName);
+    return TestUtils.delete(target, Table.class, authHeaders);
+  }
+
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
     return TagResourceTest.getTag(tagFQN, "usageCount", authHeaders).getUsageCount();
   }
@@ -1804,6 +1898,29 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       if (test.getResult() != null) {
         verifyTestCaseResults(test.getResult(), storedTest.getResults());
       }
+    }
+  }
+
+  private void verifyCustomMetrics(Table table, Column column, List<CreateCustomMetric> expectedMetrics) {
+    List<CustomMetric> actualMetrics = new ArrayList<>();
+    for (Column c : table.getColumns()) {
+      if (c.getName().equals(column.getName())) {
+        actualMetrics = c.getCustomMetrics();
+      }
+    }
+    assertEquals(actualMetrics.size(), expectedMetrics.size());
+
+    Map<String, CustomMetric> columnMetricMap = new HashMap<>();
+    for (CustomMetric metric : actualMetrics) {
+      columnMetricMap.put(metric.getName(), metric);
+    }
+
+    for (CreateCustomMetric metric : expectedMetrics) {
+      CustomMetric storedMetric = columnMetricMap.get(metric.getName());
+      assertNotNull(storedMetric);
+      assertEquals(metric.getDescription(), storedMetric.getDescription());
+      assertEquals(metric.getOwner(), storedMetric.getOwner());
+      assertEquals(metric.getExpression(), storedMetric.getExpression());
     }
   }
 
@@ -1942,6 +2059,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {
     TestUtils.validateEntityReference(database);
     assertEquals(expectedDatabase.getId(), database.getId());
+  }
+
+  private void assertTablePartition(TablePartition expectedPartition, TablePartition actualPartition) {
+    if (expectedPartition == null && actualPartition == null) {
+      return;
+    }
+    assert expectedPartition != null;
+    assertEquals(expectedPartition.getColumns().size(), actualPartition.getColumns().size());
+    assertEquals(expectedPartition.getIntervalType(), actualPartition.getIntervalType());
+    assertEquals(expectedPartition.getInterval(), actualPartition.getInterval());
+
+    for (int i = 0; i < expectedPartition.getColumns().size(); i++) {
+      assertEquals(expectedPartition.getColumns().get(i), actualPartition.getColumns().get(i));
+    }
   }
 
   @Override
