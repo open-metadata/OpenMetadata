@@ -132,7 +132,7 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     wait.until(ExpectedConditions.elementToBeClickable(myDataPage.searchBox())); // Search bar/dim
     Events.sendKeys(webDriver, myDataPage.searchBox(), sendkeys); // Search bar/dim
-    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_address"));
     Thread.sleep(1000);
     WebElement tableName =
         tableDetails
@@ -222,7 +222,7 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_address"));
     Events.click(webDriver, tableDetails.manage());
     Events.click(webDriver, tableDetails.owner()); // Owner
     Events.click(webDriver, tableDetails.users());
@@ -248,7 +248,7 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_address"));
     String follow = webDriver.findElement(tableDetails.follow()).getText();
     if (follow.equals("Unfollow")) {
       Events.click(webDriver, tableDetails.follow());
@@ -277,7 +277,7 @@ public class MyDataPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_address"));
     Events.click(webDriver, myDataPage.home());
     webDriver.navigate().refresh();
     String table = webDriver.findElement(myDataPage.recentlyViewed()).getText();

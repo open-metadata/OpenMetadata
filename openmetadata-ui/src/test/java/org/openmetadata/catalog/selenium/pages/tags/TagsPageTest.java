@@ -195,12 +195,17 @@ public class TagsPageTest {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, tagsPage.tables());
     try {
-      WebElement viewMore = wait.until(ExpectedConditions.presenceOfElementLocated(common.viewMore()));
-      if (viewMore.isDisplayed()) {
-        Events.click(webDriver, common.viewMore());
+      try {
+        WebElement viewMore = wait.until(ExpectedConditions.presenceOfElementLocated(common.viewMore()));
+        if (viewMore.isDisplayed()) {
+          Events.click(webDriver, common.viewMore());
+        }
+        Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
+        Events.click(webDriver, tagsPage.tableLink());
+      } catch (TimeoutException | NoSuchElementException e) {
+        Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
+        Events.click(webDriver, tagsPage.tableLink());
       }
-      Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
-      Events.click(webDriver, tagsPage.tableLink());
     } catch (TimeoutException | NoSuchElementException e) {
       Assert.fail("Tag not found");
     }
@@ -289,7 +294,7 @@ public class TagsPageTest {
   public void addSelfAssociatedTag() throws Exception {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addAssociatedTagIndex(3));
+    Events.click(webDriver, tagsPage.addAssociatedTagIndex(2));
     Events.click(webDriver, common.enterAssociatedTagName());
     try {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.SpecialCategory");

@@ -94,7 +94,7 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), tableName);
-    Events.click(webDriver, myDataPage.tableName());
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_address"));
     Events.click(webDriver, tableDetails.profiler());
     Assert.assertTrue(tableDetails.schemaTableIsDisplayed());
     Events.click(webDriver, tableDetails.lineage());
@@ -298,8 +298,8 @@ public class TableDetailsPageTest {
   public void checkFrequentlyJoinedTables() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
+    Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_location"));
     Thread.sleep(2000);
     try {
       Events.click(webDriver, tableDetails.joinedTables());
@@ -313,8 +313,8 @@ public class TableDetailsPageTest {
   public void checkFrequentlyJoinedColumns() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.sendKeys(webDriver, myDataPage.searchBox(), "fact_sale");
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifyfact_sale"));
+    Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_location"));
     Thread.sleep(2000);
     try {
       Events.click(webDriver, tableDetails.joinedColumns());

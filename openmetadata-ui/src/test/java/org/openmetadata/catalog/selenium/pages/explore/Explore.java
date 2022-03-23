@@ -1,5 +1,6 @@
 package org.openmetadata.catalog.selenium.pages.explore;
 
+import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +26,7 @@ class Explore {
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
+  static Faker faker = new Faker();
   Integer waitTime = Property.getInstance().getSleepTime();
   String tableName = "dim_address";
   MyDataPage myDataPage;
@@ -32,6 +34,7 @@ class Explore {
   TeamsPage teamsPage;
   UserListPage userListPage;
   TableDetails tableDetails;
+  Common common;
   ExplorePage explorePage;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
@@ -50,6 +53,7 @@ class Explore {
     teamsPage = new TeamsPage(webDriver);
     tagsPage = new TagsPage(webDriver);
     tableDetails = new TableDetails(webDriver);
+    common = new Common(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
@@ -211,10 +215,10 @@ class Explore {
   @Order(7)
   void checkLastUpdatedSort() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    String sendKeys = "Updated Description";
+    String sendKeys = faker.address().toString();
     openExplorePage();
     // Adding description to check last updated sort
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
@@ -226,8 +230,8 @@ class Explore {
     Events.click(webDriver, explorePage.lastUpdatedSort());
     Thread.sleep(2000);
     try {
-      WebElement descriptionCheck = webDriver.findElement(explorePage.updatedDescription());
-      Assert.assertEquals(sendKeys, descriptionCheck.getText());
+      String descriptionCheck = webDriver.findElement(explorePage.updatedDescription()).getText();
+      Assert.assertEquals(descriptionCheck, sendKeys);
     } catch (NoSuchElementException e) {
       Assert.fail("Description not updated || Not sorting according to last updated");
     }
