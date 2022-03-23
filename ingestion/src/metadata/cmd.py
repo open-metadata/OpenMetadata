@@ -198,9 +198,19 @@ def report(config: str) -> None:
     required=False,
 )
 @click.option("--reset-db", help="Reset OpenMetadata Data", is_flag=True)
-@click.option("--ingest-data", help="Start data ingestion", is_flag=True)
+@click.option(
+    "--skip-sample-data", help="Skip the ingestion of sample metadata", is_flag=True
+)
 def docker(
-    start, stop, pause, resume, clean, file_path, env_file_path, reset_db, ingest_data
+    start,
+    stop,
+    pause,
+    resume,
+    clean,
+    file_path,
+    env_file_path,
+    reset_db,
+    skip_sample_data,
 ) -> None:
     """
     Checks Docker Memory Allocation
@@ -216,7 +226,7 @@ def docker(
         file_path,
         env_file_path,
         reset_db,
-        ingest_data,
+        skip_sample_data,
     )
 
 
