@@ -89,7 +89,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     List<EntityReference> airflowPipelines = new ArrayList<>();
     for (String airflowPipelineId : airflowPipelineIds) {
       airflowPipelines.add(
-          daoCollection.airflowPipelineDAO().findEntityReferenceById(UUID.fromString(airflowPipelineId)));
+          daoCollection.airflowPipelineDAO().findEntityReferenceById(UUID.fromString(airflowPipelineId), Include.ALL));
     }
     return airflowPipelines;
   }

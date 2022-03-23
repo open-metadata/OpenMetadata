@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.type.Include.ALL;
 
 import java.io.IOException;
 import java.net.URI;
@@ -139,7 +140,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     List<String> result = findTo(database.getId(), Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
     if (result.size() == 1) {
       String locationId = result.get(0);
-      return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
+      return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId), ALL);
     } else {
       return null;
     }

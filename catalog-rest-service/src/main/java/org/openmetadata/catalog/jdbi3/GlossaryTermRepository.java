@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.GLOSSARY_TERM;
+import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.stringMatch;
 import static org.openmetadata.catalog.util.EntityUtil.termReferenceMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -79,7 +80,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
     List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM);
-    return ids.size() == 1 ? Entity.getEntityReferenceById(GLOSSARY_TERM, UUID.fromString(ids.get(0))) : null;
+    return ids.size() == 1 ? Entity.getEntityReferenceById(GLOSSARY_TERM, UUID.fromString(ids.get(0)), ALL) : null;
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
@@ -187,7 +188,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public EntityReference getGlossary(String id) throws IOException {
-    return daoCollection.glossaryDAO().findEntityReferenceById(UUID.fromString(id));
+    return daoCollection.glossaryDAO().findEntityReferenceById(UUID.fromString(id), ALL);
   }
 
   @Override
