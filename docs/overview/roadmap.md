@@ -6,6 +6,120 @@ We are doing a monthly release and we are going to evolve fast and adapt to comm
 
 If you would like to prioritize any feature or would like to add a new feature that is not in our roadmap yet, please file an Issue on [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://slack.open-metadata.org).
 
+## Roadmap
+
+## 0.9.2 Release - Apr 20th, 2022
+
+### Collaboration
+
+* Support for Micro workflows and tasks
+* Users can request for description which becomes a task on owner of a dataset
+* Resolve threads and Pin threads around activity
+* Glossary approval workflow
+
+### Data Quality
+
+* Support for GreatExpectations to push the test result
+* Support for all the tests in GreatExpectations as JsonSchemas
+* Test Event notifications such as test success or failure
+* UX improvements to tests
+
+### Lineage
+
+* Spark Lineage support
+* Column level lineage API support
+* Provide versioning support to Lineage
+
+### Security
+
+* Improvements to UI login&#x20;
+* Support for AWS SSO and LDAP
+* Fine grained policy and operations approach which will give option to restrict per entity and tag based policy enforcement
+
+## 0.9.3 Release - May 25th, 2022
+
+### Data Insights
+
+* Show users/teams how their data doing
+* Cost analysis
+* How to improve Data culture
+
+### Data Quality
+
+* Data SLAs
+* Freshness and completeness
+* Ability to deploy GE tests from OpenMetadata UI
+
+### Lineage
+
+* Column Level Lineage support
+* Incident detection through Lineage
+
+### Collaboration
+
+* Tiering Report on how to improve data assets and data culture
+* Email notifications
+* Webbrowser notifications
+
+### ML Features
+
+* support ML feature UI
+* Sagemake connector
+
+## Latest Release - 0.9.0 - March 10th , 2022
+
+### Collaboration
+
+* Conversations in the main feed
+* Users can ask each other questions, add suggestions and replies
+* Turn some of the threads into tasks and provide it in MyData as number of tasks
+* Glossary
+* Table details - Click through on usage to see who or what services are using it, what queries are pulling from it.
+
+### Data QualityAbility to create and monitor the test cases&#x20;
+
+* Data Quality Tests support with Json Schemas and APIs
+* UI Integration to enable user to write tests and run them on Airflow
+
+### Glossary
+
+* Glossaries are a Controlled Vocabulary in an organization used to define the concepts and terminologies specific to a particular domain.
+* API & Schemas to support Glossary
+* UI support to add Glossary and Glossary Terms .
+* Support for using Glossary terms to annotate Entities and Search using Glossary Terms
+
+### Connectors
+
+* Apache Iceberg
+* Azure SQL
+* Clickhouse
+* Clickhouse Usage
+* Databricks
+* Databricks Usage
+* Delta Lake
+* DynamoDB
+* IBM DB2
+* Power BI
+* MSSQL Usage
+* SingleStore
+* Apache Atlas ,Import Metadata from Apache Atlas into OpenMetadata
+* Amundsen, Import Metadata from Amundsen into OpenMetadata
+
+### Lineage
+
+* DataSource SQL Parsing support to extract Lineage
+* View Lineage support
+
+### Pipeline
+
+* Capture pipeline status as it happens
+
+### Security
+
+* Security policies through the UI
+* Configuration personas and authorization based on policies
+* AWS SSO support
+
 ## 0.4 Release - Sep 20th, 2021
 
 #### Theme: Topics, Dashboards, and Data Profiler
@@ -126,12 +240,7 @@ If you would like to prioritize any feature or would like to add a new feature t
 
 ## 0.8 Release - Jan 22nd, 2022
 
-### Data Quality
 
-* Data Quality Tests support with Json Schemas and APIs
-* UI Integration to enable user to write tests and run them on Airflow
-* Store the test results and provide notifications via eventing apis
-* Provide integration of DBT tests into OpenMetadata
 
 ### Access Control Policies
 
@@ -149,46 +258,6 @@ If you would like to prioritize any feature or would like to add a new feature t
 * Iceberg
 * PowerBI
 * Azure SQL
-
-
-
-## 0.9 Release - Feb 26th, 2022&#x20;
-
-### Data Quality
-
-* Allow users to create their own semantic tests to test the quality of data
-* Support quality for more databases
-
-### DBT
-
-* Capture Tests and Statistics
-* Ownership
-
-### Lineage
-
-* Attribute propagation such as Tags, Tier etc.
-* Provide versioning support for lineage
-* Add more components into the lineage
-* Spark Lineage support
-* Column level lineage API support
-
-### Pipeline
-
-* Capture pipeline status as it happens
-* Bring in more data quality controls based on pipeline status
-
-### Collaboration
-
-* Conversations in the main feed
-* Users can ask each other questions, add suggestions and replies
-* Turn some of the threads into tasks and provide it in MyData as number of tasks
-* Glossary
-* Table details - Click through on usage to see who or what services are using it, what queries are pulling from it.
-
-### Security
-
-* Security policies through the UI
-* Configuration personas and authorization based on policies
 
 ## 1.0
 
