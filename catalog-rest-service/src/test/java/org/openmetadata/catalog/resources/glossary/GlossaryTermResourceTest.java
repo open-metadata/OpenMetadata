@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -58,7 +59,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, CreateGlossaryTerm> {
@@ -162,7 +162,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER1)));
     change.getFieldsAdded().add(new FieldChange().withName("synonyms").withNewValue(List.of("synonym1")));
     change.getFieldsAdded().add(new FieldChange().withName("references").withNewValue(List.of(reference1)));
-    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add reviewer USER2, synonym2, reference2 in PATCH request
     origJson = JsonUtils.pojoToJson(term);
@@ -174,7 +174,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     change.getFieldsAdded().add(new FieldChange().withName("reviewers").withNewValue(List.of(USER_OWNER2)));
     change.getFieldsAdded().add(new FieldChange().withName("synonyms").withNewValue(List.of("synonym2")));
     change.getFieldsAdded().add(new FieldChange().withName("references").withNewValue(List.of(reference2)));
-    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
     origJson = JsonUtils.pojoToJson(term);
@@ -183,7 +183,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     change.getFieldsDeleted().add(new FieldChange().withName("reviewers").withOldValue(List.of(USER_OWNER1)));
     change.getFieldsDeleted().add(new FieldChange().withName("synonyms").withOldValue(List.of("synonym1")));
     change.getFieldsDeleted().add(new FieldChange().withName("references").withOldValue(List.of(reference1)));
-    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Change GlossaryTerm status from DRAFT to Approved
     origJson = JsonUtils.pojoToJson(term);
@@ -192,7 +192,39 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("status").withOldValue(Status.DRAFT).withNewValue(Status.APPROVED));
-    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void patch_addDeleteTags(TestInfo test) throws IOException {
+    // Create glossary term1 in glossary g1
+    CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+    GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
+    EntityReference termRef1 = new GlossaryTermEntityInterface(term1).getEntityReference();
+
+    // Create glossary term11 under term1 in glossary g1
+    create = createRequest("t1", "", "", null).withReviewers(null).withSynonyms(null).withParent(termRef1);
+    GlossaryTerm term11 = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Apply tags to term11
+    String json = JsonUtils.pojoToJson(term11);
+    ChangeDescription change = new ChangeDescription();
+    change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(List.of(PERSONAL_DATA_TAG_LABEL)));
+    term11.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
+    patchEntityAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+
+    // Apply tags to term1
+    json = JsonUtils.pojoToJson(term1);
+    term1.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
+    patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // After adding tags to parent, make sure the parent and child still has tags
+    term11 = getEntity(term11.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+
+    term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(term1.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
   }
 
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws HttpResponseException {
@@ -298,28 +330,40 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     if (expected == actual) {
       return;
     }
-    if (fieldName.equals("reviewers")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedRefs, actualRefs);
-    } else if (fieldName.equals("synonyms")) {
-      @SuppressWarnings("unchecked")
-      List<String> expectedRefs = (List<String>) expected;
-      List<String> actualRefs = JsonUtils.readObjects(actual.toString(), String.class);
-      assertStrings(expectedRefs, actualRefs);
-    } else if (fieldName.equals("references")) {
-      @SuppressWarnings("unchecked")
-      List<TermReference> expectedRefs = (List<TermReference>) expected;
-      List<TermReference> actualRefs = JsonUtils.readObjects(actual.toString(), TermReference.class);
-      assertTermReferences(expectedRefs, actualRefs);
-    } else if (fieldName.equals("status")) {
-      @SuppressWarnings("unchecked")
-      Status expectedStatus = (Status) expected;
-      Status actualStatus = Status.fromValue(actual.toString());
-      assertEquals(expectedStatus, actualStatus);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
+    switch (fieldName) {
+      case "reviewers":
+        {
+          @SuppressWarnings("unchecked")
+          List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+          List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+          assertEntityReferencesFieldChange(expectedRefs, actualRefs);
+          break;
+        }
+      case "synonyms":
+        {
+          @SuppressWarnings("unchecked")
+          List<String> expectedRefs = (List<String>) expected;
+          List<String> actualRefs = JsonUtils.readObjects(actual.toString(), String.class);
+          assertStrings(expectedRefs, actualRefs);
+          break;
+        }
+      case "references":
+        {
+          @SuppressWarnings("unchecked")
+          List<TermReference> expectedRefs = (List<TermReference>) expected;
+          List<TermReference> actualRefs = JsonUtils.readObjects(actual.toString(), TermReference.class);
+          assertTermReferences(expectedRefs, actualRefs);
+          break;
+        }
+      case "status":
+        @SuppressWarnings("unchecked")
+        Status expectedStatus = (Status) expected;
+        Status actualStatus = Status.fromValue(actual.toString());
+        assertEquals(expectedStatus, actualStatus);
+        break;
+      default:
+        assertCommonFieldChange(fieldName, expected, actual);
+        break;
     }
   }
 }
