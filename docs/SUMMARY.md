@@ -15,11 +15,11 @@
 ## 📦 Integrations
 
 * [Metadata Ingestion Overview](../metadata-ingestion/metadata-ingestion.md)
+* [Ingest Metadata in Production](integrations/ingest-metadata-in-production.md)
 * [Connectors](integrations/connectors/README.md)
   * [Athena](integrations/connectors/athena.md)
   * [Azure SQL](integrations/connectors/azure-sql.md)
   * [BigQuery](integrations/connectors/bigquery/README.md)
-    * [BigQuery Metadata Extraction](integrations/connectors/bigquery/bigquery-metadata-extraction.md)
     * [BigQuery Usage](integrations/connectors/bigquery/bigquery-usage.md)
   * [Databricks](integrations/connectors/databricks.md)
   * [DBT](integrations/connectors/dbt.md)
