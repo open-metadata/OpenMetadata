@@ -113,9 +113,10 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.saveServiceButton());
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(serviceName));
-    Thread.sleep(5000); // for data ingestion
+    // Thread.sleep(5000); // for data ingestion
   }
 
   @Test
@@ -161,6 +162,7 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.saveServiceButton());
 
     webDriver.navigate().refresh();
+    Thread.sleep(waitTime);
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion
     Events.click(webDriver, common.saveEditedService());
   }

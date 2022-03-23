@@ -167,7 +167,7 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription())).perform();
+    actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
     Thread.sleep(waitTime);

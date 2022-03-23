@@ -93,9 +93,11 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "User.FacePhoto");
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
+    webDriver.navigate().refresh();
+    Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(common.containsText("#PersonalData.Personal")).size();
-    Assert.assertEquals(tagCount, 2);
+    Assert.assertEquals(tagCount, 1);
   }
 
   @Test
@@ -108,7 +110,9 @@ public class CommonTests {
     Thread.sleep(2000);
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.descriptionSaveButton());
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, common.addTagButton());
@@ -116,6 +120,7 @@ public class CommonTests {
     Events.sendKeys(webDriver, common.displayName(), "Testing Tag");
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
+    Thread.sleep(waitTime);
     URL tagUrl = new URL(url + urlTag + tagCategoryDisplayName + "/");
     HttpURLConnection http = (HttpURLConnection) tagUrl.openConnection();
     http.setRequestMethod("HEAD");
