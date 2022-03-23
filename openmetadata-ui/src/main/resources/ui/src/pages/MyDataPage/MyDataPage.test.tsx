@@ -56,6 +56,10 @@ jest.mock('../../utils/ServiceUtils', () => ({
   }),
 }));
 
+jest.mock('../../utils/CommonUtils', () => ({
+  isSandboxOMD: jest.fn().mockReturnValue(true),
+}));
+
 const mockAuth = {
   isAuthDisabled: true,
 };
@@ -86,12 +90,22 @@ jest.mock('../../components/MyData/MyData.component', () => {
   return jest.fn().mockImplementation(() => <p>MyData.component</p>);
 });
 
+jest.mock('../../components/GithubStarButton/GithubStarButton', () => {
+  return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
+});
+
 describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);
 
     const myData = await findByText(container, /MyData.component/i);
 
+    const githubStarButton = await findByText(
+      container,
+      /GithubStarButton.component/i
+    );
+
     expect(myData).toBeInTheDocument();
+    expect(githubStarButton).toBeInTheDocument();
   });
 });
