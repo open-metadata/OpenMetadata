@@ -86,19 +86,19 @@ public class ConfigResource {
   @GET
   @Path(("/sandbox"))
   @Operation(
-      summary = "Get sandbox configuration",
+      summary = "Get sandbox mode",
       tags = "general",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Sandbox configuration",
+            description = "Sandbox mode",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = SandboxConfiguration.class)))
       })
-  public SandboxConfiguration getSandboxConfig() {
+  public SandboxConfiguration getSandboxMode() {
     SandboxConfiguration sandboxConfiguration = new SandboxConfiguration();
-    if (catalogApplicationConfig.getSandboxConfiguration() != null) {
-      sandboxConfiguration = catalogApplicationConfig.getSandboxConfiguration();
+    if (catalogApplicationConfig.isSandboxModeEnabled()) {
+      sandboxConfiguration.setSandboxModeEnabled(true);
     }
     return sandboxConfiguration;
   }

@@ -28,7 +28,6 @@ import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
-import org.openmetadata.catalog.sandbox.SandboxConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
@@ -94,10 +93,10 @@ public class CatalogApplicationConfig extends Configuration {
   @Setter
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty("sandboxConfiguration")
+  @JsonProperty("sandboxModeEnabled")
   @Getter
   @Setter
-  private SandboxConfiguration sandboxConfiguration;
+  private boolean sandboxModeEnabled;
 
   @Override
   public String toString() {
