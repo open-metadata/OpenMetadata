@@ -15,7 +15,6 @@
 ## 📦 Integrations
 
 * [Metadata Ingestion Overview](../metadata-ingestion/metadata-ingestion.md)
-* [Ingest Metadata in Production](integrations/ingest-metadata-in-production.md)
 * [Connectors](integrations/connectors/README.md)
   * [Athena](integrations/connectors/athena.md)
   * [Azure SQL](integrations/connectors/azure-sql.md)
@@ -58,6 +57,7 @@
   * [Trino](integrations/connectors/trino.md)
   * [Vertica](integrations/connectors/vertica.md)
 * [Troubleshoot Connectors](integrations/troubleshoot-connectors.md)
+* [Ingest Metadata in Production](integrations/ingest-metadata-in-production.md)
 * [Ingest Sample Data](../metadata-ingestion/ingest-sample-data.md)
 * [Airflow](integrations/airflow/README.md)
   * [Custom Airflow Installation](integrations/airflow/custom-airflow-installation.md)
