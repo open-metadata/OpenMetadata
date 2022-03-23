@@ -20,12 +20,12 @@ from .status import Status
 
 @dataclass
 class BulkSinkStatus(Status):
-    records = 0
+    records: List[Any] = field(default_factory=list)
     warnings: List[Any] = field(default_factory=list)
     failures: List[Any] = field(default_factory=list)
 
-    def records_status(self, record: Any) -> None:
-        self.records += 1
+    def records_written(self, record: Any) -> None:
+        self.records.append(record)
 
     def warning(self, info: Any) -> None:
         self.warnings.append(info)
