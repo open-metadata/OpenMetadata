@@ -15,9 +15,6 @@ Define Concat function
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.orm_profiler.metrics.core import CACHE
 from metadata.orm_profiler.orm.registry import Dialects
 from metadata.orm_profiler.utils import logger
