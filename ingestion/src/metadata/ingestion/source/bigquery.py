@@ -150,8 +150,8 @@ class BigquerySource(SQLSource):
         return segments[0], segments[1]
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
-        resp_sample_data = super().fetch_sample_data(schema, table)
-        if not resp_sample_data and self.config.partition_query:
+        partition_details = self.inspector.get_indexes(table, schema)
+        if partition_details[0].get("name") == "partition":
             try:
                 logger.info("Using Query for Partitioned Tables")
                 partition_details = self.inspector.get_indexes(table, schema)
@@ -175,6 +175,8 @@ class BigquerySource(SQLSource):
                 return TableData(columns=cols, rows=rows)
             except Exception as err:
                 logger.error(err)
+        else:
+            super().fetch_sample_data(schema, table)
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
