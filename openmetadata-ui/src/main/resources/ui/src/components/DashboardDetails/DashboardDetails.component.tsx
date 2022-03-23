@@ -383,269 +383,263 @@ const DashboardDetails = ({
   }, [followers]);
 
   return (
-    <>
-      <PageContainer>
-        <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
-          <EntityPageInfo
-            isTagEditable
-            deleted={deleted}
-            entityFieldThreads={getEntityFieldThreadCounts(
-              'tags',
-              entityFieldThreadCount
-            )}
-            entityFqn={dashboardFQN}
-            entityName={entityName}
-            entityType={EntityType.DASHBOARD}
-            extraInfo={extraInfo}
-            followHandler={followDashboard}
-            followers={followersCount}
-            followersList={followers}
-            hasEditAccess={hasEditAccess()}
-            isFollowing={isFollowing}
-            owner={owner}
-            tags={dashboardTags}
-            tagsHandler={onTagUpdate}
-            tier={tier || ''}
-            titleLinks={slashedDashboardName}
-            version={version}
-            versionHandler={versionHandler}
-            onThreadLinkSelect={onThreadLinkSelect}
+    <PageContainer>
+      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+        <EntityPageInfo
+          isTagEditable
+          deleted={deleted}
+          entityFieldThreads={getEntityFieldThreadCounts(
+            'tags',
+            entityFieldThreadCount
+          )}
+          entityFqn={dashboardFQN}
+          entityName={entityName}
+          entityType={EntityType.DASHBOARD}
+          extraInfo={extraInfo}
+          followHandler={followDashboard}
+          followers={followersCount}
+          followersList={followers}
+          hasEditAccess={hasEditAccess()}
+          isFollowing={isFollowing}
+          owner={owner}
+          tags={dashboardTags}
+          tagsHandler={onTagUpdate}
+          tier={tier || ''}
+          titleLinks={slashedDashboardName}
+          version={version}
+          versionHandler={versionHandler}
+          onThreadLinkSelect={onThreadLinkSelect}
+        />
+        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+          <TabsPane
+            activeTab={activeTab}
+            className="tw-flex-initial"
+            setActiveTab={setActiveTabHandler}
+            tabs={tabs}
           />
-          <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
-            <TabsPane
-              activeTab={activeTab}
-              className="tw-flex-initial"
-              setActiveTab={setActiveTabHandler}
-              tabs={tabs}
-            />
 
-            <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-              {activeTab === 1 && (
-                <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
-                      <Description
-                        description={description}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          'description',
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={dashboardFQN}
-                        entityName={entityName}
-                        entityType={EntityType.DASHBOARD}
-                        hasEditAccess={hasEditAccess()}
-                        isEdit={isEdit}
-                        isReadOnly={deleted}
-                        owner={owner}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onEntityFieldSelect={onEntityFieldSelect}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
+          <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
+            {activeTab === 1 && (
+              <>
+                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                  <div className="tw-col-span-full">
+                    <Description
+                      description={description}
+                      entityFieldThreads={getEntityFieldThreadCounts(
+                        'description',
+                        entityFieldThreadCount
+                      )}
+                      entityFqn={dashboardFQN}
+                      entityName={entityName}
+                      entityType={EntityType.DASHBOARD}
+                      hasEditAccess={hasEditAccess()}
+                      isEdit={isEdit}
+                      isReadOnly={deleted}
+                      owner={owner}
+                      onCancel={onCancel}
+                      onDescriptionEdit={onDescriptionEdit}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onEntityFieldSelect={onEntityFieldSelect}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
                   </div>
-                  <div className="tw-table-responsive tw-my-6">
-                    <table className="tw-w-full" data-testid="schema-table">
-                      <thead>
-                        <tr className="tableHead-row">
-                          <th className="tableHead-cell">Chart Name</th>
-                          <th className="tableHead-cell">Chart Type</th>
-                          <th className="tableHead-cell">Description</th>
-                          <th className="tableHead-cell tw-w-60">Tags</th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {charts.map((chart, index) => (
-                          <tr
-                            className={classNames(
-                              'tableBody-row',
-                              !isEven(index + 1) ? 'odd-row' : null
-                            )}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <Link
-                                target="_blank"
-                                to={{ pathname: chart.chartUrl }}>
-                                <span className="tw-flex">
-                                  <span className="tw-mr-1">
-                                    {chart.displayName}
-                                  </span>
-                                  <SVGIcons
-                                    alt="external-link"
-                                    className="tw-align-middle"
-                                    icon="external-link"
-                                    width="12px"
-                                  />
+                </div>
+                <div className="tw-table-responsive tw-my-6">
+                  <table className="tw-w-full" data-testid="schema-table">
+                    <thead>
+                      <tr className="tableHead-row">
+                        <th className="tableHead-cell">Chart Name</th>
+                        <th className="tableHead-cell">Chart Type</th>
+                        <th className="tableHead-cell">Description</th>
+                        <th className="tableHead-cell tw-w-60">Tags</th>
+                      </tr>
+                    </thead>
+                    <tbody className="tableBody">
+                      {charts.map((chart, index) => (
+                        <tr
+                          className={classNames(
+                            'tableBody-row',
+                            !isEven(index + 1) ? 'odd-row' : null
+                          )}
+                          key={index}>
+                          <td className="tableBody-cell">
+                            <Link
+                              target="_blank"
+                              to={{ pathname: chart.chartUrl }}>
+                              <span className="tw-flex">
+                                <span className="tw-mr-1">
+                                  {chart.displayName}
                                 </span>
-                              </Link>
-                            </td>
-                            <td className="tableBody-cell">
-                              {chart.chartType}
-                            </td>
-                            <td className="tw-group tableBody-cell tw-relative">
-                              <div className="tw-inline-block">
-                                <div
-                                  className="tw-cursor-pointer tw-flex"
-                                  data-testid="description">
-                                  <div>
-                                    {chart.description ? (
-                                      <RichTextEditorPreviewer
-                                        markdown={chart.description}
+                                <SVGIcons
+                                  alt="external-link"
+                                  className="tw-align-middle"
+                                  icon="external-link"
+                                  width="12px"
+                                />
+                              </span>
+                            </Link>
+                          </td>
+                          <td className="tableBody-cell">{chart.chartType}</td>
+                          <td className="tw-group tableBody-cell tw-relative">
+                            <div className="tw-inline-block">
+                              <div
+                                className="tw-cursor-pointer tw-flex"
+                                data-testid="description">
+                                <div>
+                                  {chart.description ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={chart.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description
+                                    </span>
+                                  )}
+                                </div>
+                                {!deleted && (
+                                  <NonAdminAction
+                                    html={getHtmlForNonAdminAction(
+                                      Boolean(owner)
+                                    )}
+                                    isOwner={hasEditAccess()}
+                                    permission={Operation.UpdateDescription}
+                                    position="top">
+                                    <button
+                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      onClick={() =>
+                                        handleUpdateChart(chart, index)
+                                      }>
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
                                       />
-                                    ) : (
-                                      <span className="tw-no-description">
-                                        No description
-                                      </span>
-                                    )}
-                                  </div>
-                                  {!deleted && (
-                                    <NonAdminAction
-                                      html={getHtmlForNonAdminAction(
-                                        Boolean(owner)
-                                      )}
-                                      isOwner={hasEditAccess()}
-                                      permission={Operation.UpdateDescription}
-                                      position="top">
-                                      <button
-                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        onClick={() =>
-                                          handleUpdateChart(chart, index)
-                                        }>
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="10px"
-                                        />
-                                      </button>
-                                    </NonAdminAction>
-                                  )}
-                                </div>
+                                    </button>
+                                  </NonAdminAction>
+                                )}
                               </div>
-                            </td>
-                            <td
-                              className="tw-group tw-relative tableBody-cell"
-                              onClick={() => {
-                                if (!editChartTags) {
-                                  // Fetch tags and terms only once
-                                  if (tagList.length === 0 || tagFetchFailed) {
-                                    fetchTagsAndGlossaryTerms();
-                                  }
-                                  handleEditChartTag(chart, index);
+                            </div>
+                          </td>
+                          <td
+                            className="tw-group tw-relative tableBody-cell"
+                            onClick={() => {
+                              if (!editChartTags) {
+                                // Fetch tags and terms only once
+                                if (tagList.length === 0 || tagFetchFailed) {
+                                  fetchTagsAndGlossaryTerms();
                                 }
-                              }}>
-                              {deleted ? (
-                                <div className="tw-flex tw-flex-wrap">
-                                  <TagsViewer
-                                    sizeCap={-1}
-                                    tags={chart.tags || []}
-                                  />
-                                </div>
-                              ) : (
-                                <NonAdminAction
-                                  html={getHtmlForNonAdminAction(
-                                    Boolean(owner)
+                                handleEditChartTag(chart, index);
+                              }
+                            }}>
+                            {deleted ? (
+                              <div className="tw-flex tw-flex-wrap">
+                                <TagsViewer
+                                  sizeCap={-1}
+                                  tags={chart.tags || []}
+                                />
+                              </div>
+                            ) : (
+                              <NonAdminAction
+                                html={getHtmlForNonAdminAction(Boolean(owner))}
+                                isOwner={hasEditAccess()}
+                                permission={Operation.UpdateTags}
+                                position="left"
+                                trigger="click">
+                                <TagsContainer
+                                  editable={editChartTags?.index === index}
+                                  isLoading={
+                                    isTagLoading &&
+                                    editChartTags?.index === index
+                                  }
+                                  selectedTags={chart.tags as EntityTags[]}
+                                  size="small"
+                                  tagList={tagList}
+                                  type="label"
+                                  onCancel={() => {
+                                    handleChartTagSelection();
+                                  }}
+                                  onSelectionChange={(tags) => {
+                                    handleChartTagSelection(tags);
+                                  }}>
+                                  {chart.tags?.length ? (
+                                    <button
+                                      className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                      data-testid="edit-tags">
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  ) : (
+                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                                      <Tags
+                                        startWith="+ "
+                                        tag="Add tag"
+                                        type="outlined"
+                                      />
+                                    </span>
                                   )}
-                                  isOwner={hasEditAccess()}
-                                  permission={Operation.UpdateTags}
-                                  position="left"
-                                  trigger="click">
-                                  <TagsContainer
-                                    editable={editChartTags?.index === index}
-                                    isLoading={
-                                      isTagLoading &&
-                                      editChartTags?.index === index
-                                    }
-                                    selectedTags={chart.tags as EntityTags[]}
-                                    size="small"
-                                    tagList={tagList}
-                                    type="label"
-                                    onCancel={() => {
-                                      handleChartTagSelection();
-                                    }}
-                                    onSelectionChange={(tags) => {
-                                      handleChartTagSelection(tags);
-                                    }}>
-                                    {chart.tags?.length ? (
-                                      <button
-                                        className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        data-testid="edit-tags">
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="10px"
-                                        />
-                                      </button>
-                                    ) : (
-                                      <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                        <Tags
-                                          startWith="+ "
-                                          tag="Add tag"
-                                          type="outlined"
-                                        />
-                                      </span>
-                                    )}
-                                  </TagsContainer>
-                                </NonAdminAction>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-              {activeTab === 2 && (
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
-                  id="activityfeed">
-                  <div />
-                  <ActivityFeedList
-                    isEntityFeed
-                    withSidePanel
-                    className=""
-                    deletePostHandler={deletePostHandler}
-                    entityName={entityName}
-                    feedList={entityThread}
-                    isLoading={isentityThreadLoading}
-                    postFeedHandler={postFeedHandler}
-                  />
-                  <div />
+                                </TagsContainer>
+                              </NonAdminAction>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-              {activeTab === 3 && (
-                <div className="tw-h-full">
-                  <Entitylineage
-                    addLineageHandler={addLineageHandler}
-                    deleted={deleted}
-                    entityLineage={entityLineage}
-                    entityLineageHandler={entityLineageHandler}
-                    isLoading={isLineageLoading}
-                    isNodeLoading={isNodeLoading}
-                    isOwner={hasEditAccess()}
-                    lineageLeafNodes={lineageLeafNodes}
-                    loadNodeHandler={loadNodeHandler}
-                    removeLineageHandler={removeLineageHandler}
-                  />
-                </div>
-              )}
-              {activeTab === 4 && !deleted && (
-                <div>
-                  <ManageTabComponent
-                    currentTier={tier?.tagFQN}
-                    currentUser={owner?.id}
-                    hasEditAccess={hasEditAccess()}
-                    onSave={onSettingsUpdate}
-                  />
-                </div>
-              )}
-            </div>
+              </>
+            )}
+            {activeTab === 2 && (
+              <div
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                id="activityfeed">
+                <div />
+                <ActivityFeedList
+                  isEntityFeed
+                  withSidePanel
+                  className=""
+                  deletePostHandler={deletePostHandler}
+                  entityName={entityName}
+                  feedList={entityThread}
+                  isLoading={isentityThreadLoading}
+                  postFeedHandler={postFeedHandler}
+                />
+                <div />
+              </div>
+            )}
+            {activeTab === 3 && (
+              <div className="tw-h-full">
+                <Entitylineage
+                  addLineageHandler={addLineageHandler}
+                  deleted={deleted}
+                  entityLineage={entityLineage}
+                  entityLineageHandler={entityLineageHandler}
+                  isLoading={isLineageLoading}
+                  isNodeLoading={isNodeLoading}
+                  isOwner={hasEditAccess()}
+                  lineageLeafNodes={lineageLeafNodes}
+                  loadNodeHandler={loadNodeHandler}
+                  removeLineageHandler={removeLineageHandler}
+                />
+              </div>
+            )}
+            {activeTab === 4 && !deleted && (
+              <div>
+                <ManageTabComponent
+                  currentTier={tier?.tagFQN}
+                  currentUser={owner?.id}
+                  hasEditAccess={hasEditAccess()}
+                  onSave={onSettingsUpdate}
+                />
+              </div>
+            )}
           </div>
         </div>
-      </PageContainer>
+      </div>
       {editChart && (
         <ModalWithMarkdownEditor
           header={`Edit Chart: "${editChart.chart.displayName}"`}
@@ -678,7 +672,7 @@ const DashboardDetails = ({
           onCancel={closeRequestModal}
         />
       ) : null}
-    </>
+    </PageContainer>
   );
 };
 

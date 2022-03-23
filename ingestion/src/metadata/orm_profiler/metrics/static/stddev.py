@@ -16,9 +16,6 @@ from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.registry import Dialects, is_quantifiable
 from metadata.orm_profiler.utils import logger

@@ -113,11 +113,11 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
 
   static final String FIELDS = FIELD_OWNER;
   public static final List<String> ALLOWED_FIELDS;
+  static final String PIPELINE_STATUSES = "pipelineStatuses";
 
   static {
     List<String> list = new ArrayList<>();
     list.addAll(Entity.getEntityFields(AirflowPipeline.class));
-    list.add("status"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
     ALLOWED_FIELDS = Collections.unmodifiableList(list);
   }
 
@@ -173,7 +173,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
     filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
     ResultList<AirflowPipeline> airflowPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    if (fieldsParam != null && fieldsParam.contains("status")) {
+    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       addStatus(airflowPipelines.getData());
     }
     return airflowPipelines;
@@ -230,7 +230,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           Include include)
       throws IOException, ParseException {
     AirflowPipeline airflowPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains("status")) {
+    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       airflowPipeline = addStatus(airflowPipeline);
     }
     return airflowPipeline;
@@ -296,7 +296,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           Include include)
       throws IOException, ParseException {
     AirflowPipeline airflowPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains("status")) {
+    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       airflowPipeline = addStatus(airflowPipeline);
     }
     return airflowPipeline;
