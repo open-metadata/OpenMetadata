@@ -1,10 +1,6 @@
 # Releases
 
-OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new version. To see whats coming in next please check our Roadmap section.
-
-Here are the releases so far
-
-
+OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new version. To see whats coming in next please check our [Roadmap section](roadmap.md).
 
 ## Latest Release - 0.9.0 - March 10th , 2022
 

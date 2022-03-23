@@ -6,6 +6,8 @@ We are doing a monthly release and we are going to evolve fast and adapt to comm
 
 If you would like to prioritize any feature or would like to add a new feature that is not in our roadmap yet, please file an Issue on [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://slack.open-metadata.org).
 
+Please check our [Releases page](releases.md) to see all the features we shipped so far.
+
 ## Roadmap
 
 ## 0.9.2 Release - Apr 20th, 2022
@@ -75,64 +77,3 @@ If you would like to prioritize any feature or would like to add a new feature t
 * support ML feature UI
 * Sagemake connector
 
-##
-
-## 1.0
-
-### Data culture / Data quality
-
-* Tier suggestion
-* Data dashboard/Insights
-  * Suggested tiers, created, deleted last week, descriptions added, ownership with/without number
-
-### ML Features/ML
-
-* Models UI
-* ML Service
-
-### Collaboration
-
-* Tag suggest/accept/approve
-* Expiry time
-* Remind me later
-* Data deleting report
-
-### DBT
-
-* Capture Lineage
-
-## 1.1
-
-### User feedback&#x20;
-
-* Tiering report & nudges
-* Badges
-* Top datasets as positive feedback
-
-### Freshness/completeness workflows and metadata
-
-* SLA
-
-### Collaboration
-
-* Feature requests for datasets
-
-### Integration
-
-* Alation integration to fetch metadata
-
-## 1.2
-
-### Lineage
-
-* Search for a column and show the entire DAG from origin to see how that column/table is generated&#x20;
-* Lineage-based freshness and debugging
-
-## 1.3
-
-### Lineage
-
-* Lineage based description, tag, attribute propagation
-* Kafka lineage from services
-* Periodic Reviews - Such as Tag Review
-* Cost Analysis
