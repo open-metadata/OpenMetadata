@@ -1076,7 +1076,7 @@ This error usually occurs due to an older version of pip. Try upgrading pip as f
 pip3 install --upgrade pip setuptools
 ```
 
-Then re-run the install command in Step 10.
+Then re-run the install command in Step 2.
 
 
 

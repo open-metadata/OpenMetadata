@@ -1172,13 +1172,13 @@ ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be i
 pip3 install --upgrade pip setuptools
 ```
 
-Then re-run the install command in Step 8.
+Then re-run the install command in Step 2.
 
 ### ****
 
 ### **requests.exceptions.ConnectionError**
 
-If you encounter the following error when attempting to run the ingestion workflow in Step 9, this is probably because there is no OpenMetadata server running at http://localhost:8585.
+If you encounter the following error when attempting to run the ingestion workflow in Step 10, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
@@ -1187,9 +1187,7 @@ Max retries exceeded with url: /api/v1/services/databaseServices/name/bigquery
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, please follow the steps in the [Run OpenMetadata](https://docs.open-metadata.org/v/main/try-openmetadata/run-openmetadata) guide to deploy OpenMetadata in Docker on your local machine.
-
-​Then re-run the metadata ingestion workflow in Step 9.
+To correct this problem, please follow the steps in the [Run OpenMetadata](https://docs.open-metadata.org/v/main/try-openmetadata/run-openmetadata) guide to deploy OpenMetadata in Docker on your local machine. Then re-run the metadata ingestion workflow in Step 10.
 {% endtab %}
 {% endtabs %}
 
