@@ -129,6 +129,7 @@
 
 ## 🚀 Deploy
 
+* [Local Deployment](deploy/local-deployment.md)
 * [Deploy on Bare Metal](../deploy/deploy-on-bare-metal/README.md)
   * [Deploy OpenMetadata on Bare Metal](../deploy/deploy-on-bare-metal/run-in-production.md)
   * [Enable Security](../deploy/deploy-on-bare-metal/enable-security/README.md)
