@@ -6,10 +6,10 @@ description: >-
 
 # BigQuery
 
-* [ ] [Requirements](./#requirements)
-* [ ] [Install BigQuery Connector](./#install-bigquery-connector)
-* [ ] [Run BigQuery Ingestion Workflow](./#run-bigquery-ingestion-workflow)
-* [ ] [Troubleshoot](./#troubleshooting)
+* [Requirements](./#requirements)
+* [Install BigQuery Connector](./#install-bigquery-connector)
+* [Configure BigQuery Connector](./#configure-bigquery-connector)
+* [Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
 
 ## **Requirements**
 
@@ -422,7 +422,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ****
 
-## **Run BigQuery Ingestion workflow**
+## **Run BigQuery Connector**
 
 Your `bigquery.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
@@ -432,7 +432,7 @@ To run an ingestion workflow, execute the following command from the `openmetada
 metadata ingest -c ./bigquery.json
 ```
 
-### &#x20;**Setup BigQuery Metadata Ingestion in production (optional)**
+### &#x20;**Setup BigQuery Connector in production (optional)**
 
 If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
 
@@ -472,4 +472,4 @@ Failed to establish a new connection: [Errno 61] Connection refused'))
 
 To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/) to deploy OpenMetadata.
 
-Then re-run the metadata ingestion workflow in [Run BigQuery Ingestion Workflow](./#run-ingestion-workflow)
+Then re-run the metadata ingestion workflow in[ Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
