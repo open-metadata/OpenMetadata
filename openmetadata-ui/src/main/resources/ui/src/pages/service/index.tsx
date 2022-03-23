@@ -313,7 +313,7 @@ const ServicePage: FunctionComponent = () => {
 
   const getAllIngestionWorkflows = (paging?: string) => {
     setIsloading(true);
-    getAirflowPipelines(['owner', 'status'], serviceFQN, '', paging)
+    getAirflowPipelines(['owner', 'pipelineStatuses'], serviceFQN, '', paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
