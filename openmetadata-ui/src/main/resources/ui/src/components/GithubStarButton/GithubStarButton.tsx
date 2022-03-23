@@ -12,7 +12,7 @@
  */
 
 import { isNil } from 'lodash';
-import React, { FunctionComponent, useState } from 'react';
+import React, { CSSProperties, FunctionComponent, useState } from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import PopOver from '../common/popover/PopOver';
 
@@ -45,6 +45,22 @@ const GithubStarButton: FunctionComponent = () => {
           </>
         }
         open={open}
+        popperOptions={{
+          modifiers: {
+            addZIndex: {
+              enabled: true,
+              order: 810,
+              // react-tippy has this dataObject that can be of any type
+              fn: (data: { styles: CSSProperties }) => ({
+                ...data,
+                styles: {
+                  ...data.styles,
+                  zIndex: 9990,
+                },
+              }),
+            },
+          },
+        }}
         position="left"
         theme="light"
         trigger="click">
