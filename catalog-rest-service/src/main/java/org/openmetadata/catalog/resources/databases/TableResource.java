@@ -113,7 +113,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   static final String FIELDS =
-      "tableConstraints,usageSummary,owner,profileSample,customMetrics,"
+      "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
   public static final List<String> ALLOWED_FIELDS;
 
@@ -647,6 +647,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static Table validateNewTable(Table table) {
     table.setId(UUID.randomUUID());
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
+    DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
     DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
     DatabaseUtil.validateColumns(table);
     return table;
@@ -659,6 +660,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .withColumns(create.getColumns())
         .withDescription(create.getDescription())
         .withTableConstraints(create.getTableConstraints())
+        .withTablePartition(create.getTablePartition())
         .withTableType(create.getTableType())
         .withTags(create.getTags())
         .withViewDefinition(create.getViewDefinition())

@@ -81,10 +81,11 @@ import org.openmetadata.common.utils.CommonUtil;
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
   // Table fields that can be patched in a PATCH request
-  static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints");
+  static final Fields TABLE_PATCH_FIELDS =
+      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,tablePartition");
   // Table fields that can be updated in a PUT request
   static final Fields TABLE_UPDATE_FIELDS =
-      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,dataModel,profileSample");
+      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,tablePartition,dataModel,profileSample");
 
   public TableRepository(CollectionDAO dao) {
     super(

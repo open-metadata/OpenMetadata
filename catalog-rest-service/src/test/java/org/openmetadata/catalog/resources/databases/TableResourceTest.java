@@ -29,6 +29,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
+import static org.openmetadata.catalog.type.ColumnDataType.DATE;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
@@ -122,6 +123,7 @@ import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TablePartition;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
@@ -229,6 +231,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void post_tableWithPartition(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withTableConstraints(null);
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("user_id", INT, null));
+    columns.add(getColumn("date", DATE, null));
+    TablePartition partition =
+        new TablePartition()
+            .withColumns(List.of(columns.get(1).getName()))
+            .withIntervalType(TablePartition.IntervalType.TIME_UNIT)
+            .withInterval("daily");
+    create.setColumns(columns);
+    create.setTablePartition(partition);
+    Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertTablePartition(partition, created.getTablePartition());
+  }
+
+  @Test
   void put_tableWithColumnWithOrdinalPositionAndWithoutOrdinalPosition(TestInfo test) throws IOException {
     CreateTable create = createRequest(test);
     List<Column> columns = new ArrayList<>();
@@ -242,12 +261,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(column2);
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(columns.get(0).getName()));
+    TablePartition partition =
+        new TablePartition()
+            .withColumns(List.of(columns.get(0).getName(), columns.get(1).getName()))
+            .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
+            .withInterval("column");
     create.setColumns(columns);
     create.setTableConstraints(List.of(constraint));
+    create.setTablePartition(partition);
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Column column = created.getColumns().get(0);
     assertEquals("column1", column.getName());
     assertEquals("column1", column.getDescription());
+    assertTablePartition(partition, created.getTablePartition());
 
     // keep original ordinalPosition add a column at the end and do not pass descriptions for the first 2 columns
     // we should retain the original description
@@ -263,15 +289,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(updateColumn1);
     columns.add(updateColumn2);
     columns.add(column3);
+    partition =
+        new TablePartition()
+            .withColumns(List.of(columns.get(2).getName()))
+            .withIntervalType(TablePartition.IntervalType.COLUMN_VALUE)
+            .withInterval("column");
     create.setColumns(columns);
     create.setTableConstraints(List.of(constraint));
-
+    create.setTablePartition(partition);
     // Update the table with constraints and ensure minor version change
     ChangeDescription change = getChangeDescription(created.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("columns").withNewValue(List.of(column3)));
     Table updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
     origColumns.add(column3);
     assertColumns(origColumns, updatedTable.getColumns());
+    assertTablePartition(partition, updatedTable.getTablePartition());
+    Table getTable = getEntity(updatedTable.getId(), "tablePartition", ADMIN_AUTH_HEADERS);
+    assertTablePartition(partition, getTable.getTablePartition());
+
     TestUtils.validateUpdate(created.getVersion(), updatedTable.getVersion(), MINOR_UPDATE);
     // keep ordinalPosition and add a column in between
     updateColumn1 = getColumn("column1", INT, null).withOrdinalPosition(1).withDescription("");
@@ -2024,6 +2059,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {
     TestUtils.validateEntityReference(database);
     assertEquals(expectedDatabase.getId(), database.getId());
+  }
+
+  private void assertTablePartition(TablePartition expectedPartition, TablePartition actualPartition) {
+    if (expectedPartition == null && actualPartition == null) {
+      return;
+    }
+    assert expectedPartition != null;
+    assertEquals(expectedPartition.getColumns().size(), actualPartition.getColumns().size());
+    assertEquals(expectedPartition.getIntervalType(), actualPartition.getIntervalType());
+    assertEquals(expectedPartition.getInterval(), actualPartition.getInterval());
+
+    for (int i = 0; i < expectedPartition.getColumns().size(); i++) {
+      assertEquals(expectedPartition.getColumns().get(i), actualPartition.getColumns().get(i));
+    }
   }
 
   @Override

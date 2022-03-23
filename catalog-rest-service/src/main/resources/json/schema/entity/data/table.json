@@ -128,6 +128,36 @@
       "minLength": 1,
       "maxLength": 256
     },
+    "tablePartition": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TablePartition",
+      "description": "This schema defines the partition column of a table and format the partition is created.",
+      "properties": {
+        "columns": {
+          "description": "List of column names corresponding to the partition.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intervalType": {
+          "type": "string",
+          "description": "type of partition interval, example time-unit, integer-range",
+          "enum": [
+            "TIME-UNIT",
+            "INTEGER-RANGE",
+            "INTGESTION-TIME",
+            "COLUMN-VALUE"
+          ]
+        },
+        "interval": {
+          "type": "string",
+          "description": "partition interval , example hourly, daily, monthly."
+        }
+      },
+      "required": ["columns", "intervalType", "interval"],
+      "additionalProperties": false
+    },
     "column": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.Column",
@@ -592,6 +622,9 @@
         "$ref": "#/definitions/tableConstraint"
       },
       "default": null
+    },
+    "tablePartition": {
+      "$ref": "#/definitions/tablePartition"
     },
     "owner": {
       "description": "Owner of this table.",
