@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -30,7 +31,6 @@ import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.i
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   currentTier?: string;
@@ -41,6 +41,7 @@ type Props = {
     tier: TableDetail['tier']
   ) => Promise<void>;
   hasEditAccess: boolean;
+  allowTeamOwner?: boolean;
 };
 
 const ManageTab: FunctionComponent<Props> = ({
@@ -49,6 +50,7 @@ const ManageTab: FunctionComponent<Props> = ({
   hideTier = false,
   onSave,
   hasEditAccess,
+  allowTeamOwner = true,
 }: Props) => {
   const { userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -119,6 +121,10 @@ const ManageTab: FunctionComponent<Props> = ({
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
+  };
+
+  const getOwnerGroup = () => {
+    return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
   };
 
   const handleOwnerSelection = (
@@ -295,7 +301,7 @@ const ManageTab: FunctionComponent<Props> = ({
               showSearchBar
               dropDownList={listOwners}
               groupType="tab"
-              listGroups={['Teams', 'Users']}
+              listGroups={getOwnerGroup()}
               value={owner}
               onSelect={handleOwnerSelection}
             />

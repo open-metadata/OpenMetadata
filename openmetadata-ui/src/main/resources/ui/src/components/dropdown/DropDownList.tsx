@@ -179,7 +179,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                   </div>
                 )}
                 {groupType === 'tab' && (
-                  <div className="tw-flex tw-justify-around tw-border-b tw-border-separator tw-mb-1">
+                  <div className="tw-flex tw-justify-between tw-border-b tw-border-separator tw-mb-1">
                     {listGroups.map((grp, index) => {
                       return (
                         <button
