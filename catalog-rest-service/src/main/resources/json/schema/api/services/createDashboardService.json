@@ -7,10 +7,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of dashboard service entity.",
