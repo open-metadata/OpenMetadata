@@ -29,9 +29,9 @@ RUN DEBIAN_FRONTEND="noninteractive"  apt install -y \
     maven \
     git
 COPY . /OpenMetadata
-COPY docker/compose/patches /patches
 WORKDIR /OpenMetadata
-RUN for patch in `ls -1 /patches | sort`; do git apply /patches/${patch}; done
+# COPY docker/compose/patches /patches
+# RUN for patch in `ls -1 /patches | sort`; do git apply /patches/${patch}; done
 RUN git init && \
     git config --global user.email "you@example.com" && \
     git config --global user.name "Your Name" && \
@@ -39,14 +39,15 @@ RUN git init && \
 RUN --mount=type=cache,target=/root/.m2 mvn clean package -B -DskipTests
 
 FROM jdk AS openmetadata
-COPY --from=builder /OpenMetadata/openmetadata-dist/target/openmetadata-0.9.0-SNAPSHOT.tar.gz .
+COPY --from=builder /OpenMetadata/openmetadata-dist/target/openmetadata-0.9.1-SNAPSHOT.tar.gz .
 WORKDIR /opt/openmetadata
-RUN tar zxf /openmetadata-0.9.0-SNAPSHOT.tar.gz --strip 1
-RUN rm /openmetadata-0.9.0-SNAPSHOT.tar.gz
+RUN tar zxf /openmetadata-0.9.1-SNAPSHOT.tar.gz --strip 1
+RUN rm /openmetadata-0.9.1-SNAPSHOT.tar.gz
 
 FROM jdk AS metadata
 COPY --from=builder /OpenMetadata /OpenMetadata
 WORKDIR /OpenMetadata
+RUN apt update
 RUN DEBIAN_FRONTEND="noninteractive"  apt install -y \
     python3 \
     python3-pip \
@@ -55,7 +56,7 @@ RUN DEBIAN_FRONTEND="noninteractive"  apt install -y \
 RUN pip install \
     datamodel-code-generator
 RUN datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
-RUN pip install ./ingestion[trino,singlestore,mysql]
+RUN pip install ./ingestion[trino,mysql]
 RUN pip install ./ingestion-core
 RUN rm -rf /OpenMetadata
 WORKDIR /opt/metadata

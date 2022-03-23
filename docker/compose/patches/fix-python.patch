@@ -1,0 +1,15 @@
+diff --git a/ingestion/setup.py b/ingestion/setup.py
+index effee8563..4bd4be565 100644
+--- a/ingestion/setup.py
++++ b/ingestion/setup.py
+@@ -23,7 +23,6 @@ def get_long_description():
+ 
+ 
+ base_requirements = {
+-    "openmetadata-ingestion-core==0.9.0",
+     "commonregex",
+     "idna<3,>=2.5",
+     "click>=7.1.1",
+diff --git a/ingestion/src/metadata/__init__.py b/ingestion/src/metadata/__init__.py
+deleted file mode 100644
+index e69de29bb..000000000

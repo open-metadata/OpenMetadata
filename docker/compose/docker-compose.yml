@@ -23,7 +23,7 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - ${PWD}/scripts/mysql/:/docker-entrypoint-initdb.d/
+      - ./scripts/mysql/:/docker-entrypoint-initdb.d/
     ports:
       - "3306:3306"
     networks:
@@ -44,7 +44,8 @@ services:
 
   openmetadata:
     build:
-      context: .
+      context: ../..
+      dockerfile: docker/compose/Dockerfile
       target: openmetadata
     image: openmetadata:latest
     hostname: openmetadata.example.com
@@ -60,29 +61,29 @@ services:
       mysql:
         condition: service_healthy
     volumes:
-      - ${PWD}:/desperate-feynman
-    entrypoint: /desperate-feynman/scripts/openmetadata/run.sh
+      - .:/docker-compose
+    entrypoint: /docker-compose/scripts/openmetadata/run.sh
     networks:
       - om
 
   metadata:
     build:
-      context: .
+      context: ../..
+      dockerfile: docker/compose/Dockerfile
       target: metadata
     image: metadata:latest
     container_name: metadata
     hostname: metadata.example.com
     volumes:
-      - ${PWD}:/desperate-feynman
-    entrypoint: /desperate-feynman/scripts/metadata/run.sh
-    environment:
-      - SINGLE_STORE_PASSWORD
+      - .:/docker-compose
+    entrypoint: /docker-compose/scripts/metadata/run.sh
     networks:
       - om
 
   airflow:
     build:
-      context: .
+      context: ../..
+      dockerfile: docker/compose/Dockerfile
       target: airflow
     image: airflow:latest
     container_name: airflow
@@ -93,8 +94,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ${PWD}:/desperate-feynman
-    entrypoint: /desperate-feynman/scripts/airflow/run.sh
+      - .:/docker-compose
+    entrypoint: /docker-compose/scripts/airflow/run.sh
     networks:
       - om
 
