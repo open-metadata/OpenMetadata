@@ -5,6 +5,7 @@
 * [Introduction](README.md)
 * [Features](overview/features.md)
 * [Roadmap](overview/roadmap.md)
+* [Releases](overview/releases.md)
 * [Try OpenMetadata in our Public Sandbox](overview/take-it-for-a-spin.md)
 * [Try OpenMetadata in Docker](overview/run-openmetadata/README.md)
   * [Enable Security](overview/run-openmetadata/enable-security.md)
