@@ -43,6 +43,7 @@ import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
+import { isSandboxOMD } from '../../utils/CommonUtils';
 import { getEntityCountByType } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
@@ -262,9 +263,7 @@ const MyDataPage = () => {
       ) : (
         <Loader />
       )}
-      {location.pathname.includes('sandbox.open-metadata.org') ? (
-        <GithubStarButton />
-      ) : null}
+      {isSandboxOMD() ? <GithubStarButton /> : null}
     </PageContainerV1>
   );
 };

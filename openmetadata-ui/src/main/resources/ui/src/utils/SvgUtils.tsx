@@ -45,6 +45,7 @@ import IconDoc from '../assets/svg/doc.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
+import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFitView from '../assets/svg/fitview.svg';
@@ -215,6 +216,7 @@ export const Icons = {
   SLACK_GREY: 'slack-grey',
   EXTERNAL_LINK: 'external-link',
   EXTERNAL_LINK_WHITE: 'external-link-white',
+  EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
   PIPELINE_GREY: 'pipeline-grey',
@@ -563,6 +565,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EXTERNAL_LINK_WHITE:
       IconComponent = IconExternalLinkWhite;
+
+      break;
+    case Icons.EXTERNAL_LINK_GREY:
+      IconComponent = IconExternalLinkGrey;
 
       break;
     case Icons.PROFILER:

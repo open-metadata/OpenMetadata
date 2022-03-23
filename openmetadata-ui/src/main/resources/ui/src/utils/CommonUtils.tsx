@@ -498,3 +498,10 @@ export const getRandomColor = (name: string) => {
 export const isUrlFriendlyName = (value: string) => {
   return !UrlEntityCharRegEx.test(value);
 };
+
+export const isSandboxOMD = () => {
+  return (
+    document.location.hostname === 'sandbox.open-metadata.org' ||
+    document.location.hostname === 'sandbox-beta.open-metadata.org'
+  );
+};
