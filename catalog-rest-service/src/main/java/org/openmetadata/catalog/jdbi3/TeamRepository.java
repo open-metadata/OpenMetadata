@@ -274,6 +274,7 @@ public class TeamRepository extends EntityRepository<Team> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
+      recordChange("isJoinable", original.getEntity().getIsJoinable(), updated.getEntity().getIsJoinable());
       updateUsers(original.getEntity(), updated.getEntity());
       updateDefaultRoles(original.getEntity(), updated.getEntity());
     }
