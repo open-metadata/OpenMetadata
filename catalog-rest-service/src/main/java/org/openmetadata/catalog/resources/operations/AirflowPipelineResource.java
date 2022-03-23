@@ -118,6 +118,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
     List<String> list = new ArrayList<>();
     list.addAll(Entity.getEntityFields(AirflowPipeline.class));
     ALLOWED_FIELDS = Collections.unmodifiableList(list);
+    PIPELINE_STATUSES = "pipelineStatuses";
   }
 
   @GET
@@ -172,7 +173,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
     filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
     ResultList<AirflowPipeline> airflowPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       addStatus(airflowPipelines.getData());
     }
     return airflowPipelines;
@@ -229,7 +230,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           Include include)
       throws IOException, ParseException {
     AirflowPipeline airflowPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       airflowPipeline = addStatus(airflowPipeline);
     }
     return airflowPipeline;
@@ -295,7 +296,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           Include include)
       throws IOException, ParseException {
     AirflowPipeline airflowPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       airflowPipeline = addStatus(airflowPipeline);
     }
     return airflowPipeline;
