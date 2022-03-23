@@ -15,9 +15,6 @@
 
 * [Metadata Ingestion Overview](../metadata-ingestion/metadata-ingestion.md)
 * [Connectors](integrations/connectors/README.md)
-  * [Airflow](integrations/connectors/airflow/README.md)
-    * [Airflow Metadata Ingestion](integrations/connectors/airflow/airflow.md)
-    * [Airflow Lineage](integrations/connectors/airflow/airflow-lineage.md)
   * [Athena](integrations/connectors/athena.md)
   * [Azure SQL](integrations/connectors/azure-sql.md)
   * [BigQuery](integrations/connectors/bigquery/README.md)
@@ -61,6 +58,11 @@
   * [Vertica](integrations/connectors/vertica.md)
 * [Troubleshoot Connectors](integrations/troubleshoot-connectors.md)
 * [Ingest Sample Data](../metadata-ingestion/ingest-sample-data.md)
+* [Airflow](integrations/airflow/README.md)
+  * [Custom Airflow Installation](integrations/airflow/custom-airflow-installation.md)
+  * [Airflow Lineage](integrations/airflow/airflow-lineage.md)
+  * [Configure Airflow in the OpenMetadata Server](integrations/airflow/configure-airflow-in-the-openmetadata-server.md)
+  * [Example Metadata Ingestion](integrations/airflow/airflow.md)
 
 ## 📐 Metadata Standard
 
