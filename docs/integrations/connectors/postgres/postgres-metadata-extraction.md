@@ -59,21 +59,74 @@ postgres --version
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
-1. Create a configuration file using template JSON
-2. Configure service settings
-3. Configure data filters (optional)
-4. Configure sample data (optional)
-5. Configure DBT (optional)
-6. Confirm sink settings
-7. Confirm metadata\_server settings
-8. Install the OpenMetadata Postgres Python module
-9. Edit a Python script to define your ingestion DAG
-10. Copy your configuration JSON into the ingestion script
-11. Run the script to create your ingestion DAG
+1. Prepare a Python virtual environment
+2. Install the Python module for this connector
+3. Create a configuration file using template JSON
+4. Configure service settings
+5. Configure data filters (optional)
+6. Configure sample data (optional)
+7. Configure DBT (optional)
+8. Confirm sink settings
+9. Confirm metadata\_server settings
+10. Edit a Python script to define your ingestion DAG
+11. Copy your configuration JSON into the ingestion script
+12. Run the script to create your ingestion DAG
 
 
 
-### 1**. Create a configuration file using template JSON**
+### **1. Prepare a Python virtual environment**
+
+In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
+
+In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
+
+#### **1.1 Create a directory for openmetadata**
+
+Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+
+```
+mkdir openmetadata; cd openmetadata
+```
+
+#### **1.2 Create a virtual environment**
+
+Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
+
+```
+python3 -m venv env
+```
+
+#### **1.3 Activate the virtual environment**
+
+Run the following command to activate the virtual environment.
+
+```
+source env/bin/activate
+```
+
+Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
+
+#### **1.4 Upgrade pip and setuptools to the latest versions**
+
+Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
+
+```javascript
+pip3 install --upgrade pip setuptools
+```
+
+****
+
+### **2. Install the Python module for this connector**
+
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
+
+```javascript
+pip3 install 'openmetadata-ingestion[postgres]'
+```
+
+
+
+### **3. Create a configuration file using template JSON**
 
 Create a new file called `postgres.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
@@ -116,7 +169,7 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 
 
-### 2**. Configure service settings**
+### **4. Configure service settings**
 
 In this step we will configure the Postgres service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Postgres service as desired.
 
@@ -180,7 +233,7 @@ To specify a single database to ingest metadata from, provide the name of the da
 
 
 
-### **3. Configure data filters (optional)**
+### **5. Configure data filters (optional)**
 
 #### **include\_views (optional)**
 
@@ -262,7 +315,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 
 
-### **4. Configure sample data (optional)**
+### **6. Configure sample data (optional)**
 
 #### **generate\_sample\_data (optional)**
 
@@ -290,7 +343,7 @@ You can exclude the collection of sample data by adding the following key-value 
 
 
 
-### 5. Configure DBT (optional)
+### 7. Configure DBT (optional)
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
@@ -320,9 +373,9 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 
 
-### **6. Confirm `sink` settings**
+### **8. Confirm `sink` settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `postgres.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `postgres.json` in Step 3. This part of your configuration file should be as follows.
 
 ```javascript
 "sink": {
@@ -333,9 +386,9 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 
 
-### **7. Confirm `metadata_server` settings**
+### **9. Confirm `metadata_server` settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `postgres.json` in Step 1. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `postgres.json` in Step 3. This part of your configuration file should be as follows.
 
 ```javascript
 "metadata_server": {
@@ -349,17 +402,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 
 
-### 8. Install the OpenMetadata Postgres Python module
-
-Install the OpenMetadata Postgres Python module by running the following command.
-
-```bash
-pip3 install --upgrade 'openmetadata-ingestion[postgres]'
-```
-
-
-
-### 9. Edit a Python script to define your ingestion DAG
+### 10. Edit a Python script to define your ingestion DAG
 
 Copy and paste the code below into a file called `openmetadata-airflow.py`.&#x20;
 
@@ -415,9 +458,9 @@ with DAG(
 
 
 
-### 10. Copy your configuration JSON into the ingestion script
+### 11. Copy your configuration JSON into the ingestion script
 
-In steps 1 - 8 above you created a JSON file with the configuration for your ingestion connector. Copy that JSON into the `openmetadata-airflow.py` file that you created in step 9 as directed by the comment below.
+In steps 3 - 9 above you created a JSON file with the configuration for your ingestion connector. Copy that JSON into the `openmetadata-airflow.py` file that you created in step 10 as directed by the comment below.
 
 ```
 config = """
@@ -427,7 +470,7 @@ config = """
 
 
 
-### 11. Run the script to create your ingestion DAG
+### 12. Run the script to create your ingestion DAG
 
 Run the following command to create your ingestion DAG in Airflow.
 
