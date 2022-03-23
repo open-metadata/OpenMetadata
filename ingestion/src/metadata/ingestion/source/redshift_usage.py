@@ -90,7 +90,7 @@ class RedshiftUsageSource(Source[TableQuery]):
                 starttime=str(row["starttime"]),
                 endtime=str(row["endtime"]),
                 analysis_date=str(self.analysis_date),
-                database=row["database"],
+                database=row["schema"],
                 aborted=row["aborted"],
                 sql=row["querytxt"],
                 service_name=self.config.service_name,
