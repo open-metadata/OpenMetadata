@@ -260,7 +260,7 @@ const AddGlossaryTerm = ({
             className={classNames('tw-w-16 tw-h-10', {
               'tw-opacity-40': !allowAccess,
             })}
-            data-testid="save-webhook"
+            data-testid="save-glossary-term"
             size="regular"
             theme="primary"
             variant="contained"
@@ -295,7 +295,7 @@ const AddGlossaryTerm = ({
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
-      <div className="tw-pb-3">
+      <div className="tw-pb-3" data-testid="add-glossary-term">
         <Field>
           <label className="tw-block tw-form-label" htmlFor="name">
             {requiredField('Name:')}
@@ -475,7 +475,7 @@ const AddGlossaryTerm = ({
 
         <Field className="tw-flex tw-justify-end">
           <Button
-            data-testid="cancel-glossary"
+            data-testid="cancel-glossary-term"
             size="regular"
             theme="primary"
             variant="text"
