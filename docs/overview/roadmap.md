@@ -36,6 +36,15 @@ If you would like to prioritize any feature or would like to add a new feature t
 * Support for AWS SSO and LDAP
 * Fine grained policy and operations approach which will give option to restrict per entity and tag based policy enforcement
 
+### Connectors
+
+* Sisense
+* Cassandra
+* MongoDB
+* S3 Connector
+
+
+
 ## 0.9.3 Release - May 25th, 2022
 
 ### Data Insights
