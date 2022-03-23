@@ -175,8 +175,9 @@ class BigquerySource(SQLSource):
                 return TableData(columns=cols, rows=rows)
             except Exception as err:
                 logger.error(err)
-        else:
-            super().fetch_sample_data(schema, table)
+                return None
+
+        super().fetch_sample_data(schema, table)
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
