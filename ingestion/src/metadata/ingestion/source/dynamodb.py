@@ -114,6 +114,10 @@ class DynamodbSource(Source[Entity]):
                 parsed_string = ColumnTypeParser._parse_datatype_string(
                     column["AttributeType"].lower()
                 )
+                if isinstance(parsed_string, list):
+                    parsed_string = {}
+                    parsed_string["dataTypeDisplay"] = str(column["AttributeType"])
+                    parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
                 yield Column(**parsed_string)
