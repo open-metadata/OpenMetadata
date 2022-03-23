@@ -539,6 +539,21 @@ const TeamsPage = () => {
     setIsEditable(true);
   };
 
+  const onTeamSettingUpdate = (updatedTeam: Team) => {
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+    patchTeamDetail(currentTeam?.id, jsonPatch)
+      .then((res: AxiosResponse) => {
+        setCurrentTeam(res.data);
+      })
+      .catch((err: AxiosError) => {
+        const message = err.response?.data?.message;
+        showToast({
+          variant: 'error',
+          body: message ?? jsonData['api-error-messages']['update-team-error'],
+        });
+      });
+  };
+
   const onCancel = (): void => {
     setIsEditable(false);
   };
@@ -629,7 +644,30 @@ const TeamsPage = () => {
                           title={currentTeam?.displayName ?? currentTeam?.name}>
                           {currentTeam?.displayName ?? currentTeam?.name}
                         </div>
-                        <div>
+                        <div className="tw-flex">
+                          {isAdminUser ||
+                          isAuthDisabled ||
+                          userPermissions[Operation.UpdateTeam] ||
+                          isOwner() ? (
+                            <div className="tw-flex tw-h-8 tw-mr-2 tw-self-center">
+                              <div
+                                className={classNames(
+                                  'toggle-switch ',
+                                  currentTeam?.isJoinable ? 'open' : null
+                                )}
+                                data-testid="team-isJoinable-switch"
+                                id="join-team"
+                                onClick={() =>
+                                  onTeamSettingUpdate({
+                                    ...(currentTeam as Team),
+                                    isJoinable: !currentTeam?.isJoinable,
+                                  })
+                                }>
+                                <div className="switch" />
+                              </div>
+                              <label htmlFor="join-team">Opne to join</label>
+                            </div>
+                          ) : null}
                           <NonAdminAction
                             html={
                               <Fragment>
