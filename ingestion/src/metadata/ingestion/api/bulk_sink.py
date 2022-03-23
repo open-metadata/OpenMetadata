@@ -24,8 +24,8 @@ class BulkSinkStatus(Status):
     warnings: List[Any] = field(default_factory=list)
     failures: List[Any] = field(default_factory=list)
 
-    def records_written(self, records: int):
-        self.records += records
+    def records_status(self, record: Any) -> None:
+        self.records += 1
 
     def warning(self, info: Any) -> None:
         self.warnings.append(info)
