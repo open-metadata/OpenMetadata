@@ -25,11 +25,11 @@ import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.CollectionRegistry;
-import org.openmetadata.catalog.resources.EmbeddedMySqlSupport;
+import org.openmetadata.catalog.resources.DockerMySqlSupport;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
 
 @Slf4j
-@ExtendWith(EmbeddedMySqlSupport.class)
+@ExtendWith(DockerMySqlSupport.class)
 @ExtendWith(DropwizardExtensionsSupport.class)
 public abstract class CatalogApplicationTest {
   protected static final String CONFIG_PATH;

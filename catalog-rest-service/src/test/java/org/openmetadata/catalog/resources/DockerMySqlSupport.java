@@ -23,7 +23,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
-public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback {
+public class DockerMySqlSupport implements BeforeAllCallback, AfterAllCallback {
   static GenericContainer mysqlContainer;
 
   @Override
