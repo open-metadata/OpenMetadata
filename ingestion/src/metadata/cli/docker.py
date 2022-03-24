@@ -6,8 +6,7 @@ import tempfile
 import time
 import traceback
 from base64 import b64encode
-from datetime import timedelta
-from random import randint
+from datetime import datetime, timedelta
 
 import click
 import requests as requests
@@ -227,10 +226,10 @@ def ingest_sample_data(docker):
 
         for DAG in DAGS:
             json_sample_data = {
-                "dag_run_id": DAG + "_" + str(randint(1, 5000)),
+                "dag_run_id": "{}_{}".format(DAG, datetime.now()),
             }
             resp = client.post(
-                "/dags/" + DAG + "/dagRuns", data=json.dumps(json_sample_data)
+                "/dags/{}/dagRuns".format(DAG), data=json.dumps(json_sample_data)
             )
 
     else:
