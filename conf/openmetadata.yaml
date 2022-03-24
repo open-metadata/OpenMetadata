@@ -113,6 +113,11 @@ database:
 migrationConfiguration:
   path: "./bootstrap/sql/mysql"
 
+cloudwatch-metric:
+    - frequency: ${CLOUDWATCH_REPORT_FREQUENCY:-5 minute}
+      region: ${CLOUDWATCH_REGION:-aws-west-2}
+
+
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}

@@ -16,7 +16,9 @@ package org.openmetadata.catalog.resources.databases;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -116,6 +118,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
 
+  static {
+    List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
+    list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
+    list.add("customMetrics"); // Add a field parameter to add customMetrics information to the columns
+    ALLOWED_FIELDS = Collections.unmodifiableList(list);
+  }
+
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List tables",
@@ -166,6 +178,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -198,6 +213,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{fqn}")
   @Operation(
@@ -231,6 +249,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -251,6 +272,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -279,6 +303,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
   @POST
   @Operation(
       summary = "Create a table",
@@ -297,6 +323,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return create(uriInfo, securityContext, table, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update a table",
@@ -316,6 +345,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return createOrUpdate(uriInfo, securityContext, table, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -341,6 +373,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -363,6 +398,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -384,6 +422,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/joins")
   @Operation(
@@ -408,6 +449,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/sampleData")
   @Operation(summary = "Add sample data", tags = "tables", description = "Add sample data to the table.")
@@ -422,6 +466,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/tableProfile")
   @Operation(summary = "Add table profile data", tags = "tables", description = "Add table profile data to the table.")
@@ -436,6 +483,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/location")
   @Operation(
@@ -456,6 +506,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return Response.ok().entity(table).build();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/tableQuery")
   @Operation(summary = "Add table query data", tags = "tables", description = "Add table query data to the table.")
@@ -470,6 +523,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/dataModel")
   @Operation(
@@ -487,6 +543,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/tableTest")
   @Operation(summary = "Add table test cases", tags = "tables", description = "Add test cases to the table.")
@@ -502,6 +561,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/tableTest/{tableTestType}")
   @Operation(summary = "delete table test case", tags = "tables", description = "Delete test case from the table.")
@@ -517,6 +579,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/columnTest")
   @Operation(summary = "Add column test cases", tags = "tables", description = "Add column test cases to the table.")
@@ -532,6 +597,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/customMetric")
   @Operation(summary = "Add column custom metrics", tags = "tables", description = "Add column custom metrics.")
@@ -547,6 +615,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/columnTest/{columnName}/{columnTestType}")
   @Operation(
@@ -567,6 +638,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/customMetric/{columnName}/{customMetricName}")
   @Operation(
@@ -587,6 +661,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -606,6 +683,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/location")
   @Operation(summary = "Remove the location", tags = "tables", description = "Remove the location")

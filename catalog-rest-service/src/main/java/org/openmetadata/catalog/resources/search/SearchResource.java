@@ -16,6 +16,9 @@ package org.openmetadata.catalog.resources.search;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -68,6 +71,9 @@ public class SearchResource {
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/query")
   @Operation(
@@ -177,6 +183,9 @@ public class SearchResource {
     return Response.status(OK).entity(searchResponse.toString()).build();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/suggest")
   @Operation(
