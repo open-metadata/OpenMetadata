@@ -12,7 +12,6 @@
  */
 
 import {
-  EntityCounts,
   EntityThread,
   FormatedTableData,
   SearchDataFunctionType,
@@ -23,8 +22,11 @@ import { User } from '../../generated/entity/teams/user';
 
 export interface MyDataProps {
   error: string;
-  ingestionCount: number;
   countServices: number;
+  countTables: number;
+  countTopics: number;
+  countDashboards: number;
+  countPipelines: number;
   userDetails?: User;
   searchResult: SearchResponse | undefined;
   ownedData: Array<FormatedTableData>;
@@ -33,7 +35,6 @@ export interface MyDataProps {
   feedFilter: FeedFilter;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
-  entityCounts: EntityCounts;
   isFeedLoading?: boolean;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;

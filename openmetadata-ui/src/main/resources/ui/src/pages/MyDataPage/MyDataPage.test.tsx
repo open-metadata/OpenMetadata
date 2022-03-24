@@ -36,11 +36,53 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
   ),
 }));
 
-jest.mock('../../axiosAPIs/airflowPipelineAPI', () => ({
-  getAirflowPipelines: jest.fn().mockImplementation(() =>
+jest.mock('../../axiosAPIs/tableAPI', () => ({
+  getAllTables: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
         data: [],
+        paging: {
+          total: 3,
+        },
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/topicsAPI', () => ({
+  getAllTopics: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+        paging: {
+          total: 3,
+        },
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/dashboardAPI', () => ({
+  getAllDashboards: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+        paging: {
+          total: 3,
+        },
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+  getAllPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+        paging: {
+          total: 3,
+        },
       },
     })
   ),

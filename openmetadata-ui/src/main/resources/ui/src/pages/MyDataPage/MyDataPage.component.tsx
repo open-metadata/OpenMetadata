@@ -23,9 +23,12 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
+import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { searchData } from '../../axiosAPIs/miscAPI';
+import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
+import { getAllTables } from '../../axiosAPIs/tableAPI';
+import { getAllTopics } from '../../axiosAPIs/topicsAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
@@ -53,7 +56,10 @@ const MyDataPage = () => {
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [countServices, setCountServices] = useState<number>();
-  const [ingestionCount, setIngestionCount] = useState<number>();
+  const [countTables, setCountTables] = useState<number>();
+  const [countTopics, setCountTopics] = useState<number>();
+  const [countDashboards, setCountDashboards] = useState<number>();
+  const [countPipelines, setCountPipelines] = useState<number>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchResult, setSearchResult] = useState<SearchResponse>();
   const [entityCounts, setEntityCounts] = useState<EntityCounts>();
@@ -87,13 +93,62 @@ const MyDataPage = () => {
         setEntityCounts(myDataEntityCounts);
       });
 
+    getAllTables('', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountTables(res.data.paging.total || 0);
+        } else {
+          throw '';
+        }
+      })
+      .catch(() => {
+        setCountTables(0);
+      });
+
+    getAllTopics('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountTopics(res.data.paging.total || 0);
+        } else {
+          throw '';
+        }
+      })
+      .catch(() => {
+        setCountTopics(0);
+      });
+
+    getAllPipelines('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountPipelines(res.data.paging.total || 0);
+        } else {
+          throw '';
+        }
+      })
+      .catch(() => {
+        setCountPipelines(0);
+      });
+
+    getAllDashboards('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountDashboards(res.data.paging.total || 0);
+        } else {
+          throw '';
+        }
+      })
+      .catch(() => {
+        setCountDashboards(0);
+      });
     if (fetchService) {
-      getAllServices()
-        .then((res) => setCountServices(res.length))
+      getAllServices(true, 0)
+        .then((res) => {
+          const total = res.reduce((prev, curr) => {
+            return prev + (curr.paging?.total || 0);
+          }, 0);
+          setCountServices(total);
+        })
         .catch(() => setCountServices(0));
-      getAirflowPipelines([], '', '?limit=1000000')
-        .then((res) => setIngestionCount(res.data.data.length))
-        .catch(() => setIngestionCount(0));
     }
     setIsLoading(false);
   };
@@ -241,18 +296,23 @@ const MyDataPage = () => {
     <PageContainerV1>
       {!isUndefined(countServices) &&
       !isUndefined(entityCounts) &&
-      !isUndefined(ingestionCount) &&
+      !isUndefined(countTables) &&
+      !isUndefined(countTopics) &&
+      !isUndefined(countDashboards) &&
+      !isUndefined(countPipelines) &&
       !isLoading ? (
         <MyData
+          countDashboards={countDashboards}
+          countPipelines={countPipelines}
           countServices={countServices}
+          countTables={countTables}
+          countTopics={countTopics}
           deletePostHandler={deletePostHandler}
-          entityCounts={entityCounts}
           error={error}
           feedData={entityThread || []}
           feedFilter={feedFilter}
           feedFilterHandler={feedFilterHandler}
           followedData={followedData || []}
-          ingestionCount={ingestionCount}
           isFeedLoading={isFeedLoading}
           ownedData={ownedData || []}
           postFeedHandler={postFeedHandler}

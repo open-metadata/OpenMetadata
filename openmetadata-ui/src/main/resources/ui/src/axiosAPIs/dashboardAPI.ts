@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isNil } from 'lodash';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -41,6 +42,26 @@ export const getDashboards: Function = (
     `/dashboards`,
     arrQueryFields
   )}&service=${serviceName}${paging ? paging : ''}`;
+
+  return APIClient.get(url);
+};
+
+export const getAllDashboards = (
+  paging: string,
+  arrQueryFields: string,
+  limit?: number
+): Promise<AxiosResponse> => {
+  const searchParams = new URLSearchParams();
+
+  if (!isNil(limit)) {
+    searchParams.set('limit', `${limit}`);
+  }
+
+  const url = getURLWithQueryFields(
+    `/dashboards`,
+    arrQueryFields,
+    `${searchParams.toString()}${paging ? `&${paging}` : ''}`
+  );
 
   return APIClient.get(url);
 };

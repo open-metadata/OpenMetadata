@@ -13,7 +13,6 @@
 
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityCounts } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -28,9 +27,11 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 
 type Props = {
+  countDashboards: number;
+  countPipelines: number;
   countServices: number;
-  ingestionCount: number;
-  entityCounts: EntityCounts;
+  countTables: number;
+  countTopics: number;
 };
 type Summary = {
   icon: string;
@@ -42,9 +43,11 @@ type Summary = {
 };
 
 const MyAssetStats: FunctionComponent<Props> = ({
+  countDashboards,
+  countPipelines,
   countServices,
-  entityCounts,
-  ingestionCount,
+  countTables,
+  countTopics,
 }: Props) => {
   const { users, userTeams } = AppState;
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
@@ -54,28 +57,28 @@ const MyAssetStats: FunctionComponent<Props> = ({
       tables: {
         icon: Icons.TABLE_GREY,
         data: 'Tables',
-        count: entityCounts.tableCount,
+        count: countTables,
         link: getExplorePathWithSearch(undefined, 'tables'),
         dataTestId: 'tables',
       },
       topics: {
         icon: Icons.TOPIC_GREY,
         data: 'Topics',
-        count: entityCounts.topicCount,
+        count: countTopics,
         link: getExplorePathWithSearch(undefined, 'topics'),
         dataTestId: 'topics',
       },
       dashboards: {
         icon: Icons.DASHBOARD_GREY,
         data: 'Dashboards',
-        count: entityCounts.dashboardCount,
+        count: countDashboards,
         link: getExplorePathWithSearch(undefined, 'dashboards'),
         dataTestId: 'dashboards',
       },
       pipelines: {
         icon: Icons.PIPELINE_GREY,
         data: 'Pipelines',
-        count: entityCounts.pipelineCount,
+        count: countPipelines,
         link: getExplorePathWithSearch(undefined, 'pipelines'),
         dataTestId: 'pipelines',
       },
@@ -85,12 +88,6 @@ const MyAssetStats: FunctionComponent<Props> = ({
         count: countServices,
         link: ROUTES.SERVICES,
         dataTestId: 'service',
-      },
-      ingestion: {
-        icon: Icons.INGESTION,
-        data: 'Ingestion',
-        count: ingestionCount,
-        dataTestId: 'ingestion',
       },
       user: {
         icon: Icons.USERS,

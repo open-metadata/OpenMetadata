@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isNil } from 'lodash';
 import { ServiceOption } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -21,9 +22,20 @@ export const getServiceDetails: Function = (): Promise<AxiosResponse> => {
 };
 
 export const getServices: Function = (
-  serviceName: string
+  serviceName: string,
+  limit?: number
 ): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/${serviceName}`);
+  let url = `/services/${serviceName}`;
+  const searchParams = new URLSearchParams();
+
+  if (!isNil(limit)) {
+    searchParams.set('limit', `${limit}`);
+  }
+
+  const strSearchParams = searchParams.toString();
+  url += strSearchParams ? `?${strSearchParams}` : '';
+
+  return APIClient.get(url);
 };
 
 export const getServiceById: Function = (

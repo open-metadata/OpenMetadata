@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isNil } from 'lodash';
 import { Table } from 'Models';
 import { ColumnTestType } from '../enums/columnTest.enum';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
@@ -59,10 +60,21 @@ export const getTableDetailsByFQN: Function = (
   return APIClient.get(url);
 };
 
-export const getAllTables: Function = (
-  arrQueryFields?: string
+export const getAllTables = (
+  arrQueryFields?: string,
+  limit?: number
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields('/tables', arrQueryFields);
+  const searchParams = new URLSearchParams();
+
+  if (!isNil(limit)) {
+    searchParams.set('limit', `${limit}`);
+  }
+
+  const url = getURLWithQueryFields(
+    '/tables',
+    arrQueryFields,
+    searchParams.toString()
+  );
 
   return APIClient.get(url);
 };

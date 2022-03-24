@@ -120,13 +120,11 @@ const TourPage = () => {
       case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
+            countDashboards={10}
+            countPipelines={8}
             countServices={4}
-            entityCounts={{
-              tableCount: 21,
-              topicCount: 20,
-              dashboardCount: 10,
-              pipelineCount: 8,
-            }}
+            countTables={21}
+            countTopics={20}
             error=""
             feedData={mockFeedData as MyDataProps['feedData']}
             feedFilter={FeedFilter.ALL}
@@ -137,7 +135,6 @@ const TourPage = () => {
               setMyDataSearchResult(mockData);
             }}
             followedData={[]}
-            ingestionCount={0}
             ownedData={[]}
             postFeedHandler={handleOnClick}
             searchResult={myDataSearchResult as unknown as SearchResponse}

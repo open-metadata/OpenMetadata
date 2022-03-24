@@ -311,20 +311,17 @@ describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
     const { container } = render(
       <MyDataPage
+        countDashboards={8}
+        countPipelines={1}
         countServices={0}
-        entityCounts={{
-          tableCount: 10,
-          topicCount: 5,
-          dashboardCount: 8,
-          pipelineCount: 1,
-        }}
+        countTables={10}
+        countTopics={5}
         error=""
         feedData={formatDataResponse(mockData.data.hits.hits)}
         feedFilter={FeedFilter.ALL}
         feedFilterHandler={feedFilterHandler}
         fetchData={fetchData}
         followedData={formatDataResponse(mockData.data.hits.hits)}
-        ingestionCount={0}
         ownedData={formatDataResponse(mockData.data.hits.hits)}
         postFeedHandler={postFeed}
         searchResult={mockData as unknown as SearchResponse}
