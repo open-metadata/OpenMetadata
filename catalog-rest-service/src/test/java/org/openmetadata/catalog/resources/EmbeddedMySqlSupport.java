@@ -13,43 +13,37 @@
 
 package org.openmetadata.catalog.resources;
 
-import static com.wix.mysql.distribution.Version.v8_latest;
-
-import com.wix.mysql.EmbeddedMysql;
-import com.wix.mysql.config.MysqldConfig;
-import com.wix.mysql.config.SchemaConfig;
-import java.time.ZoneId;
-import java.util.TimeZone;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
 public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback {
-  static EmbeddedMysql embeddedMysql;
+  static GenericContainer mysqlContainer;
 
   @Override
-  public void beforeAll(ExtensionContext extensionContext) {
-    if (embeddedMysql == null) {
-      MysqldConfig config =
-          MysqldConfig.aMysqldConfig(v8_latest)
-              .withPort(3307)
-              .withTimeZone(TimeZone.getTimeZone(ZoneId.of("UTC")))
-              .withUser("test", "")
-              .build();
-
-      SchemaConfig schemaConfig = SchemaConfig.aSchemaConfig("openmetadata_test_db").build();
-
-      embeddedMysql = EmbeddedMysql.anEmbeddedMysql(config).addSchema(schemaConfig).start();
-      LOG.info("Embedded MySQL is started");
+  public void beforeAll(ExtensionContext extensionContext) throws InterruptedException {
+    if (mysqlContainer == null) {
+      mysqlContainer =
+          new GenericContainer(DockerImageName.parse("mysql/mysql-server:latest"))
+              .withEnv("MYSQL_DATABASE", "openmetadata_test_db")
+              .withEnv("MYSQL_ALLOW_EMPTY_PASSWORD", "yes")
+              .withEnv("MYSQL_ROOT_HOST", "%")
+              .withExposedPorts(3306);
+      mysqlContainer.setPortBindings(List.of("localhost:3307:3306"));
+      mysqlContainer.start();
+      LOG.info("Docker MySQL is started");
 
       Flyway flyway =
           Flyway.configure()
               // TODO Remove hardcoding
               .dataSource(
-                  "jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC", "test", "")
+                  "jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC", "root", "")
               .table("DATABASE_CHANGE_LOG")
               .sqlMigrationPrefix("v")
               .load();
@@ -57,16 +51,16 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
       flyway.migrate();
       LOG.info("Flyway migration is complete");
     } else {
-      LOG.info("Embedded MySQL is already running");
+      LOG.info("Docker MySQL is already running");
     }
   }
 
   @Override
   public void afterAll(ExtensionContext extensionContext) {
-    if (embeddedMysql != null) {
-      LOG.info("Stopping the embedded db");
-      embeddedMysql.stop();
-      embeddedMysql = null;
+    if (mysqlContainer != null) {
+      LOG.info("Stopping Docker MySQL");
+      mysqlContainer.stop();
+      mysqlContainer = null;
     }
   }
 }
