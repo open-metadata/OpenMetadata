@@ -15,7 +15,6 @@ import {
   EntityThread,
   FormatedTableData,
   SearchDataFunctionType,
-  SearchResponse,
 } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -28,7 +27,6 @@ export interface MyDataProps {
   countDashboards: number;
   countPipelines: number;
   userDetails?: User;
-  searchResult: SearchResponse | undefined;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
   feedData: EntityThread[];

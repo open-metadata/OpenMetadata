@@ -19,7 +19,6 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import { SearchResponse } from 'Models';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -324,7 +323,6 @@ describe('Test MyData page', () => {
         followedData={formatDataResponse(mockData.data.hits.hits)}
         ownedData={formatDataResponse(mockData.data.hits.hits)}
         postFeedHandler={postFeed}
-        searchResult={mockData as unknown as SearchResponse}
         userDetails={mockUserDetails as unknown as User}
       />,
       {

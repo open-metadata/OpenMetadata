@@ -11,15 +11,10 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityCounts,
-  EntityThread,
-  FormatedTableData,
-  SearchResponse,
-} from 'Models';
+import { EntityThread, FormatedTableData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -37,15 +32,11 @@ import {
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
-import {
-  myDataEntityCounts,
-  myDataSearchIndex,
-} from '../../constants/Mydata.constants';
+import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
-import { getEntityCountByType } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
@@ -60,9 +51,6 @@ const MyDataPage = () => {
   const [countTopics, setCountTopics] = useState<number>();
   const [countDashboards, setCountDashboards] = useState<number>();
   const [countPipelines, setCountPipelines] = useState<number>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [searchResult, setSearchResult] = useState<SearchResponse>();
-  const [entityCounts, setEntityCounts] = useState<EntityCounts>();
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
@@ -76,22 +64,6 @@ const MyDataPage = () => {
 
   const fetchData = (fetchService = false) => {
     setError('');
-
-    searchData('', 1, 0, '', '', '', myDataSearchIndex)
-      .then((res: SearchResponse) => {
-        setSearchResult(res);
-        if (isUndefined(entityCounts)) {
-          setEntityCounts(
-            getEntityCountByType(
-              res.data.aggregations?.['sterms#EntityType']?.buckets
-            )
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
-        setEntityCounts(myDataEntityCounts);
-      });
 
     getAllTables('', 0)
       .then((res) => {
@@ -150,7 +122,6 @@ const MyDataPage = () => {
         })
         .catch(() => setCountServices(0));
     }
-    setIsLoading(false);
   };
 
   const fetchMyData = () => {
@@ -274,6 +245,7 @@ const MyDataPage = () => {
         showToast({ variant: 'error', body: message ?? onErrorText });
       });
   };
+
   useEffect(() => {
     fetchData(true);
   }, []);
@@ -295,12 +267,10 @@ const MyDataPage = () => {
   return (
     <PageContainerV1>
       {!isUndefined(countServices) &&
-      !isUndefined(entityCounts) &&
       !isUndefined(countTables) &&
       !isUndefined(countTopics) &&
       !isUndefined(countDashboards) &&
-      !isUndefined(countPipelines) &&
-      !isLoading ? (
+      !isUndefined(countPipelines) ? (
         <MyData
           countDashboards={countDashboards}
           countPipelines={countPipelines}
@@ -316,7 +286,6 @@ const MyDataPage = () => {
           isFeedLoading={isFeedLoading}
           ownedData={ownedData || []}
           postFeedHandler={postFeedHandler}
-          searchResult={searchResult}
         />
       ) : (
         <Loader />
