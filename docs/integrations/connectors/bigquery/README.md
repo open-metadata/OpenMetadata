@@ -6,12 +6,12 @@ description: >-
 
 # BigQuery
 
-* [Requirements](./#requirements)
-* [Install BigQuery Connector](./#install-bigquery-connector)
-* [Configure BigQuery Connector](./#configure-bigquery-connector)
-* [Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
+1. [Requirements](./#requirements)
+2. [Install BigQuery Connector](./#install-bigquery-connector)
+3. [Configure BigQuery Connector](./#configure-bigquery-connector)
+4. [Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
 
-## **Requirements**
+## **1. Requirements**
 
 Please ensure that your host system meets the requirements listed below.
 
@@ -27,15 +27,15 @@ Use the following command to check your Python version.
 python3 --version
 ```
 
-## Install BigQuery Connector
+## 2. Install BigQuery Connector
 
-### **1. Prepare a Python virtual environment**
+### **2.1  Prepare a Python virtual environment**
 
 In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
-#### **1.1 Create a directory for openmetadata**
+#### **1. Create a directory for openmetadata**
 
 Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
 
@@ -43,7 +43,7 @@ Throughout the docs, we use a consistent directory structure for OpenMetadata se
 mkdir openmetadata; cd openmetadata
 ```
 
-#### **1.2 Create a virtual environment**
+#### **2. Create a virtual environment**
 
 Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
 
@@ -51,7 +51,7 @@ Run the following command to create a Python virtual environment called, `env`. 
 python3 -m venv env
 ```
 
-#### **1.3 Activate the virtual environment**
+#### **3. Activate the virtual environment**
 
 Run the following command to activate the virtual environment.
 
@@ -61,7 +61,7 @@ source env/bin/activate
 
 Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
 
-#### **1.4 Upgrade pip and setuptools to the latest versions**
+#### **4. Upgrade pip and setuptools to the latest versions**
 
 Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
 
@@ -69,7 +69,7 @@ Ensure that you have the latest version of pip by running the following command.
 pip3 install --upgrade pip setuptools
 ```
 
-### **2. Install the Python module for this connector**
+### **2.2 Install the Python module for this connector**
 
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the BigQuery connector.
 
@@ -77,7 +77,7 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[bigquery]'
 ```
 
-## Configure BigQuery Connector
+## 3. Configure BigQuery Connector
 
 Please follow the steps relevant to your use case.
 
@@ -91,7 +91,7 @@ Please follow the steps relevant to your use case.
 8. [Confirm sink settings](./#8.-confirm-sink-settings)
 9. [Confirm metadata\_server settings](./#9.-confirm-metadata\_server-settings)
 
-### **1. Create a configuration file using template JSON**
+### **2.1 Create a configuration file using template JSON**
 
 Create a new file called `bigquery.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
@@ -148,7 +148,7 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 When adding the details for the credentials path, you can either choose to pass the `credentials file`, or add the `credentials_path`, or use a secure way to pass the credentials path using the environment variables, i.e., `Application Default Credentials` (ADC).
 
-#### 1.1 Using Credentials File or Credentials Path
+#### 3.1.1 Using Credentials File or Credentials Path
 
 {% code title="bigquery-creds.json (boilerplate)" %}
 ```javascript
@@ -167,7 +167,7 @@ When adding the details for the credentials path, you can either choose to pass 
 ```
 {% endcode %}
 
-#### 1.2 Using Application Default Credentials (ADC)
+#### 3.1.2 Using Application Default Credentials (ADC)
 
 {% code title="env variables" %}
 ```
@@ -177,7 +177,7 @@ export GOOGLE_APPLICATION_CREDENTIALS=<path-to-your-credentials-file>
 
 Users can export the path to the credentials file. Using this option, you can export the env in terminal and run BigQuery config without providing `credentials_path`.
 
-### **2. Configure service settings**
+### **3.2 Configure service settings**
 
 In this step we will configure the BigQuery service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your BigQuery service as desired.
 
@@ -237,7 +237,7 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "bigquery_db"
 ```
 
-### **3. Enable/disable the data profiler**
+### **3.3 Enable/disable the data profiler**
 
 The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
@@ -261,7 +261,7 @@ If you want to enable the data profiler, update your configuration file as follo
 **Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
 {% endhint %}
 
-### **4. Install the data profiler Python module (optional)**
+### **3.4 Install the data profiler Python module (optional)**
 
 If you’ve enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
 
@@ -271,7 +271,7 @@ pip3 install 'openmetadata-ingestion[data-profiler]'
 
 The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
 
-### **5. Configure data filters (optional)**
+### **3.5 Configure data filters (optional)**
 
 #### **include\_views (optional)**
 
@@ -345,7 +345,7 @@ Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_fil
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](./#table\_filter\_pattern-optional). Please check that section for details.
 
-### **6. Configure sample data (optional)**
+### **3.6 Configure sample data (optional)**
 
 #### **generate\_sample\_data (optional)**
 
@@ -371,7 +371,7 @@ You can exclude the collection of sample data by adding the following key-value 
 **Note:** `generate_sample_data` is set to true by default.
 {% endhint %}
 
-### **7. Configure DBT (optional)**
+### **3.7 Configure DBT (optional)**
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
 
@@ -395,7 +395,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-### **8. Confirm sink settings**
+### **3.8 Confirm sink settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `bigquery.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -406,7 +406,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-### **9. Confirm metadata\_server settings**
+### **3.9 Confirm metadata\_server settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `bigquery.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -422,7 +422,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ****
 
-## **Run BigQuery Connector**
+## **4. Run BigQuery Connector**
 
 Your `bigquery.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
@@ -442,7 +442,7 @@ To view the metadata ingested from BigQuery, visit [http://localhost:8585/explor
 
 ![](../../../.gitbook/assets/explore.png)
 
-## **Troubleshooting**
+## **5. Troubleshooting**
 
 ### **ERROR: Failed building wheel for cryptography**
 
