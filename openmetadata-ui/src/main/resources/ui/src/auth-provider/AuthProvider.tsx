@@ -36,8 +36,7 @@ import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
 import axiosClient from '../axiosAPIs';
 import {
-  fetchAuthenticationConfig,
-  fetchAuthorizerConfig,
+  fetchOMDConfig,
   getLoggedInUserPermissions,
 } from '../axiosAPIs/miscAPI';
 import {
@@ -46,12 +45,13 @@ import {
   updateUser,
 } from '../axiosAPIs/userAPI';
 import Loader from '../components/Loader/Loader';
-import { NOOP_FILTER, NO_AUTH } from '../constants/auth.constants';
+import { NO_AUTH } from '../constants/auth.constants';
 import { isAdminUpdated, oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { AuthTypes } from '../enums/signin.enum';
 import { User } from '../generated/entity/teams/user';
 import useToastContext from '../hooks/useToastContext';
+import jsonData from '../jsons/en';
 import {
   getAuthConfig,
   getNameFromEmail,
@@ -250,63 +250,48 @@ export const AuthProvider = ({
   };
 
   const fetchAuthConfig = (): void => {
-    const promises = [fetchAuthenticationConfig(), fetchAuthorizerConfig()];
-    Promise.allSettled(promises)
-      .then(
-        ([
-          authenticationConfig,
-          authorizerConfig,
-        ]: PromiseSettledResult<AxiosResponse>[]) => {
-          let authRes = {} as AxiosResponse;
-          if (authenticationConfig.status === 'fulfilled') {
-            authRes = authenticationConfig.value;
-            const authorizerRes =
-              authorizerConfig.status === 'fulfilled'
-                ? authorizerConfig.value
-                : ({} as AxiosResponse);
-            const isSecureMode =
-              !isNil(authRes.data) &&
-              authorizerRes?.data?.containerRequestFilter &&
-              authRes.data.provider !== NO_AUTH &&
-              authorizerRes.data.containerRequestFilter !== NOOP_FILTER &&
-              Object.values(authRes.data).filter((item) => isNil(item))
-                .length === 0;
-            if (isSecureMode) {
-              const { provider, authority, clientId, callbackUrl } =
-                authRes.data;
-              const configJson = getAuthConfig({
-                authority,
-                clientId,
-                callbackUrl,
-                provider,
-              });
-              setAuthConfig(configJson);
-              updateAuthInstance(configJson);
-              if (!oidcUserToken) {
-                setLoading(false);
-              } else {
-                getAuthenticatedUser(configJson);
-              }
-            } else {
+    fetchOMDConfig()
+      .then((resConfig: AxiosResponse) => {
+        if (resConfig.data) {
+          const authConfig = resConfig.data.authenticationConfiguration;
+          const isSecureMode =
+            !isNil(authConfig) &&
+            authConfig.provider !== NO_AUTH &&
+            Object.values(authConfig).filter((item) => isNil(item)).length ===
+              0;
+          if (isSecureMode) {
+            const { provider, authority, clientId, callbackUrl } = authConfig;
+            const configJson = getAuthConfig({
+              authority,
+              clientId,
+              callbackUrl,
+              provider,
+            });
+            setAuthConfig(configJson);
+            updateAuthInstance(configJson);
+            if (!oidcUserToken) {
               setLoading(false);
-              setIsAuthDisabled(true);
-              fetchAllUsers();
+            } else {
+              getAuthenticatedUser(configJson);
             }
           } else {
-            authenticationConfig.reason as AxiosError;
-            showToast({
-              variant: 'error',
-              body:
-                (authenticationConfig.reason as AxiosError).response?.data
-                  .message || 'Error occured while fetching auth config',
-            });
+            setLoading(false);
+            setIsAuthDisabled(true);
+            fetchAllUsers();
           }
+        } else {
+          showToast({
+            variant: 'error',
+            body: jsonData['api-error-messages']['fetch-omd-config-error'],
+          });
         }
-      )
-      .catch(() => {
+      })
+      .catch((error: AxiosError) => {
         showToast({
           variant: 'error',
-          body: 'Error occured while fetching auth config',
+          body:
+            error.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-omd-config-error'],
         });
       });
   };

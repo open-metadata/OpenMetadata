@@ -59,6 +59,9 @@ export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
   return APIClient.get('/config/authorizer');
 };
 
+export const fetchOMDConfig: Function = (): Promise<AxiosResponse> => {
+  return APIClient.get('/config');
+};
 export const getSuggestions: Function = (
   queryString: string,
   searchIndex?: string

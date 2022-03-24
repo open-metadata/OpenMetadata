@@ -37,6 +37,7 @@ const jsonData = {
     'fetch-glossary-term-error': 'Error while fetching glossary term!',
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
+    'fetch-omd-config-error': 'Error while fetching open-metadata config!',
     'fetch-sample-data-error': 'Error while fetching sample data!',
     'fetch-table-details-error': 'Error while fetching table details!',
     'fetch-table-queries-error': 'Error while fetching table queries!',
