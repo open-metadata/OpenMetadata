@@ -665,7 +665,7 @@ const TeamsPage = () => {
                                 }>
                                 <div className="switch" />
                               </div>
-                              <label htmlFor="join-team">Opne to join</label>
+                              <label htmlFor="join-team">Open to join</label>
                             </div>
                           ) : null}
                           <NonAdminAction
