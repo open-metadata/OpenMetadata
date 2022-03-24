@@ -24,7 +24,7 @@ Using the OpenMetadata ClickHouse connector requires supporting services and sof
 
 
 
-### OpenMetadata (version 0.8.0 or later)
+### OpenMetadata (version 0.9.0 or later)
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -303,7 +303,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mysql.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](clickhouse-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 
@@ -482,7 +482,7 @@ Using the OpenMetadata ClickHouse connector requires supporting services and sof
 
 
 
-### OpenMetadata (version 0.8.0 or later)
+### OpenMetadata (version 0.0 or later)
 
 You must have a running deployment of OpenMetadata to use this guide. By default, OpenMetadata includes the following services:
 
@@ -531,7 +531,7 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your ClickHouse service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (11).png>)
+![](<../../../.gitbook/assets/image (11) (1).png>)
 
 ### 5. Configure service connection
 
@@ -645,7 +645,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (16).png>)
+![](<../../../.gitbook/assets/image (11).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
@@ -657,7 +657,7 @@ Using the OpenMetadata ClickHouse connector requires supporting services and sof
 
 
 
-### OpenMetadata (version 0.8.0 or later)
+### OpenMetadata (version 0.9.0 or later)
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -932,7 +932,7 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mysql.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](clickhouse-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 

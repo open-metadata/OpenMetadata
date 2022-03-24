@@ -22,7 +22,7 @@
     * [BigQuery Metadata Extraction](integrations/connectors/bigquery/bigquery-metadata-extraction.md)
     * [BigQuery Usage](integrations/connectors/bigquery/bigquery-usage.md)
   * [ClickHouse](integrations/connectors/clickhouse/README.md)
-    * [ClickHouse Metadata Extraction](integrations/connectors/clickhouse/mysql.md)
+    * [ClickHouse Metadata Extraction](integrations/connectors/clickhouse/clickhouse-metadata-extraction.md)
     * [ClickHouse Usage](integrations/connectors/clickhouse/clickhouse-usage.md)
   * [Databricks](integrations/connectors/databricks.md)
   * [DBT](integrations/connectors/dbt.md)

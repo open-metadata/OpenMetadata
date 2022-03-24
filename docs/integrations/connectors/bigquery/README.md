@@ -6,10 +6,10 @@ description: >-
 
 # BigQuery
 
-1. [Requirements](./#requirements)
-2. [Install BigQuery Connector](./#install-bigquery-connector)
-3. [Configure BigQuery Connector](./#configure-bigquery-connector)
-4. [Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
+1. [Requirements](./#1.-requirements)
+2. [Install BigQuery Connector](./#2.-install-bigquery-connector)
+3. [Configure BigQuery Connector](./#3.-configure-bigquery-connector)
+4. [Run BigQuery Connector](./#4.-run-bigquery-connector)
 
 {% content-ref url="bigquery-usage.md" %}
 [bigquery-usage.md](bigquery-usage.md)
@@ -95,7 +95,7 @@ Please follow the steps relevant to your use case.
 8. [Confirm sink settings](./#8.-confirm-sink-settings)
 9. [Confirm metadata\_server settings](./#9.-confirm-metadata\_server-settings)
 
-### **2.1 Create a configuration file using template JSON**
+### **3.1 Create a configuration file using template JSON**
 
 Create a new file called `bigquery.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
@@ -267,7 +267,7 @@ If you want to enable the data profiler, update your configuration file as follo
 
 ### **3.4 Install the data profiler Python module (optional)**
 
-If you’ve enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
+If you’ve enabled the data profiler in Step 3.3, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
 
 ```javascript
 pip3 install 'openmetadata-ingestion[data-profiler]'
@@ -465,7 +465,7 @@ Then re-run the install command in [Step 2](./#2.-install-the-python-module-for-
 
 ### **requests.exceptions.ConnectionError**
 
-If you encounter the following error when attempting to run the ingestion workflow in Step 12, this is probably because there is no OpenMetadata server running at http://localhost:8585.
+If you encounter the following error when attempting to run the ingestion workflow, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 

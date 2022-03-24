@@ -24,7 +24,7 @@ Using the OpenMetadata BigQuery connector requires supporting services and softw
 
 
 
-### **OpenMetadata (version 0.8.0 or later)**
+### **OpenMetadata (version 0.9.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -539,7 +539,7 @@ Using the OpenMetadata BigQuery connector requires supporting services and softw
 
 
 
-### **OpenMetadata (version 0.8.0 or later)**
+### **OpenMetadata (version 0.9.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. By default, OpenMetadata includes the following services:
 
@@ -718,7 +718,7 @@ Using the OpenMetadata BigQuery connector requires supporting services and softw
 
 
 
-### **OpenMetadata (version 0.8.0 or later)**
+### **OpenMetadata (version 0.9.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
