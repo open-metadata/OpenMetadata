@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Models to map profiles definitions
+Models to map profiler definitions
 JSON workflows to the profiler
 """
 from typing import List

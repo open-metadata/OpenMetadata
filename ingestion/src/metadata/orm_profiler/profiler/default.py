@@ -20,7 +20,7 @@ from sqlalchemy.orm.session import Session
 
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import Profiler
+from metadata.orm_profiler.profiler.core import Profiler
 
 
 class DefaultProfiler(Profiler):

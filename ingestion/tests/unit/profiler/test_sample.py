@@ -18,7 +18,7 @@ from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import Profiler
+from metadata.orm_profiler.profiler.core import Profiler
 from metadata.utils.engines import create_and_bind_session
 
 Base = declarative_base()
