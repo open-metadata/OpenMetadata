@@ -34,6 +34,12 @@ Note: You must **allocate at least 6GB of memory to Docker** in order to run Ope
 Preferences -> Resources -> Advanced
 {% endhint %}
 
+### Install Docker Compose Version 2.0.0 on Linux
+
+Follow the [instructions here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2.0.0
+
+
+
 ### `compose` command for Docker (version v2.1.1 or greater)
 
 The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.&#x20;
