@@ -19,15 +19,24 @@ const jsonData = {
     'add-feed-error': 'Error while adding feed!',
     'add-table-test-error': 'Error while adding table test!',
     'add-column-test-error': 'Error while adding column test!',
+    'add-ingestion-error': 'Error while adding ingestion workflow!',
+
     'create-user-error': 'Error while creating user!',
     'create-conversation-error': 'Error while creating conversation!',
+    'create-message-error': 'Error while creating message!',
+
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
     'delete-team-error': 'Error while deleting team!',
     'delete-lineage-error': 'Error while deleting edge!',
     'delete-test-error': 'Error while deleting test!',
     'delete-message-error': 'Error while deleting message!',
+    'delete-ingestion-error': 'Error while deleting ingestion workflow',
+
     'elastic-search-error': 'Error while fetch data from Elasticsearch!',
+
+    'triggering-ingestion-error': 'Error while triggering ingestion workflow',
+
     'fetch-data-error': 'Error while fetching data!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
@@ -42,19 +51,21 @@ const jsonData = {
     'fetch-table-queries-error': 'Error while fetching table queries!',
     'fetch-tags-error': 'Error while fetching tags!',
     'fetch-topic-details-error': 'Error while fetching topic details!',
-
-    'update-owner-error': 'Error while updating owner',
-
     'fetch-thread-error': 'Error while fetching threads!',
-
     'fetch-updated-conversation-error':
       'Error while fetching updated conversation!',
+    'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
+    'fetch-service-error': 'Error while fetching service details!',
+
+    'update-owner-error': 'Error while updating owner',
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-description-error': 'Error while updating description!',
     'update-entity-error': 'Error while updating entity!',
     'update-tags-error': 'Error while updating tags!',
     'update-entity-follow-error': 'Error while following entity!',
     'update-entity-unfollow-error': 'Error while unfollowing entity!',
+    'update-ingestion-error': 'Error while updating ingestion workflow',
+    'update-service-config-error': 'Error while updating ingestion workflow',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
