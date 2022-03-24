@@ -38,7 +38,7 @@ def get_table_column_join(table, table_aliases, joins, database):
             jtable, column = join.split(".")[-2:]
             if (
                 table == jtable
-                or jtable == table.split(".")
+                or jtable == table.split(".")[-1]
                 or table == f"{database}.{jtable}"
                 or jtable in table_aliases
             ):
