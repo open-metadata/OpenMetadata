@@ -37,7 +37,8 @@ from metadata.utils.engines import get_engine
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
-
+cust_dict = {}
+swiched_database = {"is_changed": False}
 logger: logging.Logger = logging.getLogger(__name__)
 
 
@@ -88,9 +89,9 @@ class SnowflakeSource(SQLSource):
             query = "SHOW DATABASES"
             results = self.connection.execute(query)
             for res in results:
-
                 row = list(res)
                 use_db_query = f"USE DATABASE {row[1]}"
+                swiched_database["is_changed"] = True
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.database = row[1]
@@ -137,13 +138,20 @@ def _get_table_comment(self, connection, table_name, schema=None, **kw):
     """
     Returns comment of table.
     """
-    sql_command = "select * FROM information_schema.tables WHERE TABLE_SCHEMA ILIKE '{}' and TABLE_NAME ILIKE '{}'".format(
-        self.normalize_name(schema),
-        table_name,
-    )
-
-    cursor = connection.execute(text(sql_command))
-    return cursor.fetchone()  # pylint: disable=protected-access
+    if cust_dict == {} or swiched_database["is_changed"]:
+        cust_dict.clear()
+        swiched_database["is_changed"] = False
+        sql_command = (
+            "select TABLE_SCHEMA,TABLE_NAME,COMMENT FROM information_schema.tables"
+        )
+        cursor = connection.execute(text(sql_command))
+        rows = cursor.fetchall()
+        for row in rows:
+            cust_dict[
+                f"{row['table_schema'].upper()}.{row['table_name'].upper()}"
+            ] = dict(row)
+    if cust_dict.get(f"{schema.upper()}.{table_name.upper()}"):
+        return cust_dict[f"{schema.upper()}.{table_name.upper()}"]
 
 
 @reflection.cache
