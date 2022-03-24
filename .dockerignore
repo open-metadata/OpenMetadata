@@ -12,6 +12,7 @@
 !conf
 !pom.xml
 !README.md
+!docker/compose/patches/*
 **/node_modules/*
 **/target/*
 **/__pycache__/*

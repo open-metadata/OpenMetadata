@@ -30,8 +30,8 @@ RUN DEBIAN_FRONTEND="noninteractive"  apt install -y \
     git
 COPY . /OpenMetadata
 WORKDIR /OpenMetadata
-# COPY docker/compose/patches /patches
-# RUN for patch in `ls -1 /patches | sort`; do git apply /patches/${patch}; done
+COPY docker/compose/patches /patches
+RUN for patch in `ls -1 /patches | sort`; do git apply /patches/${patch}; done
 RUN git init && \
     git config --global user.email "you@example.com" && \
     git config --global user.name "Your Name" && \
