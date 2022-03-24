@@ -38,7 +38,7 @@ const jsonData = {
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
 
     'fetch-chart-error': 'Error while fetching charts',
-    'fetch-dashboard-details-error': 'Error while fetching topic details!',
+    'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
     'fetch-data-error': 'Error while fetching data!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
