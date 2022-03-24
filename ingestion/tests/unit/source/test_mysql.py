@@ -29,8 +29,10 @@ CONFIG = """
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "database": "openmetadata_db",
-      "service_name": "local_mysql_test"
+      "service_name": "local_mysql_test",
+       "schema_filter_pattern": {
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      }
     }
   },
   "sink": {
