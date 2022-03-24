@@ -2,15 +2,16 @@
 description: This guide will help you set up all prerequisites to develop on OpenMetadata.
 ---
 
+# Prerequisites
+
 OpenMetadata being a full stack project, we use the following for development:
 
-- [Docker 20 or higher](https://docs.docker.com/engine/install/)
-- [Java JDK 11 or higher](https://docs.oracle.com/en/java/javase/17/install/overview-jdk-installation.html)
-- [Maven 3.5.x or higher](https://maven.apache.org/install.html)
-- [Python 3.7 or higher](https://www.python.org/downloads/)
-- [Node >=10.0.0](https://nodejs.org/en/download/)
-- [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)
-
+* [Docker 20 or higher](https://docs.docker.com/engine/install/)
+* [Java JDK 11 or higher](https://docs.oracle.com/en/java/javase/17/install/overview-jdk-installation.html)
+* [Maven 3.5.x or higher](https://maven.apache.org/install.html)
+* [Python 3.7 or higher](https://www.python.org/downloads/)
+* [Node >=10.0.0](https://nodejs.org/en/download/)
+* [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)
 
 Here is a snapshot of a working environment on a Macbook.
 
@@ -47,3 +48,12 @@ v17.3.0
 > yarn --version
 1.22.17
 ```
+
+### OpenMetadata API Backend
+
+We use Java for developing OpenMetadata backend server. Following are the key technologies that we use for the backend:
+
+* [jsonschema2pojo](https://www.jsonschema2pojo.org) for Java code generation
+* [Dropwizard](https://www.dropwizard.io/en/latest/) for the web service application
+* [JDBI3](http://jdbi.org) for database access
+

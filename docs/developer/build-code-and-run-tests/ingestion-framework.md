@@ -8,7 +8,7 @@ description: Configure Python and test the Ingestion Framework
 
 The Ingestion Framework is a Python module that wraps the OpenMetadata API and builds workflows and utilities on top of it. Therefore, you need to make sure that you have the complete OpenMetadata stack running: MySQL + ElasticSearch + OpenMetadata Server.
 
-To do so, you can either build and run the [OpenMetadata Server](openmetadata-server.md) locally as well, or use the `metadata` CLI to spin up the [Docker containers](../../../overview/run-openmetadata/).
+To do so, you can either build and run the [OpenMetadata Server](openmetadata-server.md) locally as well, or use the `metadata` CLI to spin up the [Docker containers](../../overview/run-openmetadata/).
 
 ## Python Setup
 
@@ -47,3 +47,58 @@ We are currently using:
 * `pylint` & `black` in the CI validations, so make sure to review your PRs for any warnings you generated.
 * `black` & `isort` in the pre-commit hooks.
 
+## Run Integration Tests
+
+### Run MySQL test
+
+Run the following commands from the top-level directory
+
+```
+python3 -m venv /tmp/venv
+source /tmp/venv/bin/activate
+pip install -r ingestion/requirements.txt
+pip install -e ingestion
+pip install pytest
+pip install pytest-docker
+cd ingestion/tests/integration/mysql
+pytest -s -c /dev/null
+```
+
+### Run MsSQL test
+
+```
+cd ingestion
+source env/bin/activate
+cd tests/integration/mssql
+pytest -s -c /dev/null
+```
+
+### Run Postgres test
+
+```
+cd ingestion
+source env/bin/activate
+cd tests/integration/postgres
+pytest -s -c /dev/null
+```
+
+### Run LDAP test
+
+```
+python3 -m venv /tmp/venv
+source /tmp/venv/bin/activate
+pip install -r ingestion/requirements.txt
+pip install -e ingestion
+pip install pytest
+pip install pytest-docker
+cd ingestion/tests/integration/ldap
+pytest -s -c /dev/null
+```
+
+### Run Hive test
+
+```
+python3 -m venv /tmp/venv
+source /tmp/venv/bin/activate
+pip install -r inges
+```
