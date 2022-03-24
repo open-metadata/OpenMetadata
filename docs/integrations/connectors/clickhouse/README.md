@@ -10,6 +10,6 @@ description: >-
 [mysql.md](mysql.md)
 {% endcontent-ref %}
 
-{% content-ref url="redshift-usage.md" %}
-[redshift-usage.md](redshift-usage.md)
+{% content-ref url="clickhouse-usage.md" %}
+[clickhouse-usage.md](clickhouse-usage.md)
 {% endcontent-ref %}
