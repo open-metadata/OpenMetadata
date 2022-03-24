@@ -17,6 +17,8 @@ services:
       dockerfile: docker/local-metadata/Dockerfile_mysql
     container_name: openmetadata_mysql
     restart: always
+    depends_on:
+      - elasticsearch
     environment:
       MYSQL_ROOT_PASSWORD: password
     expose:
@@ -71,7 +73,9 @@ services:
     ports:
       - 8585:8585
     depends_on:
+      - elasticsearch
       - mysql
+      - ingestion
     networks:
       local_app_net:
         ipv4_address: 172.16.239.13
@@ -86,6 +90,7 @@ services:
     container_name: openmetadata_ingestion
     depends_on:
       - mysql
+      - elasticsearch
     expose:
       - 8080
     ports:
