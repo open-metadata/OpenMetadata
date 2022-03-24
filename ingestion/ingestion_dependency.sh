@@ -38,7 +38,7 @@ airflow users create \
     --email spiderman@superhero.org \
     --password ${AIRFLOW_ADMIN_PASSWORD}
 
-airflow webserver --port 8080 -D &
 (sleep 5; airflow db upgrade)
+airflow webserver --port 8080 -D
 (sleep 5; airflow db upgrade)
 airflow scheduler

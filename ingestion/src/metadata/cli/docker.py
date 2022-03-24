@@ -212,8 +212,6 @@ def reset_db_om(docker):
 
 def ingest_sample_data(docker):
     if docker.container.inspect("openmetadata_server").state.running:
-        AIRFLOW_ADMIN_USER = "admin"
-        AIRFLOW_ADMIN_PASSWORD = "admin"
         BASE_URL = "http://localhost:8080/api"
         DAGS = ["sample_data", "sample_usage", "index_metadata"]
 
@@ -222,11 +220,7 @@ def ingest_sample_data(docker):
             auth_header="Authorization",
             auth_token_mode="Basic",
             access_token=to_native_string(
-                b64encode(
-                    b":".join(
-                        (AIRFLOW_ADMIN_USER.encode(), AIRFLOW_ADMIN_PASSWORD.encode())
-                    )
-                ).strip()
+                b64encode(b":".join(("admin".encode(), "admin".encode()))).strip()
             ),
         )
         client = REST(client_config)
