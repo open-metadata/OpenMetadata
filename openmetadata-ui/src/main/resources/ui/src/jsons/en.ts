@@ -57,6 +57,8 @@ const jsonData = {
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-service-error': 'Error while fetching service details!',
 
+    'unexpected-server-response': 'Unexpected response from server!',
+
     'update-owner-error': 'Error while updating owner',
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-description-error': 'Error while updating description!',

@@ -18,7 +18,8 @@ import {
   render,
 } from '@testing-library/react';
 import React from 'react';
-import { AddServiceModal, ServiceDataObj } from './AddServiceModal';
+import { ServiceDataObj } from '../../../interface/service.interface';
+import { AddServiceModal } from './AddServiceModal';
 
 const mockData = {
   description: 'string',

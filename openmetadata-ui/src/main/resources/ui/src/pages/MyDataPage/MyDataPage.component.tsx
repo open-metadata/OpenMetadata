@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityThread, FormatedTableData } from 'Models';
@@ -36,6 +36,7 @@ import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
@@ -58,6 +59,14 @@ const MyDataPage = () => {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+
+  const handleShowErrorToast = (msg: string) => {
+    showToast({
+      variant: 'error',
+      body: msg,
+    });
+  };
+
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
   };
@@ -65,6 +74,7 @@ const MyDataPage = () => {
   const fetchData = (fetchService = false) => {
     setError('');
 
+    // limit=0 will fetch empty data list with total count
     getAllTables('', 0)
       .then((res) => {
         if (res.data) {
@@ -73,10 +83,15 @@ const MyDataPage = () => {
           throw '';
         }
       })
-      .catch(() => {
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          error.response?.data?.message ||
+            jsonData['api-error-messages']['unexpected-server-response']
+        );
         setCountTables(0);
       });
 
+    // limit=0 will fetch empty data list with total count
     getAllTopics('', '', 0)
       .then((res) => {
         if (res.data) {
@@ -85,10 +100,15 @@ const MyDataPage = () => {
           throw '';
         }
       })
-      .catch(() => {
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          error.response?.data?.message ||
+            jsonData['api-error-messages']['unexpected-server-response']
+        );
         setCountTopics(0);
       });
 
+    // limit=0 will fetch empty data list with total count
     getAllPipelines('', '', 0)
       .then((res) => {
         if (res.data) {
@@ -97,10 +117,15 @@ const MyDataPage = () => {
           throw '';
         }
       })
-      .catch(() => {
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          error.response?.data?.message ||
+            jsonData['api-error-messages']['unexpected-server-response']
+        );
         setCountPipelines(0);
       });
 
+    // limit=0 will fetch empty data list with total count
     getAllDashboards('', '', 0)
       .then((res) => {
         if (res.data) {
@@ -109,10 +134,16 @@ const MyDataPage = () => {
           throw '';
         }
       })
-      .catch(() => {
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          error.response?.data?.message ||
+            jsonData['api-error-messages']['unexpected-server-response']
+        );
         setCountDashboards(0);
       });
+
     if (fetchService) {
+      // limit=0 will fetch empty data list with total count
       getAllServices(true, 0)
         .then((res) => {
           const total = res.reduce((prev, curr) => {
@@ -120,7 +151,13 @@ const MyDataPage = () => {
           }, 0);
           setCountServices(total);
         })
-        .catch(() => setCountServices(0));
+        .catch((error: AxiosError) => {
+          handleShowErrorToast(
+            error.response?.data?.message ||
+              jsonData['api-error-messages']['unexpected-server-response']
+          );
+          setCountServices(0);
+        });
     }
   };
 
