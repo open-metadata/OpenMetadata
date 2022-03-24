@@ -896,11 +896,9 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public static class TableEntityInterface implements EntityInterface<Table> {
-    private final Table entity;
-
+  public static class TableEntityInterface extends EntityInterface<Table> {
     public TableEntityInterface(Table entity) {
-      this.entity = entity;
+      super(Entity.TABLE, entity);
     }
 
     @Override
@@ -956,17 +954,6 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     public long getUpdatedAt() {
       return entity.getUpdatedAt();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(TABLE)
-          .withDeleted(isDeleted());
     }
 
     @Override

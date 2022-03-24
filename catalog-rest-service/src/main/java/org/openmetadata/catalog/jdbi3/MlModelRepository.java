@@ -211,11 +211,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     deleteTo(mlModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
   }
 
-  public static class MlModelEntityInterface implements EntityInterface<MlModel> {
-    private final MlModel entity;
-
+  public static class MlModelEntityInterface extends EntityInterface<MlModel> {
     public MlModelEntityInterface(MlModel entity) {
-      this.entity = entity;
+      super(MLMODEL, entity);
     }
 
     @Override
@@ -286,17 +284,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.MLMODEL)
-          .withDeleted(isDeleted());
     }
 
     @Override

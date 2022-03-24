@@ -112,11 +112,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     return getContainer(airflowPipeline.getId(), Entity.AIRFLOW_PIPELINE);
   }
 
-  public static class AirflowPipelineEntityInterface implements EntityInterface<AirflowPipeline> {
-    private final AirflowPipeline entity;
-
+  public static class AirflowPipelineEntityInterface extends EntityInterface<AirflowPipeline> {
     public AirflowPipelineEntityInterface(AirflowPipeline entity) {
-      this.entity = entity;
+      super(Entity.AIRFLOW_PIPELINE, entity);
     }
 
     @Override
@@ -179,17 +177,6 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.AIRFLOW_PIPELINE)
-          .withDeleted(isDeleted());
     }
 
     @Override

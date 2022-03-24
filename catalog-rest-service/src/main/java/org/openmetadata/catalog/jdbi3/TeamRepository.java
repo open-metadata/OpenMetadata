@@ -133,11 +133,9 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
   }
 
-  public static class TeamEntityInterface implements EntityInterface<Team> {
-    private final Team entity;
-
+  public static class TeamEntityInterface extends EntityInterface<Team> {
     public TeamEntityInterface(Team entity) {
-      this.entity = entity;
+      super(Entity.TEAM, entity);
     }
 
     @Override
@@ -198,18 +196,6 @@ public class TeamRepository extends EntityRepository<Team> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(TEAM)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override

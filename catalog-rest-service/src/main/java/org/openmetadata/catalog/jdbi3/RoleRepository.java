@@ -191,11 +191,9 @@ public class RoleRepository extends EntityRepository<Role> {
     return new RoleUpdater(original, updated, operation);
   }
 
-  public static class RoleEntityInterface implements EntityInterface<Role> {
-    private final Role entity;
-
+  public static class RoleEntityInterface extends EntityInterface<Role> {
     public RoleEntityInterface(Role entity) {
-      this.entity = entity;
+      super(Entity.ROLE, entity);
     }
 
     @Override
@@ -246,18 +244,6 @@ public class RoleRepository extends EntityRepository<Role> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.ROLE)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override

@@ -138,11 +138,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     return new DatabaseServiceUpdater(original, updated, operation);
   }
 
-  public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
-    private final DatabaseService entity;
-
+  public static class DatabaseServiceEntityInterface extends EntityInterface<DatabaseService> {
     public DatabaseServiceEntityInterface(DatabaseService entity) {
-      this.entity = entity;
+      super(Entity.DATABASE_SERVICE, entity);
     }
 
     @Override
@@ -203,17 +201,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DATABASE_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

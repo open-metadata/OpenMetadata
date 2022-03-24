@@ -201,11 +201,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
-  public static class GlossaryTermEntityInterface implements EntityInterface<GlossaryTerm> {
-    private final GlossaryTerm entity;
-
+  public static class GlossaryTermEntityInterface extends EntityInterface<GlossaryTerm> {
     public GlossaryTermEntityInterface(GlossaryTerm entity) {
-      this.entity = entity;
+      super(GLOSSARY_TERM, entity);
     }
 
     @Override
@@ -271,17 +269,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(GLOSSARY_TERM)
-          .withDeleted(isDeleted());
     }
 
     @Override

@@ -86,11 +86,9 @@ public class ReportRepository extends EntityRepository<Report> {
     return null;
   }
 
-  public static class ReportEntityInterface implements EntityInterface<Report> {
-    private final Report entity;
-
+  public static class ReportEntityInterface extends EntityInterface<Report> {
     ReportEntityInterface(Report entity) {
-      this.entity = entity;
+      super(Entity.REPORT, entity);
     }
 
     @Override
@@ -156,17 +154,6 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.REPORT)
-          .withDeleted(isDeleted());
     }
 
     @Override

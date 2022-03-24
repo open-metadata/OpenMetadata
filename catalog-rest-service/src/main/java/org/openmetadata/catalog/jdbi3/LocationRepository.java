@@ -235,11 +235,9 @@ public class LocationRepository extends EntityRepository<Location> {
     }
   }
 
-  public static class LocationEntityInterface implements EntityInterface<Location> {
-    private final Location entity;
-
+  public static class LocationEntityInterface extends EntityInterface<Location> {
     public LocationEntityInterface(Location entity) {
-      this.entity = entity;
+      super(Entity.LOCATION, entity);
     }
 
     @Override
@@ -297,17 +295,6 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public long getUpdatedAt() {
       return entity.getUpdatedAt();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.LOCATION)
-          .withDeleted(isDeleted());
     }
 
     @Override

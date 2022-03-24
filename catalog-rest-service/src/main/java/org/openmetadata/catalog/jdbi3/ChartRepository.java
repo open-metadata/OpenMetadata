@@ -121,11 +121,9 @@ public class ChartRepository extends EntityRepository<Chart> {
     return getContainer(chart.getId(), Entity.CHART);
   }
 
-  public static class ChartEntityInterface implements EntityInterface<Chart> {
-    private final Chart entity;
-
+  public static class ChartEntityInterface extends EntityInterface<Chart> {
     public ChartEntityInterface(Chart entity) {
-      this.entity = entity;
+      super(Entity.CHART, entity);
     }
 
     @Override
@@ -191,17 +189,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.CHART)
-          .withDeleted(isDeleted());
     }
 
     @Override

@@ -85,11 +85,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     return new PipelineServiceUpdater(original, updated, operation);
   }
 
-  public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
-    private final PipelineService entity;
-
+  public static class PipelineServiceEntityInterface extends EntityInterface<PipelineService> {
     public PipelineServiceEntityInterface(PipelineService entity) {
-      this.entity = entity;
+      super(Entity.PIPELINE_SERVICE, entity);
     }
 
     @Override
@@ -150,17 +148,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.PIPELINE_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

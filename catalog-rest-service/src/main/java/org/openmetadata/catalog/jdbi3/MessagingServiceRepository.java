@@ -88,11 +88,9 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     return new MessagingServiceUpdater(original, updated, operation);
   }
 
-  public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
-    private final MessagingService entity;
-
+  public static class MessagingServiceEntityInterface extends EntityInterface<MessagingService> {
     public MessagingServiceEntityInterface(MessagingService entity) {
-      this.entity = entity;
+      super(Entity.MESSAGING_SERVICE, entity);
     }
 
     @Override
@@ -153,17 +151,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.MESSAGING_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

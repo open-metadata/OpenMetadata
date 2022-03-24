@@ -212,11 +212,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     updater.recordChange("charts", origChartIds, updatedChartIds);
   }
 
-  public static class DashboardEntityInterface implements EntityInterface<Dashboard> {
-    private final Dashboard entity;
-
+  public static class DashboardEntityInterface extends EntityInterface<Dashboard> {
     public DashboardEntityInterface(Dashboard entity) {
-      this.entity = entity;
+      super(Entity.DASHBOARD, entity);
     }
 
     @Override
@@ -284,18 +282,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DASHBOARD)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override
