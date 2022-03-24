@@ -44,15 +44,15 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_usage' \
   --data-raw '{
       "is_paused": false
       }'
-
+sleep 5
+curl --location --request PATCH 'localhost:8080/api/v1/dags/index_metadata' \
+  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+      "is_paused": false
+      }'
 sleep 2
 tput setaf 2
 echo "✔ OpenMetadata is up and running"
 
 
-#curl --location --request PATCH 'localhost:8080/api/v1/dags/index_metadata' \
-#  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
-#  --header 'Content-Type: application/json' \
-#  --data-raw '{
-#      "is_paused": false
-#      }'
