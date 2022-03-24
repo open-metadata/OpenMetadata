@@ -9,8 +9,8 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Azure SQL](azure-sql.md)
 * [BigQuery](bigquery/)
 * [BigQuery Usage](bigquery/bigquery-usage.md)
-* ClickHouse
-* ClickHouse Usage
+* [ClickHouse](clickhouse/)
+* [ClickHouse Usage](clickhouse/redshift-usage.md)
 * [Databricks](databricks.md)
 * [Delta Lake](delta-lake.md)
 * [DynamoDB](dynamodb.md)
@@ -20,6 +20,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [IBM Db2](ibm-db2.md)
 * [MariaDB](mariadb.md)
 * [MSSQL](mssql/)
+* [MSSQL Usage](mssql/redshift-usage.md)
 * [MySQL](mysql/mysql.md)
 * [Oracle](oracle.md)
 * [Postgres](postgres/)

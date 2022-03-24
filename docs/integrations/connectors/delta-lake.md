@@ -37,14 +37,12 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 2. [Install the Python module for this connector](delta-lake.md#install-from-pypi-or-source)
 3. [Create a configuration file using template JSON](delta-lake.md#3.-create-a-configuration-file-using-template-json)
 4. [Configure service settings](delta-lake.md#4.-configure-service-settings)
-5. [Enable/disable the data profiler](delta-lake.md#5.-enable-disable-the-data-profiler)
-6. [Install the data profiler Python module (optional)](delta-lake.md#6.-install-the-data-profiler-python-module-optional)
-7. [Configure data filters (optional)](delta-lake.md#7.-configure-data-filters-optional)
-8. [Configure sample data (optional)](delta-lake.md#8.-configure-sample-data-optional)
-9. [Configure DBT (optional)](delta-lake.md#9.-configure-dbt-optional)
-10. [Confirm sink settings](delta-lake.md#10.-confirm-sink-settings)
-11. [Confirm metadata\_server settings](delta-lake.md#11.-confirm-metadata\_server-settings)
-12. [Run ingestion workflow](delta-lake.md#run-manually)
+5. [Configure data filters (optional)](delta-lake.md#5.-.-configure-data-filters-optional)
+6. [Configure sample data (optional)](delta-lake.md#8.-configure-sample-data-optional)
+7. [Configure DBT (optional)](delta-lake.md#9.-configure-dbt-optional)
+8. [Confirm sink settings](delta-lake.md#10.-confirm-sink-settings)
+9. [Confirm metadata\_server settings](delta-lake.md#11.-confirm-metadata\_server-settings)
+10. [Run ingestion workflow](delta-lake.md#run-manually)
 
 ### 1. Prepare a Python virtual environment
 
@@ -105,23 +103,19 @@ Note: The `source.config` field in the configuration JSON will include the major
 {% endhint %}
 
 {% code title="deltalake.json" %}
-```json
+```javascript
 {
   "source": {
     "type": "deltalake",
     "config": {
       "platform_name": "deltalake",
-      "username": "username",
-      "password": "strong_password",
+      "service_name": "local_deltalake"
       "database": "delta",
-      "service_name": "local_deltalake",
-      "data_profiler_enabled": "false",
       "table_filter_pattern": {
         "excludes": ["[\\w]*event_vw.*"]
       },
       "schema_filter_pattern": {
         "excludes": ["deltalake.*", "information_schema.*", "performance_schema.*", "sys.*"]
-      }
     }
   },
   "sink": {
@@ -135,7 +129,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "auth_provider_type": "no-auth"
     }
   }
-}  
+}
 ```
 {% endcode %}
 
@@ -143,40 +137,20 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 In this step we will configure the Delta Lake service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Delta Lake service as desired.
 
-#### platform\_name
-
-Edit the value for `source.config.platform_name` in `deltalake.json` for your Delta Lake deployment.&#x20;
-
-```javascript
-"platform_name": "deltalake",
-```
-
-#### username
-
-Edit the value for `source.config.username` to identify your Delta Lake user.
-
-```json
-"username": "username"
-```
-
-{% hint style="danger" %}
-Note: The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
-{% endhint %}
-
-#### password
-
-Edit the value for `source.config.password` with the password for your Delta Lake user.
-
-```json
-"password": "strong_password"
-```
-
-#### service\_name
+#### service\_name (mandatory)
 
 OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Delta Lake services that you might be ingesting metadata from.
 
 ```json
 "service_name": "local_deltalake"
+```
+
+#### platform\_name (optional)
+
+Edit the value for `source.config.platform_name` in `deltalake.json` for your Delta Lake deployment.&#x20;
+
+```javascript
+"platform_name": "deltalake",
 ```
 
 #### database (optional)
@@ -189,41 +163,7 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "delta"
 ```
 
-### 5. Enable/disable the data profiler
-
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
-
-#### data\_profiler\_enabled
-
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
-
-You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We've done this in the configuration template provided.
-
-```json
-"data_profiler_enabled": "false"
-```
-
-If you want to enable the data profiler, update your configuration file as follows.
-
-```json
-"data_profiler_enabled": "true"
-```
-
-{% hint style="info" %}
-Note: The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`.
-{% endhint %}
-
-### 6. Install the data profiler Python module (optional)
-
-If you've enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You'll need this to run the ingestion workflow.
-
-```bash
-pip3 install 'openmetadata-ingestion[data-profiler]'
-```
-
-The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
-
-### 7. Configure data filters (optional)
+### 5.  Configure data filters (optional)
 
 #### include\_views (optional)
 
@@ -297,7 +237,7 @@ Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_fil
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](delta-lake.md#table\_filter\_pattern-optional). Please check that section for details.
 
-### 8. Configure sample data (optional)
+### 6. Configure sample data (optional)
 
 #### generate\_sample\_data (optional)
 
@@ -323,7 +263,7 @@ You can exclude the collection of sample data by adding the following key-value 
 Note: `generate_sample_data` is set to `true` by default.
 {% endhint %}
 
-### 9. Configure DBT (optional)
+### 7. Configure DBT (optional)
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
@@ -347,7 +287,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-### 10. Confirm sink settings
+### 8. Confirm sink settings
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `deltalake.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -358,7 +298,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-### 11. Confirm metadata\_server settings
+### 9. Confirm metadata\_server settings
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `deltalake.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -372,7 +312,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-### 12. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
+### 10. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
 
 Your `deltalake.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
