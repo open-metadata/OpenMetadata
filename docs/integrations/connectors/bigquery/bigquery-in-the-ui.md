@@ -1,9 +1,19 @@
+---
+description: >-
+  Follow the procedure in this section to configure an integration with BigQuery
+  using the OpenMetadata user interface (UI).
+---
+
 # BigQuery in the UI
 
-1. Requirements
-2. Visit the _Services_ page
-3. Initiate a new service creation
-4. Select service type
+1. [Requirements](bigquery-in-the-ui.md#1.-requirements)
+2. [Visit the _Services_ page](bigquery-in-the-ui.md#2.-visit-the-services-page)
+3. [Initiate a new service creation](bigquery-in-the-ui.md#3.-initiate-a-new-service-creation)
+4. [Select service type](bigquery-in-the-ui.md#4.-select-service-type)
+5. [Name and describe your service](bigquery-in-the-ui.md#4.-name-and-describe-your-service)
+6. [Configure service connection](bigquery-in-the-ui.md#5.-configure-service-connection)
+7. [Configure metadata ingestion](bigquery-in-the-ui.md#6.-configure-metadata-ingestion)
+8. [Review configuration and save](bigquery-in-the-ui.md#7.-review-configuration-and-save)
 
 ## **1. Requirements**
 

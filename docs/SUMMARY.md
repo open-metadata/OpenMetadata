@@ -19,7 +19,6 @@
   * [Athena](integrations/connectors/athena.md)
   * [Azure SQL](integrations/connectors/azure-sql.md)
   * [BigQuery](integrations/connectors/bigquery/README.md)
-    * [BigQuery Metadata Extraction](integrations/connectors/bigquery/bigquery-metadata-extraction.md)
     * [BigQuery Usage](integrations/connectors/bigquery/bigquery-usage.md)
     * [BigQuery in the UI](integrations/connectors/bigquery/bigquery-in-the-ui.md)
   * [ClickHouse](integrations/connectors/clickhouse/README.md)
