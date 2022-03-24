@@ -16,7 +16,7 @@ authenticationConfiguration:
 
 * **ISSUER\_URL** - This can be found in **Security -> API -> Authorization Servers**.
 
-![](<../../../../docs/.gitbook/assets/image (31).png>)
+![](<../../../../docs/.gitbook/assets/image (31) (1).png>)
 
 * **CLIENT\_ID - SPA APP** - This is the Client\_ID for Single Page Applications. On configuring the app, the Client\_ID can be found in the **General** section, under **Client Credentials >> Client ID**
 

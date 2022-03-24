@@ -9,3 +9,7 @@ description: >-
 {% content-ref url="snowflake-metadata-extraction.md" %}
 [snowflake-metadata-extraction.md](snowflake-metadata-extraction.md)
 {% endcontent-ref %}
+
+{% content-ref url="snowflake-usage.md" %}
+[snowflake-usage.md](snowflake-usage.md)
+{% endcontent-ref %}

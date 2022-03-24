@@ -567,7 +567,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your MySQL deployment. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![](<../../../.gitbook/assets/image (3).png>)
+![](<../../../.gitbook/assets/image (3) (1).png>)
 
 #### Ingestion name
 

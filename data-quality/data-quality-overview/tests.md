@@ -16,11 +16,11 @@ From the **Data Quality** Tab you can create both Table and Column Tests:
 
 ![Write your first test](<../../docs/.gitbook/assets/image (4) (1) (1).png>)
 
-![Sample form to create a column test](<../../docs/.gitbook/assets/image (16) (1).png>)
+![Sample form to create a column test](<../../docs/.gitbook/assets/image (16) (1) (1).png>)
 
 Directly from the **Profiler** tab, you can create a Column Test in the column of your choice:
 
-![Create a column test from the profiler tab](<../../docs/.gitbook/assets/image (16).png>)
+![Create a column test from the profiler tab](<../../docs/.gitbook/assets/image (16) (1).png>)
 
 If you'd rather configure the tests directly in the Workflow JSON, we'll show examples for each of them below.
 

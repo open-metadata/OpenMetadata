@@ -1,45 +1,58 @@
 ---
 description: >-
-  In this section, we provide guides and reference to use the BigQuery
-  connector.
+  This guide will help you install and configure the ClickHouse Usage connector
+  and run metadata ingestion workflows manually.
 ---
 
-# BigQuery
+# ClickHouse Usage
 
-1. [Requirements](./#requirements)
-2. [Install BigQuery Connector](./#install-bigquery-connector)
-3. [Configure BigQuery Connector](./#configure-bigquery-connector)
-4. [Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
+## **Requirements**
 
-{% content-ref url="bigquery-usage.md" %}
-[bigquery-usage.md](bigquery-usage.md)
-{% endcontent-ref %}
+Using the OpenMetadata ClickHouse Usage connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-## **1. Requirements**
+### **OpenMetadata (version 0.8.0 or later)**
 
-Please ensure that your host system meets the requirements listed below.
+You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
-### **OpenMetadata (version 0.9.0 or later)**
+* OpenMetadata server supporting the metadata APIs and user interface
+* Elasticsearch for metadata search and discovery
+* MySQL as the backing store for all metadata
+* Airflow for metadata ingestion workflows
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](https://docs.open-metadata.org/install/run-openmetadata).
+If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](https://docs.open-metadata.org/install/run-openmetadata) to get up and running.
 
 ### **Python (version 3.8.0 or later)**
 
-Use the following command to check your Python version.
+Please use the following command to check the version of Python you have.
 
 ```
 python3 --version
 ```
 
-## 2. Install BigQuery Connector
+## **Procedure**
 
-### **2.1  Prepare a Python virtual environment**
+Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
+
+1. [Prepare a Python virtual environment](redshift-usage.md#1.-prepare-a-python-virtual-environment)
+2. [Install the Python module for this connector](redshift-usage.md#2.-install-the-python-module-for-this-connector)
+3. [Create a configuration file using template JSON](redshift-usage.md#3.-create-a-configuration-file-using-template-json)
+4. [Configure service settings](redshift-usage.md#4.-configure-service-settings)
+5. [Enable/disable the data profiler](redshift-usage.md#5.-enable-disable-the-data-profiler)
+6. [Install the data profiler Python module (optional)](redshift-usage.md#6.-install-the-data-profiler-python-module-optional)
+7. [Configure data filters (optional)](redshift-usage.md#7.-configure-data-filters-optional)
+8. [Configure sample data (optional)](redshift-usage.md#8.-configure-sample-data-optional)
+9. [Configure DBT (optional)](redshift-usage.md#9.-configure-dbt-optional)
+10. [Confirm sink settings](redshift-usage.md#10.-confirm-sink-settings)
+11. [Confirm metadata\_server settings](redshift-usage.md#11.-confirm-metadata\_server-settings)
+12. [Run ingestion workflow](redshift-usage.md#12.-run-ingestion-workflow)
+
+### **1. Prepare a Python virtual environment**
 
 In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
-#### **1. Create a directory for openmetadata**
+#### **1.1 Create a directory for openmetadata**
 
 Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
 
@@ -47,7 +60,7 @@ Throughout the docs, we use a consistent directory structure for OpenMetadata se
 mkdir openmetadata; cd openmetadata
 ```
 
-#### **2. Create a virtual environment**
+#### **1.2 Create a virtual environment**
 
 Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
 
@@ -55,7 +68,7 @@ Run the following command to create a Python virtual environment called, `env`. 
 python3 -m venv env
 ```
 
-#### **3. Activate the virtual environment**
+#### **1.3 Activate the virtual environment**
 
 Run the following command to activate the virtual environment.
 
@@ -65,7 +78,7 @@ source env/bin/activate
 
 Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
 
-#### **4. Upgrade pip and setuptools to the latest versions**
+#### **1.4 Upgrade pip and setuptools to the latest versions**
 
 Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
 
@@ -73,70 +86,57 @@ Ensure that you have the latest version of pip by running the following command.
 pip3 install --upgrade pip setuptools
 ```
 
-### **2.2 Install the Python module for this connector**
+### **2. Install the Python module for this connector**
 
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the BigQuery connector.
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the ClickHouse Usage connector.
 
 ```javascript
-pip3 install 'openmetadata-ingestion[bigquery]'
+pip3 install 'openmetadata-ingestion[clickhouse-usage]'
 ```
 
-## 3. Configure BigQuery Connector
+### **3. Create a configuration file using template JSON**
 
-Please follow the steps relevant to your use case.
+Create a new file called `clickhouse_usage.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
-1. [Create a configuration file using template JSON](./#1.-create-a-configuration-file-using-template-json)
-2. [Configure service settings](./#2.-configure-service-settings)
-3. [Enable/disable the data profiler](./#3.-enable-disable-the-data-profiler)
-4. [Install the data profiler Python module (optional)](./#4.-install-the-data-profiler-python-module-optional)
-5. [Configure data filters (optional)](./#5.-configure-data-filters-optional)
-6. [Configure sample data (optional)](./#8.-configure-sample-data-optional)
-7. [Configure DBT (optional)](./#7.-configure-dbt-optional)
-8. [Confirm sink settings](./#8.-confirm-sink-settings)
-9. [Confirm metadata\_server settings](./#9.-confirm-metadata\_server-settings)
-
-### **2.1 Create a configuration file using template JSON**
-
-Create a new file called `bigquery.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
-
-Copy and paste the configuration template below into the `bigquery.json` file you created.
+Copy and paste the configuration template below into the `clickhouse_usage.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="bigquery.json" %}
+You can optionally add the `query-parser` processor, `table-usage` stage and `metadata-usage` `bulk_sink` along with `metadata-server` config.
+
+{% code title="clickhouse_usage.json" %}
 ```javascript
 {
   "source": {
-    "type": "bigquery",
+    "type": "clickhouse-usage",
     "config": {
-      "project_id": "project_id",
-      "host_port": "bigquery.googleapis.com",
+      "host_port": "hostname.domain.com:8123",
       "username": "username",
-      "service_name": "gcp_bigquery",
-      "data_profiler_enabled": "true",
-      "data_profiler_offset": "0",
-      "data_profiler_limit": "50000",
-      "options": {
-        "credentials_path": "examples/creds/bigquery-cred.json"
-      },
-      "table_filter_pattern": {
-        "excludes": ["demo.*","orders.*"]
-      },
-      "schema_filter_pattern": {
-        "excludes": [
-          "[\\w]*cloudaudit.*",
-          "[\\w]*logging_googleapis_com.*",
-          "[\\w]*clouderrorreporting.*"
-        ]
-      }
+      "password": "strong_password",
+      "database": "warehouse",
+      "where_clause": "and q.label != 'metrics' and q.label != 'health' and q.label != 'cmstats'",
+      "service_name": "clickhouse",
+      "duration": 2
     }
   },
-  "sink": {
-    "type": "metadata-rest",
+  "processor": {
+    "type": "query-parser",
     "config": {
-      "api_endpoint": "http://localhost:8585/api"
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage",
+    "config": {
+      "filename": "/tmp/clickhouse_usage"
+    }
+  },
+  "bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/clickhouse_usage"
     }
   },
   "metadata_server": {
@@ -150,62 +150,23 @@ Note: The `source.config` field in the configuration JSON will include the major
 ```
 {% endcode %}
 
-When adding the details for the credentials path, you can either choose to pass the `credentials file`, or add the `credentials_path`, or use a secure way to pass the credentials path using the environment variables, i.e., `Application Default Credentials` (ADC).
+### **4. Configure service settings**
 
-#### 3.1.1 Using Credentials File or Credentials Path
-
-{% code title="bigquery-creds.json (boilerplate)" %}
-```javascript
-{
-  "type": "service_account",
-  "project_id": "project_id",
-  "private_key_id": "private_key_id",
-  "private_key": "",
-  "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
-  "client_id": "",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": ""
-}
-```
-{% endcode %}
-
-#### 3.1.2 Using Application Default Credentials (ADC)
-
-{% code title="env variables" %}
-```
-export GOOGLE_APPLICATION_CREDENTIALS=<path-to-your-credentials-file>
-```
-{% endcode %}
-
-Users can export the path to the credentials file. Using this option, you can export the env in terminal and run BigQuery config without providing `credentials_path`.
-
-### **3.2 Configure service settings**
-
-In this step we will configure the BigQuery service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your BigQuery service as desired.
-
-#### project\_id
-
-Edit the value for `source.config.project_id` in `bigquery.json`. The `project_id` is a mandatory field.
-
-```javascript
-   "project_id": "project_id"
-```
+In this step we will configure the ClickHouse Usage service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your ClickHouse service as desired.
 
 #### **host\_port**
 
-Edit the value for `source.config.host_port` in `bigquery.json` for your BigQuery deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `clickhouse_usage.json` for your ClickHouse Usage deployment. Use the `host:port` format illustrated in the example below.
 
 ```javascript
-"host_port": "bigquery.googleapis.com"
+"host_port": "hostname.domain.com:8123"
 ```
 
-Please ensure that your BigQuery deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your ClickHouse Usage deployment is reachable from the host you are using to run metadata ingestion.
 
 #### **username**
 
-Edit the value for `source.config.username` to identify your BigQuery user.
+Edit the value for `source.config.username` to identify your ClickHouse Usage user.
 
 ```javascript
 "username": "username"
@@ -217,7 +178,7 @@ Edit the value for `source.config.username` to identify your BigQuery user.
 
 #### **password**
 
-Edit the value for `source.config.password` with the password for your BigQuery user.
+Edit the value for `source.config.password` with the password for your ClickHouse Usage user.
 
 ```javascript
 "password": "strong_password"
@@ -225,10 +186,18 @@ Edit the value for `source.config.password` with the password for your BigQuery 
 
 #### **service\_name**
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other BigQuery services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other ClickHouse Usage services that you might be ingesting metadata from.
 
 ```javascript
-"service_name": "bigquery"
+"service_name": "clickhouse"
+```
+
+#### duration
+
+Use duration to specify the window of time in which the profiler should capture usage data. Values should be integers and represent the number of days for which to capture usage information. For example, if you specify 2 as the value for duration, the data profiler will capture usage information for the 48 hours prior to when the ingestion workflow is run.
+
+```javascript
+"duration": 2
 ```
 
 #### **database (optional)**
@@ -238,10 +207,10 @@ If you want to limit metadata ingestion to a single database, include the `sourc
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```javascript
-"database": "bigquery_db"
+"database": "warehouse"
 ```
 
-### **3.3 Enable/disable the data profiler**
+### **5. Enable/disable the data profiler**
 
 The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
@@ -265,7 +234,7 @@ If you want to enable the data profiler, update your configuration file as follo
 **Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
 {% endhint %}
 
-### **3.4 Install the data profiler Python module (optional)**
+### **6. Install the data profiler Python module (optional)**
 
 If you’ve enabled the data profiler in Step 5, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
 
@@ -275,7 +244,7 @@ pip3 install 'openmetadata-ingestion[data-profiler]'
 
 The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
 
-### **3.5 Configure data filters (optional)**
+### **7. Configure data filters (optional)**
 
 #### **include\_views (optional)**
 
@@ -347,15 +316,15 @@ You may use either `excludes` or `includes` but not both in `table_filter_patter
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](./#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](redshift-usage.md#table\_filter\_pattern-optional). Please check that section for details.
 
-### **3.6 Configure sample data (optional)**
+### **8. Configure sample data (optional)**
 
 #### **generate\_sample\_data (optional)**
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../../.gitbook/assets/sample-data.png)
+![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -375,11 +344,11 @@ You can exclude the collection of sample data by adding the following key-value 
 **Note:** `generate_sample_data` is set to true by default.
 {% endhint %}
 
-### **3.7 Configure DBT (optional)**
+### **9. Configure DBT (optional)**
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
 
-![](../../../.gitbook/assets/dbt.png)
+![](../../../.gitbook/assets/configure\_dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -399,20 +368,22 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-### **3.8 Confirm sink settings**
+### **10. Confirm sink settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `bigquery.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `clickhouse_usage.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
-"sink": {
-    "type": "metadata-rest",
-    "config": {}
-},
+"bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/clickhouse_usage"
+    }
+  },
 ```
 
-### **3.9 Confirm metadata\_server settings**
+### **11. Confirm metadata\_server settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `bigquery.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `clickhouse_usage.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
 "metadata_server": {
@@ -424,33 +395,27 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-****
+### **12. Run ingestion workflow**
 
-## **4. Run BigQuery Connector**
-
-Your `bigquery.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Your `clickhouse_usage.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
 To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
 
 ```
-metadata ingest -c ./bigquery.json
+metadata ingest -c ./clickhouse_usage.json
 ```
-
-### &#x20;**Setup BigQuery Connector in production (optional)**
-
-If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
 
 ## **Next Steps**
 
-To view the metadata ingested from BigQuery, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the BigQuery service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from ClickHouse Usage, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the ClickHouse Usage service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](../../../.gitbook/assets/explore.png)
+![](<../../../.gitbook/assets/next\_steps (1).png>)
 
-## **5. Troubleshooting**
+## **Troubleshooting**
 
 ### **ERROR: Failed building wheel for cryptography**
 
-When attempting to install the `openmetadata-ingestion[bigquery]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[clickhouse-usage]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
@@ -461,7 +426,7 @@ ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be i
 pip3 install --upgrade pip setuptools
 ```
 
-Then re-run the install command in [Step 2](./#2.-install-the-python-module-for-this-connector).
+Then re-run the install command in [Step 2](redshift-usage.md#2.-install-the-python-module-for-this-connector).
 
 ### **requests.exceptions.ConnectionError**
 
@@ -469,11 +434,11 @@ If you encounter the following error when attempting to run the ingestion workfl
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/bigquery 
+Max retries exceeded with url: /api/v1/services/databaseServices/name/clickhouse 
 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/) to deploy OpenMetadata.
+To correct this problem, please follow the steps in the [Run OpenMetadata ](https://docs.open-metadata.org/install/run-openmetadata)guide to deploy OpenMetadata in Docker on your local machine.
 
-Then re-run the metadata ingestion workflow in[ Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
+Then re-run the metadata ingestion workflow in [Step 12](redshift-usage.md#12.-run-ingestion-workflow).

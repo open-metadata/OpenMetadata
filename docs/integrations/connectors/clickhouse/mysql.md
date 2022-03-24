@@ -1,16 +1,16 @@
 ---
 description: >-
   This guide will help you configure metadata ingestion workflows using the
-  Redshift connector.
+  ClickHouse connector.
 ---
 
-# Redshift Metadata Extraction
+# ClickHouse Metadata Extraction
 
-&#x20;  There are three options for configuring metadata ingestion for this connector. They are as follows:
+There are three options for configuring metadata ingestion for this connector. They are as follows:
 
 1. Schedule metadata ingestion workflows via the **Airflow SDK**. Use this option if you already have an Airflow instance running that you plan to use for workflow scheduling with OpenMetadata.
 2. Schedule metadata ingestion workflows via the **OpenMetadata UI**. Use this option if you prefer to manage ingestion through the UI and are prepared to either install the [OpenMetadata Airflow REST API plugin](https://pypi.org/project/openmetadata-airflow-managed-apis/) in your Airflow deployment or will use the Airflow container that ships with OpenMetadata.
-3. Use the OpenMetadata ingestion Python module to perform a **One-time ingestion**. Use this option if you want to perform a trial of OpenMetadata in a test environment
+3. Use the OpenMetadata ingestion Python module to perform a **One-time Ingestion**. Use this option if you want to perform a trial of OpenMetadata in a test environment
 
 Please select the approach you would prefer to use for metadata ingestion from the tabs below.
 
@@ -20,7 +20,7 @@ Please select the approach you would prefer to use for metadata ingestion from t
 
 ## Requirements
 
-Using the OpenMetadata Redshift connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata ClickHouse connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 
 
@@ -42,8 +42,6 @@ Please use the following command to check the version of Python you have.
 ```
 python3 --version
 ```
-
-
 
 ## Procedure
 
@@ -111,38 +109,38 @@ pip3 install --upgrade pip setuptools
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
 ```javascript
-pip3 install 'openmetadata-ingestion[redshift]'
+pip3 install 'openmetadata-ingestion[clickhouse]'
 ```
 
 
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `redshift.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+Create a new file called `clickhouse.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
-Copy and paste the configuration template below into the `redshift.json` file you created.
+Copy and paste the configuration template below into the `clickhouse.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="redshift.json" %}
+{% code title="clickhouse.json" %}
 ```json
 {
   "source": {
-    "type": "redshift",
+    "type": "clickhouse",
     "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+      "host_port": "hostname.domain.com:8123",
       "username": "username",
       "password": "strong_password",
-      "service_name": "aws_redshift",
-      "query": "select top 50 * from {}.{}",
+      "database": "clickhouse_db",
+      "service_name": "local_clickhouse",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
         "excludes": ["[\\w]*event_vw.*"]
       },
       "schema_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["clickhouse.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },
@@ -157,7 +155,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "auth_provider_type": "no-auth"
     }
   }
-}
+}  
 ```
 {% endcode %}
 
@@ -165,25 +163,25 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 ### 4. Configure service settings
 
-In this step we will configure the Redshift service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step, we will configure the ClickHouse service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-####
+
 
 #### host\_port
 
-Edit the value for `source.config.host_port` in `redshift.json` for your Redshift deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `clickhouse.json` for your ClickHouse deployment. Use the `host:port` format illustrated in the example below.
 
 ```json
-"host_port": "cluster.name.region.redshift.amazonaws.com:5439"
+"host_port": "hostname.domain.com:8123"
 ```
 
-Please ensure that your Redshift deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your ClickHouse deployment is reachable from the host you are using to run metadata ingestion.
 
-####
+
 
 #### username
 
-Edit the value for `source.config.username` to identify your Redshift user.
+Edit the value for `source.config.username` to identify your ClickHouse user.
 
 ```json
 "username": "username"
@@ -193,36 +191,36 @@ Edit the value for `source.config.username` to identify your Redshift user.
 Note: The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 {% endhint %}
 
-####
+
 
 #### password
 
-Edit the value for `source.config.password` with the password for your Redshift user.
+Edit the value for `source.config.password` with the password for your ClickHouse user.
 
 ```json
 "password": "strong_password"
 ```
 
-####
+
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Redshift services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other ClickHouse services that you might be ingesting metadata from.
 
 ```json
-"service_name": "aws_redshift"
+"service_name": "local_clickhouse"
 ```
 
-####
+
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the Redshift connector will ingest metadata from all databases that the specified user is authorized to read.
+If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```json
-"database": "warehouse"
+"database": "clickhouse_db"
 ```
 
 
@@ -249,7 +247,7 @@ Exclude views as follows.
 Note: `source.config.include_views` is set to `true` by default.
 {% endhint %}
 
-####
+
 
 #### include\_tables (optional)
 
@@ -271,7 +269,7 @@ Exclude tables as follows.
 Note: `source.config.include_tables` is set to `true` by default.
 {% endhint %}
 
-####
+
 
 #### table\_filter\_pattern (optional)
 
@@ -299,13 +297,13 @@ See the documentation for the [Python re module](https://docs.python.org/3/libra
 You may use either `excludes` or `includes` but not both in `table_filter_pattern.`
 {% endhint %}
 
-####
+
 
 #### schema\_filter\_pattern (optional)
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](redshift-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mysql.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 
@@ -369,7 +367,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### 8. Confirm `sink` settings
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `redshift.json` in Step 3. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `clickhouse.json` in Step 3. This part of your configuration file should be as follows.
 
 ```json
 "sink": {
@@ -382,7 +380,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 ### 9. Confirm `metadata_server` settings
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `redshift.json` in Step 3. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `clickhouse.json` in SClickHousetep 3. This part of your configuration file should be as follows.
 
 ```json
 "metadata_server": {
@@ -480,7 +478,7 @@ The OpenMetadata UI provides an integrated workflow for adding a new data servic
 
 ## Requirements
 
-Using the OpenMetadata Redshift connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for setting up a Redshift service and ingestion workflow using the OpenMetadata UI.
+Using the OpenMetadata ClickHouse connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for setting up a ClickHouse service and ingestion workflow using the OpenMetadata UI.
 
 
 
@@ -507,21 +505,19 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (16) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (69).png>)
 
 ### 2. Initiate a new service creation
 
-From the Database Service UI, click the _Add New Service_ button to add your Redshift service to OpenMetadata for metadata ingestion.
+From the Database Service UI, click the _Add New Service_ button to add your ClickHouse service to OpenMetadata for metadata ingestion.
 
 ![](<../../../.gitbook/assets/image (30).png>)
 
 ### 3. Select service type
 
-Select Redshift as the service type.
+Select ClickHouse as the service type.
 
-![](<../../../.gitbook/assets/image (77).png>)
-
-
+![](<../../../.gitbook/assets/image (4).png>)
 
 ### 4. Name and describe your service
 
@@ -529,37 +525,35 @@ Provide a name and description for your service as illustrated below.
 
 #### Name
 
-OpenMetadata uniquely identifies services by their _Name_. Provide a name that distinguishes your deployment from other services, including other Redshift services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Name_. Provide a name that distinguishes your deployment from other services, including other ClickHouse services that you might be ingesting metadata from.
 
 #### Description
 
-Provide a description for your Redshift service that enables other users to determine whether it might provide data of interest to them.
+Provide a description for your ClickHouse service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (57).png>)
-
-
+![](<../../../.gitbook/assets/image (11).png>)
 
 ### 5. Configure service connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-![](<../../../.gitbook/assets/image (9).png>)
+![](<../../../.gitbook/assets/image (3).png>)
 
 #### Host
 
-Enter fully qualified hostname for your Redshift deployment in the _Host_ field.
+Enter fully qualified hostname for your ClickHouse deployment in the _Host_ field.
 
 #### Port
 
-Enter the port number on which your Redshift deployment listens for client connections in the _Port_ field.
+Enter the port number on which your ClickHouse deployment listens for client connections in the _Port_ field.
 
 #### Username
 
-Enter username of your Redshift user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter username of your ClickHouse user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 #### Password
 
-Enter the password for your Redshift user in the _Password_ field.&#x20;
+Enter the password for your ClickHouse user in the _Password_ field.&#x20;
 
 #### Database (optional)
 
@@ -569,9 +563,9 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 ### 6. Configure metadata ingestion
 
-In this step we will configure the metadata ingestion settings for your Redshift deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step we will configure the metadata ingestion settings for your ClickHouse deployment. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-![](<../../../.gitbook/assets/image (18).png>)
+![](<../../../.gitbook/assets/image (61).png>)
 
 #### Ingestion name
 
@@ -651,7 +645,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (67).png>)
+![](<../../../.gitbook/assets/image (16).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
@@ -659,7 +653,7 @@ If something doesn't look right, click the _Previous_ button to return to the ap
 
 ## Requirements
 
-Using the OpenMetadata Redshift connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Using the OpenMetadata ClickHouse connector requires supporting services and software. Please ensure your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
 
 
@@ -681,8 +675,6 @@ Please use the following command to check the version of Python you have.
 ```
 python3 --version
 ```
-
-
 
 ## Procedure
 
@@ -748,36 +740,36 @@ pip3 install --upgrade pip setuptools
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
 ```javascript
-pip3 install 'openmetadata-ingestion[redshift]'
+pip3 install 'openmetadata-ingestion[clickhouse]'
 ```
 
 
 
 ### 3. Create a configuration file using template JSON
 
-Create a new file called `redshift.json`. Copy and paste the configuration template below into the `redshift.json` file you created.
+Create a new file called `clickhouse.json`. Copy and paste the configuration template below into the `clickhouse.json` file you created.
 
 {% hint style="info" %}
 Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
 {% endhint %}
 
-{% code title="redshift.json" %}
+{% code title="clickhouse.json" %}
 ```json
 {
   "source": {
-    "type": "redshift",
+    "type": "clickhouse",
     "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+      "host_port": "hostname.domain.com:8123",
       "username": "username",
       "password": "strong_password",
-      "service_name": "aws_redshift",
-      "query": "select top 50 * from {}.{}",
+      "database": "clickhouse_db",
+      "service_name": "local_clickhouse",
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
         "excludes": ["[\\w]*event_vw.*"]
       },
       "schema_filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["clickhouse.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },
@@ -792,7 +784,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       "auth_provider_type": "no-auth"
     }
   }
-}
+}  
 ```
 {% endcode %}
 
@@ -800,25 +792,25 @@ Note: The `source.config` field in the configuration JSON will include the major
 
 ### 4. Configure service settings
 
-In this step we will configure the Redshift service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step we will configure the ClickHouse service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-####
+
 
 #### host\_port
 
-Edit the value for `source.config.host_port` in `redshift.json` for your Redshift deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.host_port` in `clickhouse.json` for your ClickHouse deployment. Use the `host:port` format illustrated in the example below.
 
 ```json
-"host_port": "cluster.name.region.redshift.amazonaws.com:5439"
+"host_port": "hostname.domain.com:8123"
 ```
 
-Please ensure that your Redshift deployment is reachable from the host you are using to run metadata ingestion.
+Please ensure that your ClickHouse deployment is reachable from the host you are using to run metadata ingestion.
 
-####
+
 
 #### username
 
-Edit the value for `source.config.username` to identify your Redshift user.
+Edit the value for `source.config.username` to identify your ClickHouse user.
 
 ```json
 "username": "username"
@@ -828,36 +820,36 @@ Edit the value for `source.config.username` to identify your Redshift user.
 Note: The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 {% endhint %}
 
-####
+
 
 #### password
 
-Edit the value for `source.config.password` with the password for your Redshift user.
+Edit the value for `source.config.password` with the password for your ClickHouse user.
 
 ```json
 "password": "strong_password"
 ```
 
-####
+
 
 #### service\_name
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Redshift services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other ClickHouse services that you might be ingesting metadata from.
 
 ```json
-"service_name": "aws_redshift"
+"service_name": "local_clickhouse"
 ```
 
-####
+
 
 #### database (optional)
 
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the Redshift connector will ingest metadata from all databases that the specified user is authorized to read.
+If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
 To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
 
 ```json
-"database": "warehouse"
+"database": "clickhouse_db"
 ```
 
 
@@ -884,7 +876,7 @@ Exclude views as follows.
 Note: `source.config.include_views` is set to `true` by default.
 {% endhint %}
 
-####
+
 
 #### include\_tables (optional)
 
@@ -906,7 +898,7 @@ Exclude tables as follows.
 Note: `source.config.include_tables` is set to `true` by default.
 {% endhint %}
 
-####
+
 
 #### table\_filter\_pattern (optional)
 
@@ -934,13 +926,13 @@ See the documentation for the [Python re module](https://docs.python.org/3/libra
 You may use either `excludes` or `includes` but not both in `table_filter_pattern.`
 {% endhint %}
 
-####
+
 
 #### schema\_filter\_pattern (optional)
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](redshift-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mysql.md#table\_filter\_pattern-optional). Please check that section for details.
 
 
 
@@ -1004,7 +996,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 
 ### 8. Confirm `sink` settings
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `redshift.json` in Step 3. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `sink` in the template code you copied into `clickhouse.json` in Step 3. This part of your configuration file should be as follows.
 
 ```json
 "sink": {
@@ -1017,7 +1009,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 
 ### 9. Confirm `metadata_server` settings
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `redshift.json` in Step 3. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `clickhouse.json` in Step 3. This part of your configuration file should be as follows.
 
 ```json
 "metadata_server": {
@@ -1033,48 +1025,27 @@ You need not make any changes to the fields defined for `metadata_server` in the
 
 ### 10. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
 
-Your `redshift.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Your `clickhouse.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
 To run an ingestion workflow, execute the following command from the `openmetadata` directory.
 
 ```bash
-metadata ingest -c ./redshift.json
+metadata ingest -c ./clickhouse.json
 ```
 
 ## Next Steps
 
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Redshift, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Redshift service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
+As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from ClickHouse, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the ClickHouse service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
 ![](<../../../.gitbook/assets/next\_steps (1).png>)
 
 ## Troubleshooting
 
-### Error: pg\_config executable not found
-
-When attempting to install the `openmetadata-ingestion[redshift]` Python package, you might encounter the following error.
-
-```
-pg_config is required to build psycopg2 from source.  Please add the directory
-containing pg_config to the $PATH or specify the full executable path with the
-option:
-
-    python setup.py build_ext --pg-config /path/to/pg_config build ...
-    
-or with the pg_config option in 'setup.cfg'.
-    
-If you prefer to avoid building psycopg2 from source, please install the PyPI
-'psycopg2-binary' package instead.
-```
-
-The psycopg2 package is a dependency for the `openmetadata-ingestion[redshift]` Python package. To correct this problem, please install PostgreSQL on your host system.
-
-Then re-run the install command in Step 2.
-
 
 
 ### ERROR: Failed building wheel for cryptography
 
-When attempting to install the `openmetadata-ingestion[redshift]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
+When attempting to install the `openmetadata-ingestion[clickhouse]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
 
 ```
 Failed to build cryptography
@@ -1097,13 +1068,14 @@ If you encounter the following error when attempting to run the ingestion workfl
 
 ```
 requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/aws_redshift 
+Max retries exceeded with url: /api/v1/services/databaseServices/name/local_clickhouse 
 (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, please follow the steps in the [Run OpenMetadata](https://docs.open-metadata.org/v/main/try-openmetadata/run-openmetadata) guide to deploy OpenMetadata in Docker on your local machine.
-
-Then re-run the metadata ingestion workflow in Step 10.
+To correct this problem, please follow the steps in the [Run OpenMetadata](https://docs.open-metadata.org/v/main/try-openmetadata/run-openmetadata) guide to deploy OpenMetadata in Docker on your local machine. Then re-run the metadata ingestion workflow in Step 10.
 {% endtab %}
 {% endtabs %}
+
+
+
