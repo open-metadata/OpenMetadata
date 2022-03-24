@@ -2,7 +2,7 @@
 
 ## Update conf/openmetadata-security.yaml
 
-Once the `client id` and `client secret` are generated, add `client id` as the value of the `clientId` field in the openmetadata-security.yaml file. See the snippet below for an example of where to place the `client id` value.
+* Once the `client id` and `client secret` are generated, add `client id` as the value of the `clientId` field in the openmetadata-security.yaml file. See the snippet below for an example of where to place the `client id` value.
 
 ```
 authenticationConfiguration:
@@ -13,7 +13,11 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-Then, update authorizerConfiguration to add adminPrincipals.
+* (Optional) Set the user principal fields
+
+`authenticationConfiguration.jwtPrincipalClaims` - Sets fields of the access token used for the OpenMetadata user. First of these fields that is present in the token is used. Default is `['email', 'preferred_username', 'sub']`.
+
+* Then, update authorizerConfiguration to add adminPrincipals.
 
 ```
 authorizerConfiguration:
