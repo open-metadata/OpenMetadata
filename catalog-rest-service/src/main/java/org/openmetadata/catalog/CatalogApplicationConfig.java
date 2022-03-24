@@ -21,6 +21,7 @@ import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.DefaultValue;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
@@ -92,6 +93,13 @@ public class CatalogApplicationConfig extends Configuration {
   @Getter
   @Setter
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
+
+  @JsonProperty("sandboxModeEnable")
+  @DefaultValue("false")
+  @Valid
+  @Getter
+  @Setter
+  private Boolean sandboxModeEnable;
 
   @Override
   public String toString() {

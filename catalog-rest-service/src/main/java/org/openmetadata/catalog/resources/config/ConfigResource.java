@@ -24,8 +24,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.AuthenticationConfiguration;
-import org.openmetadata.catalog.security.AuthorizerConfiguration;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -35,50 +33,34 @@ public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
 
   public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
-    this.catalogApplicationConfig = catalogApplicationConfig;
+    this.catalogApplicationConfig = new CatalogApplicationConfig();
+    // set only required, make sure we never return passwords or any such sensitive information.
+    this.catalogApplicationConfig.setAuthenticationConfiguration(
+        catalogApplicationConfig.getAuthenticationConfiguration());
+    this.catalogApplicationConfig.setAuthorizerConfiguration(catalogApplicationConfig.getAuthorizerConfiguration());
+    this.catalogApplicationConfig.setSandboxModeEnable(catalogApplicationConfig.getSandboxModeEnable());
+    this.catalogApplicationConfig.setServerFactory(null);
+    this.catalogApplicationConfig.setHealthConfiguration(null);
+    this.catalogApplicationConfig.setLoggingFactory(null);
+    this.catalogApplicationConfig.setAdminFactory(null);
+    this.catalogApplicationConfig.setMetricsFactory(null);
   }
 
   @GET
-  @Path(("/auth"))
+  @Path(("/"))
   @Operation(
-      summary = "Get auth configuration",
+      summary = "Get OpenMetadata Server configuration",
       tags = "general",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Auth configuration",
+            description = "Get OpenMetadata Server configuration",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
+                    schema = @Schema(implementation = CatalogApplicationConfig.class)))
       })
-  public AuthenticationConfiguration getAuthConfig() {
-    AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
-    if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {
-      authenticationConfiguration = catalogApplicationConfig.getAuthenticationConfiguration();
-    }
-    return authenticationConfiguration;
-  }
-
-  @GET
-  @Path(("/authorizer"))
-  @Operation(
-      summary = "Get authorizer configuration",
-      tags = "general",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Authorizer configuration",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = AuthorizerConfiguration.class)))
-      })
-  public AuthorizerConfiguration getAuthorizerConfig() {
-    AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
-    if (catalogApplicationConfig.getAuthorizerConfiguration() != null) {
-      authorizerConfiguration = catalogApplicationConfig.getAuthorizerConfiguration();
-    }
-    return authorizerConfiguration;
+  public CatalogApplicationConfig getOpenMetadataConfig() {
+    return catalogApplicationConfig;
   }
 }

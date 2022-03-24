@@ -22,6 +22,8 @@ server:
     - type: http
       port: ${SERVER_ADMIN_PORT:-8586}
 
+sandboxModeEnable: ${SANDBOX_MODE_ENABLE:-false}
+
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
 # is strongly recommended to run https instead. Note that only
