@@ -60,6 +60,33 @@ Docker Compose version v2.1.1
 Note: In previous releases of Docker compose functions were delivered with the `docker-compose` tool. OpenMetadata uses Compose V2. Please see the paragraphs above for instructions on installing Compose V2.
 {% endhint %}
 
+### Install Docker Compose Version 2.0.0 on Linux
+
+Follow the [instructions here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2.0.0
+
+1. Run the following command to download the current stable release of Docker Compose
+
+```
+DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+mkdir -p $DOCKER_CONFIG/cli-plugins
+curl -SL https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+```
+
+This command installs Compose V2 for the active user under `$HOME` directory. To install Docker Compose for all users on your system, replace `~/.docker/cli-plugins` with `/usr/local/lib/docker/cli-plugins`.
+
+2\. Apply executable permissions to the binary
+
+```
+chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+```
+
+3\. Test your installation
+
+```
+docker compose version
+Docker Compose version v2.2.3
+```
+
 ## Procedure
 
 ### 1. Create a directory for OpenMetadata
