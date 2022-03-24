@@ -13,7 +13,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - name: Build the stack
         run: DOCKER_BUILDKIT=1 docker compose --file docker/compose/docker-compose.yml up -d
-      - name: Test
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      - name: Install open-metadata dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_test install_dev generate install_all
+
+      - name: Wait for the stack to come up
         run: docker run --network container:openmetadata appropriate/curl -s --retry 10 --retry-connrefused http://openmetadata.example.com:8585/
+
+      - name: Run Python Tests & record coverage
+        run: |
+          source env/bin/activate
+          make coverage
