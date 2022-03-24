@@ -55,7 +55,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static String getFQN(Database database) {
     return (database != null && database.getService() != null)
-        ? (database.getService().getName() + "." + database.getName())
+        ? EntityUtil.getFQN(database.getService().getName(), database.getName())
         : null;
   }
 
@@ -66,7 +66,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void prepare(Database database) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(database));
     populateService(database);
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(

@@ -68,11 +68,11 @@ public abstract class EntityInterface<T> {
     return new EntityReference()
         .withId(getId())
         .withName(getFullyQualifiedName())
-        .withFullyQualifiedName(getFullyQualifiedName())
         .withDescription(getDescription())
         .withDisplayName(getDisplayName())
-        .withType(entityType) // TODO fixme
-        .withDeleted(isDeleted());
+        .withType(entityType)
+        .withDeleted(isDeleted())
+        .withHref(getHref());
   }
 
   public abstract T getEntity();

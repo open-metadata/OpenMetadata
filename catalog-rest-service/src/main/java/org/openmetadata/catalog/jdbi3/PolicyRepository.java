@@ -66,7 +66,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public static String getFQN(Policy policy) {
-    return (policy.getName());
+    return policy.getName();
   }
 
   @Transaction

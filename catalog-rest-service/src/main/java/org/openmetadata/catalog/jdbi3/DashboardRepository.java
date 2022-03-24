@@ -57,7 +57,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard != null && dashboard.getService() != null)
-        ? (dashboard.getService().getName() + "." + dashboard.getName())
+        ? EntityUtil.getFQN(dashboard.getService().getName(), dashboard.getName())
         : null;
   }
 
@@ -125,7 +125,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(dashboard));
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner

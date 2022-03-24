@@ -54,13 +54,12 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   public static String getFQN(Chart chart) {
     return (chart != null && chart.getService() != null)
-        ? (chart.getService().getName() + "." + chart.getName())
+        ? EntityUtil.getFQN(chart.getService().getName(), chart.getName())
         : null;
   }
 
   @Override
   public void prepare(Chart chart) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(chart));
     DashboardService dashboardService = Entity.getEntity(chart.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     chart.setService(new DashboardServiceEntityInterface(dashboardService).getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());

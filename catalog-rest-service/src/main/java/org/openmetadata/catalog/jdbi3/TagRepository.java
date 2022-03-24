@@ -74,7 +74,7 @@ public class TagRepository {
     // Validate category
     EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
 
-    String primaryTagFQN = category + "." + primaryTag;
+    String primaryTagFQN = EntityUtil.getFQN(category, primaryTag);
     EntityUtil.validate(primaryTag, dao.tagDAO().findTag(primaryTagFQN), Tag.class);
 
     return createTagInternal(primaryTagFQN, tag);
@@ -139,19 +139,19 @@ public class TagRepository {
       throws IOException {
     // Validate categoryName
     EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
-    String fqnPrefix = categoryName + "." + primaryTag;
+    String fqnPrefix = EntityUtil.getFQN(categoryName, primaryTag);
     return updateTag(fqnPrefix, secondaryTag, updated);
   }
 
   private Tag updateTag(String fqnPrefix, String tagName, Tag updated) throws IOException {
     // Validate tag that needs to be updated exists
-    String originalFQN = fqnPrefix + "." + tagName;
+    String originalFQN = EntityUtil.getFQN(fqnPrefix, tagName);
     Tag original = EntityUtil.validate(originalFQN, dao.tagDAO().findTag(originalFQN), Tag.class);
 
     if (!original.getName().equals(updated.getName())) {
       // Tag name changed
       LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
-      String updatedFQN = fqnPrefix + "." + updated.getName();
+      String updatedFQN = EntityUtil.getFQN(fqnPrefix, updated.getName());
       updateChildrenTagNames(originalFQN, updatedFQN);
       original.withName(updated.getName()).withFullyQualifiedName(updatedFQN);
     }
@@ -196,7 +196,7 @@ public class TagRepository {
     // First add the tag
     List<Tag> tags = tag.getChildren();
     tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
-    tag.setFullyQualifiedName(parentFQN + "." + tag.getName());
+    tag.setFullyQualifiedName(EntityUtil.getFQN(parentFQN, tag.getName()));
     dao.tagDAO().insertTag(JsonUtils.pojoToJson(tag));
     tag.setChildren(tags);
     LOG.info("Added tag {}", tag.getFullyQualifiedName());
@@ -204,7 +204,7 @@ public class TagRepository {
     // Then add the children
     for (Tag children : listOrEmpty(tags)) {
       children.setChildren(null); // No children allowed for the leaf tag
-      children.setFullyQualifiedName(children.getFullyQualifiedName() + "." + children.getName());
+      children.setFullyQualifiedName(EntityUtil.getFQN(children.getFullyQualifiedName(), children.getName()));
       LOG.info("Added tag {}", children.getFullyQualifiedName());
       dao.tagDAO().insertTag(JsonUtils.pojoToJson(children));
     }

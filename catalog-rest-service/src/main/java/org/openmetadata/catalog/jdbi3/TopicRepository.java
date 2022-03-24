@@ -44,7 +44,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public static String getFQN(Topic topic) {
     return (topic != null && topic.getService() != null)
-        ? (topic.getService().getName() + "." + topic.getName())
+        ? EntityUtil.getFQN(topic.getService().getName(), topic.getName())
         : null;
   }
 
@@ -66,7 +66,6 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void prepare(Topic topic) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(topic));
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
     topic.setServiceType(messagingService.getServiceType());

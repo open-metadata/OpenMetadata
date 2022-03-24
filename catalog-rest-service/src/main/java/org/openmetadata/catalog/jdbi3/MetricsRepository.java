@@ -48,7 +48,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   public static String getFQN(Metrics metrics) {
-    return (metrics.getService().getName() + "." + metrics.getName());
+    return (metrics != null && metrics.getService() != null)
+        ? EntityUtil.getFQN(metrics.getService().getName(), metrics.getName())
+        : null;
   }
 
   @Override
@@ -67,7 +69,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void prepare(Metrics metrics) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(metrics));
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));

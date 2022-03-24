@@ -49,7 +49,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   public static String getFQN(AirflowPipeline airflowPipeline) {
     return (airflowPipeline != null && airflowPipeline.getService() != null)
-        ? (airflowPipeline.getService().getName() + "." + airflowPipeline.getName())
+        ? EntityUtil.getFQN(airflowPipeline.getService().getName(), airflowPipeline.getName())
         : null;
   }
 
@@ -72,7 +72,6 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   @Override
   public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(airflowPipeline));
     EntityReference entityReference = Entity.getEntityReference(airflowPipeline.getService());
     airflowPipeline.setService(entityReference);
     airflowPipeline.setFullyQualifiedName(getFQN(airflowPipeline));

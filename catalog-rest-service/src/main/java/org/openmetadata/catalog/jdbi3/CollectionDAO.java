@@ -28,6 +28,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
@@ -757,11 +758,14 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    @SqlUpdate(
-        "DELETE from field_relationship WHERE "
-            + "(toFQN LIKE CONCAT(:fqnPrefix, '.%') OR fromFQN LIKE CONCAT(:fqnPrefix, '.%')) "
-            + "AND relation = :relation")
-    void deleteAllByPrefix(@Bind("fqnPrefix") String fqnPrefix, @Bind("relation") int relation);
+    default void deleteAllByPrefix(String fqnPrefix, int relation) {
+      String prefix = String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR);
+      String cond = String.format("WHERE (toFQN LIKE %s OR fromFQN LIKE %s) AND relation = %s)", prefix, relation);
+      deleteAllByPrefix(cond);
+    }
+
+    @SqlUpdate("DELETE from field_relationship <cond>")
+    void deleteAllByPrefix(@Define("cond") String cond);
 
     class ToFieldMapper implements RowMapper<List<String>> {
       @Override
@@ -1063,49 +1067,63 @@ public interface CollectionDAO {
       return new LocationEntityInterface(entity).getEntityReference();
     }
 
+    default int listPrefixesCount(String table, String nameColumn, String fqn, String service) {
+      return listPrefixesCountInternal(table, nameColumn, fqn, service + Entity.SEPARATOR);
+    }
+
     @SqlQuery(
         "SELECT count(*) FROM <table> WHERE "
             + "LEFT(:fqn, LENGTH(<nameColumn>)) = <nameColumn> AND "
-            + "<nameColumn> >= CONCAT(:service, '.') AND "
+            + "<nameColumn> >= :servicePrefix AND "
             + "<nameColumn> <= :fqn")
-    int listPrefixesCount(
+    int listPrefixesCountInternal(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
         @Bind("fqn") String fqn,
-        @Bind("service") String service);
+        @Bind("servicePrefix") String service);
+
+    default List<String> listPrefixesBefore(
+        String table, String nameColumn, String fqn, String service, int limit, String before) {
+      return listPrefixesBeforeInternal(table, nameColumn, fqn, service + Entity.SEPARATOR, limit, before);
+    }
 
     @SqlQuery(
         "SELECT json FROM ("
             + "SELECT <nameColumn>, json FROM <table> WHERE "
             + "LEFT(:fqn, LENGTH(<nameColumn>)) = <nameColumn> AND "
-            + "<nameColumn> >= CONCAT(:service, '.') AND "
+            + "<nameColumn> >= servicePrefix AND "
             + "<nameColumn> <= :fqn AND "
             + "<nameColumn> < :before "
             + "ORDER BY <nameColumn> DESC "
             + // Pagination ordering by chart fullyQualifiedName
             "LIMIT :limit"
             + ") last_rows_subquery ORDER BY <nameColumn>")
-    List<String> listPrefixesBefore(
+    List<String> listPrefixesBeforeInternal(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
         @Bind("fqn") String fqn,
-        @Bind("service") String service,
+        @Bind("servicePrefix") String servicePrefix,
         @Bind("limit") int limit,
         @Bind("before") String before);
+
+    default List<String> listPrefixesAfter(
+        String table, String nameColumn, String fqn, String service, int limit, String after) {
+      return listPrefixesAfterInternal(table, nameColumn, fqn, service + Entity.SEPARATOR, limit, after);
+    }
 
     @SqlQuery(
         "SELECT json FROM <table> WHERE "
             + "LEFT(:fqn, LENGTH(<nameColumn>)) = <nameColumn> AND "
-            + "<nameColumn> >= CONCAT(:service, '.') AND "
+            + "<nameColumn> >= :servicePrefix AND "
             + "<nameColumn> <= :fqn AND "
             + "<nameColumn> > :after "
             + "ORDER BY <nameColumn> "
             + "LIMIT :limit")
-    List<String> listPrefixesAfter(
+    List<String> listPrefixesAfterInternal(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
         @Bind("fqn") String fqn,
-        @Bind("service") String service,
+        @Bind("servicePrefix") String servicePrefix,
         @Bind("limit") int limit,
         @Bind("after") String after);
   }
@@ -1171,8 +1189,12 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM tag_category ORDER BY name")
     List<String> listCategories();
 
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') ORDER BY fullyQualifiedName")
-    List<String> listChildrenTags(@Bind("fqnPrefix") String fqnPrefix);
+    default List<String> listChildrenTags(String fqnPrefix) {
+      return listChildrenTagsInternal(String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR));
+    }
+
+    @SqlQuery("SELECT json FROM tag " + "WHERE fullyQualifiedName LIKE :fqnPrefix " + "ORDER BY fullyQualifiedName")
+    List<String> listChildrenTagsInternal(@Bind("fqnPrefix") String fqnPrefix);
 
     @SqlQuery("SELECT json FROM tag_category WHERE name = :name")
     String findCategory(@Bind("name") String name);

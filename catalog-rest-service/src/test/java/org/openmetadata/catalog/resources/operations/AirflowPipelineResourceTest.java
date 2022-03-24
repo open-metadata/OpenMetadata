@@ -63,6 +63,7 @@ import org.openmetadata.catalog.api.operations.pipelines.PipelineConfig;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.operations.pipelines.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.operations.pipelines.DatabaseServiceQueryUsagePipeline;
@@ -78,6 +79,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -238,7 +240,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
                 .withStartDate(startDate.toString()),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = BIGQUERY_REFERENCE.getName() + "." + ingestion.getName();
+    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     validatePipelineConfig(INGESTION_CONFIG, ingestion.getPipelineConfig());
     assertEquals(startDate.toString(), ingestion.getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getConcurrency());
@@ -276,7 +278,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
                 .withStartDate(startDate.toString()),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = BIGQUERY_REFERENCE.getName() + "." + ingestion.getName();
+    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     validatePipelineConfig(queryUsageConfig, ingestion.getPipelineConfig());
     assertEquals(startDate.toString(), ingestion.getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getConcurrency());
@@ -307,7 +309,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
                 .withStartDate(startDate.toString()),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = BIGQUERY_REFERENCE.getName() + "." + ingestion.getName();
+    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     assertEquals(startDate.toString(), ingestion.getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -368,7 +370,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
             OK,
             ADMIN_AUTH_HEADERS);
 
-    String expectedFQN = BIGQUERY_REFERENCE.getName() + "." + ingestion.getName();
+    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     validatePipelineConfig(INGESTION_CONFIG, ingestion.getPipelineConfig());
     assertEquals(startDate.toString(), ingestion.getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getConcurrency());
@@ -407,11 +409,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
             .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
     DatabaseService snowflakeDatabaseService =
         databaseServiceResourceTest.createEntity(createSnowflakeService, ADMIN_AUTH_HEADERS);
-    EntityReference snowflakeRef =
-        new EntityReference()
-            .withName(snowflakeDatabaseService.getName())
-            .withId(snowflakeDatabaseService.getId())
-            .withType(Entity.DATABASE_SERVICE);
+    EntityReference snowflakeRef = new DatabaseServiceEntityInterface(snowflakeDatabaseService).getEntityReference();
 
     CreateDatabaseService createBigQueryService =
         new CreateDatabaseService()
@@ -420,11 +418,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
             .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
     DatabaseService databaseService =
         databaseServiceResourceTest.createEntity(createBigQueryService, ADMIN_AUTH_HEADERS);
-    EntityReference bigqueryRef =
-        new EntityReference()
-            .withName(databaseService.getName())
-            .withId(databaseService.getId())
-            .withType(Entity.DATABASE_SERVICE);
+    EntityReference bigqueryRef = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     CreateAirflowPipeline requestPipeline_1 =
         createRequest(test)

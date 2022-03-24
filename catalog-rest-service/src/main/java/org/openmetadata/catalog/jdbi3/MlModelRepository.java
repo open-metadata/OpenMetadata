@@ -60,7 +60,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   public static String getFQN(MlModel model) {
-    return (model.getName());
+    return model.getName();
   }
 
   @Transaction
@@ -97,7 +97,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlSources.forEach(
         s -> {
           if (s.getDataSource() != null) {
-            s.setFullyQualifiedName(s.getDataSource().getName() + "." + s.getName());
+            s.setFullyQualifiedName(EntityUtil.getFQN(s.getDataSource().getName(), s.getName()));
           } else {
             s.setFullyQualifiedName(s.getName());
           }
@@ -107,7 +107,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
         f -> {
-          String featureFqn = parentFQN + "." + f.getName();
+          String featureFqn = EntityUtil.getFQN(parentFQN, f.getName());
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {
             setMlFeatureSourcesFQN(f.getFeatureSources());
@@ -134,7 +134,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void prepare(MlModel mlModel) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(mlModel));
     mlModel.setFullyQualifiedName(getFQN(mlModel));
 
     if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
