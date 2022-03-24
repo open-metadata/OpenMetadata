@@ -211,11 +211,11 @@ def reset_db_om(docker):
 
 def ingest_sample_data(docker):
     if docker.container.inspect("openmetadata_server").state.running:
-        BASE_URL = "http://localhost:8080/api"
-        DAGS = ["sample_data", "sample_usage", "index_metadata"]
+        base_url = "http://localhost:8080/api"
+        dags = ["sample_data", "sample_usage", "index_metadata"]
 
         client_config = ClientConfig(
-            base_url=BASE_URL,
+            base_url=base_url,
             auth_header="Authorization",
             auth_token_mode="Basic",
             access_token=to_native_string(
@@ -224,12 +224,12 @@ def ingest_sample_data(docker):
         )
         client = REST(client_config)
 
-        for DAG in DAGS:
+        for dag in dags:
             json_sample_data = {
-                "dag_run_id": "{}_{}".format(DAG, datetime.now()),
+                "dag_run_id": "{}_{}".format(dag, datetime.now()),
             }
-            resp = client.post(
-                "/dags/{}/dagRuns".format(DAG), data=json.dumps(json_sample_data)
+            client.post(
+                "/dags/{}/dagRuns".format(dag), data=json.dumps(json_sample_data)
             )
 
     else:
