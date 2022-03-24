@@ -38,11 +38,9 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 3. [Create a configuration file using template JSON](delta-lake.md#3.-create-a-configuration-file-using-template-json)
 4. [Configure service settings](delta-lake.md#4.-configure-service-settings)
 5. [Configure data filters (optional)](delta-lake.md#5.-.-configure-data-filters-optional)
-6. [Configure sample data (optional)](delta-lake.md#8.-configure-sample-data-optional)
-7. [Configure DBT (optional)](delta-lake.md#9.-configure-dbt-optional)
-8. [Confirm sink settings](delta-lake.md#10.-confirm-sink-settings)
-9. [Confirm metadata\_server settings](delta-lake.md#11.-confirm-metadata\_server-settings)
-10. [Run ingestion workflow](delta-lake.md#run-manually)
+6. [Confirm sink settings](delta-lake.md#6.-confirm-sink-settings)
+7. [Confirm metadata\_server settings](delta-lake.md#9.-confirm-metadata\_server-settings)
+8. [Run ingestion workflow](delta-lake.md#run-manually)
 
 ### 1. Prepare a Python virtual environment
 
@@ -116,6 +114,7 @@ Note: The `source.config` field in the configuration JSON will include the major
       },
       "schema_filter_pattern": {
         "excludes": ["deltalake.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      },
     }
   },
   "sink": {
@@ -165,46 +164,6 @@ To specify a single database to ingest metadata from, provide the name of the da
 
 ### 5.  Configure data filters (optional)
 
-#### include\_views (optional)
-
-Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
-
-Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```json
-"include_views": "true"
-```
-
-Exclude views as follows.
-
-```json
-"include_views": "false"
-```
-
-{% hint style="info" %}
-Note: `source.config.include_views` is set to `true` by default.
-{% endhint %}
-
-#### include\_tables (optional)
-
-Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
-
-Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```json
-"include_tables": "true"
-```
-
-Exclude tables as follows.
-
-```json
-"include_tables": "false"
-```
-
-{% hint style="info" %}
-Note: `source.config.include_tables` is set to `true` by default.
-{% endhint %}
-
 #### table\_filter\_pattern (optional)
 
 Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
@@ -237,57 +196,7 @@ Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_fil
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](delta-lake.md#table\_filter\_pattern-optional). Please check that section for details.
 
-### 6. Configure sample data (optional)
-
-#### generate\_sample\_data (optional)
-
-Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
-
-![](../../.gitbook/assets/generate\_sample\_data.png)
-
-Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```json
-"generate_sample_data": "true"
-```
-
-If set to true, the connector will collect the first 50 rows of data from each table included in ingestion, and catalog that data as sample data, which users can refer to in the OpenMetadata user interface.
-
-You can exclude the collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```json
-"generate_sample_data": "false"
-```
-
-{% hint style="info" %}
-Note: `generate_sample_data` is set to `true` by default.
-{% endhint %}
-
-### 7. Configure DBT (optional)
-
-DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
-
-![](../../.gitbook/assets/configure\_dbt.png)
-
-To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
-
-#### dbt\_manifest\_file (optional)
-
-Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
-
-```json
-"dbt_manifest_file": "./dbt/manifest.json"
-```
-
-#### dbt\_catalog\_file (optional)
-
-Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
-
-```json
-"dbt_catalog_file": "./dbt/catalog.json"
-```
-
-### 8. Confirm sink settings
+### 6. Confirm sink settings
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `deltalake.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -298,7 +207,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-### 9. Confirm metadata\_server settings
+### 7. Confirm metadata\_server settings
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `deltalake.json` in Step 4. This part of your configuration file should be as follows.
 
@@ -312,7 +221,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-### 10. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
+### 8. Run ingestion workflow <a href="#run-manually" id="run-manually"></a>
 
 Your `deltalake.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
