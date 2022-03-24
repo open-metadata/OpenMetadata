@@ -37,7 +37,6 @@ public class ConfigResource {
     // set only required, make sure we never return passwords or any such sensitive information.
     this.catalogApplicationConfig.setAuthenticationConfiguration(
         catalogApplicationConfig.getAuthenticationConfiguration());
-    this.catalogApplicationConfig.setAuthorizerConfiguration(catalogApplicationConfig.getAuthorizerConfiguration());
     this.catalogApplicationConfig.setSandboxModeEnable(catalogApplicationConfig.getSandboxModeEnable());
     this.catalogApplicationConfig.setServerFactory(null);
     this.catalogApplicationConfig.setHealthConfiguration(null);
