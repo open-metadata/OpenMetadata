@@ -21,6 +21,7 @@
   * [BigQuery](integrations/connectors/bigquery/README.md)
     * [BigQuery Metadata Extraction](integrations/connectors/bigquery/bigquery-metadata-extraction.md)
     * [BigQuery Usage](integrations/connectors/bigquery/bigquery-usage.md)
+    * [BigQuery in the UI](integrations/connectors/bigquery/bigquery-in-the-ui.md)
   * [ClickHouse](integrations/connectors/clickhouse/README.md)
     * [ClickHouse Metadata Extraction](integrations/connectors/clickhouse/clickhouse-metadata-extraction.md)
     * [ClickHouse Usage](integrations/connectors/clickhouse/clickhouse-usage.md)
