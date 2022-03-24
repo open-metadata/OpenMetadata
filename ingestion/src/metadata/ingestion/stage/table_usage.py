@@ -23,6 +23,7 @@ from metadata.ingestion.models.table_queries import (
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.stage.file import FileStageConfig
+from metadata.utils.helpers import _get_formmated_table_name
 
 logger = logging.getLogger(__name__)
 
@@ -37,19 +38,22 @@ def get_table_column_join(table, table_aliases, joins, database):
             jtable, column = join.split(".")[-2:]
             if (
                 table == jtable
+                or jtable == table.split(".")
                 or table == f"{database}.{jtable}"
                 or jtable in table_aliases
             ):
                 table_column = TableColumn(
-                    table=table_aliases[jtable] if jtable in table_aliases else jtable,
+                    table=_get_formmated_table_name(
+                        table_aliases[jtable] if jtable in table_aliases else jtable
+                    ),
                     column=column,
                 )
             else:
                 joined_with.append(
                     TableColumn(
-                        table=table_aliases[jtable]
-                        if jtable in table_aliases
-                        else jtable,
+                        table=_get_formmated_table_name(
+                            table_aliases[jtable] if jtable in table_aliases else jtable
+                        ),
                         column=column,
                     )
                 )
@@ -116,7 +120,7 @@ class TableUsageStage(Stage[QueryParserData]):
                             joins.append(tbl_column_join)
 
                     table_usage_count = TableUsageCount(
-                        table=table,
+                        table=_get_formmated_table_name(table),
                         database=record.database,
                         date=record.date,
                         joins=joins,

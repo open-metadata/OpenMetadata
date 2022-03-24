@@ -27,7 +27,11 @@ from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.utils.helpers import get_raw_extract_iter, get_start_and_end
+from metadata.utils.helpers import (
+    get_raw_extract_iter,
+    get_start_and_end,
+    ingest_lineage,
+)
 from metadata.utils.sql_queries import MSSQL_SQL_USAGE_STATEMENT
 
 
@@ -53,6 +57,7 @@ class MssqlUsageSource(Source[TableQuery]):
         self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
+        self.metadata_config = metadata_config
         self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
         self.alchemy_helper = SQLAlchemyHelper(
             config, metadata_config, ctx, DatabaseServiceType.MSSQL.value, self.sql_stmt
@@ -100,6 +105,14 @@ class MssqlUsageSource(Source[TableQuery]):
             else:
                 self.report.scanned(f"{row['database_name']}")
             yield table_query
+
+            query_info = {
+                "sql": table_query.sql,
+                "from_type": "table",
+                "to_type": "table",
+                "service_name": self.config.service_name,
+            }
+            ingest_lineage(query_info, self.metadata_config)
 
     def get_report(self):
         """
