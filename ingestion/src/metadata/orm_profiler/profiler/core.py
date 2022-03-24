@@ -30,9 +30,10 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
 )
 from metadata.orm_profiler.metrics.static.row_count import RowCount
-from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
+from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.utils import logger
+from metadata.utils.timeout import cls_timeout
 
 logger = logger()
 
@@ -42,6 +43,52 @@ class MissingMetricException(Exception):
     Raise when building the profiler with Composed Metrics
     and not all the required metrics are present
     """
+
+
+class QueryRunner:
+    """
+    Handles the query runs and returns the results
+    to the caller.
+
+    The goal of this class is abstract a bit
+    how to get the query results. Moreover,
+    we can then wrap it up with a timeout
+    to make sure that methods executed from this class
+    won't take more than X seconds to execute.
+    """
+
+    def __init__(
+        self,
+        session: Session,
+        table: DeclarativeMeta,
+        sample: Union[DeclarativeMeta, AliasedClass],
+    ):
+        self._session = session
+        self._table = table
+        self._sample = sample
+
+    def _build_query(self, *entities, **kwargs) -> Query:
+        return self._session.query(*entities, **kwargs)
+
+    def _select_from_sample(self, *entities, **kwargs):
+        return self._build_query(*entities, **kwargs).select_from(self._sample)
+
+    def select_first_from_table(self, *entities, **kwargs):
+        return self._build_query(*entities, **kwargs).select_from(self._table).first()
+
+    def select_first_from_sample(self, *entities, **kwargs):
+        return self._select_from_sample(*entities, **kwargs).first()
+
+    def select_all_from_sample(self, *entities, **kwargs):
+        return self._select_from_sample(*entities, **kwargs).all()
+
+    @staticmethod
+    def select_first_from_query(query: Query):
+        return query.first()
+
+    @staticmethod
+    def select_all_from_query(query: Query):
+        return query.all()
 
 
 class Profiler(Generic[MetricType]):
@@ -63,6 +110,7 @@ class Profiler(Generic[MetricType]):
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
         profile_sample: Optional[float] = None,
+        timeout_seconds: Optional[int] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -81,8 +129,9 @@ class Profiler(Generic[MetricType]):
         self._ignore_cols = ignore_cols
         self._use_cols = use_cols
         self._profile_sample = profile_sample
-
         self._profile_date = profile_date
+
+        self.validate_composed_metric()
 
         # Initialize profiler results
         self._table_results: Dict[str, Any] = {}
@@ -92,9 +141,15 @@ class Profiler(Generic[MetricType]):
         self._columns: Optional[List[Column]] = None
 
         # We will compute the sample from the property
+        self._sampler = Sampler(
+            session=session, table=table, profile_sample=profile_sample
+        )
         self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
 
-        self.validate_composed_metric()
+        # Prepare a timeout controlled query runner
+        self.runner: QueryRunner = cls_timeout(timeout_seconds)(
+            QueryRunner(session=session, table=table, sample=self.sample)
+        )
 
     @property
     def session(self) -> Session:
@@ -122,10 +177,6 @@ class Profiler(Generic[MetricType]):
         and ignoring the specified ones.
         """
         return self._use_cols
-
-    @property
-    def profile_sample(self) -> Optional[float]:
-        return self._profile_sample
 
     @property
     def profile_date(self) -> datetime:
@@ -181,31 +232,8 @@ class Profiler(Generic[MetricType]):
 
     @property
     def sample(self):
-        """
-        Either return a sampled CTE of table, or
-        the full table if no sampling is required.
-        """
         if not self._sample:
-
-            if not self.profile_sample:
-                # Use the full table
-                self._sample = self.table
-
-            else:
-                # Add new RandomNumFn column
-                rnd = self.session.query(
-                    self.table, (RandomNumFn() % 100).label("random")
-                ).cte(f"{self.table.__tablename__}_rnd")
-
-                # Prepare sampled CTE
-                sampled = (
-                    self.session.query(rnd)
-                    .where(rnd.c.random <= self.profile_sample)
-                    .cte(f"{self.table.__tablename__}_sample")
-                )
-
-                # Assign as an alias
-                self._sample = aliased(self.table, sampled)
+            self._sample = self._sampler.random_sample()
 
         return self._sample
 
@@ -238,13 +266,11 @@ class Profiler(Generic[MetricType]):
             return
 
         try:
-            query = self.session.query(
+            row = self.runner.select_first_from_sample(
                 *[metric(col).fn() for metric in col_metrics]
-            ).select_from(self.sample)
-
-            row = query.first()
+            )
             self._column_results[col.name].update(dict(row))
-        except Exception as err:
+        except (TimeoutError, Exception) as err:
             logger.warning(
                 f"Error trying to compute column profile for {col.name} - {err}"
             )
@@ -266,11 +292,9 @@ class Profiler(Generic[MetricType]):
         if not table_metrics:
             return
 
-        query = self.session.query(
+        row = self.runner.select_first_from_table(
             *[metric().fn() for metric in table_metrics]
-        ).select_from(self.table)
-
-        row = query.first()
+        )
         if row:
             self._table_results.update(dict(row))
 
@@ -292,7 +316,7 @@ class Profiler(Generic[MetricType]):
                 if not metric_query:
                     continue
                 if col_metric.metric_type == dict:
-                    query_res = metric_query.all()
+                    query_res = self.runner.select_all_from_query(metric_query)
                     # query_res has the shape of List[Row], where each row is a dict,
                     # e.g., [{colA: 1, colB: 2},...]
                     # We are going to transform this into a Dict[List] by pivoting, so that
@@ -303,12 +327,12 @@ class Profiler(Generic[MetricType]):
                     self._column_results[col.name].update({metric.name(): data})
 
                 else:
-                    row = metric_query.first()
+                    row = self.runner.select_first_from_query(metric_query)
                     self._column_results[col.name].update(dict(row))
 
-            except Exception as err:  # pylint: disable=broad-except
+            except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
                 logger.error(
-                    f"Exception encountered computing {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
+                    f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
                 )
                 self.session.rollback()
 
