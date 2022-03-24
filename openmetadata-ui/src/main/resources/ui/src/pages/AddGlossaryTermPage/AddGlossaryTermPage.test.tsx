@@ -13,7 +13,7 @@
 
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
-import GlossaryPageV1 from './GlossaryPageV1.component';
+import AddGlossaryTermPage from './AddGlossaryTermPage.component';
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
@@ -34,23 +34,25 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
-jest.mock('../../components/Glossary/GlossaryV1.component', () => {
-  return jest.fn().mockReturnValue(<div>Glossary.component</div>);
+jest.mock('../../components/AddGlossaryTerm/AddGlossaryTerm.component', () => {
+  return jest.fn().mockReturnValue(<div>AddGlossaryTerm.component</div>);
 });
 
 jest.mock('../../axiosAPIs/glossaryAPI', () => ({
-  getGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
+  addGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
+  getGlossariesByName: jest.fn().mockImplementation(() => Promise.resolve()),
+  getGlossaryTermByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-describe('Test GlossaryComponent page', () => {
-  it('GlossaryComponent Page Should render', async () => {
-    const { container } = render(<GlossaryPageV1 />);
+describe('Test AddGlossaryTerm component page', () => {
+  it('AddGlossaryTerm component page should render', async () => {
+    const { container } = render(<AddGlossaryTermPage />);
 
-    const glossaryComponent = await findByText(
+    const addGlossaryTerm = await findByText(
       container,
-      /Glossary.component/i
+      /AddGlossaryTerm.component/i
     );
 
-    expect(glossaryComponent).toBeInTheDocument();
+    expect(addGlossaryTerm).toBeInTheDocument();
   });
 });

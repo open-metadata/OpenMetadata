@@ -44,11 +44,6 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import {
-  onConfirmText,
-  onErrorText,
-  onUpdatedConversastionError,
-} from '../../constants/feed.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -56,6 +51,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -121,13 +117,38 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
+  const handleShowSuccessToast = (message: string) => {
+    showToast({
+      variant: 'success',
+      body: message,
+    });
+  };
+
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN)).then(
-      (res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-        setEntityFieldThreadCount(res.data.counts);
-      }
-    );
+    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN))
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setFeedCount(res.data.totalCount);
+          setEntityFieldThreadCount(res.data.counts);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-count-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        handleShowErrorToast(errMsg);
+      });
   };
 
   const fetchActivityFeed = () => {
@@ -135,25 +156,22 @@ const TopicDetailsPage: FunctionComponent = () => {
     getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN))
       .then((res: AxiosResponse) => {
         const { data } = res.data;
-        setEntityThread(data);
+        if (data) {
+          setEntityThread(data);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-error']
+          );
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching entity feeds',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-error'];
+        handleShowErrorToast(errMsg);
       })
       .finally(() => setIsentityThreadLoading(false));
   };
-
-  useEffect(() => {
-    if (topicDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTopicTab(tab));
-    }
-    if (TabSpecificField.ACTIVITY_FEED === tab) {
-      fetchActivityFeed();
-    }
-  }, [tab]);
 
   const saveUpdatedTopicData = (updatedData: Topic): Promise<AxiosResponse> => {
     const jsonPatch = compare(topicDetails, updatedData);
@@ -168,80 +186,86 @@ const TopicDetailsPage: FunctionComponent = () => {
     setLoading(true);
     getTopicByFqn(topicFQN, ['owner', 'followers', 'tags'])
       .then((res: AxiosResponse) => {
-        const {
-          id,
-          deleted,
-          description,
-          followers,
-          fullyQualifiedName,
-          name,
-          schemaType,
-          schemaText,
-          service,
-          tags,
-          owner,
-          partitions,
-          cleanupPolicies,
-          maximumMessageSize,
-          replicationFactor,
-          retentionSize,
-          serviceType,
-          version,
-        } = res.data;
-        setName(name);
-        setTopicDetails(res.data);
-        setTopicId(id);
-        setCurrentVersion(version);
-        setDescription(description ?? '');
-        setSchemaType(schemaType);
-        setFollowers(followers);
-        setOwner(owner);
-        setTier(getTierTags(tags));
-        setTags(getTagsWithoutTier(tags));
-        setSchemaText(schemaText);
-        setPartitions(partitions);
-        setCleanupPolicies(cleanupPolicies);
-        setMaximumMessageSize(maximumMessageSize);
-        setReplicationFactor(replicationFactor);
-        setRetentionSize(retentionSize);
-        setDeleted(deleted);
-        setSlashedTopicName([
-          {
-            name: service.name,
-            url: service.name
-              ? getServiceDetailsPath(
-                  service.name,
-                  ServiceCategory.MESSAGING_SERVICES
-                )
-              : '',
-            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-          },
-          {
-            name: name,
-            url: '',
-            activeTitle: true,
-          },
-        ]);
+        if (res.data) {
+          const {
+            id,
+            deleted,
+            description,
+            followers,
+            fullyQualifiedName,
+            name,
+            schemaType,
+            schemaText,
+            service,
+            tags,
+            owner,
+            partitions,
+            cleanupPolicies,
+            maximumMessageSize,
+            replicationFactor,
+            retentionSize,
+            serviceType,
+            version,
+          } = res.data;
+          setName(name);
+          setTopicDetails(res.data);
+          setTopicId(id);
+          setCurrentVersion(version);
+          setDescription(description ?? '');
+          setSchemaType(schemaType);
+          setFollowers(followers);
+          setOwner(owner);
+          setTier(getTierTags(tags));
+          setTags(getTagsWithoutTier(tags));
+          setSchemaText(schemaText);
+          setPartitions(partitions);
+          setCleanupPolicies(cleanupPolicies);
+          setMaximumMessageSize(maximumMessageSize);
+          setReplicationFactor(replicationFactor);
+          setRetentionSize(retentionSize);
+          setDeleted(deleted);
+          setSlashedTopicName([
+            {
+              name: service.name,
+              url: service.name
+                ? getServiceDetailsPath(
+                    service.name,
+                    ServiceCategory.MESSAGING_SERVICES
+                  )
+                : '',
+              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+            },
+            {
+              name: name,
+              url: '',
+              activeTitle: true,
+            },
+          ]);
 
-        addToRecentViewed({
-          entityType: EntityType.TOPIC,
-          fqn: fullyQualifiedName,
-          serviceType: serviceType,
-          timestamp: 0,
-        });
-        setLoading(false);
+          addToRecentViewed({
+            entityType: EntityType.TOPIC,
+            fqn: fullyQualifiedName,
+            serviceType: serviceType,
+            timestamp: 0,
+          });
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-table-details-error']
+          );
+          setIsError(true);
+        }
       })
       .catch((err: AxiosError) => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg = err.message || 'Error while fetching topic details';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
+          const errMsg =
+            err.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-topic-details-error'];
+          handleShowErrorToast(errMsg);
         }
-
+      })
+      .finally(() => {
         setLoading(false);
       });
   };
@@ -249,54 +273,67 @@ const TopicDetailsPage: FunctionComponent = () => {
   const followTopic = () => {
     addFollower(topicId, USERId)
       .then((res: AxiosResponse) => {
-        const { newValue } = res.data.changeDescription.fieldsAdded[0];
+        if (res.data) {
+          const { newValue } = res.data.changeDescription.fieldsAdded[0];
 
-        setFollowers([...followers, ...newValue]);
+          setFollowers([...followers, ...newValue]);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-entity-follow-error']
+          );
+        }
       })
       .catch((err: AxiosError) => {
         const errMsg =
-          err.response?.data.message || 'Error while following entity.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['update-entity-follow-error'];
+        handleShowErrorToast(errMsg);
       });
   };
+
   const unfollowTopic = () => {
     removeFollower(topicId, USERId)
       .then((res: AxiosResponse) => {
-        const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+        if (res.data) {
+          const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-        setFollowers(
-          followers.filter((follower) => follower.id !== oldValue[0].id)
-        );
+          setFollowers(
+            followers.filter((follower) => follower.id !== oldValue[0].id)
+          );
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-entity-unfollow-error']
+          );
+        }
       })
       .catch((err: AxiosError) => {
         const errMsg =
-          err.response?.data.message || 'Error while unfollowing entity.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['update-entity-unfollow-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
   const descriptionUpdateHandler = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic)
       .then((res: AxiosResponse) => {
-        const { description, version } = res.data;
-        setCurrentVersion(version);
-        setTopicDetails(res.data);
-        setDescription(description);
-        getEntityFeedCount();
+        if (res.data) {
+          const { description, version } = res.data;
+          setCurrentVersion(version);
+          setTopicDetails(res.data);
+          setDescription(description);
+          getEntityFeedCount();
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-description-error']
+          );
+        }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data.message || 'Error while updating description.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        const msg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['update-description-error'];
+        handleShowErrorToast(msg);
       });
   };
 
@@ -304,21 +341,25 @@ const TopicDetailsPage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedTopicData(updatedTopic)
         .then((res) => {
-          setTopicDetails(res.data);
-          setCurrentVersion(res.data.version);
-          setOwner(res.data.owner);
-          setTier(getTierTags(res.data.tags));
-          getEntityFeedCount();
-          resolve();
+          if (res.data) {
+            setTopicDetails(res.data);
+            setCurrentVersion(res.data.version);
+            setOwner(res.data.owner);
+            setTier(getTierTags(res.data.tags));
+            getEntityFeedCount();
+            resolve();
+          } else {
+            handleShowErrorToast(
+              jsonData['api-error-messages']['update-entity-error']
+            );
+          }
         })
         .catch((err: AxiosError) => {
-          const errMsg =
-            err.response?.data.message || 'Error while updating entity.';
+          const msg =
+            err.response?.data?.message ||
+            jsonData['api-error-messages']['update-entity-error'];
+          handleShowErrorToast(msg);
           reject();
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
         });
     });
   };
@@ -326,18 +367,22 @@ const TopicDetailsPage: FunctionComponent = () => {
   const onTagUpdate = (updatedTopic: Topic) => {
     saveUpdatedTopicData(updatedTopic)
       .then((res: AxiosResponse) => {
-        setTier(getTierTags(res.data.tags));
-        setCurrentVersion(res.data.version);
-        setTags(getTagsWithoutTier(res.data.tags));
-        getEntityFeedCount();
+        if (res.data) {
+          setTier(getTierTags(res.data.tags));
+          setCurrentVersion(res.data.version);
+          setTags(getTagsWithoutTier(res.data.tags));
+          getEntityFeedCount();
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['update-tags-error']
+          );
+        }
       })
       .catch((err: AxiosError) => {
         const errMsg =
-          err.response?.data.message || 'Error while updating tags.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['update-tags-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -367,31 +412,41 @@ const TopicDetailsPage: FunctionComponent = () => {
               }
             });
           });
+          getEntityFeedCount();
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['add-feed-error']
+          );
         }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while posting feed',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['add-feed-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res: AxiosResponse) => {
-        setEntityThread((pre) => [...pre, res.data]);
-        getEntityFeedCount();
-        showToast({
-          variant: 'success',
-          body: 'Conversation created successfully',
-        });
+        if (res.data) {
+          setEntityThread((pre) => [...pre, res.data]);
+          getEntityFeedCount();
+          handleShowSuccessToast(
+            jsonData['api-success-messages']['create-conversation']
+          );
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['create-conversation-error']
+          );
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while creating the conversation',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['create-conversation-error'];
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -400,38 +455,57 @@ const TopicDetailsPage: FunctionComponent = () => {
       .then(() => {
         getUpdatedThread(threadId)
           .then((data) => {
-            setEntityThread((pre) => {
-              return pre.map((thread) => {
-                if (thread.id === data.id) {
-                  return {
-                    ...thread,
-                    posts: data.posts.slice(-3),
-                    postsCount: data.postsCount,
-                  };
-                } else {
-                  return thread;
-                }
+            if (data) {
+              setEntityThread((pre) => {
+                return pre.map((thread) => {
+                  if (thread.id === data.id) {
+                    return {
+                      ...thread,
+                      posts: data.posts.slice(-3),
+                      postsCount: data.postsCount,
+                    };
+                  } else {
+                    return thread;
+                  }
+                });
               });
-            });
+            } else {
+              handleShowErrorToast(
+                jsonData['api-error-messages'][
+                  'fetch-updated-conversation-error'
+                ]
+              );
+            }
           })
-          .catch((error) => {
-            const message = error?.message;
-            showToast({
-              variant: 'error',
-              body: message ?? onUpdatedConversastionError,
-            });
+          .catch((error: AxiosError) => {
+            const message =
+              error?.response?.data?.message ||
+              jsonData['api-error-messages'][
+                'fetch-updated-conversation-error'
+              ];
+            handleShowErrorToast(message);
           });
 
-        showToast({
-          variant: 'success',
-          body: onConfirmText,
-        });
+        handleShowSuccessToast(
+          jsonData['api-success-messages']['delete-message']
+        );
       })
-      .catch((error) => {
-        const message = error?.message;
-        showToast({ variant: 'error', body: message ?? onErrorText });
+      .catch((error: AxiosError) => {
+        const message =
+          error?.response?.data?.message ||
+          jsonData['api-error-messages']['delete-message-error'];
+        handleShowErrorToast(message);
       });
   };
+
+  useEffect(() => {
+    if (topicDetailsTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentTopicTab(tab));
+    }
+    if (TabSpecificField.ACTIVITY_FEED === tab) {
+      fetchActivityFeed();
+    }
+  }, [tab]);
 
   useEffect(() => {
     getEntityFeedCount();

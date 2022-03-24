@@ -148,7 +148,7 @@ const AddGlossary = ({
             className={classNames('tw-w-16 tw-h-10', {
               'tw-opacity-40': !allowAccess,
             })}
-            data-testid="save-webhook"
+            data-testid="save-glossary"
             size="regular"
             theme="primary"
             variant="contained"
@@ -183,7 +183,7 @@ const AddGlossary = ({
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <h6 className="tw-heading tw-text-base">{header}</h6>
-      <div className="tw-pb-3">
+      <div className="tw-pb-3" data-testid="add-glossary">
         <Field>
           <label className="tw-block tw-form-label" htmlFor="name">
             {requiredField('Name:')}
