@@ -202,11 +202,9 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  public static class UserEntityInterface implements EntityInterface<User> {
-    private final User entity;
-
+  public static class UserEntityInterface extends EntityInterface<User> {
     public UserEntityInterface(User entity) {
-      this.entity = entity;
+      super(Entity.USER, entity);
     }
 
     @Override
@@ -257,18 +255,6 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.USER)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override

@@ -72,9 +72,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a dashboard in the format 'ServiceName.ChartName'.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",

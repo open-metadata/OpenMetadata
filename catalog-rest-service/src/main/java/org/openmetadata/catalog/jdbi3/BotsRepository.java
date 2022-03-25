@@ -59,11 +59,9 @@ public class BotsRepository extends EntityRepository<Bots> {
     /* Nothing to do */
   }
 
-  public static class BotsEntityInterface implements EntityInterface<Bots> {
-    private final Bots entity;
-
+  public static class BotsEntityInterface extends EntityInterface<Bots> {
     public BotsEntityInterface(Bots entity) {
-      this.entity = entity;
+      super(Entity.BOTS, entity);
     }
 
     @Override
@@ -119,17 +117,6 @@ public class BotsRepository extends EntityRepository<Bots> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.BOTS)
-          .withDeleted(isDeleted());
     }
 
     @Override

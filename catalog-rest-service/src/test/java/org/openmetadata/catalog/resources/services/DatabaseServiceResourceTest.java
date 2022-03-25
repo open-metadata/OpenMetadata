@@ -72,7 +72,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         "services/databaseServices",
         "owner");
     this.supportsPatch = false;
-    this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
 

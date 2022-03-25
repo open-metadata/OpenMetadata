@@ -34,6 +34,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
+import static org.openmetadata.catalog.util.EntityUtil.getFQN;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -61,7 +62,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -128,6 +128,7 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -209,7 +210,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // check the FQN
     Database db = new DatabaseResourceTest().getEntity(table.getDatabase().getId(), null, ADMIN_AUTH_HEADERS);
-    String expectedFQN = db.getFullyQualifiedName() + "." + table.getName();
+    String expectedFQN = EntityUtil.getFQN(db.getFullyQualifiedName(), table.getName());
     assertEquals(expectedFQN, table.getFullyQualifiedName());
   }
 
@@ -224,10 +225,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTableConstraints(List.of(constraint));
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Column column = created.getColumns().get(0);
-    assertEquals("col_DOT_umn", column.getName());
-    assertTrue(column.getDisplayName().contains("col.umn"));
-    assertTrue(column.getFullyQualifiedName().contains("col_DOT_umn"));
-    assertEquals("col_DOT_umn", created.getTableConstraints().get(0).getColumns().get(0));
+    assertEquals("col.umn", column.getName());
+    assertTrue(column.getFullyQualifiedName().contains("col.umn"));
+    assertEquals("col.umn", created.getTableConstraints().get(0).getColumns().get(0));
   }
 
   @Test
@@ -407,21 +407,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     c2_b.withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // Add new tag to c2.b tag
     change
         .getFieldsAdded()
-        .add(new FieldChange().withName("columns.c2.b.tags").withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
+        .add(
+            new FieldChange()
+                .withName(getFQN("columns", "c2", "b", "tags"))
+                .withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     Column c2_c_e = getColumn("e", INT, USER_ADDRESS_TAG_LABEL);
     c2_c.getChildren().add(c2_c_e); // Add c2.c.e
-    change.getFieldsAdded().add(new FieldChange().withName("columns.c2.c").withNewValue(List.of(c2_c_e)));
+    change.getFieldsAdded().add(new FieldChange().withName(getFQN("columns", "c2", "c")).withNewValue(List.of(c2_c_e)));
 
     change
         .getFieldsDeleted()
-        .add(new FieldChange().withName("columns.c2").withOldValue(List.of(c2.getChildren().get(0))));
+        .add(new FieldChange().withName(getFQN("columns", "c2")).withOldValue(List.of(c2.getChildren().get(0))));
     c2.getChildren().remove(0); // Remove c2.a from struct
 
     Column c2_f = getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL);
     c2.getChildren().add(c2_f); // Add c2.f
     create2 = create2.withColumns(Arrays.asList(c1_new, c2));
-    change.getFieldsAdded().add(new FieldChange().withName("columns.c2").withNewValue(List.of(c2_f)));
+    change.getFieldsAdded().add(new FieldChange().withName(getFQN("columns", "c2")).withNewValue(List.of(c2_f)));
 
     // Update the columns with PUT operation and validate update
     // c1 array<int>                                   --> c1 array<chart
@@ -524,7 +527,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getFieldsUpdated()
         .add(
             new FieldChange()
-                .withName("columns.c1.constraint")
+                .withName(getFQN("columns", "c1", "constraint"))
                 .withOldValue(ColumnConstraint.NULL)
                 .withNewValue(ColumnConstraint.NOT_NULL));
 
@@ -533,7 +536,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getFieldsUpdated()
         .add(
             new FieldChange()
-                .withName("columns.c2.constraint")
+                .withName(getFQN("columns", "c2", "constraint"))
                 .withOldValue(ColumnConstraint.UNIQUE)
                 .withNewValue(ColumnConstraint.PRIMARY_KEY));
 
@@ -544,12 +547,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     request.getColumns().get(0).withConstraint(null);
     change
         .getFieldsDeleted()
-        .add(new FieldChange().withName("columns.c1.constraint").withOldValue(ColumnConstraint.NOT_NULL));
+        .add(new FieldChange().withName(getFQN("columns", "c1", "constraint")).withOldValue(ColumnConstraint.NOT_NULL));
 
     request.getColumns().get(1).withConstraint(null);
     change
         .getFieldsDeleted()
-        .add(new FieldChange().withName("columns.c2.constraint").withOldValue(ColumnConstraint.PRIMARY_KEY));
+        .add(
+            new FieldChange()
+                .withName(getFQN("columns", "c2", "constraint"))
+                .withOldValue(ColumnConstraint.PRIMARY_KEY));
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -587,7 +593,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     ChangeDescription change = getChangeDescription(table.getVersion());
     change
         .getFieldsAdded()
-        .add(new FieldChange().withName("columns.c1.tags").withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
+        .add(new FieldChange().withName(getFQN("columns", "c1", "tags")).withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated
@@ -617,7 +623,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //
     c2.setDataLength(20);
     change = getChangeDescription(table.getVersion());
-    String fieldName = "columns.c2.dataLength";
+    String fieldName = getFQN("columns", "c2", "dataLength");
     change.getFieldsUpdated().add(new FieldChange().withName(fieldName).withOldValue(10).withNewValue(20));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -653,15 +659,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table3 = createAndCheckEntity(createRequest(test, 3), ADMIN_AUTH_HEADERS);
 
     // Fully qualified names for table1, table2, table3 columns
-    String t1c1 = table1.getFullyQualifiedName() + ".c1";
-    String t1c2 = table1.getFullyQualifiedName() + ".c2";
-    String t1c3 = table1.getFullyQualifiedName() + ".c3";
-    String t2c1 = table2.getFullyQualifiedName() + ".c1";
-    String t2c2 = table2.getFullyQualifiedName() + ".c2";
-    String t2c3 = table2.getFullyQualifiedName() + ".c3";
-    String t3c1 = table3.getFullyQualifiedName() + ".c1";
-    String t3c2 = table3.getFullyQualifiedName() + ".c2";
-    String t3c3 = table3.getFullyQualifiedName() + ".c3";
+    String t1c1 = EntityUtil.getFQN(table1.getFullyQualifiedName(), "c1");
+    String t1c2 = EntityUtil.getFQN(table1.getFullyQualifiedName(), "c2");
+    String t1c3 = EntityUtil.getFQN(table1.getFullyQualifiedName(), "c3");
+    String t2c1 = EntityUtil.getFQN(table2.getFullyQualifiedName(), "c1");
+    String t2c2 = EntityUtil.getFQN(table2.getFullyQualifiedName(), "c2");
+    String t2c3 = EntityUtil.getFQN(table2.getFullyQualifiedName(), "c3");
+    String t3c1 = EntityUtil.getFQN(table3.getFullyQualifiedName(), "c1");
+    String t3c2 = EntityUtil.getFQN(table3.getFullyQualifiedName(), "c2");
+    String t3c3 = EntityUtil.getFQN(table3.getFullyQualifiedName(), "c3");
 
     List<ColumnJoin> reportedJoins =
         Arrays.asList(
@@ -1472,36 +1478,30 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .get(0)
         .withDescription("new0") // Set new description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
+    // Column c1 has new description
     change
         .getFieldsAdded()
-        .add(
-            new FieldChange().withName("columns.c1.description").withNewValue("new0")); // Column c1 has new description
+        .add(new FieldChange().withName(getFQN("columns", "c1", "description")).withNewValue("new0"));
+    //  Column c1 got new tags
     change
         .getFieldsAdded()
-        .add(
-            new FieldChange()
-                .withName("columns.c1.tags")
-                .withNewValue(List.of(GLOSSARY1_TERM1_LABEL))); //  Column c1 got new tags
+        .add(new FieldChange().withName(getFQN("columns", "c1", "tags")).withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     columns
         .get(1)
         .withDescription("new1") // Change description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
+    // Column c2 description changed
     change
         .getFieldsUpdated()
         .add(
-            new FieldChange()
-                .withName("columns.c2.description")
-                .withNewValue("new1")
-                .withOldValue("c2")); // Column c2 description changed
+            new FieldChange().withName(getFQN("columns", "c2", "description")).withNewValue("new1").withOldValue("c2"));
 
     columns.get(2).withTags(new ArrayList<>()); // Remove tag
+    // Column c3 tags were removed
     change
         .getFieldsDeleted()
-        .add(
-            new FieldChange()
-                .withName("columns.c3.tags")
-                .withOldValue(List.of(GLOSSARY1_TERM1_LABEL))); // Column c3 tags were removed
+        .add(new FieldChange().withName(getFQN("columns", "c3", "tags")).withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
@@ -2018,15 +2018,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertEquals(expected, actual);
       return;
     }
-    List<TableConstraint> copy = new ArrayList<>();
-    actual.forEach(c -> copy.add(cloneAndUnescape(c)));
-    assertEquals(expected, copy);
-  }
-
-  private TableConstraint cloneAndUnescape(TableConstraint constraint) {
-    return new TableConstraint()
-        .withConstraintType(constraint.getConstraintType())
-        .withColumns(constraint.getColumns().stream().map(e -> e.replace("_DOT_", ".")).collect(Collectors.toList()));
+    assertEquals(expected, actual);
   }
 
   @Override

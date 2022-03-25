@@ -78,11 +78,9 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     setOwner(entity, entity.getOwner());
   }
 
-  public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
-    private final StorageService entity;
-
+  public static class StorageServiceEntityInterface extends EntityInterface<StorageService> {
     public StorageServiceEntityInterface(StorageService entity) {
-      this.entity = entity;
+      super(Entity.STORAGE_SERVICE, entity);
     }
 
     @Override
@@ -143,17 +141,6 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.STORAGE_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

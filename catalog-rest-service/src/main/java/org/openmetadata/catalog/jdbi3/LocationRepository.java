@@ -78,7 +78,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
       throws IOException, ParseException {
-    String service = fqn.split("\\.")[0];
+    String service = EntityUtil.splitFQN(fqn)[0];
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
         daoCollection
@@ -114,7 +114,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
       throws IOException, ParseException {
-    String service = fqn.split("\\.")[0];
+    String service = EntityUtil.splitFQN(fqn)[0];
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
         daoCollection
@@ -154,7 +154,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   public static String getFQN(Location location) {
     return (location != null && location.getService() != null)
-        ? (location.getService().getName() + "." + location.getName())
+        ? EntityUtil.getFQN(location.getService().getName(), location.getName())
         : null;
   }
 
@@ -173,7 +173,6 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public void prepare(Location location) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(location));
     StorageService storageService = getService(location.getService().getId(), location.getService().getType());
     location.setService(
         new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
@@ -235,11 +234,9 @@ public class LocationRepository extends EntityRepository<Location> {
     }
   }
 
-  public static class LocationEntityInterface implements EntityInterface<Location> {
-    private final Location entity;
-
+  public static class LocationEntityInterface extends EntityInterface<Location> {
     public LocationEntityInterface(Location entity) {
-      this.entity = entity;
+      super(Entity.LOCATION, entity);
     }
 
     @Override
@@ -297,17 +294,6 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public long getUpdatedAt() {
       return entity.getUpdatedAt();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.LOCATION)
-          .withDeleted(isDeleted());
     }
 
     @Override

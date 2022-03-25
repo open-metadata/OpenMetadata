@@ -60,7 +60,6 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   public RoleResourceTest() {
     super(Entity.ROLE, Role.class, RoleList.class, "roles", null);
-    this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
 

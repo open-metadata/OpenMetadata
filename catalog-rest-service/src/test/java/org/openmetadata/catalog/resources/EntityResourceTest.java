@@ -164,7 +164,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   protected final boolean supportsFollowers;
   protected boolean supportsOwner;
   protected final boolean supportsTags;
-  protected boolean supportsDots = true;
   protected boolean supportsPatch = true;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsAuthorizedMetadataOperations = true;
@@ -373,11 +372,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
 
-    USER_ADDRESS_TAG_LABEL = getTagLabel("User.Address");
-    PERSONAL_DATA_TAG_LABEL = getTagLabel("PersonalData.Personal");
-    PII_SENSITIVE_TAG_LABEL = getTagLabel("PII.Sensitive");
-    TIER1_TAG_LABEL = getTagLabel("Tier.Tier1");
-    TIER2_TAG_LABEL = getTagLabel("Tier.Tier2");
+    USER_ADDRESS_TAG_LABEL = getTagLabel(EntityUtil.getFQN("User", "Address"));
+    PERSONAL_DATA_TAG_LABEL = getTagLabel(EntityUtil.getFQN("PersonalData", "Personal"));
+    PII_SENSITIVE_TAG_LABEL = getTagLabel(EntityUtil.getFQN("PII", "Sensitive"));
+    TIER1_TAG_LABEL = getTagLabel(EntityUtil.getFQN("Tier", "Tier1"));
+    TIER2_TAG_LABEL = getTagLabel(EntityUtil.getFQN("Tier", "Tier2"));
 
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
@@ -704,7 +703,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         // Find container name by removing parentContainer fqn from container fqn
         // Example: remove "service" from "service.database" to get "database" container name for table
         String parentOfContainer = containerTest.getContainer().getName();
-        containerName = container.getName().replace(parentOfContainer + ".", "");
+        containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
       Object request = containerTest.createRequest(containerName, "", "", null);
       containerTest.updateEntity(request, Status.OK, ADMIN_AUTH_HEADERS);
@@ -882,18 +881,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void post_entityWithDots_200(TestInfo test) throws HttpResponseException {
-    if (!supportsDots) {
-      return;
-    }
     String name = String.format("%s_%s_foo.bar", entityType, test.getDisplayName());
     final K request = createRequest(name, null, null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    assertEquals(name, entityInterface.getDisplayName());
-    String[] split = entityInterface.getFullyQualifiedName().split("\\.");
+    String[] split = entityInterface.getFullyQualifiedName().split("\\/");
     String actualName = split[split.length - 1];
-    assertTrue(actualName.contains("foo_DOT_bar"));
-    assertFalse(actualName.contains("foo.bar"));
+    assertTrue(actualName.contains("foo.bar"));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1212,13 +1206,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL);
       change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(entityInterface.getTags()));
     }
-    if (supportsDots) {
-      change
-          .getFieldsUpdated()
-          .add(new FieldChange().withName("displayName").withOldValue(oldDisplayName).withNewValue("displayName"));
-    } else {
-      change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
-    }
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName("displayName").withOldValue(oldDisplayName).withNewValue("displayName"));
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
@@ -1262,18 +1252,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<TagLabel> removedTags = entityInterface.getTags();
 
     entityInterface.setDescription(null);
-    if (!supportsDots) {
-      entityInterface.setDisplayName(null);
-    }
     entityInterface.setOwner(null);
     entityInterface.setTags(null);
 
     // Field changes
     change = getChangeDescription(entityInterface.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
-    if (!supportsDots) {
-      change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
-    }
     if (supportsOwner) {
       change.getFieldsDeleted().add(new FieldChange().withName("owner").withOldValue(USER_OWNER1));
     }

@@ -39,7 +39,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   public StorageServiceResourceTest() {
     super(Entity.STORAGE_SERVICE, StorageService.class, StorageServiceList.class, "services/storageServices", "owner");
     this.supportsPatch = false;
-    this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
 

@@ -49,6 +49,7 @@ import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.CreateTagCategory.TagCategoryType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -99,7 +100,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   @Test
   void get_validTag_200() throws HttpResponseException {
     // GET .../tags/{category}/{tag} returns requested tag
-    Tag tag = getTag("User.Address", ADMIN_AUTH_HEADERS);
+    Tag tag = getTag(EntityUtil.getFQN("User", "Address"), ADMIN_AUTH_HEADERS);
     String parentURI = BASE_URL + "/User";
     validateHRef(parentURI, tag);
   }
@@ -107,7 +108,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   @Test
   void get_nonExistentTag_404() {
     // GET .../tags/{category}/{nonExistent} returns 404 Not found
-    String tagFQN = "User.NonExistent";
+    String tagFQN = EntityUtil.getFQN("User", "NonExistent");
     assertResponse(() -> getTag(tagFQN, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound("Tag", tagFQN));
   }
 
@@ -446,7 +447,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   public static Tag getTag(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    String[] split = fqn.split("\\.");
+    String[] split = EntityUtil.splitFQN(fqn);
     WebTarget target;
     if (split.length == 1) {
       target = getResource("tags/" + split[0]);

@@ -69,7 +69,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         GlossaryTermResource.GlossaryTermList.class,
         "glossaryTerms",
         GlossaryTermResource.FIELDS);
-    supportsDots = false;
     supportsAuthorizedMetadataOperations = false; // TODO why?
   }
 
@@ -271,7 +270,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Validate fully qualified name
     String fqn = entity.getParent() == null ? entity.getGlossary().getName() : entity.getParent().getName();
-    fqn = fqn + "." + entity.getName();
+    fqn = EntityUtil.getFQN(fqn, entity.getName());
     assertEquals(fqn, entity.getFullyQualifiedName());
 
     // Validate glossary that holds this term is present

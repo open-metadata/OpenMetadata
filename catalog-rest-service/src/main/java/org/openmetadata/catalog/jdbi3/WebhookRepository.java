@@ -46,7 +46,6 @@ import org.openmetadata.catalog.resources.events.WebhookResource;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
@@ -164,11 +163,9 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     return daoCollection.webhookDAO().delete(id) > 0;
   }
 
-  public static class WebhookEntityInterface implements EntityInterface<Webhook> {
-    private final Webhook entity;
-
+  public static class WebhookEntityInterface extends EntityInterface<Webhook> {
     public WebhookEntityInterface(Webhook entity) {
-      this.entity = entity;
+      super(Entity.WEBHOOK, entity);
     }
 
     @Override
@@ -214,17 +211,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     @Override
     public long getUpdatedAt() {
       return entity.getUpdatedAt();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.WEBHOOK)
-          .withDeleted(isDeleted());
     }
 
     @Override

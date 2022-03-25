@@ -34,10 +34,7 @@
     },
     "name": {
       "description": "Name that identifies this messaging service.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "serviceType": {
       "description": "Type of messaging service such as Kafka or Pulsar...",

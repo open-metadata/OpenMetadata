@@ -57,7 +57,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard != null && dashboard.getService() != null)
-        ? (dashboard.getService().getName() + "." + dashboard.getName())
+        ? EntityUtil.getFQN(dashboard.getService().getName(), dashboard.getName())
         : null;
   }
 
@@ -125,7 +125,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(dashboard));
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
@@ -212,11 +211,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     updater.recordChange("charts", origChartIds, updatedChartIds);
   }
 
-  public static class DashboardEntityInterface implements EntityInterface<Dashboard> {
-    private final Dashboard entity;
-
+  public static class DashboardEntityInterface extends EntityInterface<Dashboard> {
     public DashboardEntityInterface(Dashboard entity) {
-      this.entity = entity;
+      super(Entity.DASHBOARD, entity);
     }
 
     @Override
@@ -284,18 +281,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DASHBOARD)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override

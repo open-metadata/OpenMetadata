@@ -1,222 +1,222 @@
 {
   "name": "User",
   "categoryType": "Descriptive",
-  "description": "Tags related to describing User related data. These tags are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with `User.PhoneNumber` tag. The associated `PII` and `PersonalData` tags are automatically applied. This is done to help users producing the data  focus on describing the data without being policy experts. The associated tags take care of applying classification tags automatically.",
+  "description": "Tags related to describing User related data. These tags are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with `User.PhoneNumber` tag. The associated `PII<separator> and `PersonalData<separator> tags are automatically applied. This is done to help users producing the data  focus on describing the data without being policy experts. The associated tags take care of applying classification tags automatically.",
   "children": [
     {
       "name": "Address",
       "description": "User's address.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "BankAccount",
       "description": "Bank account number of the user.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "CreditCardNumber",
       "description": "Credit card number of the user.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Driver'sLicense",
       "description": "User's driver's license image or number.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Email",
       "description": "User's email address.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "FacePhoto",
       "description": "User's face photo.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Login",
       "description": "User's login name or other identities used for login purposes.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Name",
       "description": "Name of the user. This includes full name or partial first name or last name.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "NationalId",
       "description": "National identification number of the user. This varies from country to country. See [National identification number](https://en.wikipedia.org/wiki/National_identification_number) for more details.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Passport",
       "description": "User's passport information that includes passport number and passport images.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Phone",
       "description": "User's phone number.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "SocialMedia",
       "description": "User's social media profile information.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "SSN",
       "description": "User's Social Security Number. This might be National Identification Number in some countries.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "TaxId",
       "description": "User's Tax Identification Number.",
       "associatedTags": [
-        "PII.Sensitive",
-        "PersonalData.Personal"
+        "PII<separator>Sensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "DOB",
       "description": "User's date of birth.",
       "associatedTags": [
-        "PII.nonSensitive",
-        "PersonalData.Personal"
+        "PII<separator>nonSensitive",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Ethnicity",
       "description": "Ethnicity of the user.",
       "associatedTags": [
-        "PII.nonSensitive",
-        "PersonalData.SpecialCategory"
+        "PII<separator>nonSensitive",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "Gender",
       "description": "Gender of the user.",
       "associatedTags": [
-        "PII.nonSensitive",
-        "PersonalData.SpecialCategory"
+        "PII<separator>nonSensitive",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "MaritalStatus",
       "description": "Marital status of the user.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.Personal"
+        "PII<separator>None",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "IPAddress",
       "description": "User's online IP address information.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.Personal"
+        "PII<separator>None",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Password",
       "description": "User's password.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.Personal"
+        "PII<separator>None",
+        "PersonalData<separator>Personal"
       ]
     },
     {
       "name": "Biometric",
       "description": "Biometric information of the user, such as Face recognition, Iris Recognition, Fingerprint, Voice Recognition, Hand geometry, and Behavior characteristics.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.SpecialCategory"
+        "PII<separator>None",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "Genetic",
       "description": "User's generic data acquired through DNA or RNA analysis.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.SpecialCategory"
+        "PII<separator>None",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "MedicalRecords",
       "description": "User's medical records that tracks events and transaction between user and health care provider.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.SpecialCategory"
+        "PII<separator>None",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "Politics",
       "description": "User's political opinions",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.SpecialCategory"
+        "PII<separator>None",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "Religion",
       "description": "User's religion information, religious and philosophical beliefs.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.SpecialCategory"
+        "PII<separator>None",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "SexualOrientation",
       "description": "User's sexual orientation.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.SpecialCategory"
+        "PII<separator>None",
+        "PersonalData<separator>SpecialCategory"
       ]
     },
     {
       "name": "TradeUnions",
       "description": "User's trade union membership information.",
       "associatedTags": [
-        "PII.None",
-        "PersonalData.SpecialCategory"
+        "PII<separator>None",
+        "PersonalData<separator>SpecialCategory"
       ]
     }
   ]

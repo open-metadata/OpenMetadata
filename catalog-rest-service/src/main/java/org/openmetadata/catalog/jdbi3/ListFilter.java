@@ -2,6 +2,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.openmetadata.catalog.Entity;
 
 public class ListFilter {
   Map<String, String> queryParams = new HashMap<>();
@@ -56,8 +57,8 @@ public class ListFilter {
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fullyQualifiedName LIKE '%s.%%'", fqnPrefix)
-        : String.format("%s.fullyQualifiedName LIKE '%s.%%'", tableName, fqnPrefix);
+        ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
+        : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
   }
 
   private String addCondition(String condition1, String condition2) {

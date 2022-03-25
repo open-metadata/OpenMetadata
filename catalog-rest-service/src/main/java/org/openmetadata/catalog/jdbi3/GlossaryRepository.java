@@ -122,11 +122,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
-  public static class GlossaryEntityInterface implements EntityInterface<Glossary> {
-    private final Glossary entity;
-
+  public static class GlossaryEntityInterface extends EntityInterface<Glossary> {
     public GlossaryEntityInterface(Glossary entity) {
-      this.entity = entity;
+      super(Entity.GLOSSARY, entity);
     }
 
     @Override
@@ -192,17 +190,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.GLOSSARY)
-          .withDeleted(isDeleted());
     }
 
     @Override

@@ -48,7 +48,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   public static String getFQN(Metrics metrics) {
-    return (metrics.getService().getName() + "." + metrics.getName());
+    return (metrics != null && metrics.getService() != null)
+        ? EntityUtil.getFQN(metrics.getService().getName(), metrics.getName())
+        : null;
   }
 
   @Override
@@ -67,7 +69,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void prepare(Metrics metrics) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(metrics));
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
@@ -110,11 +111,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));
   }
 
-  static class MetricsEntityInterface implements EntityInterface<Metrics> {
-    private final Metrics entity;
-
+  static class MetricsEntityInterface extends EntityInterface<Metrics> {
     MetricsEntityInterface(Metrics entity) {
-      this.entity = entity;
+      super(Entity.METRICS, entity);
     }
 
     @Override
@@ -180,17 +179,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.METRICS)
-          .withDeleted(isDeleted());
     }
 
     @Override

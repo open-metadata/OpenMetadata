@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.SEPARATOR;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -226,7 +227,7 @@ public final class TestUtils {
     if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
         .contains(ref.getType())) {
       // FullyQualifiedName has "." as separator
-      assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
+      assertTrue(ref.getName().contains(SEPARATOR), "entity name is not fully qualified - " + ref.getName());
     }
   }
 

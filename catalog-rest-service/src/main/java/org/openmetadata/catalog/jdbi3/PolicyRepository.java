@@ -66,7 +66,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public static String getFQN(Policy policy) {
-    return (policy.getName());
+    return policy.getName();
   }
 
   @Transaction
@@ -248,11 +248,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
         policy.getId(), policy.getLocation().getId(), Entity.POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
   }
 
-  public static class PolicyEntityInterface implements EntityInterface<Policy> {
-    private final Policy entity;
-
+  public static class PolicyEntityInterface extends EntityInterface<Policy> {
     public PolicyEntityInterface(Policy entity) {
-      this.entity = entity;
+      super(Entity.POLICY, entity);
     }
 
     @Override
@@ -312,17 +310,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.POLICY)
-          .withDeleted(isDeleted());
     }
 
     @Override

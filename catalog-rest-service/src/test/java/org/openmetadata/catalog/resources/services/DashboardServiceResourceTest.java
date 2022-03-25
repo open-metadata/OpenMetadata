@@ -55,7 +55,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         "services/dashboardServices",
         "owner");
     this.supportsPatch = false;
-    this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
 

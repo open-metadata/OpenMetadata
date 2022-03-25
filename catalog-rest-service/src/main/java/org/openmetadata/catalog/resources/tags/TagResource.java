@@ -53,6 +53,7 @@ import org.openmetadata.catalog.type.CreateTag;
 import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -94,6 +95,7 @@ public class TagResource {
             LOG.info("Loading tag definitions from file {}", tagFile);
             String tagJson =
                 IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
+            tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             // TODO hack for now
             long now = System.currentTimeMillis();
@@ -210,7 +212,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    String fqn = category + "." + primaryTag;
+    String fqn = EntityUtil.getFQN(category, primaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
@@ -257,7 +259,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    String fqn = category + "." + primaryTag + "." + secondaryTag;
+    String fqn = EntityUtil.getFQN(category, primaryTag, secondaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category + "/" + primaryTag);
