@@ -348,26 +348,6 @@ Exclude views as follows.
 
 #### ****
 
-#### **include\_tables (optional)**
-
-Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
-
-Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```javascript
-"include_tables": "true"
-```
-
-Exclude tables as follows.
-
-```javascript
-"include_tables": "false"
-```
-
-{% hint style="info" %}
-**Note:** `source.config.include_tables` is set to true by default.
-{% endhint %}
-
 ****
 
 **table\_filter\_pattern (optional)**
@@ -617,16 +597,6 @@ Explicitly include tables by adding a list of comma-separated regular expression
 #### Exclude (Table Filter Pattern)
 
 Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.&#x20;
-
-#### Include (Schema Filter Pattern)
-
-Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
-
-Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
-
-#### Exclude (Schema Filter Pattern)
-
-Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
 **Include views (toggle)**
 
@@ -1013,26 +983,6 @@ Exclude views as follows.
 {% endhint %}
 
 #### ****
-
-#### **include\_tables (optional)**
-
-Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
-
-Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```javascript
-"include_tables": "true"
-```
-
-Exclude tables as follows.
-
-```javascript
-"include_tables": "false"
-```
-
-{% hint style="info" %}
-**Note:** `source.config.include_tables` is set to true by default.
-{% endhint %}
 
 ****
 
