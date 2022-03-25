@@ -69,6 +69,7 @@ const jsonData = {
     'update-entity-unfollow-error': 'Error while unfollowing entity!',
     'update-ingestion-error': 'Error while updating ingestion workflow',
     'update-service-config-error': 'Error while updating ingestion workflow',
+    'unexpected-server-response': 'Unexpected response from server!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',

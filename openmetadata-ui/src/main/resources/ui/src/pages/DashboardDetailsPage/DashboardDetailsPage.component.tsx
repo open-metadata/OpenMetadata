@@ -162,16 +162,17 @@ const DashboardDetailsPage = () => {
   const getEntityFeedCount = () => {
     getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN))
       .then((res: AxiosResponse) => {
-        if (res.data) {
+        if (!res.data) {
           setFeedCount(res.data.totalCount);
           setEntityFieldThreadCount(res.data.counts);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['fetch-entity-feed-count-error'];
         handleShowErrorToast(errMsg);
       });
@@ -252,12 +253,13 @@ const DashboardDetailsPage = () => {
         if (res.data) {
           setEntityLineage(res.data);
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const msg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['fetch-lineage-error'];
         handleShowErrorToast(msg);
       })
@@ -328,7 +330,7 @@ const DashboardDetailsPage = () => {
         } else {
           setIsError(true);
 
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -337,6 +339,7 @@ const DashboardDetailsPage = () => {
         } else {
           const errMsg =
             err.response?.data?.message ||
+            err ||
             jsonData['api-error-messages']['fetch-dashboard-details-error'];
           handleShowErrorToast(errMsg);
         }
@@ -367,12 +370,13 @@ const DashboardDetailsPage = () => {
             if (data) {
               setEntityThread(data);
             } else {
-              throw '';
+              jsonData['api-error-messages']['unexpected-server-response'];
             }
           })
           .catch((err: AxiosError) => {
             const errMsg =
               err.response?.data?.message ||
+              err ||
               jsonData['api-error-messages']['fetch-entity-feed-error'];
             handleShowErrorToast(errMsg);
           })
@@ -396,12 +400,13 @@ const DashboardDetailsPage = () => {
           setDescription(description);
           getEntityFeedCount();
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const msg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-description-error'];
         handleShowErrorToast(msg);
       });
@@ -415,12 +420,13 @@ const DashboardDetailsPage = () => {
 
           setFollowers([...followers, ...newValue]);
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-entity-follow-error'];
         handleShowErrorToast(errMsg);
       });
@@ -435,12 +441,13 @@ const DashboardDetailsPage = () => {
             followers.filter((follower) => follower.id !== oldValue[0].id)
           );
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-entity-unfollow-error'];
         handleShowErrorToast(errMsg);
       });
@@ -455,12 +462,13 @@ const DashboardDetailsPage = () => {
           setTags(getTagsWithoutTier(res.data.tags));
           getEntityFeedCount();
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-tags-error'];
         handleShowErrorToast(errMsg);
       });
@@ -480,12 +488,13 @@ const DashboardDetailsPage = () => {
             getEntityFeedCount();
             resolve();
           } else {
-            throw '';
+            jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
         .catch((err: AxiosError) => {
           const msg =
             err.response?.data?.message ||
+            err ||
             jsonData['api-error-messages']['update-entity-error'];
           handleShowErrorToast(msg);
           reject();
@@ -508,12 +517,13 @@ const DashboardDetailsPage = () => {
             return charts;
           });
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const msg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-chart-error'];
         handleShowErrorToast(msg);
       });
@@ -534,12 +544,13 @@ const DashboardDetailsPage = () => {
             return charts;
           });
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const msg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-chart-error'];
         handleShowErrorToast(msg);
       });
@@ -607,12 +618,13 @@ const DashboardDetailsPage = () => {
           });
           getEntityFeedCount();
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['add-feed-error'];
         handleShowErrorToast(errMsg);
       });
@@ -628,12 +640,13 @@ const DashboardDetailsPage = () => {
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          throw '';
+          jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['create-conversation-error'];
         handleShowErrorToast(errMsg);
       });
@@ -659,12 +672,13 @@ const DashboardDetailsPage = () => {
                 });
               });
             } else {
-              throw '';
+              jsonData['api-error-messages']['unexpected-server-response'];
             }
           })
           .catch((error: AxiosError) => {
             const message =
               error?.response?.data?.message ||
+              error ||
               jsonData['api-error-messages'][
                 'fetch-updated-conversation-error'
               ];
