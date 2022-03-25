@@ -326,30 +326,6 @@ You may specify a value for `source.config.endpoint_url` to override this behavi
 
 ### **6. Configure data filters (optional)**
 
-#### **include\_views (optional)**
-
-Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
-
-Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```javascript
-"include_views": "true"
-```
-
-Exclude views as follows.
-
-```javascript
-"include_views": "false"
-```
-
-{% hint style="info" %}
-**Note:** `source.config.include_views` is set to true by default.
-{% endhint %}
-
-#### ****
-
-****
-
 **table\_filter\_pattern (optional)**
 
 Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
@@ -961,30 +937,6 @@ You may specify a value for `source.config.endpoint_url` to override this behavi
 
 
 ### **6. Configure data filters (optional)**
-
-#### **include\_views (optional)**
-
-Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
-
-Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```javascript
-"include_views": "true"
-```
-
-Exclude views as follows.
-
-```javascript
-"include_views": "false"
-```
-
-{% hint style="info" %}
-**Note:** `source.config.include_views` is set to true by default.
-{% endhint %}
-
-#### ****
-
-****
 
 **table\_filter\_pattern (optional)**
 
