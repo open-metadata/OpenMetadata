@@ -12,6 +12,7 @@
 !conf
 !pom.xml
 !README.md
+!Makefile
 !docker/compose/patches/*
 **/node_modules/*
 **/target/*

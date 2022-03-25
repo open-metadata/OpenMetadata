@@ -19,5 +19,4 @@
 set -x
 
 socat TCP-LISTEN:8585,fork TCP:openmetadata.example.com:8585 &
-coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results-unit.xml ingestion/tests/unit
-coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage
+make coverage
