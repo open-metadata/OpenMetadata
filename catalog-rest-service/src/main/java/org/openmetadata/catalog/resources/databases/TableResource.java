@@ -170,8 +170,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("database", databaseParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

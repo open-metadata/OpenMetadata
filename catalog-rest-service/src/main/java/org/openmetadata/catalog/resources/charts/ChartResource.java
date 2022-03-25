@@ -145,8 +145,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

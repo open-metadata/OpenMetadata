@@ -123,9 +123,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-
+    ListFilter filter = new ListFilter(include);
     ResultList<Webhook> webhooks;
     if (before != null) { // Reverse paging
       webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);

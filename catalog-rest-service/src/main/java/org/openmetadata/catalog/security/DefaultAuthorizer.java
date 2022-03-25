@@ -37,6 +37,7 @@ import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
@@ -153,7 +154,8 @@ public class DefaultAuthorizer implements Authorizer {
         return policyEvaluator.hasPermission(user, null, operation);
       }
 
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
+      Object entity =
+          Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
 
       if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
@@ -180,7 +182,8 @@ public class DefaultAuthorizer implements Authorizer {
       if (entityReference == null) {
         return policyEvaluator.getAllowedOperations(user, null);
       }
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
+      Object entity =
+          Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
       if (owner == null || isOwnedByUser(user, owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.

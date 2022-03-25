@@ -133,8 +133,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 

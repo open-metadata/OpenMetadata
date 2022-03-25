@@ -37,7 +37,6 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -366,7 +365,7 @@ public class RoleRepository extends EntityRepository<Role> {
         // Assumptions:
         // - we will not have more than Integer.MAX_VALUE users in the system.
         // - we do not need to update deleted user's roles.
-        ListFilter filter = new ListFilter().addQueryParam("include", Include.NON_DELETED.value());
+        ListFilter filter = new ListFilter();
         return userRepository
             .listAfter(null, UserRepository.USER_UPDATE_FIELDS, filter, Integer.MAX_VALUE - 1, null)
             .getData();

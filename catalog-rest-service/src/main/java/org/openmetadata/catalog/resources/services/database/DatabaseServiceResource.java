@@ -143,9 +143,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
     ResultList<DatabaseService> dbServices;
 
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-
+    ListFilter filter = new ListFilter(include);
     if (before != null) {
       dbServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {

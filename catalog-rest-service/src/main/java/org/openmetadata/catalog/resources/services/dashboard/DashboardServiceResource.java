@@ -130,8 +130,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 

@@ -149,7 +149,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    ListFilter filter = new ListFilter().addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
 
     ResultList<Role> roles;
     if (defaultParam) {

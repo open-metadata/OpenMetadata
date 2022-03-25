@@ -148,8 +148,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("team", teamParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

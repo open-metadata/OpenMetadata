@@ -186,8 +186,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             CatalogExceptionMessage.glossaryTermMismatch(parentTermParam, glossaryIdParam));
       }
     }
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("parent", fqn);
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging

@@ -36,7 +36,6 @@ import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
@@ -206,7 +205,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   private List<Policy> getAccessControlPolicies() throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
-    ListFilter filter = new ListFilter().addQueryParam("include", Include.NON_DELETED.value());
+    ListFilter filter = new ListFilter();
     List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
