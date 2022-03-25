@@ -80,6 +80,7 @@ import {
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { isErrorIsString } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 
 const PipelineDetailsPage = () => {
@@ -171,10 +172,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        const errMsg = err.response?.data?.message || msg;
         handleShowErrorToast(errMsg);
       });
   };
@@ -201,11 +202,11 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['fetch-lineage-error'];
-        handleShowErrorToast(msg);
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['fetch-lineage-error'];
+        const errMsg = err.response?.data?.message || msg;
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLineageLoading(false);
@@ -281,10 +282,11 @@ const PipelineDetailsPage = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg =
-            err.response?.data?.message ||
-            err ||
-            jsonData['api-error-messages']['fetch-pipeline-details-error'];
+          const msg = isErrorIsString(err)
+            ? err
+            : jsonData['api-error-messages']['fetch-pipeline-details-error'];
+          const errMsg = err.response?.data?.message || msg;
+
           handleShowErrorToast(errMsg);
         }
       })
@@ -318,10 +320,11 @@ const PipelineDetailsPage = () => {
             }
           })
           .catch((err: AxiosError) => {
-            const errMsg =
-              err.response?.data?.message ||
-              err ||
-              jsonData['api-error-messages']['fetch-entity-feed-error'];
+            const msg = isErrorIsString(err)
+              ? err
+              : jsonData['api-error-messages']['fetch-entity-feed-error'];
+            const errMsg = err.response?.data?.message || msg;
+
             handleShowErrorToast(errMsg);
           })
           .finally(() => setIsentityThreadLoading(false));
@@ -346,10 +349,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-entity-follow-error'];
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['update-entity-follow-error'];
+        const errMsg = err.response?.data?.message || msg;
         handleShowErrorToast(errMsg);
       });
   };
@@ -368,10 +371,11 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-entity-unfollow-error'];
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['update-entity-unfollow-error'];
+        const errMsg = err.response?.data?.message || msg;
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -390,11 +394,12 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-description-error'];
-        handleShowErrorToast(msg);
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['update-description-error'];
+        const errMsg = err.response?.data?.message || msg;
+
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -414,11 +419,11 @@ const PipelineDetailsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const msg =
-            err.response?.data?.message ||
-            err ||
-            jsonData['api-error-messages']['update-entity-error'];
-          handleShowErrorToast(msg);
+          const msg = isErrorIsString(err)
+            ? err
+            : jsonData['api-error-messages']['update-entity-error'];
+          const errMsg = err.response?.data?.message || msg;
+          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -437,10 +442,11 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-tags-error'];
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['update-tags-error'];
+        const errMsg = err.response?.data?.message || msg;
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -456,10 +462,11 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-task-error'];
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['update-task-error'];
+        const errMsg = err.response?.data?.message || msg;
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -556,10 +563,11 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['add-feed-error'];
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['add-feed-error'];
+        const errMsg = err.response?.data?.message || msg;
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -578,10 +586,11 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['create-conversation-error'];
+        const msg = isErrorIsString(err)
+          ? err
+          : jsonData['api-error-messages']['create-conversation-error'];
+        const errMsg = err.response?.data?.message || msg;
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -612,13 +621,14 @@ const PipelineDetailsPage = () => {
             }
           })
           .catch((error: AxiosError) => {
-            const message =
-              error?.response?.data?.message ||
-              error ||
-              jsonData['api-error-messages'][
-                'fetch-updated-conversation-error'
-              ];
-            handleShowErrorToast(message);
+            const msg = isErrorIsString(error)
+              ? error
+              : jsonData['api-error-messages'][
+                  'fetch-updated-conversation-error'
+                ];
+            const errMsg = error?.response?.data?.message || msg;
+
+            handleShowErrorToast(errMsg);
           });
 
         handleShowSuccessToast(
