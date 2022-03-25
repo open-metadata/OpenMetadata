@@ -424,8 +424,6 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-****
-
 ## **4. Run BigQuery Connector**
 
 Your `bigquery.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
@@ -436,7 +434,7 @@ To run an ingestion workflow, execute the following command from the `openmetada
 metadata ingest -c ./bigquery.json
 ```
 
-### &#x20;**Setup BigQuery Connector in production (optional)**
+### **Setup BigQuery connector in production (optional)**
 
 If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
 

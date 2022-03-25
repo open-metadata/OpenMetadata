@@ -6,10 +6,10 @@ description: >-
 
 # ClickHouse
 
-* [Requirements](./#1.-requirements)
-* [Install ClickHouse Connector](./#2.-install-clickhouse-connector)
-* [Configure ClickHouse Connector](./#3.-configure-clickhouse-connector)
-* [Run ClickHouse Connector](./#4.-run-clickhouse-connector)
+1. [Requirements](./#1.-requirements)
+2. [Install ClickHouse Connector](./#2.-install-clickhouse-connector)
+3. [Configure ClickHouse Connector](./#3.-configure-clickhouse-connector)
+4. [Run ClickHouse Connector](./#4.-run-clickhouse-connector)
 
 {% content-ref url="clickhouse-usage.md" %}
 [clickhouse-usage.md](clickhouse-usage.md)
@@ -383,7 +383,7 @@ To run an ingestion workflow, execute the following command from the `openmetada
 metadata ingest -c ./clickhouse.json
 ```
 
-### &#x20;**Setup ClickHouse Connector in production (optional)**
+### **Setup ClickHouse connector in production (optional)**
 
 If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
 
