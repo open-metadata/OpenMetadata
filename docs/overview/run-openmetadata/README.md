@@ -234,7 +234,7 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata server.
 
-![](../../.gitbook/assets/om-local-landing-page.png)
+![](../../.gitbook/assets/landing-page.png)
 
 ### Next Steps
 
@@ -281,7 +281,7 @@ If you would like to upgrade your OpenMetadata deployment installed following th
 
 ### 1. Ensure your Python virtual environment is activated
 
-The procedure for [installing OpenMetadata](./) asks you to create a new directory and Python virtual environment. The procedure then asks you to install the `openmetadata-ingestion[docker]` Python module in this virtual environment.
+The procedure for [installing OpenMetadata](./#procedure) asks you to create a new directory and Python virtual environment. The procedure then asks you to install the `openmetadata-ingestion[docker]` Python module in this virtual environment.
 
 In your command-line environment, please navigate to the directory where you installed `openmetadata-ingestion[docker]` and activate the virtual environment by running the following command.
 
