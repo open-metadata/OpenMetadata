@@ -93,6 +93,11 @@ public class CatalogApplicationConfig extends Configuration {
   @Setter
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
+  @JsonProperty("sandboxModeEnabled")
+  @Getter
+  @Setter
+  private boolean sandboxModeEnabled;
+
   @Override
   public String toString() {
     return "catalogConfig{"
