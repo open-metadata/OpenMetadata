@@ -37,6 +37,8 @@ const jsonData = {
 
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
 
+    'fetch-chart-error': 'Error while fetching charts!',
+    'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
     'fetch-data-error': 'Error while fetching data!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
@@ -58,16 +60,19 @@ const jsonData = {
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-service-error': 'Error while fetching service details!',
 
+    'update-chart-error': 'Error while updating charts!',
     'update-owner-error': 'Error while updating owner',
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-description-error': 'Error while updating description!',
     'update-entity-error': 'Error while updating entity!',
+    'update-team-error': 'Error while updating team',
     'update-tags-error': 'Error while updating tags!',
     'update-task-error': 'Error while updating tasks!',
     'update-entity-follow-error': 'Error while following entity!',
     'update-entity-unfollow-error': 'Error while unfollowing entity!',
     'update-ingestion-error': 'Error while updating ingestion workflow',
     'update-service-config-error': 'Error while updating ingestion workflow',
+    'unexpected-server-response': 'Unexpected response from server!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',

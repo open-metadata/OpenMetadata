@@ -67,7 +67,7 @@ class Histogram(QueryMetric):
             ((func.max(col) - func.min(col)) / float(num_bins - 1)).label("step"),
         ).select_from(sample)
 
-        step = dict(bins.first())["step"]
+        step = float(dict(bins.first())["step"])
 
         if not step:  # step == 0 or None for empty tables
             logger.debug(

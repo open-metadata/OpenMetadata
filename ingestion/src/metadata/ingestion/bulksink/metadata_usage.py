@@ -89,11 +89,9 @@ class MetadataUsageBulkSink(BulkSink):
                     self.metadata.publish_table_usage(table_entity, table_usage_request)
 
                     logger.info(
-                        f"Successfully table usage published for {record.table.fullyQualifiedName}"
+                        f"Successfully table usage published for {table_usage.table}"
                     )
-                    self.status.records_written(
-                        f"Table: {record.table.fullyQualifiedName}"
-                    )
+                    self.status.records_written(f"Table: {table_usage.table}")
 
                 except Exception as err:
                     self.status.failures.append(table_usage_request)

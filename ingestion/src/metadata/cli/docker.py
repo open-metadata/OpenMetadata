@@ -1,15 +1,19 @@
+import json
 import logging
 import pathlib
 import sys
 import tempfile
 import time
 import traceback
-from datetime import timedelta
+from base64 import b64encode
+from datetime import datetime, timedelta
 
 import click
 import requests as requests
+from requests._internal_utils import to_native_string
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -18,7 +22,7 @@ calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
 
 
-def start_docker(docker, start_time, file_path):
+def start_docker(docker, start_time, file_path, skip_sample_data):
     logger.info("Running docker compose for OpenMetadata..")
     click.secho("It may take some time on the first run", fg="bright_yellow")
     if file_path:
@@ -26,30 +30,31 @@ def start_docker(docker, start_time, file_path):
     else:
         docker.compose.up(detach=True)
 
-    logger.info(
-        "Ran docker compose for OpenMetadata successfully.\nWaiting for ingestion to complete.."
-    )
-    metadata_config = MetadataServerConfig.parse_obj(
-        {
-            "api_endpoint": "http://localhost:8585/api",
-            "auth_provider_type": "no-auth",
-        }
-    )
-    logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = True
-    ometa_client = OpenMetadata(metadata_config)
-    while True:
-        try:
-            resp = ometa_client.get_by_name(
-                entity=Table, fqdn="bigquery_gcp.shopify.dim_customer"
-            )
-            if not resp:
-                raise Exception("Error")
-            break
-        except Exception:
-            sys.stdout.write(".")
-            sys.stdout.flush()
-            time.sleep(5)
-    logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = False
+    logger.info("Ran docker compose for OpenMetadata successfully.")
+    if not skip_sample_data:
+        logger.info("Waiting for ingestion to complete..")
+        ingest_sample_data(docker)
+        metadata_config = MetadataServerConfig.parse_obj(
+            {
+                "api_endpoint": "http://localhost:8585/api",
+                "auth_provider_type": "no-auth",
+            }
+        )
+        logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = True
+        ometa_client = OpenMetadata(metadata_config)
+        while True:
+            try:
+                resp = ometa_client.get_by_name(
+                    entity=Table, fqdn="bigquery_gcp.shopify.dim_customer"
+                )
+                if not resp:
+                    raise Exception("Error")
+                break
+            except Exception:
+                sys.stdout.write(".")
+                sys.stdout.flush()
+                time.sleep(5)
+        logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = False
     elapsed = time.time() - start_time
     logger.info(
         f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
@@ -105,7 +110,17 @@ def file_path_check(file_path):
     return docker_compose_file_path
 
 
-def run_docker(start, stop, pause, resume, clean, file_path, env_file_path, reset_db):
+def run_docker(
+    start,
+    stop,
+    pause,
+    resume,
+    clean,
+    file_path,
+    env_file_path,
+    reset_db,
+    skip_sample_data,
+):
     try:
         from python_on_whales import DockerClient
 
@@ -136,7 +151,7 @@ def run_docker(start, stop, pause, resume, clean, file_path, env_file_path, rese
             compose_env_file=env_file,
         )
         if start:
-            start_docker(docker, start_time, file_path)
+            start_docker(docker, start_time, file_path, skip_sample_data)
         if pause:
             logger.info("Pausing docker compose for OpenMetadata..")
             docker.compose.pause()
@@ -190,5 +205,32 @@ def reset_db_om(docker):
                 "./openmetadata-*/bootstrap/bootstrap_storage.sh drop-create-all",
             ],
         )
+    else:
+        click.secho("OpenMetadata Instance is not up and running", fg="yellow")
+
+
+def ingest_sample_data(docker):
+    if docker.container.inspect("openmetadata_server").state.running:
+        base_url = "http://localhost:8080/api"
+        dags = ["sample_data", "sample_usage", "index_metadata"]
+
+        client_config = ClientConfig(
+            base_url=base_url,
+            auth_header="Authorization",
+            auth_token_mode="Basic",
+            access_token=to_native_string(
+                b64encode(b":".join(("admin".encode(), "admin".encode()))).strip()
+            ),
+        )
+        client = REST(client_config)
+
+        for dag in dags:
+            json_sample_data = {
+                "dag_run_id": "{}_{}".format(dag, datetime.now()),
+            }
+            client.post(
+                "/dags/{}/dagRuns".format(dag), data=json.dumps(json_sample_data)
+            )
+
     else:
         click.secho("OpenMetadata Instance is not up and running", fg="yellow")
