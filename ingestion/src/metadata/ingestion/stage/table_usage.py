@@ -13,6 +13,7 @@ import json
 import logging
 import pathlib
 
+from metadata.generated.schema.entity.data.table import SqlQuery
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.models.table_queries import (
@@ -37,6 +38,7 @@ def get_table_column_join(table, table_aliases, joins, database):
             jtable, column = join.split(".")[-2:]
             if (
                 table == jtable
+                or jtable == table.split(".")[-1]
                 or table == f"{database}.{jtable}"
                 or jtable in table_aliases
             ):
@@ -92,6 +94,10 @@ class TableUsageStage(Stage[QueryParserData]):
             return None
         for table in record.tables:
             try:
+                try:
+                    self.table_queries[table].append(SqlQuery(query=record.sql))
+                except KeyError:
+                    self.table_queries[table] = [SqlQuery(query=record.sql)]
                 table_usage_count = self.table_usage.get(table)
                 if table_usage_count is not None:
                     table_usage_count.count = table_usage_count.count + 1
@@ -124,12 +130,6 @@ class TableUsageStage(Stage[QueryParserData]):
                         service_name=record.service_name,
                         sql_queries=[],
                     )
-                    fqn = f"{table_usage_count.service_name}.{table_usage_count.table}"
-                    try:
-                        self.table_queries[fqn].append(record.sql)
-
-                    except KeyError:
-                        self.table_queries[fqn] = [record.sql]
 
             except Exception as exc:
                 logger.error("Error in staging record {}".format(exc))
@@ -142,9 +142,7 @@ class TableUsageStage(Stage[QueryParserData]):
     def close(self):
         for key, value in self.table_usage.items():
             try:
-                value.sql_queries = self.table_queries[
-                    f"{value.service_name}.{value.table}"
-                ]
+                value.sql_queries = self.table_queries[key]
             except KeyError:
                 pass
             data = value.json()
