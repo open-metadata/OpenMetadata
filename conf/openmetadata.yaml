@@ -189,3 +189,5 @@ health:
         downtimeInterval: 10s
         failureAttempts: 2
         successAttempts: 1
+
+sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
