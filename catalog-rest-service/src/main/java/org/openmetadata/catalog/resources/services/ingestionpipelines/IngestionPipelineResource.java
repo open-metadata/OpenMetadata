@@ -20,6 +20,9 @@ import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -119,6 +122,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   static final String FIELDS = FIELD_OWNER;
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Operation(
@@ -176,6 +182,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipelines;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -196,6 +205,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -233,6 +245,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -262,6 +277,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{fqn}")
   @Operation(
@@ -299,6 +317,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a Ingestion Pipeline",
@@ -323,6 +344,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return response;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -348,6 +372,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update a IngestionPipeline",
@@ -370,6 +397,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return response;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Path("/trigger/{id}")
   @Operation(
@@ -393,6 +423,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Path("/testConnection")
   @Operation(

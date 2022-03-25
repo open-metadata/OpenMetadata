@@ -17,6 +17,9 @@ import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -95,6 +98,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     }
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List database services",
@@ -144,6 +150,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return addHref(uriInfo, dbServices);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -177,6 +186,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{name}")
   @Operation(
@@ -210,6 +222,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -244,6 +259,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return entityHistory;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -295,6 +313,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Update database service",
@@ -317,6 +338,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(

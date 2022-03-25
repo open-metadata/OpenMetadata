@@ -18,6 +18,9 @@ import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -89,6 +92,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     }
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List pipeline services",
@@ -134,6 +140,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -167,6 +176,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{name}")
   @Operation(
@@ -200,6 +212,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -220,6 +235,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -249,6 +267,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a pipeline service",
@@ -271,6 +292,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Update pipeline service",
@@ -293,6 +317,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(

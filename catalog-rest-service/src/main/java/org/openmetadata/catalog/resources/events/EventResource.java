@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.events;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -65,6 +68,9 @@ public class EventResource {
     this.authorizer = authorizer;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Operation(

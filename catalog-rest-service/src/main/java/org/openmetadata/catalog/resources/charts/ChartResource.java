@@ -16,7 +16,9 @@ package org.openmetadata.catalog.resources.charts;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -97,6 +99,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   static final String FIELDS = "owner,followers,tags";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List charts",
@@ -145,6 +150,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -165,6 +173,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -197,6 +208,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{fqn}")
   @Operation(
@@ -229,6 +243,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -257,6 +274,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a chart",
@@ -275,6 +295,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return create(uriInfo, securityContext, chart, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -300,6 +323,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update chart",
@@ -318,6 +344,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return createOrUpdate(uriInfo, securityContext, chart, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -339,6 +368,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -358,6 +390,9 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(

@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.services;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -46,6 +49,9 @@ public class ServiceResource {
     return serviceList;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List service collections",

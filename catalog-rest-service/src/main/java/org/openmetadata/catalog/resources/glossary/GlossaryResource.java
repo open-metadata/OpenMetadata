@@ -16,7 +16,9 @@ package org.openmetadata.catalog.resources.glossary;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -98,6 +100,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   static final String FIELDS = "owner,tags,reviewers,usageCount";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Operation(
@@ -144,6 +149,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -176,6 +184,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{name}")
   @Operation(
@@ -208,6 +219,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -228,6 +242,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -256,6 +273,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a glossary",
@@ -276,6 +296,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return create(uriInfo, securityContext, glossary, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -301,6 +324,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update a glossary",
@@ -320,6 +346,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return createOrUpdate(uriInfo, securityContext, glossary, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(

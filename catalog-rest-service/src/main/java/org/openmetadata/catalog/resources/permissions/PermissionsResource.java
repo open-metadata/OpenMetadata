@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.permissions;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -43,6 +46,9 @@ public class PermissionsResource {
     this.authorizer = authorizer;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "Retrieves permissions for logged in user",

@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.version;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import java.io.InputStream;
@@ -51,6 +54,9 @@ public class VersionResource {
     }
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "Get version of metadata service",

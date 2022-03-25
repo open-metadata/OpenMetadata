@@ -36,6 +36,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mockito.version>4.4.0</mockito.version>
+    <google.truth.version>1.1.3</google.truth.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.2</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
@@ -319,6 +320,11 @@
         <version>${openapiswagger.version}</version>
       </dependency>
       <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.springframework.security.kerberos</groupId>
         <artifactId>spring-security-kerberos-core</artifactId>
         <version>${spring-security-kerberos-core.version}</version>
@@ -352,6 +358,18 @@
         <groupId>org.mockito</groupId>
         <artifactId>mockito-core</artifactId>
         <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.google.truth</groupId>
+        <artifactId>truth</artifactId>
+        <version>${google.truth.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>

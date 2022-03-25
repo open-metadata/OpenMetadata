@@ -16,7 +16,9 @@ package org.openmetadata.catalog.resources.dashboards;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -96,6 +98,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   static final String FIELDS = "owner,charts,followers,tags,usageSummary";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Operation(
@@ -147,6 +152,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -167,6 +175,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -199,6 +210,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{fqn}")
   @Operation(
@@ -231,6 +245,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -259,6 +276,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a dashboard",
@@ -279,6 +299,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return create(uriInfo, securityContext, dashboard, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -304,6 +327,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update a dashboard",
@@ -324,6 +350,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return createOrUpdate(uriInfo, securityContext, dashboard, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -345,6 +374,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -364,6 +396,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(

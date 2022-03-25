@@ -16,7 +16,9 @@ package org.openmetadata.catalog.resources.mlmodels;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -97,6 +99,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   static final String FIELDS = "owner,dashboard,followers,tags,usageSummary";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Operation(
@@ -143,6 +148,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -175,6 +183,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{fqn}")
   @Operation(
@@ -207,6 +218,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create an ML Model",
@@ -226,6 +240,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return create(uriInfo, securityContext, mlModel, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -251,6 +268,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update an ML Model",
@@ -270,6 +290,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return createOrUpdate(uriInfo, securityContext, mlModel, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -291,6 +314,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -310,6 +336,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -330,6 +359,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -358,6 +390,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(

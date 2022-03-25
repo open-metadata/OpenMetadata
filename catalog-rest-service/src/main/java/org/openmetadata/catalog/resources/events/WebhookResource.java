@@ -15,7 +15,9 @@ package org.openmetadata.catalog.resources.events;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -87,6 +89,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     super(Webhook.class, new WebhookRepository(dao), authorizer);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List webhooks",
@@ -132,6 +137,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return webhooks;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Valid
@@ -160,6 +168,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return getInternal(uriInfo, securityContext, id, "", include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{name}")
   @Operation(
@@ -187,6 +198,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -207,6 +221,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -235,6 +252,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Subscribe to a new webhook",
@@ -256,6 +276,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return response;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Updated an existing or create a new webhook",
@@ -277,6 +300,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return response;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Valid
@@ -296,6 +322,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, InterruptedException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Response response = delete(uriInfo, securityContext, id, false, true, ADMIN);
     dao.deleteWebhookPublisher(UUID.fromString(id));
     return response;

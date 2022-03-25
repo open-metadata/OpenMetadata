@@ -17,6 +17,9 @@ import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -97,6 +100,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   static final String FIELDS = "owner,followers,tags";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List topics",
@@ -147,6 +153,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -167,6 +176,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -199,6 +211,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{fqn}")
   @Operation(
@@ -231,6 +246,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -259,6 +277,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a topic",
@@ -277,6 +298,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return create(uriInfo, securityContext, topic, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -302,6 +326,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Update topic",
@@ -320,6 +347,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return createOrUpdate(uriInfo, securityContext, topic, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -341,6 +371,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -360,6 +393,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(

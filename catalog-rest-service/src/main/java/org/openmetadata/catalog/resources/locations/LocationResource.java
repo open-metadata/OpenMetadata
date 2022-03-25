@@ -16,7 +16,9 @@ package org.openmetadata.catalog.resources.locations;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -95,6 +97,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
 
   static final String FIELDS = "owner,followers,tags";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List locations",
@@ -145,6 +150,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -165,6 +173,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -197,6 +208,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("prefixes/{fqn}")
   @Operation(
@@ -250,6 +264,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return addHref(uriInfo, locations);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{fqn}")
   @Operation(
@@ -286,6 +303,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -314,6 +334,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a location",
@@ -333,6 +356,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return create(uriInfo, securityContext, location, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update location",
@@ -352,6 +378,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -377,6 +406,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -399,6 +431,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -420,6 +455,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
         .toResponse();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(

@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.usage;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,6 +63,9 @@ public class UsageResource {
     this.dao = new UsageRepository(dao);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Path("/{entity}/{id}")
@@ -100,6 +106,9 @@ public class UsageResource {
     return addHref(uriInfo, dao.get(entity, id, actualDate, actualDays));
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Path("/{entity}/name/{fqn}")
@@ -144,6 +153,9 @@ public class UsageResource {
     return addHref(uriInfo, dao.getByName(entity, fqn, actualDate, actualDays));
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Path("/{entity}/{id}")
   @Operation(
@@ -175,6 +187,9 @@ public class UsageResource {
     return Response.status(Response.Status.CREATED).build();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Path("/{entity}/name/{fqn}")
   @Operation(
@@ -210,6 +225,9 @@ public class UsageResource {
     return Response.status(Response.Status.CREATED).build();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Path("/compute.percentile/{entity}/{date}")
   @Operation(

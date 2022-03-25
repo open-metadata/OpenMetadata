@@ -15,6 +15,9 @@ package org.openmetadata.catalog.resources.lineage;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,6 +69,9 @@ public class LineageResource {
     this.authorizer = authorizer;
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Path("/{entity}/{id}")
@@ -100,6 +106,9 @@ public class LineageResource {
     return addHref(uriInfo, dao.get(entity, id, upstreamDepth, downStreamDepth));
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Path("/{entity}/name/{fqn}")
@@ -144,6 +153,9 @@ public class LineageResource {
     return addHref(uriInfo, dao.getByName(entity, fqn, upstreamDepth, downStreamDepth));
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Add a lineage edge",
@@ -162,6 +174,9 @@ public class LineageResource {
     return Response.status(Status.OK).build();
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
   @Operation(

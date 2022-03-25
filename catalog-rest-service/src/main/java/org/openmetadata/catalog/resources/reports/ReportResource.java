@@ -15,7 +15,9 @@ package org.openmetadata.catalog.resources.reports;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -76,6 +78,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   static final String FIELDS = "owner,usageSummary";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Operation(
       summary = "List reports",
@@ -100,6 +105,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return dao.listAfter(uriInfo, fields, filter, 10000, null);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -132,6 +140,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a report",
@@ -150,6 +161,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return create(uriInfo, securityContext, report, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update a report",

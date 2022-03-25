@@ -15,7 +15,9 @@ package org.openmetadata.catalog.resources.glossary;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-
+import com.codahale.metrics.annotation.ExceptionMetered;
+import com.codahale.metrics.annotation.ResponseMetered;
+import com.codahale.metrics.annotation.Timed;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -104,6 +106,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   static final String FIELDS = "children,relatedTerms,reviewers,tags,usageCount";
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Valid
   @Operation(
@@ -193,6 +198,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return addHref(uriInfo, terms);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}")
   @Operation(
@@ -225,6 +233,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/name/{name}")
   @Operation(
@@ -257,6 +268,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions")
   @Operation(
@@ -277,6 +291,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return dao.listVersions(id);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
@@ -305,6 +322,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return dao.getVersion(id, version);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @POST
   @Operation(
       summary = "Create a glossary term",
@@ -324,6 +344,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return create(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -349,6 +372,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @PUT
   @Operation(
       summary = "Create or update a glossary term",
@@ -368,6 +394,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return createOrUpdate(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
+  @Timed
+  @ResponseMetered
+  @ExceptionMetered
   @DELETE
   @Path("/{id}")
   @Operation(
