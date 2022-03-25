@@ -37,7 +37,7 @@ const jsonData = {
 
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
 
-    'fetch-chart-error': 'Error while fetching charts',
+    'fetch-chart-error': 'Error while fetching charts!',
     'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
     'fetch-data-error': 'Error while fetching data!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
@@ -59,7 +59,7 @@ const jsonData = {
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-service-error': 'Error while fetching service details!',
 
-    'update-chart-error': 'Error while updating charts',
+    'update-chart-error': 'Error while updating charts!',
     'update-owner-error': 'Error while updating owner',
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-description-error': 'Error while updating description!',
