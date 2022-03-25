@@ -68,10 +68,7 @@ plugins: Dict[str, Set[str]] = {
         "pymysql>=1.0.2",
         "requests==2.26.0",
     },
-    "airflow-container-1.10.15": {
-        "markupsafe==2.0.1 ",
-        "requests==2.23.0"
-    },
+    "airflow-container-1.10.15": {"markupsafe==2.0.1 ", "requests==2.23.0"},
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
     "atlas": {},
