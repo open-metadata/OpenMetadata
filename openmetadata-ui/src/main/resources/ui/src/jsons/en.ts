@@ -64,6 +64,7 @@ const jsonData = {
     'update-glossary-term-error': 'Error while updating glossary term!',
     'update-description-error': 'Error while updating description!',
     'update-entity-error': 'Error while updating entity!',
+    'update-team-error': 'Error while updating team',
     'update-tags-error': 'Error while updating tags!',
     'update-entity-follow-error': 'Error while following entity!',
     'update-entity-unfollow-error': 'Error while unfollowing entity!',

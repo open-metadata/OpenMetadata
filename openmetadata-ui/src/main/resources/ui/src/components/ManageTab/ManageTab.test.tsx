@@ -33,6 +33,15 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockReturnValue({
+    isAdminUser: true,
+    userPermissions: {
+      UpdateTeam: true,
+    },
+  }),
+}));
+
 const mockTierData = {
   children: [
     {
@@ -117,5 +126,30 @@ describe('Test Manage tab Component', () => {
     );
 
     expect(mockFunction).toBeCalledTimes(1);
+  });
+
+  it('Should render switch if isJoinable is present', async () => {
+    const { container } = render(
+      <ManageTab hasEditAccess isJoinable onSave={mockFunction} />
+    );
+
+    const isJoinableSwitch = await findByTestId(
+      container,
+      'team-isJoinable-switch'
+    );
+
+    expect(isJoinableSwitch).toHaveClass('open');
+
+    fireEvent.click(
+      isJoinableSwitch,
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    expect(isJoinableSwitch).not.toHaveClass('open');
+
+    expect(isJoinableSwitch).toBeInTheDocument();
   });
 });
