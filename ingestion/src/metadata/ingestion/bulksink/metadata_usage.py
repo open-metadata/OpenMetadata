@@ -136,17 +136,23 @@ class MetadataUsageBulkSink(BulkSink):
                     value_dict["table_entity"], table_usage_request
                 )
                 logger.info(
-                    f"Successfully table usage published for {table_usage.table}"
+                    "Successfully table usage published for {}".format(
+                        value_dict["table_entity"].name.__root__
+                    )
                 )
-                self.status.records_written(f"Table: {table_usage.table}")
+                self.status.records_written(
+                    "Table: {}".format(value_dict["table_entity"].name.__root__)
+                )
             except Exception as err:
                 self.status.failures.append(table_usage_request)
                 logger.error(
                     "Failed to update usage for {} {}".format(
-                        value_dict["table_entity"].name, err
+                        value_dict["table_entity"].name.__root__, err
                     )
                 )
-                self.status.failures.append(f"Table: {table_usage.table}")
+                self.status.failures.append(
+                    "Table: {}".format(value_dict["table_entity"].name.__root__)
+                )
         try:
             self.metadata.compute_percentile(Table, self.today)
             self.metadata.compute_percentile(Database, self.today)
