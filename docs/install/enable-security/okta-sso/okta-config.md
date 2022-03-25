@@ -13,6 +13,10 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
 ```
 
+* (Optional) Set the user principal fields
+
+`authenticationConfiguration.jwtPrincipalClaims` - Sets fields of the access token used for the OpenMetadata user. First of these fields that is present in the token is used. Default is `['email', 'preferred_username', 'sub']`.
+
 * Update `authorizerConfiguration` to add `adminPrincipals`
 
 ```

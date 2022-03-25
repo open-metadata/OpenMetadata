@@ -11,6 +11,9 @@ from pyspark.sql.utils import AnalysisException, ParseException
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import IncludeFilterPattern, WorkflowContext
 from metadata.ingestion.api.source import Source
@@ -28,7 +31,7 @@ class DeltaLakeSourceConfig(ConfigModel):
     schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     service_name: str
-    service_type: str
+    service_type: str = DatabaseServiceType.DeltaLake.value
 
     def get_service_name(self) -> str:
         return self.service_name

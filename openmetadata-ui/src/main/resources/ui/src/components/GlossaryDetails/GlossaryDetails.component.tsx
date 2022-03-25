@@ -228,7 +228,9 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
   };
 
   return (
-    <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
+    <div
+      className="tw-w-full tw-h-full tw-flex tw-flex-col"
+      data-testid="glossary-details">
       <div className="tw-mb-3 tw-flex tw-items-center">
         {(glossary.owner?.displayName || glossary.owner?.name) && (
           <div className="tw-inline-block tw-mr-2">

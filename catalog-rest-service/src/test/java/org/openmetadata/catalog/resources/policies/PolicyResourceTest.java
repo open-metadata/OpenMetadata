@@ -192,12 +192,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertResponse(
         () -> listPolicies(null, -1, null, null, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[query param limit must be greater than or equal to 1]");
-
-    assertResponse(
-        () -> listPolicies(null, 0, null, null, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[query param limit must be greater than or equal to 1]");
+        "[query param limit must be greater than or equal to 0]");
 
     assertResponse(
         () -> listPolicies(null, 1000001, null, null, ADMIN_AUTH_HEADERS),

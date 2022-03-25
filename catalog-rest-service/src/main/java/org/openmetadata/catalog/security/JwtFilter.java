@@ -23,6 +23,7 @@ import io.dropwizard.util.Strings;
 import java.net.URI;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
+import java.util.List;
 import java.util.TimeZone;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -40,14 +41,14 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   private String publicKeyUri;
-  private String jwtEmail;
+  private List<String> jwtPrincipalClaims;
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
   public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
     this.publicKeyUri = authenticationConfiguration.getPublicKey();
-    this.jwtEmail = authenticationConfiguration.getJwtEmail();
+    this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
   }
 
   @SneakyThrows
@@ -70,6 +71,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       throw new AuthenticationException("Expired token!");
     }
+
     // Validate JWT with public key
     final URI uri = new URI(publicKeyUri).normalize();
     UrlJwkProvider urlJwkProvider = new UrlJwkProvider(uri.toURL());
@@ -80,24 +82,27 @@ public class JwtFilter implements ContainerRequestFilter {
     } catch (RuntimeException runtimeException) {
       throw new AuthenticationException("Invalid token");
     }
-    String authorizedEmail;
-    if (jwt.getClaims().get(jwtEmail) != null) {
-      authorizedEmail = jwt.getClaim(jwtEmail).as(TextNode.class).asText();
-    } else if (jwt.getClaims().get("email") != null) {
-      authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
-    } else if (jwt.getClaims().get("preferred_username") != null) {
-      authorizedEmail = jwt.getClaim("preferred_username").as(TextNode.class).asText();
-    } else if (jwt.getClaim("sub") != null) {
-      authorizedEmail = jwt.getClaim("sub").as(TextNode.class).asText();
-    } else {
-      throw new AuthenticationException("Invalid JWT token, \"email\" or \"subject\" not present.");
-    }
-    String userName;
-    if (authorizedEmail.contains("@")) {
-      userName = authorizedEmail.split("@")[0];
-    } else {
-      userName = authorizedEmail;
-    }
+
+    // Get username from JWT token
+    String userName =
+        jwtPrincipalClaims.stream()
+            .filter(jwt.getClaims()::containsKey)
+            .findFirst()
+            .map(jwt::getClaim)
+            .map(claim -> claim.as(TextNode.class).asText())
+            .map(
+                authorizedClaim -> {
+                  if (authorizedClaim.contains("@")) {
+                    return authorizedClaim.split("@")[0];
+                  } else {
+                    return authorizedClaim;
+                  }
+                })
+            .orElseThrow(
+                () ->
+                    new AuthenticationException(
+                        "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
+
     // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();

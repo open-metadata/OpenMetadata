@@ -131,7 +131,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           String teamParam,
       @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(1)
+          @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,

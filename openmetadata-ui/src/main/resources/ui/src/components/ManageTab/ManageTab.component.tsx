@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
@@ -30,17 +31,19 @@ import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.i
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   currentTier?: string;
   currentUser?: string;
   hideTier?: boolean;
+  isJoinable?: boolean;
   onSave: (
     owner: TableDetail['owner'],
-    tier: TableDetail['tier']
+    tier: TableDetail['tier'],
+    isJoinable?: boolean
   ) => Promise<void>;
   hasEditAccess: boolean;
+  allowTeamOwner?: boolean;
 };
 
 const ManageTab: FunctionComponent<Props> = ({
@@ -49,8 +52,10 @@ const ManageTab: FunctionComponent<Props> = ({
   hideTier = false,
   onSave,
   hasEditAccess,
+  allowTeamOwner = true,
+  isJoinable,
 }: Props) => {
-  const { userPermissions } = useAuth();
+  const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const getOwnerList = () => {
     const user = !isEmpty(appState.userDetails)
@@ -111,6 +116,7 @@ const ManageTab: FunctionComponent<Props> = ({
   );
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
+  const [teamJoinable, setTeamJoinable] = useState(isJoinable);
 
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [listOwners, setListOwners] = useState(getOwnerList());
@@ -119,6 +125,10 @@ const ManageTab: FunctionComponent<Props> = ({
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
+  };
+
+  const getOwnerGroup = () => {
+    return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
   };
 
   const handleOwnerSelection = (
@@ -157,8 +167,8 @@ const ManageTab: FunctionComponent<Props> = ({
           }
         : undefined;
     if (hideTier) {
-      if (newOwner) {
-        onSave(newOwner, '').catch(() => {
+      if (newOwner || !isUndefined(teamJoinable)) {
+        onSave(newOwner, '', Boolean(teamJoinable)).catch(() => {
           setInitialLoadingState();
         });
       } else {
@@ -166,7 +176,7 @@ const ManageTab: FunctionComponent<Props> = ({
       }
     } else {
       const newTier = activeTier !== currentTier ? activeTier : undefined;
-      onSave(newOwner, newTier).catch(() => {
+      onSave(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
         setInitialLoadingState();
       });
     }
@@ -236,71 +246,101 @@ const ManageTab: FunctionComponent<Props> = ({
     setListOwners(getOwnerList());
   }, [appState.users, appState.userDetails, appState.userTeams]);
 
+  useEffect(() => {
+    setTeamJoinable(isJoinable);
+  }, [isJoinable]);
+
   return (
     <div
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator">
-        <span className="tw-mr-2">Owner:</span>
-        <span className="tw-relative">
-          <NonAdminAction
-            html={
-              <>
-                <p>You do not have permissions to update the owner.</p>
-              </>
-            }
-            isOwner={hasEditAccess}
-            permission={Operation.UpdateOwner}
-            position="left">
-            <Button
-              className={classNames('tw-underline', {
-                'tw-opacity-40':
+      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator ">
+        <div>
+          <span className="tw-mr-2">Owner:</span>
+          <span className="tw-relative">
+            <NonAdminAction
+              html={
+                <>
+                  <p>You do not have permissions to update the owner.</p>
+                </>
+              }
+              isOwner={hasEditAccess}
+              permission={Operation.UpdateOwner}
+              position="left">
+              <Button
+                className={classNames('tw-underline', {
+                  'tw-opacity-40':
+                    !userPermissions[Operation.UpdateOwner] &&
+                    !isAuthDisabled &&
+                    !hasEditAccess,
+                })}
+                data-testid="owner-dropdown"
+                disabled={
                   !userPermissions[Operation.UpdateOwner] &&
                   !isAuthDisabled &&
-                  !hasEditAccess,
-              })}
-              data-testid="owner-dropdown"
-              disabled={
-                !userPermissions[Operation.UpdateOwner] &&
-                !isAuthDisabled &&
-                !hasEditAccess
-              }
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setListVisible((visible) => !visible)}>
-              {ownerName ? (
-                <span
-                  className={classNames('tw-truncate', {
-                    'tw-w-52': ownerName.length > 32,
-                  })}
-                  title={ownerName}>
-                  {ownerName}
-                </span>
-              ) : (
-                'Select Owner'
-              )}
-              <SVGIcons
-                alt="edit"
-                className="tw-ml-1"
-                icon="icon-edit"
-                title="Edit"
-                width="12px"
+                  !hasEditAccess
+                }
+                size="custom"
+                theme="primary"
+                variant="link"
+                onClick={() => setListVisible((visible) => !visible)}>
+                {ownerName ? (
+                  <span
+                    className={classNames('tw-truncate', {
+                      'tw-w-52': ownerName.length > 32,
+                    })}
+                    title={ownerName}>
+                    {ownerName}
+                  </span>
+                ) : (
+                  'Select Owner'
+                )}
+                <SVGIcons
+                  alt="edit"
+                  className="tw-ml-1"
+                  icon="icon-edit"
+                  title="Edit"
+                  width="12px"
+                />
+              </Button>
+            </NonAdminAction>
+            {listVisible && (
+              <DropDownList
+                showSearchBar
+                dropDownList={listOwners}
+                groupType="tab"
+                listGroups={getOwnerGroup()}
+                value={owner}
+                onSelect={handleOwnerSelection}
               />
-            </Button>
-          </NonAdminAction>
-          {listVisible && (
-            <DropDownList
-              showSearchBar
-              dropDownList={listOwners}
-              groupType="tab"
-              listGroups={['Teams', 'Users']}
-              value={owner}
-              onSelect={handleOwnerSelection}
-            />
-          )}
-        </span>
+            )}
+          </span>
+        </div>
+        {!isUndefined(isJoinable) ? (
+          <div className="tw-mt-3 tw-mb-1">
+            {isAdminUser ||
+            isAuthDisabled ||
+            userPermissions[Operation.UpdateTeam] ||
+            !hasEditAccess ? (
+              <div className="tw-flex">
+                <label htmlFor="join-team">
+                  Allow users to join this team during signup
+                </label>
+                <div
+                  className={classNames(
+                    'toggle-switch ',
+                    teamJoinable ? 'open' : null
+                  )}
+                  data-testid="team-isJoinable-switch"
+                  id="join-team"
+                  onClick={() => setTeamJoinable((prev) => !prev)}>
+                  <div className="switch" />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       {!hideTier &&
         (isLoadingTierData ? (

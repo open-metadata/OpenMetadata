@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.getEntityFields;
+import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Include.DELETED;
 import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
@@ -235,7 +236,7 @@ public abstract class EntityRepository<T> {
   @Transaction
   public void initSeedData(T entity) throws IOException {
     EntityInterface<T> entityInterface = Entity.getEntityInterface(entity);
-    String existingJson = dao.findJsonByFqn(entityInterface.getFullyQualifiedName(), Include.ALL);
+    String existingJson = dao.findJsonByFqn(entityInterface.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
       LOG.info("{} {} is already initialized", entityType, entityInterface.getFullyQualifiedName());
       return;
@@ -276,24 +277,29 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
       throws GeneralSecurityException, IOException, ParseException {
-    // forward scrolling, if after == null then first page is being asked
-    List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
-
-    List<T> entities = new ArrayList<>();
-    for (String json : jsons) {
-      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
-      entities.add(entity);
-    }
     int total = dao.listCount(filter);
+    List<T> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
 
-    String beforeCursor;
-    String afterCursor = null;
-    beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
-    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      entities.remove(limitParam);
-      afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+      for (String json : jsons) {
+        T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+        entities.add(entity);
+      }
+
+      String beforeCursor;
+      String afterCursor = null;
+      beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
+      if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+        entities.remove(limitParam);
+        afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+      }
+      return getResultList(entities, beforeCursor, afterCursor, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return getResultList(entities, null, null, total);
     }
-    return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -331,7 +337,7 @@ public abstract class EntityRepository<T> {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFields(dao.findEntityById(UUID.fromString(id), Include.ALL), putFields);
+    T entity = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     if (entityInterface.getVersion().equals(requestedVersion)) {
       return entity;
@@ -342,7 +348,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public EntityHistory listVersions(String id) throws IOException, ParseException {
-    T latest = setFields(dao.findEntityById(UUID.fromString(id), Include.ALL), putFields);
+    T latest = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     List<EntityVersionPair> oldVersions = daoCollection.entityExtensionDAO().getEntityVersions(id, extensionPrefix);
     oldVersions.sort(EntityUtil.compareVersion.reversed());
@@ -375,7 +381,7 @@ public abstract class EntityRepository<T> {
     EntityInterface<T> updatedInterface = getEntityInterface(updated);
 
     // Check if there is any original, deleted or not
-    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), Include.ALL), entityClass);
+    T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), ALL), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
@@ -770,7 +776,7 @@ public abstract class EntityRepository<T> {
     List<EntityReference> refs = findFrom(toId, toEntityType, Relationship.CONTAINS);
     // An entity can have only one container
     ensureSingleRelationship(toEntityType, toId, refs, "container", true);
-    return Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId());
+    return Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId(), ALL);
   }
 
   public void ensureSingleRelationship(
@@ -790,7 +796,7 @@ public abstract class EntityRepository<T> {
   public EntityReference getOwner(UUID id, String entityType) throws IOException, ParseException {
     List<EntityReference> refs = findFrom(id, entityType, Relationship.OWNS);
     ensureSingleRelationship(entityType, id, refs, "owners", false);
-    return refs.isEmpty() ? null : Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId());
+    return refs.isEmpty() ? null : Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId(), ALL);
   }
 
   public List<String> findTo(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
@@ -960,7 +966,7 @@ public abstract class EntityRepository<T> {
       }
 
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      daoCollection.tagDAO().deleteTagsByPrefix(fqn);
+      daoCollection.tagDAO().deleteTags(fqn);
 
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists

@@ -116,7 +116,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           String fieldsParam,
       @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
           @DefaultValue("10")
-          @Min(1)
+          @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,

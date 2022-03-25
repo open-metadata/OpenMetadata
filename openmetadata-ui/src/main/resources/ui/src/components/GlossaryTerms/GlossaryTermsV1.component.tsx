@@ -372,7 +372,9 @@ const GlossaryTermsV1 = ({
   };
 
   return (
-    <div className="tw-w-full tw-h-full tw-flex tw-flex-col">
+    <div
+      className="tw-w-full tw-h-full tw-flex tw-flex-col"
+      data-testid="glossary-term">
       <div className="tw-flex tw-gap-5 tw-mb-2">
         <div className="tw-font-medium">Synonyms</div>
         <div>

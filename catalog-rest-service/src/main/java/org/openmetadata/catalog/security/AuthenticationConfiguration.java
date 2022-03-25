@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.security;
 
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,7 +23,7 @@ public class AuthenticationConfiguration {
   @Getter @Setter private String authority;
   @Getter @Setter private String clientId;
   @Getter @Setter private String callbackUrl;
-  @Getter @Setter private String jwtEmail = "email";
+  @Getter @Setter private List<String> jwtPrincipalClaims = List.of("email", "preferred_username", "sub");
 
   @Override
   public String toString() {
@@ -42,6 +43,8 @@ public class AuthenticationConfiguration {
         + ", callbackUrl='"
         + callbackUrl
         + '\''
+        + ", jwtPrincipalClaims="
+        + jwtPrincipalClaims
         + '}';
   }
 }

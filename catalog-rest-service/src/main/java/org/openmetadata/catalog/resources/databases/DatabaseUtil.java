@@ -21,6 +21,7 @@ import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.TableConstraint;
+import org.openmetadata.catalog.type.TablePartition;
 import org.openmetadata.catalog.type.TableType;
 
 public final class DatabaseUtil {
@@ -58,6 +59,20 @@ public final class DatabaseUtil {
         if (!columnNames.contains(columnName)) {
           throw new IllegalArgumentException("Invalid column name found in table constraint");
         }
+      }
+    }
+  }
+
+  /** Validate Table partition */
+  public static void validateTablePartition(List<Column> columns, TablePartition tablePartition) {
+    if (tablePartition == null || tablePartition.getColumns() == null || tablePartition.getColumns().isEmpty()) {
+      return;
+    }
+    List<String> columnNames = new ArrayList<>();
+    columns.forEach(c -> columnNames.add(c.getName()));
+    for (String columnName : tablePartition.getColumns()) {
+      if (!columnNames.contains(columnName)) {
+        throw new IllegalArgumentException("Invalid column name found in table partition");
       }
     }
   }

@@ -155,6 +155,7 @@ const EntityInfoDrawer = ({
           <span className="tw-mr-2">{getEntityIcon(selectedNode.type)}</span>
           {getHeaderLabel(
             selectedNode.displayName ?? selectedNode.name,
+            selectedNode.name,
             selectedNode.type,
             isMainNode
           )}

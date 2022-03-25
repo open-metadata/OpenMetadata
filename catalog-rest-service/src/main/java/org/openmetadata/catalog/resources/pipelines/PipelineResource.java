@@ -132,7 +132,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           String serviceParam,
       @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
-          @Min(1)
+          @Min(0)
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,

@@ -3,13 +3,14 @@
 {% hint style="info" %}
 **The integration tests don't work at the moment.**
 
-Make sure OpenMetadata is up and running. Refer to instructions [building and running](build-code-run-tests.md).
+Make sure OpenMetadata is up and running. Refer to instructions [building and running](build-code-run-tests/).
 {% endhint %}
 
 ## Run MySQL test
 
 Run the following commands from the top-level directory
-```text
+
+```
 python3 -m venv /tmp/venv
 source /tmp/venv/bin/activate
 pip install -r ingestion/requirements.txt
@@ -22,7 +23,7 @@ pytest -s -c /dev/null
 
 ## Run MsSQL test
 
-```text
+```
 cd ingestion
 source env/bin/activate
 cd tests/integration/mssql
@@ -31,7 +32,7 @@ pytest -s -c /dev/null
 
 ## Run Postgres test
 
-```text
+```
 cd ingestion
 source env/bin/activate
 cd tests/integration/postgres
@@ -40,7 +41,7 @@ pytest -s -c /dev/null
 
 ## Run LDAP test
 
-```text
+```
 python3 -m venv /tmp/venv
 source /tmp/venv/bin/activate
 pip install -r ingestion/requirements.txt
@@ -53,7 +54,7 @@ pytest -s -c /dev/null
 
 ## Run Hive test
 
-```text
+```
 python3 -m venv /tmp/venv
 source /tmp/venv/bin/activate
 pip install -r ingestion/requirements.txt
@@ -64,4 +65,3 @@ pip install pyhive thrift sasl thrift_sasl
 cd ingestion/tests/integration/hive
 pytest -s -c /dev/null
 ```
-
