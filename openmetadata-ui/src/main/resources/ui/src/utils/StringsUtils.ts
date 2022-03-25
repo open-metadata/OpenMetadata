@@ -12,6 +12,7 @@
  */
 
 import parse from 'html-react-parser';
+import { isString } from 'lodash';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -92,4 +93,13 @@ export const bytesToSize = (bytes: number) => {
       return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
     }
   }
+};
+
+/**
+ * Checks if value is classified as a String primitive or object.
+ * @param value — The value to check.
+ * @return — Returns true if value is correctly classified, else false.
+ */
+export const isErrorIsString = (value: unknown) => {
+  return isString(value);
 };
