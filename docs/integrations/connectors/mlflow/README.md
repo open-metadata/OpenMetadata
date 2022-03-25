@@ -8,6 +8,7 @@ description: In this section, we provide guides and reference to use the MLflow 
 2. [Install MLflow Connector](./#2.-install-mlflow-connector)
 3. [Configure MLflow Connector](./#3.-configure-bigquery-connector)
 4. [Run MLflow Connector](./#4.-run-mlflow-connector)
+5. [Troubleshooting](./#5.-troubleshooting)
 
 ## **1. Requirements**
 

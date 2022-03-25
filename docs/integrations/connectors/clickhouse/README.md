@@ -10,6 +10,7 @@ description: >-
 2. [Install ClickHouse Connector](./#2.-install-clickhouse-connector)
 3. [Configure ClickHouse Connector](./#3.-configure-clickhouse-connector)
 4. [Run ClickHouse Connector](./#4.-run-clickhouse-connector)
+5. [Troubleshooting](./#5.-troubleshooting)
 
 {% content-ref url="clickhouse-usage.md" %}
 [clickhouse-usage.md](clickhouse-usage.md)

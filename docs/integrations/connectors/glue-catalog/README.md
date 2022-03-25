@@ -9,6 +9,7 @@ description: In this section, we provide guides and reference to use the Glue co
 3. [Configure your AWS default profile (optional)](./#3.-configure-your-aws-default-profile-optional)
 4. [Configure Glue Connector](./#4.-configure-glue-connector)
 5. [Run Glue Connector](./#5.-run-glue-connector)
+6. [Troubleshooting](./#5.-troubleshooting)
 
 ## **1. Requirements**
 
@@ -339,6 +340,8 @@ If you already have a production Airflow instance on which you would like to sch
 To view the metadata ingested from Glue, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Glue service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
 
 ![](../../../.gitbook/assets/explore.png)
+
+## **6. Troubleshooting**
 
 ### **ERROR: Failed building wheel for cryptography**
 

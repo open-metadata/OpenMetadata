@@ -10,6 +10,7 @@ description: >-
 2. [Install BigQuery Connector](./#2.-install-bigquery-connector)
 3. [Configure BigQuery Connector](./#3.-configure-bigquery-connector)
 4. [Run BigQuery Connector](./#4.-run-bigquery-connector)
+5. [Troubleshooting](./#5.-troubleshooting)
 
 {% content-ref url="bigquery-usage.md" %}
 [bigquery-usage.md](bigquery-usage.md)
