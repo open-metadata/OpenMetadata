@@ -61,6 +61,22 @@ RUN pip install ./ingestion-core
 RUN rm -rf /OpenMetadata
 WORKDIR /opt/metadata
 
+FROM jdk AS pytests
+COPY --from=builder /OpenMetadata /OpenMetadata
+WORKDIR /OpenMetadata
+RUN apt update
+RUN DEBIAN_FRONTEND="noninteractive"  apt install -y \
+    python3 \
+    python3-pip \
+    python-is-python3 \
+    socat \
+    vim
+RUN pip install \
+    datamodel-code-generator
+RUN datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
+RUN pip install "./ingestion[test]"
+RUN pip install "./ingestion-core"
+
 FROM python:3.9-slim AS airflow
 ENV AIRFLOW_HOME=/opt/airflow
 RUN apt-get update

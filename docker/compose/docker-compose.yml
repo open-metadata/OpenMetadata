@@ -20,8 +20,9 @@ services:
       MYSQL_ROOT_HOST: "%"
     healthcheck:
       test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
-      timeout: 5s
-      retries: 10
+      interval: 1s
+      timeout: 3s
+      retries: 60
     volumes:
       - ./scripts/mysql/:/docker-entrypoint-initdb.d/
     ports:
@@ -49,53 +50,77 @@ services:
       target: openmetadata
     image: openmetadata:latest
     hostname: openmetadata.example.com
+    container_name: openmetadata
     environment:
       - "ELASTICSEARCH_HOST=elasticsearch.example.com"
       - "MYSQL_HOST=mysql.example.com"
       - "AIRFLOW_HOST=airflow.example.com"
       - "SERVER_HOST=openmetadata.example.com"
-    container_name: openmetadata
+    healthcheck:
+      test: [ "CMD", "curl" ,"-f", "http://localhost:8585/api/v1/tables" ]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+    restart: unless-stopped
     ports:
       - "8585:8585"
     depends_on:
       mysql:
         condition: service_healthy
+      elasticsearch:
+        condition: service_started
     volumes:
       - .:/docker-compose
     entrypoint: /docker-compose/scripts/openmetadata/run.sh
     networks:
       - om
 
-  metadata:
-    build:
-      context: ../..
-      dockerfile: docker/compose/Dockerfile
-      target: metadata
-    image: metadata:latest
-    container_name: metadata
-    hostname: metadata.example.com
-    volumes:
-      - .:/docker-compose
-    entrypoint: /docker-compose/scripts/metadata/run.sh
-    networks:
-      - om
+#  metadata:
+#    build:
+#      context: ../..
+#      dockerfile: docker/compose/Dockerfile
+#      target: metadata
+#    image: metadata:latest
+#    container_name: metadata
+#    hostname: metadata.example.com
+#    volumes:
+#      - .:/docker-compose
+#    entrypoint: /docker-compose/scripts/metadata/run.sh
+#    networks:
+#      - om
 
-  airflow:
+#  airflow:
+#    build:
+#      context: ../..
+#      dockerfile: docker/compose/Dockerfile
+#      target: airflow
+#    image: airflow:latest
+#    container_name: airflow
+#    hostname: airflow.example.com
+#    depends_on:
+#      mysql:
+#        condition: service_healthy
+#    ports:
+#      - "8080:8080"
+#    volumes:
+#      - .:/docker-compose
+#    entrypoint: /docker-compose/scripts/airflow/run.sh
+#    networks:
+#      - om
+
+  pytests:
     build:
       context: ../..
       dockerfile: docker/compose/Dockerfile
-      target: airflow
-    image: airflow:latest
-    container_name: airflow
-    hostname: airflow.example.com
+      target: pytests
+    hostname: pytests.example.com
+    container_name: pytests
     depends_on:
-      mysql:
+      openmetadata:
         condition: service_healthy
-    ports:
-      - "8080:8080"
     volumes:
       - .:/docker-compose
-    entrypoint: /docker-compose/scripts/airflow/run.sh
+    entrypoint: /docker-compose/scripts/pytests/run.sh
     networks:
       - om
 
