@@ -97,15 +97,6 @@ export const bytesToSize = (bytes: number) => {
 };
 
 /**
- * Checks if value is classified as a String primitive or object.
- * @param value — The value to check.
- * @return — Returns true if value is correctly classified, else false.
- */
-export const isErrorIsString = (value: unknown) => {
-  return isString(value);
-};
-
-/**
  * Checks the value and return error text
  * @param value - The value to check
  * @param fallbackText

@@ -80,7 +80,7 @@ import {
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { isErrorIsString } from '../../utils/StringsUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 
 const PipelineDetailsPage = () => {
@@ -172,10 +172,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['fetch-entity-feed-count-error'];
-        const errMsg = err.response?.data?.message || msg;
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
         handleShowErrorToast(errMsg);
       });
   };
@@ -202,10 +202,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['fetch-lineage-error'];
-        const errMsg = err.response?.data?.message || msg;
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-error']
+        );
         handleShowErrorToast(errMsg);
       })
       .finally(() => {
@@ -282,10 +282,10 @@ const PipelineDetailsPage = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const msg = isErrorIsString(err)
-            ? err
-            : jsonData['api-error-messages']['fetch-pipeline-details-error'];
-          const errMsg = err.response?.data?.message || msg;
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-pipeline-details-error']
+          );
 
           handleShowErrorToast(errMsg);
         }
@@ -320,10 +320,10 @@ const PipelineDetailsPage = () => {
             }
           })
           .catch((err: AxiosError) => {
-            const msg = isErrorIsString(err)
-              ? err
-              : jsonData['api-error-messages']['fetch-entity-feed-error'];
-            const errMsg = err.response?.data?.message || msg;
+            const errMsg = getErrorText(
+              err,
+              jsonData['api-error-messages']['fetch-entity-feed-error']
+            );
 
             handleShowErrorToast(errMsg);
           })
@@ -349,10 +349,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['update-entity-follow-error'];
-        const errMsg = err.response?.data?.message || msg;
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-entity-follow-error']
+        );
         handleShowErrorToast(errMsg);
       });
   };
@@ -371,10 +371,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['update-entity-unfollow-error'];
-        const errMsg = err.response?.data?.message || msg;
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-entity-unfollow-error']
+        );
 
         handleShowErrorToast(errMsg);
       });
@@ -394,10 +394,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['update-description-error'];
-        const errMsg = err.response?.data?.message || msg;
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-description-error']
+        );
 
         handleShowErrorToast(errMsg);
       });
@@ -419,10 +419,10 @@ const PipelineDetailsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const msg = isErrorIsString(err)
-            ? err
-            : jsonData['api-error-messages']['update-entity-error'];
-          const errMsg = err.response?.data?.message || msg;
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['update-entity-error']
+          );
           handleShowErrorToast(errMsg);
           reject();
         });
@@ -442,10 +442,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['update-tags-error'];
-        const errMsg = err.response?.data?.message || msg;
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-tags-error']
+        );
 
         handleShowErrorToast(errMsg);
       });
@@ -462,10 +462,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['update-task-error'];
-        const errMsg = err.response?.data?.message || msg;
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-task-error']
+        );
 
         handleShowErrorToast(errMsg);
       });
@@ -514,9 +514,10 @@ const PipelineDetailsPage = () => {
           resolve();
         })
         .catch((err: AxiosError) => {
-          const errMsg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['add-lineage-error'];
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['add-lineage-error']
+          );
           handleShowErrorToast(errMsg);
           reject();
         });
@@ -530,9 +531,10 @@ const PipelineDetailsPage = () => {
       data.toEntity,
       data.toId
     ).catch((err: AxiosError) => {
-      const errMsg =
-        err.response?.data?.message ||
-        jsonData['api-error-messages']['delete-lineage-error'];
+      const errMsg = getErrorText(
+        err,
+        jsonData['api-error-messages']['delete-lineage-error']
+      );
       handleShowErrorToast(errMsg);
     });
   };
@@ -563,11 +565,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['add-feed-error'];
-        const errMsg = err.response?.data?.message || msg;
-
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['add-feed-error']
+        );
         handleShowErrorToast(errMsg);
       });
   };
@@ -586,11 +587,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const msg = isErrorIsString(err)
-          ? err
-          : jsonData['api-error-messages']['create-conversation-error'];
-        const errMsg = err.response?.data?.message || msg;
-
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
         handleShowErrorToast(errMsg);
       });
   };
@@ -621,12 +621,10 @@ const PipelineDetailsPage = () => {
             }
           })
           .catch((error: AxiosError) => {
-            const msg = isErrorIsString(error)
-              ? error
-              : jsonData['api-error-messages'][
-                  'fetch-updated-conversation-error'
-                ];
-            const errMsg = error?.response?.data?.message || msg;
+            const errMsg = getErrorText(
+              error,
+              jsonData['api-error-messages']['fetch-updated-conversation-error']
+            );
 
             handleShowErrorToast(errMsg);
           });
@@ -636,10 +634,10 @@ const PipelineDetailsPage = () => {
         );
       })
       .catch((error: AxiosError) => {
-        const message =
-          error?.response?.data?.message ||
-          error ||
-          jsonData['api-error-messages']['delete-message-error'];
+        const message = getErrorText(
+          error,
+          jsonData['api-error-messages']['delete-message-error']
+        );
         handleShowErrorToast(message);
       });
   };
