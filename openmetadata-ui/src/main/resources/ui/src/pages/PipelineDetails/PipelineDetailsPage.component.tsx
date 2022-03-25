@@ -167,12 +167,13 @@ const PipelineDetailsPage = () => {
           setFeedCount(res.data.totalCount);
           setEntityFieldThreadCount(res.data.counts);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['fetch-entity-feed-count-error'];
         handleShowErrorToast(errMsg);
       });
@@ -196,12 +197,13 @@ const PipelineDetailsPage = () => {
         if (res.data) {
           setEntityLineage(res.data);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const msg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['fetch-lineage-error'];
         handleShowErrorToast(msg);
       })
@@ -272,7 +274,7 @@ const PipelineDetailsPage = () => {
         } else {
           setIsError(true);
 
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -281,6 +283,7 @@ const PipelineDetailsPage = () => {
         } else {
           const errMsg =
             err.response?.data?.message ||
+            err ||
             jsonData['api-error-messages']['fetch-pipeline-details-error'];
           handleShowErrorToast(errMsg);
         }
@@ -309,12 +312,15 @@ const PipelineDetailsPage = () => {
             if (data) {
               setEntityThread(data);
             } else {
-              throw '';
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
             }
           })
           .catch((err: AxiosError) => {
             const errMsg =
               err.response?.data?.message ||
+              err ||
               jsonData['api-error-messages']['fetch-entity-feed-error'];
             handleShowErrorToast(errMsg);
           })
@@ -336,12 +342,13 @@ const PipelineDetailsPage = () => {
 
           setFollowers([...followers, ...newValue]);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-entity-follow-error'];
         handleShowErrorToast(errMsg);
       });
@@ -357,12 +364,13 @@ const PipelineDetailsPage = () => {
             followers.filter((follower) => follower.id !== oldValue[0].id)
           );
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-entity-unfollow-error'];
         handleShowErrorToast(errMsg);
       });
@@ -378,12 +386,13 @@ const PipelineDetailsPage = () => {
           setDescription(description);
           getEntityFeedCount();
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const msg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-description-error'];
         handleShowErrorToast(msg);
       });
@@ -401,12 +410,13 @@ const PipelineDetailsPage = () => {
             getEntityFeedCount();
             resolve();
           } else {
-            throw '';
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
         .catch((err: AxiosError) => {
           const msg =
             err.response?.data?.message ||
+            err ||
             jsonData['api-error-messages']['update-entity-error'];
           handleShowErrorToast(msg);
           reject();
@@ -423,12 +433,13 @@ const PipelineDetailsPage = () => {
           setTags(getTagsWithoutTier(res.data.tags));
           getEntityFeedCount();
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-tags-error'];
         handleShowErrorToast(errMsg);
       });
@@ -441,12 +452,13 @@ const PipelineDetailsPage = () => {
           setTasks(res.data.tasks || []);
           getEntityFeedCount();
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['update-task-error'];
         handleShowErrorToast(errMsg);
       });
@@ -540,12 +552,13 @@ const PipelineDetailsPage = () => {
           });
           getEntityFeedCount();
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['add-feed-error'];
         handleShowErrorToast(errMsg);
       });
@@ -561,12 +574,13 @@ const PipelineDetailsPage = () => {
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         const errMsg =
           err.response?.data?.message ||
+          err ||
           jsonData['api-error-messages']['create-conversation-error'];
         handleShowErrorToast(errMsg);
       });
@@ -592,12 +606,15 @@ const PipelineDetailsPage = () => {
                 });
               });
             } else {
-              throw '';
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
             }
           })
-          .catch((error) => {
+          .catch((error: AxiosError) => {
             const message =
               error?.response?.data?.message ||
+              error ||
               jsonData['api-error-messages'][
                 'fetch-updated-conversation-error'
               ];
@@ -608,9 +625,10 @@ const PipelineDetailsPage = () => {
           jsonData['api-success-messages']['delete-message']
         );
       })
-      .catch((error) => {
+      .catch((error: AxiosError) => {
         const message =
           error?.response?.data?.message ||
+          error ||
           jsonData['api-error-messages']['delete-message-error'];
         handleShowErrorToast(message);
       });
