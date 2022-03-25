@@ -59,6 +59,8 @@ const jsonData = {
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-service-error': 'Error while fetching service details!',
 
+    'unexpected-server-response': 'Unexpected response from server!',
+
     'update-chart-error': 'Error while updating charts!',
     'update-owner-error': 'Error while updating owner',
     'update-glossary-term-error': 'Error while updating glossary term!',
@@ -70,7 +72,6 @@ const jsonData = {
     'update-entity-unfollow-error': 'Error while unfollowing entity!',
     'update-ingestion-error': 'Error while updating ingestion workflow',
     'update-service-config-error': 'Error while updating ingestion workflow',
-    'unexpected-server-response': 'Unexpected response from server!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
