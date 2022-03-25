@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/postgresConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PostgresConnection",
+  "description": "Postgres Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.PostgresConnection",
+  "properties": {
+    "username": {
+      "description": "username to connect  to the Postgres. This user should have privileges to read all the metadata in Postgres.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Postgres.",
+      "type": "string"
+    },
+    "hostPort": {
+      "description": "Host and port of the Postgres.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Postgres.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object"
+    },
+    "connectionArguments": {
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

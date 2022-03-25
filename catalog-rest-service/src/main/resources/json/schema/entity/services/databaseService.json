@@ -110,29 +110,21 @@
       "javaType": "org.openmetadata.catalog.type.DatabaseConnection",
       "description": "Database Connection.",
       "properties": {
-        "username": {
-          "description": "username to connect  to the data source.",
-          "type": "string"
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/database/mysqlConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mssqlConnection.json"
+            },
+            {
+              "$ref": "./connections/database/postgresConnection.json"
+            }
+          ]
         },
-        "password": {
-          "description": "password to connect  to the data source.",
-          "type": "string"
-        },
-        "hostPort": {
-          "description": "Host and port of the data source.",
-          "type": "string"
-        },
-        "database": {
-          "description": "Database of the data source.",
-          "type": "string"
-        },
-        "connectionOptions": {
-          "description": "Additional connection options that can be sent to service during the connection.",
-          "type": "object"
-        },
-        "connectionArguments": {
-          "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
-          "type": "object"
+        "databaseType": {
+          "$ref": "#/definitions/databaseServiceType"
         }
       },
       "additionalProperties": false
