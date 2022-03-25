@@ -9,7 +9,7 @@ description: In this section, we provide guides and reference to use the Glue co
 3. [Configure your AWS default profile (optional)](./#3.-configure-your-aws-default-profile-optional)
 4. [Configure Glue Connector](./#4.-configure-glue-connector)
 5. [Run Glue Connector](./#5.-run-glue-connector)
-6. [Troubleshooting](./#5.-troubleshooting)
+6. [Troubleshooting](./#6.-troubleshooting)
 
 ## **1. Requirements**
 

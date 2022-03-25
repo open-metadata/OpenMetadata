@@ -4,11 +4,9 @@ description: In this section, we provide guides and reference to use the MSSQL c
 
 # MSSQL
 
-
-
 1. [Requirements](./#1.-requirements)
 2. [Install MSSQL Connector](./#2.-install-mssql-connector)
-3. [Configure MSSQL Connector](./#3.-configure-bigquery-connector)
+3. [Configure MSSQL Connector](./#3.-configure-mssql-connector)
 4. [Run MSSQL Connector](./#4.-run-mssql-connector)
 5. [Troubleshooting](./#5.-troubleshooting)
 
@@ -88,11 +86,13 @@ Please follow the steps relevant to your use case.
 
 1. [Create a configuration file using template JSON](./#3.1-create-a-configuration-file-using-template-json)
 2. [Configure service settings](./#3.2-configure-service-settings)
-3. [Configure data filters (optional)](./#3.3-configure-data-filters-optional)
-4. [Configure sample data (optional)](./#6.-configure-sample-data-optional)
-5. [Configure DBT (optional)](./#7.-configure-dbt-optional)
-6. [Confirm sink settings](./#8.-confirm-sink-settings)
-7. [Confirm metadata\_server settings](./#9.-confirm-metadata\_server-settings)
+3. [Enable/disable the data profiler](./#3.3-enable-disable-the-data-profiler)
+4. [Install the data profiler Python module (optional)](./#3.4-install-the-data-profiler-python-module-optional)
+5. [Configure data filters (optional)](./#3.5-configure-data-filters-optional)
+6. [Configure sample data (optional)](./#3.6-configure-sample-data-optional)
+7. [Configure DBT (optional)](./#3.7-configure-dbt-optional)
+8. [Confirm sink settings](./#3.8-confirm-sink-settings)
+9. [Confirm metadata\_server settings](./#3.9-confirm-metadata\_server-settings)
 
 ### 3.1 **Create a configuration file using template JSON**
 
@@ -195,7 +195,41 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "mssql_db"
 ```
 
-### **3.3 Configure data filters (optional)**
+### **3.3 Enable/disable the data profiler**
+
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
+
+#### **data\_profiler\_enabled**
+
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
+
+You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We’ve done this in the configuration template provided.
+
+```javascript
+"data_profiler_enabled": "false"
+```
+
+If you want to enable the data profiler, update your configuration file as follows.
+
+```javascript
+"data_profiler_enabled": "true"
+```
+
+{% hint style="info" %}
+**Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
+{% endhint %}
+
+### **3.4 Install the data profiler Python module (optional)**
+
+If you’ve enabled the data profiler in Step 3.3, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
+
+```javascript
+pip3 install 'openmetadata-ingestion[data-profiler]'
+```
+
+The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
+
+### **3.5 Configure data filters (optional)**
 
 #### **include\_views (optional)**
 
@@ -269,7 +303,7 @@ Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_fil
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](./#table\_filter\_pattern-optional). Please check that section for details.
 
-### **3.4 Configure sample data (optional)**
+### **3.6 Configure sample data (optional)**
 
 #### **generate\_sample\_data (optional)**
 
@@ -295,7 +329,7 @@ You can exclude the collection of sample data by adding the following key-value 
 **Note:** `generate_sample_data` is set to true by default.
 {% endhint %}
 
-### 3.5 Configure DBT (optional)
+### 3.7 Configure DBT (optional)
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
@@ -319,7 +353,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-### **3.6 Confirm `sink` settings**
+### **3.8 Confirm `sink` settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `mssql.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -330,7 +364,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-### **3.7 Confirm `metadata_server` settings**
+### **3.9 Confirm `metadata_server` settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `mssql.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -395,3 +429,7 @@ Failed to establish a new connection: [Errno 61] Connection refused'))
 To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/) to deploy OpenMetadata.
 
 Then re-run the metadata ingestion workflow in [Run MSSQL Connector](./#4.-run-mssql-connector)
+
+## Observations
+
+* Note that the profiler won't support certain metrics on the type `NTEXT`. Link to Microsoft [docs](https://docs.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver15).
