@@ -162,7 +162,7 @@ const DashboardDetailsPage = () => {
   const getEntityFeedCount = () => {
     getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN))
       .then((res: AxiosResponse) => {
-        if (!res.data) {
+        if (res.data) {
           setFeedCount(res.data.totalCount);
           setEntityFieldThreadCount(res.data.counts);
         } else {
@@ -253,7 +253,7 @@ const DashboardDetailsPage = () => {
         if (res.data) {
           setEntityLineage(res.data);
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -330,7 +330,7 @@ const DashboardDetailsPage = () => {
         } else {
           setIsError(true);
 
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -370,7 +370,9 @@ const DashboardDetailsPage = () => {
             if (data) {
               setEntityThread(data);
             } else {
-              jsonData['api-error-messages']['unexpected-server-response'];
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
             }
           })
           .catch((err: AxiosError) => {
@@ -400,7 +402,7 @@ const DashboardDetailsPage = () => {
           setDescription(description);
           getEntityFeedCount();
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -420,7 +422,7 @@ const DashboardDetailsPage = () => {
 
           setFollowers([...followers, ...newValue]);
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -441,7 +443,7 @@ const DashboardDetailsPage = () => {
             followers.filter((follower) => follower.id !== oldValue[0].id)
           );
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -462,7 +464,7 @@ const DashboardDetailsPage = () => {
           setTags(getTagsWithoutTier(res.data.tags));
           getEntityFeedCount();
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -488,7 +490,7 @@ const DashboardDetailsPage = () => {
             getEntityFeedCount();
             resolve();
           } else {
-            jsonData['api-error-messages']['unexpected-server-response'];
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
         .catch((err: AxiosError) => {
@@ -517,7 +519,7 @@ const DashboardDetailsPage = () => {
             return charts;
           });
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -544,7 +546,7 @@ const DashboardDetailsPage = () => {
             return charts;
           });
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -618,7 +620,7 @@ const DashboardDetailsPage = () => {
           });
           getEntityFeedCount();
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -640,7 +642,7 @@ const DashboardDetailsPage = () => {
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
@@ -672,7 +674,9 @@ const DashboardDetailsPage = () => {
                 });
               });
             } else {
-              jsonData['api-error-messages']['unexpected-server-response'];
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
             }
           })
           .catch((error: AxiosError) => {
