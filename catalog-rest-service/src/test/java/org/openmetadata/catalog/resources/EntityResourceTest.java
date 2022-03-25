@@ -2042,10 +2042,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final String getEntityName(TestInfo test) {
-    return String.format("%s_%s", entityType, test.getDisplayName());
+    return String.format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   public final String getEntityName(TestInfo test, int index) {
-    return String.format("%s_%d_%s", entityType, index, test.getDisplayName());
+    return String.format("%s_%d_%s", entityType, index, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 }

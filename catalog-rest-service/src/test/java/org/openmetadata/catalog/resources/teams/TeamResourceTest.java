@@ -257,6 +257,29 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
+  void patch_isJoinable_200(TestInfo test) throws IOException {
+    CreateTeam create =
+        createRequest(getEntityName(test), "description", "displayName", null)
+            .withProfile(PROFILE)
+            .withIsJoinable(false);
+    Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // patch the team with isJoinable set to true
+    String json = JsonUtils.pojoToJson(team);
+    team.setIsJoinable(true);
+    ChangeDescription change = getChangeDescription(team.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("isJoinable").withOldValue(false).withNewValue(true));
+    team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+
+    // set isJoinable to false and check
+    json = JsonUtils.pojoToJson(team);
+    team.setIsJoinable(false);
+    change = getChangeDescription(team.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("isJoinable").withOldValue(true).withNewValue(false));
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
   void patch_deleteUserAndDefaultRoleFromTeam_200(TestInfo test) throws IOException {
     UserResourceTest userResourceTest = new UserResourceTest();
     final int totalUsers = 20;

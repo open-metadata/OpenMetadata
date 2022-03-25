@@ -24,6 +24,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.sandbox.SandboxConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 
@@ -80,5 +81,25 @@ public class ConfigResource {
       authorizerConfiguration = catalogApplicationConfig.getAuthorizerConfiguration();
     }
     return authorizerConfiguration;
+  }
+
+  @GET
+  @Path(("/sandbox"))
+  @Operation(
+      summary = "Get sandbox mode",
+      tags = "general",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sandbox mode",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = SandboxConfiguration.class)))
+      })
+  public SandboxConfiguration getSandboxMode() {
+    SandboxConfiguration sandboxConfiguration = new SandboxConfiguration();
+    if (catalogApplicationConfig.isSandboxModeEnabled()) {
+      sandboxConfiguration.setSandboxModeEnabled(true);
+    }
+    return sandboxConfiguration;
   }
 }

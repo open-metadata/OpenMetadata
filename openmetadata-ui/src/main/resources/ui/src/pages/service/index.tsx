@@ -66,11 +66,6 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
-import {
-  onConfirmText,
-  onErrorText,
-  onUpdatedConversastionError,
-} from '../../constants/feed.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -91,6 +86,7 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   getEntityMissingError,
   hasEditAccess,
@@ -159,6 +155,20 @@ const ServicePage: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
+  const handleShowSuccessToast = (message: string) => {
+    showToast({
+      variant: 'success',
+      body: message,
+    });
+  };
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -287,14 +297,20 @@ const ServicePage: FunctionComponent = () => {
   const getEntityFeedCount = () => {
     getFeedCount(getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN))
       .then((res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-        setEntityFieldThreadCount(res.data.counts);
+        if (res.data) {
+          setFeedCount(res.data.totalCount);
+          setEntityFieldThreadCount(res.data.counts);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-count-error']
+          );
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching feed count',
-        });
+      .catch((error: AxiosError) => {
+        const message =
+          error.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        handleShowErrorToast(message);
       });
   };
 
@@ -320,14 +336,16 @@ const ServicePage: FunctionComponent = () => {
           setIngestionPaging(res.data.paging);
         } else {
           setIngestionPaging({} as Paging);
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-ingestion-error']
+          );
         }
       })
-      .catch((err: AxiosError) => {
-        const msg = err.response?.data.message;
-        showToast({
-          variant: 'error',
-          body: msg ?? `Error while getting ingestion workflow`,
-        });
+      .catch((error: AxiosError) => {
+        const message =
+          error.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-ingestion-error'];
+        handleShowErrorToast(message);
       })
       .finally(() => setIsloading(false));
   };
@@ -344,15 +362,16 @@ const ServicePage: FunctionComponent = () => {
             getAllIngestionWorkflows();
           } else {
             reject();
+            handleShowErrorToast(
+              `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
+            );
           }
         })
-        .catch((err: AxiosError) => {
-          const msg = err.response?.data.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while triggering ingestion workflow ${displayName}`,
-          });
+        .catch((error: AxiosError) => {
+          const message =
+            error.response?.data?.message ||
+            `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
+          handleShowErrorToast(message);
           reject();
         })
         .finally(() => setIsloading(false));
@@ -369,13 +388,12 @@ const ServicePage: FunctionComponent = () => {
           resolve();
           getAllIngestionWorkflows();
         })
-        .catch((err: AxiosError) => {
-          const msg = err.response?.data.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while deleting ingestion workflow ${displayName}`,
-          });
+        .catch((error: AxiosError) => {
+          const message =
+            error.response?.data?.message ||
+            `${jsonData['api-error-messages']['delete-ingestion-error']} ${displayName}`;
+
+          handleShowErrorToast(message);
           reject();
         });
     }).finally(() => setIsloading(false));
@@ -396,26 +414,19 @@ const ServicePage: FunctionComponent = () => {
           resolve();
           getAllIngestionWorkflows();
           if (triggerIngestion) {
-            triggerIngestionById(id, displayName)
-              .then()
-              .catch((err: AxiosError) => {
-                const msg = err.response?.data.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ??
-                    `Error while triggring ingestion workflow ${displayName}`,
-                });
-              });
+            triggerIngestionById(id, displayName).catch((error: AxiosError) => {
+              const message =
+                error.response?.data?.message ||
+                `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
+              handleShowErrorToast(message);
+            });
           }
         })
-        .catch((err: AxiosError) => {
-          const msg = err.response?.data.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while updating ingestion workflow ${displayName}`,
-          });
+        .catch((error: AxiosError) => {
+          const message =
+            error.response?.data?.message ||
+            `${jsonData['api-error-messages']['update-ingestion-error']}`;
+          handleShowErrorToast(message);
           reject();
         });
     });
@@ -442,32 +453,33 @@ const ServicePage: FunctionComponent = () => {
 
     addAirflowPipeline(ingestionData)
       .then((res: AxiosResponse) => {
-        const { id, displayName } = res.data;
-        setIsloading(false);
-        getAllIngestionWorkflows();
-        if (triggerIngestion) {
-          triggerIngestionById(id, displayName)
-            .then()
-            .catch((err: AxiosError) => {
-              const msg = err.response?.data.message;
-              showToast({
-                variant: 'error',
-                body:
-                  msg ??
-                  `Error while triggring ingestion workflow ${displayName}`,
-              });
+        if (res.data) {
+          const { id, displayName } = res.data;
+          setIsloading(false);
+          getAllIngestionWorkflows();
+          if (triggerIngestion) {
+            triggerIngestionById(id, displayName).catch((error: AxiosError) => {
+              const message =
+                error.response?.data?.message ||
+                `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
+
+              handleShowErrorToast(message);
             });
+          }
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['add-ingestion-error']
+          );
         }
       })
-      .catch((err: AxiosError) => {
-        const errMsg = err.response?.data?.message ?? '';
-        if (errMsg.includes('Connection refused')) {
+      .catch((error: AxiosError) => {
+        const message =
+          error.response?.data?.message ||
+          jsonData['api-error-messages']['add-ingestion-error'];
+        if (message.includes('Connection refused')) {
           setConnectionAvailable(false);
         } else {
-          showToast({
-            variant: 'error',
-            body: errMsg ?? `Error while adding ingestion workflow`,
-          });
+          handleShowErrorToast(message);
         }
         setIsloading(false);
       });
@@ -489,19 +501,25 @@ const ServicePage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id, configData)
         .then((res: AxiosResponse) => {
-          setServiceDetails({
-            ...res.data,
-            owner: res.data?.owner ?? serviceDetails?.owner,
-          });
+          if (res.data) {
+            setServiceDetails({
+              ...res.data,
+              owner: res.data?.owner ?? serviceDetails?.owner,
+            });
+          } else {
+            handleShowErrorToast(
+              `${jsonData['api-error-messages']['update-service-config-error']}`
+            );
+          }
+
           resolve();
         })
-        .catch((err: AxiosError) => {
+        .catch((error: AxiosError) => {
           reject();
-          const msg = err.response?.data.message;
-          showToast({
-            variant: 'error',
-            body: msg ?? `Error while updating config for ${serviceFQN}`,
-          });
+          const message =
+            error.response?.data?.message ||
+            `${jsonData['api-error-messages']['update-service-config-error']}`;
+          handleShowErrorToast(message);
         });
     });
   };
@@ -744,30 +762,33 @@ const ServicePage: FunctionComponent = () => {
     setIsloading(true);
     getServiceByFQN(serviceName, serviceFQN, ['owner'])
       .then((resService: AxiosResponse) => {
-        const { description, serviceType } = resService.data;
-        setServiceDetails(resService.data);
-        setDescription(description);
-        setSlashedTableName([
-          {
-            name: serviceFQN,
-            url: '',
-            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            activeTitle: true,
-          },
-        ]);
-        getOtherDetails();
+        if (resService.data) {
+          const { description, serviceType } = resService.data;
+          setServiceDetails(resService.data);
+          setDescription(description);
+          setSlashedTableName([
+            {
+              name: serviceFQN,
+              url: '',
+              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+              activeTitle: true,
+            },
+          ]);
+          getOtherDetails();
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-service-error']
+          );
+        }
       })
-      .catch((err: AxiosError) => {
-        if (err.response?.status === 404) {
+      .catch((error: AxiosError) => {
+        if (error.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg =
-            err.response?.data.message ||
-            'Error while fetching service details';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
+          const message =
+            error.response?.data?.message ||
+            jsonData['api-error-messages']['fetch-service-error'];
+          handleShowErrorToast(message);
         }
       })
       .finally(() => setIsloading(false));
@@ -842,12 +863,11 @@ const ServicePage: FunctionComponent = () => {
           setIsEdit(false);
           getEntityFeedCount();
         })
-        .catch((err: AxiosError) => {
-          const errMsg = err.message || 'Something went wrong!';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
+        .catch((error: AxiosError) => {
+          const message =
+            error.response?.data?.message ||
+            jsonData['api-error-messages']['update-description-error'];
+          handleShowErrorToast(message);
         });
     } else {
       setIsEdit(false);
@@ -865,10 +885,20 @@ const ServicePage: FunctionComponent = () => {
     return new Promise<void>((_, reject) => {
       updateService(serviceName, serviceDetails?.id, updatedData)
         .then((res: AxiosResponse) => {
-          setServiceDetails(res.data);
+          if (res.data) {
+            setServiceDetails(res.data);
+          } else {
+            handleShowErrorToast(
+              jsonData['api-error-messages']['update-owner-error']
+            );
+          }
           reject();
         })
-        .catch(() => {
+        .catch((error: AxiosError) => {
+          const message =
+            error.response?.data?.message ||
+            jsonData['api-error-messages']['update-owner-error'];
+          handleShowErrorToast(message);
           reject();
         });
     });
@@ -896,14 +926,20 @@ const ServicePage: FunctionComponent = () => {
     setIsentityThreadLoading(true);
     getAllFeeds(getEntityFeedLink(serviceCategory.slice(0, -1), serviceFQN))
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
-        setEntityThread(data);
+        if (res.data) {
+          const { data } = res.data;
+          setEntityThread(data);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-error']
+          );
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching entity feeds',
-        });
+      .catch((error: AxiosError) => {
+        const message =
+          error.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-error'];
+        handleShowErrorToast(message);
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -928,31 +964,41 @@ const ServicePage: FunctionComponent = () => {
               }
             });
           });
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['create-message-error']
+          );
         }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while posting feed',
-        });
+      .catch((error: AxiosError) => {
+        const message =
+          error.response?.data?.message ||
+          jsonData['api-error-messages']['create-message-error'];
+        handleShowErrorToast(message);
       });
   };
 
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res: AxiosResponse) => {
-        setEntityThread((pre) => [...pre, res.data]);
-        getEntityFeedCount();
-        showToast({
-          variant: 'success',
-          body: 'Conversation created successfully',
-        });
+        if (res.data) {
+          setEntityThread((pre) => [...pre, res.data]);
+          getEntityFeedCount();
+
+          handleShowSuccessToast(
+            jsonData['api-success-messages']['create-conversation']
+          );
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['create-conversation-error']
+          );
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while creating the conversation',
-        });
+      .catch((error: AxiosError) => {
+        const message =
+          error.response?.data?.message ||
+          jsonData['api-error-messages']['create-conversation-error'];
+        handleShowErrorToast(message);
       });
   };
 
@@ -961,36 +1007,46 @@ const ServicePage: FunctionComponent = () => {
       .then(() => {
         getUpdatedThread(threadId)
           .then((data) => {
-            setEntityThread((pre) => {
-              return pre.map((thread) => {
-                if (thread.id === data.id) {
-                  return {
-                    ...thread,
-                    posts: data.posts.slice(-3),
-                    postsCount: data.postsCount,
-                  };
-                } else {
-                  return thread;
-                }
+            if (data) {
+              setEntityThread((pre) => {
+                return pre.map((thread) => {
+                  if (thread.id === data.id) {
+                    return {
+                      ...thread,
+                      posts: data.posts.slice(-3),
+                      postsCount: data.postsCount,
+                    };
+                  } else {
+                    return thread;
+                  }
+                });
               });
-            });
+            } else {
+              handleShowErrorToast(
+                jsonData['api-error-messages'][
+                  'fetch-updated-conversation-error'
+                ]
+              );
+            }
           })
-          .catch((error) => {
-            const message = error?.message;
-            showToast({
-              variant: 'error',
-              body: message ?? onUpdatedConversastionError,
-            });
+          .catch((error: AxiosError) => {
+            const message =
+              error.response?.data?.message ||
+              jsonData['api-error-messages'][
+                'fetch-updated-conversation-error'
+              ];
+            handleShowErrorToast(message);
           });
 
-        showToast({
-          variant: 'success',
-          body: onConfirmText,
-        });
+        handleShowSuccessToast(
+          jsonData['api-success-messages']['delete-message']
+        );
       })
-      .catch((error) => {
-        const message = error?.message;
-        showToast({ variant: 'error', body: message ?? onErrorText });
+      .catch((error: AxiosError) => {
+        const message =
+          error.response?.data?.message ||
+          jsonData['api-error-messages']['delete-message-error'];
+        handleShowErrorToast(message);
       });
   };
 

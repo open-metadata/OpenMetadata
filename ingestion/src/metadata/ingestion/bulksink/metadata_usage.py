@@ -87,6 +87,12 @@ class MetadataUsageBulkSink(BulkSink):
                 )
                 try:
                     self.metadata.publish_table_usage(table_entity, table_usage_request)
+
+                    logger.info(
+                        f"Successfully table usage published for {table_usage.table}"
+                    )
+                    self.status.records_written(f"Table: {table_usage.table}")
+
                 except Exception as err:
                     self.status.failures.append(table_usage_request)
                     logger.error(
@@ -94,6 +100,7 @@ class MetadataUsageBulkSink(BulkSink):
                             table_usage.table, err
                         )
                     )
+                    self.status.failures.append(f"Table: {table_usage.table}")
                 table_join_request = self.__get_table_joins(table_usage)
                 logger.debug("table join request {}".format(table_join_request))
                 try:
@@ -118,6 +125,8 @@ class MetadataUsageBulkSink(BulkSink):
                         table_usage.table, table_usage.database
                     )
                 )
+                self.status.warnings.append(f"Table: {table_usage.table}")
+
         try:
             self.metadata.compute_percentile(Table, self.today)
             self.metadata.compute_percentile(Database, self.today)

@@ -414,7 +414,7 @@ export const isRequiredDetailsAvailableForIngestion = (
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES: {
       const hostPort = getHostPortDetails(
-        data.databaseConnection?.hostPort || ''
+        data?.databaseConnection?.hostPort || ''
       );
 
       return Boolean(hostPort.host && hostPort.port);

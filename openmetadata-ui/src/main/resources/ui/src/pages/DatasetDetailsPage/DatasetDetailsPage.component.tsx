@@ -585,8 +585,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     });
   };
 
-  // TODO: move all the error from below code to en.ts and use handleShowErrorToast to show error.
-
   const followTable = () => {
     addFollower(tableId, USERId)
       .then((res: AxiosResponse) => {
