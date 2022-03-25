@@ -80,7 +80,6 @@
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
     <dropwizard-metrics.version>4.2.9</dropwizard-metrics.version>
-    <dropwizard-metrics-cloudwatch.version>2.0.8</dropwizard-metrics-cloudwatch.version>
     <fernet.version>1.5.0</fernet.version>
     <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
     <!--  upgrade only when we find how to import esnext modules in nodejs  -->
@@ -172,11 +171,6 @@
         <groupId>io.dropwizard.metrics</groupId>
         <artifactId>metrics-graphite</artifactId>
         <version>${dropwizard-metrics.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.github.azagniotov</groupId>
-        <artifactId>dropwizard-metrics-cloudwatch</artifactId>
-        <version>${dropwizard-metrics-cloudwatch.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
