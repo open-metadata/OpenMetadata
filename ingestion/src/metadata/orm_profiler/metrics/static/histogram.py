@@ -67,13 +67,15 @@ class Histogram(QueryMetric):
             ((func.max(col) - func.min(col)) / float(num_bins - 1)).label("step"),
         ).select_from(sample)
 
-        step = float(dict(bins.first())["step"])
+        raw_step = dict(bins.first())["step"]
 
-        if not step:  # step == 0 or None for empty tables
+        if not raw_step:  # step == 0 or None for empty tables
             logger.debug(
                 f"MIN({col.name}) == MAX({col.name}) or EMPTY table. Aborting histogram computation."
             )
             return None
+
+        step = float(raw_step)
 
         ranges = session.query(
             sample,
@@ -96,7 +98,7 @@ class Histogram(QueryMetric):
                     "boundaries"
                 ),
             )
-            .order_by(ranges_cte.c.bin_floor)
+            .order_by("boundaries")
         )
 
         return hist
