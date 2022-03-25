@@ -191,17 +191,21 @@ After starting the containers, `metadata` will launch Airflow tasks to ingest sa
 
 Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.
 
-```
-[2021-11-18 15:54:51,165] INFO     {metadata.cmd:232} - Time took to get OpenMetadata running: 0:00:58.414548
+```bash
+✅ OpenMetadata is up and running
 
-✔ OpenMetadata is up and running
-
-Head to http://localhost:8585 to play around with OpenMetadata UI.
+Open http://localhost:8585 in your browser to access OpenMetadata..
                 
 To checkout Ingestion via Airflow, go to http://localhost:8080 
 (username: admin, password: admin)
                 
-Need support? Get in touch on Slack: https://slack.open-metadata.org/
+We are available on Slack , https://slack.open-metadata.org/ . Reach out to us if
+you have any questions.
+                
+If you like what we are doing, please consider giving us a star on github at 
+https://github.com/open-metadata/OpenMetadata. 
+
+It helps OpenMetadata reach wider audience and helps our community.
 ```
 
 ### 9. Log in to Airflow
