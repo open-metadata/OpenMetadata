@@ -140,6 +140,11 @@
     @apply tw-text-primary-hover hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
 
+  a[href].link-text-grey,
+  .link-text-grey {
+    @apply tw-text-grey-body hover:tw-text-grey-body focus:tw-text-grey-body hover:tw-underline focus:tw-underline tw-cursor-pointer;
+  }
+
   .page-container {
     @apply tw-bg-body-main;
   }
