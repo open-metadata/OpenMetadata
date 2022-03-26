@@ -275,9 +275,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException, ParseException, InterruptedException {
-    // TODO
-    //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    //    Table table = getTable(securityContext, create);
+    SecurityUtil.checkAdminRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
     webhook.setStatus(Boolean.TRUE.equals(webhook.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
     PutResponse<Webhook> putResponse = dao.createOrUpdate(uriInfo, webhook);

@@ -41,7 +41,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -77,7 +76,6 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Metrics.class);
 
   @GET
   @Operation(

@@ -46,8 +46,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
-  private static final Fields POLICY_UPDATE_FIELDS = new Fields(PolicyResource.ALLOWED_FIELDS, "owner,location");
-  private static final Fields POLICY_PATCH_FIELDS = new Fields(PolicyResource.ALLOWED_FIELDS, "owner,location");
+  private static final String POLICY_UPDATE_FIELDS = "owner,location";
+  private static final String POLICY_PATCH_FIELDS = "owner,location";
   public static final String ENABLED = "enabled";
 
   private final PolicyEvaluator policyEvaluator;

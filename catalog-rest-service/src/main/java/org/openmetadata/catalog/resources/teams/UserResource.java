@@ -101,7 +101,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(User.class);
 
   @GET
   @Valid
@@ -261,7 +260,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(uriInfo, currentUserName, fields);
     return addHref(uriInfo, user);
@@ -320,7 +319,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Operation(
-      summary = "Create or Update a user",
+      summary = "Update user",
       tags = "users",
       description = "Create or Update a user.",
       responses = {
@@ -375,7 +374,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
     }
-    User user = dao.get(uriInfo, id, new Fields(ALLOWED_FIELDS, null));
+    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer, securityContext, new UserEntityInterface(user).getEntityReference());
     PatchResponse<User> response =

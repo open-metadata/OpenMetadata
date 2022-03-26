@@ -29,7 +29,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
-  private static final Fields UPDATE_FIELDS = new Fields(PipelineServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
 
   public PipelineServiceRepository(CollectionDAO dao) {
     super(
@@ -38,7 +38,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         PipelineService.class,
         dao.pipelineServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
   }
 

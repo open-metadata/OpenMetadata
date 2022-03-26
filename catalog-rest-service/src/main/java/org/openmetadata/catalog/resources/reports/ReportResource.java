@@ -39,7 +39,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -76,7 +75,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Report.class);
 
   @GET
   @Operation(
@@ -97,7 +95,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException, GeneralSecurityException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
     return dao.listAfter(uriInfo, fields, filter, 10000, null);
   }

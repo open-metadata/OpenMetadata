@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,7 +61,6 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -98,7 +99,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   static final String FIELDS = "owner,charts,followers,tags,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Dashboard.class);
 
   @GET
   @Valid
@@ -307,8 +307,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Dashboard dashboard = dao.get(uriInfo, id, fields);
+    Dashboard dashboard = dao.get(uriInfo, id, getFields(FIELD_OWNER));
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer,
         securityContext,

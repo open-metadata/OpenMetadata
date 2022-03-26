@@ -39,8 +39,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.ALLOWED_FIELDS, "owner,tags");
-  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.ALLOWED_FIELDS, "owner,tags");
+  private static final String TOPIC_UPDATE_FIELDS = "owner,tags";
+  private static final String TOPIC_PATCH_FIELDS = "owner,tags";
 
   public static String getFQN(Topic topic) {
     return (topic != null && topic.getService() != null)

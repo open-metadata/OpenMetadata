@@ -100,7 +100,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Pipeline.class);
 
   @GET
   @Valid
@@ -309,7 +308,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
+    Fields fields = getFields(FIELDS);
     Pipeline pipeline = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer,

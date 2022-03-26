@@ -46,10 +46,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final Fields UPDATE_FIELDS =
-      new Fields(GlossaryTermResource.ALLOWED_FIELDS, "tags,references,relatedTerms,reviewers,synonyms");
-  private static final Fields PATCH_FIELDS =
-      new Fields(GlossaryTermResource.ALLOWED_FIELDS, "tags,references,relatedTerms,reviewers,synonyms");
+  private static final String UPDATE_FIELDS = "tags,references,relatedTerms,reviewers,synonyms";
+  private static final String PATCH_FIELDS = "tags,references,relatedTerms,reviewers,synonyms";
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(

@@ -31,10 +31,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
-  private static final Fields AIRFLOW_PIPELINE_UPDATE_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
-  private static final Fields AIRFLOW_PIPELINE_PATCH_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
+  private static final String AIRFLOW_PIPELINE_UPDATE_FIELDS = FIELD_OWNER;
+  private static final String AIRFLOW_PIPELINE_PATCH_FIELDS = FIELD_OWNER;
 
   public AirflowPipelineRepository(CollectionDAO dao) {
     super(

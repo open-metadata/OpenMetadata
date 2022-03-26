@@ -885,7 +885,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     final K request = createRequest(name, null, null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    String[] split = entityInterface.getFullyQualifiedName().split("\\/");
+    String[] split = entityInterface.getFullyQualifiedName().split("/");
     String actualName = split[split.length - 1];
     assertTrue(actualName.contains("foo.bar"));
   }

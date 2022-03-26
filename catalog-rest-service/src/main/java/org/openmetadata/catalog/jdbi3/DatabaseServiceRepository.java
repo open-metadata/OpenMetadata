@@ -40,7 +40,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
-  private static final Fields UPDATE_FIELDS = new Fields(DatabaseServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
   private final Fernet fernet;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
@@ -50,7 +50,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         DatabaseService.class,
         dao.dbServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
     fernet = Fernet.getInstance();
   }

@@ -72,7 +72,6 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "feeds")
 public class FeedResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
-  public static final List<String> ALLOWED_FIELDS = getAllowedFields();
 
   private final FeedRepository dao;
   private final Authorizer authorizer;

@@ -40,8 +40,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags,reviewers");
-  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags,reviewers");
+  private static final String UPDATE_FIELDS = "owner,tags,reviewers";
+  private static final String PATCH_FIELDS = "owner,tags,reviewers";
 
   public GlossaryRepository(CollectionDAO dao) {
     super(

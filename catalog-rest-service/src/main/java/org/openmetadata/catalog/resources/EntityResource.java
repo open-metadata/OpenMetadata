@@ -28,6 +28,10 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
     this.authorizer = authorizer;
   }
 
+  public final Fields getFields(String fields) {
+    return new Fields(allowedFields, fields);
+  }
+
   public abstract T addHref(UriInfo uriInfo, T entity);
 
   public final ResultList<T> addHref(UriInfo uriInfo, ResultList<T> list) {
@@ -45,7 +49,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
       String after)
       throws GeneralSecurityException, IOException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(allowedFields, fieldsParam);
+    Fields fields = getFields(fieldsParam);
 
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
@@ -58,14 +62,14 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(allowedFields, fieldsParam);
+    Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(allowedFields, fieldsParam);
+    Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 }

@@ -59,7 +59,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -96,7 +96,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   static final String FIELDS = "owner,profile,users,owns,defaultRoles";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Team.class);
 
   @GET
   @Valid
@@ -280,7 +279,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Operation(
-      summary = "Create or Update a team",
+      summary = "Update team",
       tags = "teams",
       description = "Create or Update a team.",
       responses = {
@@ -290,7 +289,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createOrUpdateTeam(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException, ParseException {
     Team team = getTeam(ct, securityContext);
@@ -322,14 +321,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Team team = dao.get(uriInfo, id, fields);
+    Team team = dao.get(uriInfo, id, getFields(Entity.FIELD_OWNER));
+    EntityInterface<Team> entityInterface = dao.getEntityInterface(team);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(team).getEntityReference(),
-        dao.getOriginalOwner(team),
-        patch);
+        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
     PatchResponse<Team> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

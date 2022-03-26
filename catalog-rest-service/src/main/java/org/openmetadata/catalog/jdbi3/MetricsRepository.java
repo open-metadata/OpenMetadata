@@ -34,7 +34,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.ALLOWED_FIELDS, "owner");
+  private static final String METRICS_UPDATE_FIELDS = "owner";
 
   public MetricsRepository(CollectionDAO dao) {
     super(
@@ -43,7 +43,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         Metrics.class,
         dao.metricsDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         METRICS_UPDATE_FIELDS);
   }
 

@@ -47,18 +47,8 @@ import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
-  static final Fields ROLE_UPDATE_FIELDS = new Fields(RoleResource.ALLOWED_FIELDS, null);
-  static final Fields ROLE_PATCH_FIELDS = new Fields(RoleResource.ALLOWED_FIELDS, null);
-
   public RoleRepository(CollectionDAO dao) {
-    super(
-        RoleResource.COLLECTION_PATH,
-        Entity.ROLE,
-        Role.class,
-        dao.roleDAO(),
-        dao,
-        ROLE_PATCH_FIELDS,
-        ROLE_UPDATE_FIELDS);
+    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, "", "");
   }
 
   @Override
@@ -327,7 +317,7 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     private void setDefaultToTrue(Role role) throws IOException, ParseException {
-      List<Role> defaultRoles = getDefaultRoles(null, ROLE_PATCH_FIELDS);
+      List<Role> defaultRoles = getDefaultRoles(null, Fields.EMPTY_FIELDS);
       EntityRepository<Role> roleRepository = Entity.getEntityRepository(Entity.ROLE);
       // Set default=FALSE for all existing default roles.
       for (Role defaultRole : defaultRoles) {
@@ -335,8 +325,8 @@ public class RoleRepository extends EntityRepository<Role> {
           // Skip the current role which is being set with default=TRUE.
           continue;
         }
-        Role origDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), ROLE_PATCH_FIELDS);
-        Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), ROLE_PATCH_FIELDS);
+        Role origDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), Fields.EMPTY_FIELDS);
+        Role updatedDefaultRole = roleRepository.get(null, defaultRole.getId().toString(), Fields.EMPTY_FIELDS);
         updatedDefaultRole = updatedDefaultRole.withDefaultRole(false);
         new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
       }
@@ -366,9 +356,7 @@ public class RoleRepository extends EntityRepository<Role> {
         // - we will not have more than Integer.MAX_VALUE users in the system.
         // - we do not need to update deleted user's roles.
         ListFilter filter = new ListFilter();
-        return userRepository
-            .listAfter(null, UserRepository.USER_UPDATE_FIELDS, filter, Integer.MAX_VALUE - 1, null)
-            .getData();
+        return userRepository.listAfter(null, Fields.EMPTY_FIELDS, filter, Integer.MAX_VALUE - 1, null).getData();
       } catch (GeneralSecurityException | IOException | ParseException e) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));
       }

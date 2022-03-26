@@ -70,7 +70,6 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
 
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(DashboardService.class);
 
   @Override
   public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
@@ -288,7 +287,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
                     schema = @Schema(implementation = CreateDashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException, ParseException {
     DashboardService service = getService(update, securityContext);
