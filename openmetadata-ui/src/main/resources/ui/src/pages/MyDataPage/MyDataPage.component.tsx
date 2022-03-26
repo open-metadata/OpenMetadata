@@ -20,13 +20,14 @@ import {
   FormatedTableData,
   SearchResponse,
 } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import {
@@ -36,6 +37,7 @@ import {
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getEntityCountByType } from '../../utils/EntityUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
@@ -58,6 +60,7 @@ const MyDataPage = () => {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [isSandbox, setIsSandbox] = useState<boolean>(false);
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
   };
@@ -176,7 +179,28 @@ const MyDataPage = () => {
       });
   };
 
+  const fetchOMDMode = () => {
+    fetchSandboxConfig()
+      .then((res) => {
+        if (res.data) {
+          setIsSandbox(Boolean(res.data.sandboxModeEnabled));
+        } else {
+          throw '';
+        }
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body:
+            err.response?.data?.message ||
+            jsonData['api-error-messages']['unexpected-server-response'],
+        });
+        setIsSandbox(false);
+      });
+  };
+
   useEffect(() => {
+    fetchOMDMode();
     fetchData(true);
   }, []);
 
@@ -200,7 +224,8 @@ const MyDataPage = () => {
       !isUndefined(entityCounts) &&
       !isUndefined(ingestionCount) &&
       !isLoading ? (
-        <MyData
+        <Fragment>
+          <MyData
           countServices={countServices}
           entityCounts={entityCounts}
           error={error}
@@ -214,6 +239,8 @@ const MyDataPage = () => {
           postFeedHandler={postFeedHandler}
           searchResult={searchResult}
         />
+          {isSandbox ? <GithubStarButton /> : null}
+        </Fragment>
       ) : (
         <Loader />
       )}

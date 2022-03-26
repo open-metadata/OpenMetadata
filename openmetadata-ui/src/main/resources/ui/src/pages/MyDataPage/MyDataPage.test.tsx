@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByText, queryByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
+import { fetchSandboxConfig } from '../../axiosAPIs/miscAPI';
 import MyDataPageComponent from './MyDataPage.component';
+
+const mockAuth = {
+  isAuthDisabled: true,
+};
+
+const mockErrors = {
+  sandboxMode: 'SandboxModeError',
+};
 
 jest.mock('../../components/MyData/MyData.component', () => {
   return jest
@@ -34,10 +43,27 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
       },
     })
   ),
+  fetchSandboxConfig: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        sandboxModeEnabled: false,
+      },
+    })
+  ),
 }));
 
 jest.mock('../../axiosAPIs/airflowPipelineAPI', () => ({
   getAirflowPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/feedsAPI', () => ({
+  getFeedsWithFilter: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
         data: [],
@@ -56,9 +82,9 @@ jest.mock('../../utils/ServiceUtils', () => ({
   }),
 }));
 
-const mockAuth = {
-  isAuthDisabled: true,
-};
+jest.mock('../../utils/CommonUtils', () => ({
+  isSandboxOMD: jest.fn().mockReturnValue(true),
+}));
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn(() => mockAuth),
@@ -86,12 +112,84 @@ jest.mock('../../components/MyData/MyData.component', () => {
   return jest.fn().mockImplementation(() => <p>MyData.component</p>);
 });
 
+jest.mock('../../components/GithubStarButton/GithubStarButton', () => {
+  return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
+});
+
+jest.mock('../../components/common/Toast/Toast', () => {
+  return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
+});
+
 describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);
-
     const myData = await findByText(container, /MyData.component/i);
 
+    const githubStarButton = await queryByText(
+      container,
+      /GithubStarButton.component/i
+    );
+
     expect(myData).toBeInTheDocument();
+    expect(githubStarButton).not.toBeInTheDocument();
+  });
+
+  it('Component should render in sandbox mode', async () => {
+    (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: {
+          sandboxModeEnabled: true,
+        },
+      })
+    );
+
+    const { container } = render(<MyDataPageComponent />);
+    const myData = await findByText(container, /MyData.component/i);
+
+    const githubStarButton = await findByText(
+      container,
+      /GithubStarButton.component/i
+    );
+
+    expect(myData).toBeInTheDocument();
+    expect(githubStarButton).toBeInTheDocument();
+  });
+
+  describe('render Sad Paths', () => {
+    it('show error message on failing of config/sandbox api', async () => {
+      (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: mockErrors.sandboxMode } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      const githubStarButton = await queryByText(
+        container,
+        /GithubStarButton.component/i
+      );
+
+      expect(myData).toBeInTheDocument();
+      expect(githubStarButton).not.toBeInTheDocument();
+    });
+
+    it('show error message on no data from config/sandbox api', async () => {
+      (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({})
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      const githubStarButton = await queryByText(
+        container,
+        /GithubStarButton.component/i
+      );
+
+      expect(myData).toBeInTheDocument();
+      expect(githubStarButton).not.toBeInTheDocument();
+    });
   });
 });
