@@ -13,8 +13,6 @@
 
 package org.openmetadata.catalog.airflow;
 
-import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,7 +30,6 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.operations.pipelines.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.operations.pipelines.DatabaseServiceQueryUsagePipeline;
-import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -66,26 +63,8 @@ public final class AirflowUtils {
   public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(
       AirflowPipeline airflowPipeline, Boolean decrypt) throws IOException {
     DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
-    DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     PipelineConfig pipelineConfig = airflowPipeline.getPipelineConfig();
     Map<String, Object> dbConfig = new HashMap<>();
-    dbConfig.put(INGESTION_HOST_PORT, databaseConnection.getHostPort());
-    dbConfig.put(INGESTION_USERNAME, databaseConnection.getUsername());
-    String password =
-        Boolean.TRUE.equals(decrypt)
-            ? decryptIfTokenized(databaseConnection.getPassword())
-            : databaseConnection.getPassword();
-    dbConfig.put(INGESTION_PASSWORD, password);
-    dbConfig.put(INGESTION_DATABASE, databaseConnection.getDatabase());
-    dbConfig.put(INGESTION_SERVICE_NAME, databaseService.getName());
-    if (databaseConnection.getConnectionOptions() != null
-        && !databaseConnection.getConnectionOptions().getAdditionalProperties().isEmpty()) {
-      dbConfig.put(INGESTION_OPTIONS, databaseConnection.getConnectionOptions().getAdditionalProperties());
-    }
-    if (databaseConnection.getConnectionArguments() != null
-        && !databaseConnection.getConnectionArguments().getAdditionalProperties().isEmpty()) {
-      dbConfig.put(INGESTION_CONNECTION_ARGS, databaseConnection.getConnectionArguments().getAdditionalProperties());
-    }
     String ingestionType = databaseService.getServiceType().value().toLowerCase(Locale.ROOT);
     if (pipelineConfig.getSchema().equals(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE)) {
       DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =

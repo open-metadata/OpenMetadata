@@ -37,7 +37,7 @@
               "$ref": "./connections/messaging/kafkaConnection.json"
             },
             {
-              "$ref": "./connections/dashboard/prestoConnection.json"
+              "$ref": "./connections/messaging/pulsarConnection.json"
             }
           ]
         },
@@ -88,19 +88,7 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "brokers": {
-      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "$ref": "#/definitions/brokers"
-    },
-    "schemaRegistry": {
-      "description": "Schema registry URL.",
-      "type": "string",
-      "format": "uri"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs.",
-      "$ref": "../../type/schedule.json"
-    },
+
     "owner": {
       "description": "Owner of this messaging service.",
       "$ref": "../../type/entityReference.json"
