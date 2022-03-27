@@ -25,9 +25,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
@@ -60,7 +58,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public void prepare(DashboardService entity) throws IOException, ParseException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
-    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
@@ -213,21 +210,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateDashboardUrl();
-      updateIngestionSchedule();
-      recordChange("userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
-      // TODO change recorded for password
-      //      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
+      updateConnection();
     }
 
-    private void updateDashboardUrl() throws JsonProcessingException {
-      recordChange("dashboardUrl", original.getEntity().getDashboardUrl(), updated.getEntity().getDashboardUrl());
-    }
-
-    private void updateIngestionSchedule() throws JsonProcessingException {
-      Schedule origSchedule = original.getEntity().getIngestionSchedule();
-      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+    private void updateConnection() throws JsonProcessingException {
+      recordChange("connection", original.getEntity().getConnection(), updated.getEntity().getConnection());
     }
   }
 }
