@@ -1,36 +1,36 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/mysqlConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/db2Connection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MysqlConnection",
-  "description": "Mysql Database Connection Config",
+  "title": "DB2Connection",
+  "description": "DB2 Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.MysqlConnection",
+  "javaType": "org.openmetadata.catalog.services.connections.database.DB2Connection",
   "properties": {
-    "mysqlConnection": {
+    "db2Connection": {
       "description": "a boolean config value to enable/disable connection for a service.",
       "type": "boolean",
       "default": "true"
     },
-    "scheme": {
+    "sqlDriverScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mysql+pymysql"],
-      "default": "mysql+pymysql"
+      "enum": ["db2+ibm_db"],
+      "default": "db2+ibm_db"
     },
     "username": {
-      "description": "username to connect  to the SingleStore. This user should have privileges to read all the metadata in SingleStore.",
+      "description": "username to connect  to the DB2. This user should have privileges to read all the metadata in DB2.",
       "type": "string"
     },
     "password": {
-      "description": "password to connect  to the SingleStore.",
+      "description": "password to connect to the DB2.",
       "type": "string"
     },
     "hostPort": {
-      "description": "Host and port of the data source.",
+      "description": "Host and port of the DB2",
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in SingleStore.",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in DB2.",
       "type": "string"
     },
     "connectionOptions": {

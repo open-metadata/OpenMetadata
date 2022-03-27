@@ -6,6 +6,17 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.PostgresConnection",
   "properties": {
+    "postgresConnection": {
+      "description": "a boolean config value to enable/disable connection for a service.",
+      "type": "boolean",
+      "default": "true"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["postgresql+psycopg2"],
+      "default": "postgresql+psycopg2"
+    },
     "username": {
       "description": "username to connect  to the Postgres. This user should have privileges to read all the metadata in Postgres.",
       "type": "string"
@@ -29,6 +40,16 @@
     "connectionArguments": {
       "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
       "type": "object"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "enum": ["Metadata"],
+      "javaEnums": [
+        {
+          "name": "Metadata"
+        }
+      ]
     }
   },
   "additionalProperties": false
