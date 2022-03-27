@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -57,13 +61,9 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/glossaries")
@@ -274,10 +274,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Glossary glossary = getGlossary(securityContext, create);
-    glossary = addHref(uriInfo, dao.create(uriInfo, glossary));
-    return Response.created(glossary.getHref()).entity(glossary).build();
+    return create(uriInfo, securityContext, glossary, ADMIN | BOT);
   }
 
   @PATCH
@@ -302,17 +300,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Glossary glossary = dao.get(uriInfo, id, getFields(Entity.FIELD_OWNER));
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(glossary).getEntityReference(),
-        dao.getOwnerReference(glossary),
-        patch);
-    PatchResponse<Glossary> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -331,10 +319,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException, ParseException {
     Glossary glossary = getGlossary(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(glossary));
-    PutResponse<Glossary> response = dao.createOrUpdate(uriInfo, glossary);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, glossary, ADMIN | BOT | OWNER);
   }
 
   @DELETE
@@ -349,9 +334,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Glossary> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private Glossary getGlossary(SecurityContext securityContext, CreateGlossary create) {

@@ -156,13 +156,12 @@ public final class TestUtils {
   }
 
   public static void post(WebTarget target, Map<String, String> headers) throws HttpResponseException {
-    Response response = SecurityUtil.addHeaders(target, headers).post(null);
-    readResponse(response, Status.CREATED.getStatusCode());
+    post(target, null, headers);
   }
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers) throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    Entity<K> entity = (request == null) ? null : Entity.entity(request, MediaType.APPLICATION_JSON);
+    Response response = SecurityUtil.addHeaders(target, headers).post(entity);
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
@@ -215,7 +214,7 @@ public final class TestUtils {
   }
 
   public static void assertDeleted(List<EntityReference> list, Boolean expected) {
-    listOrEmpty(list).forEach(e -> expected.equals(e.getDeleted()));
+    listOrEmpty(list).forEach(e -> assertEquals(expected, e.getDeleted()));
   }
 
   public static void validateEntityReference(EntityReference ref) {

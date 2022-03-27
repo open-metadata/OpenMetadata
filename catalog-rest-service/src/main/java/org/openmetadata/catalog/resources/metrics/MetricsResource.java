@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.metrics;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,7 +52,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/metrics")
@@ -155,8 +157,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
       throws IOException, ParseException {
     addToMetrics(securityContext, metrics);
-    dao.create(uriInfo, metrics);
-    return Response.created(metrics.getHref()).entity(metrics).build();
+    return create(uriInfo, securityContext, metrics, ADMIN | BOT);
   }
 
   @PUT
@@ -175,8 +176,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
       throws IOException, ParseException {
     addToMetrics(securityContext, metrics);
-    PutResponse<Metrics> response = dao.createOrUpdate(uriInfo, metrics);
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, metrics);
   }
 
   private void addToMetrics(SecurityContext securityContext, Metrics metrics) {

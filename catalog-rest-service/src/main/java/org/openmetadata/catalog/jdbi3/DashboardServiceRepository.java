@@ -42,6 +42,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         dao,
         "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override

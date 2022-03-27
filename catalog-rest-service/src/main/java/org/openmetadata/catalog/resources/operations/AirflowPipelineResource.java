@@ -14,6 +14,9 @@
 package org.openmetadata.catalog.resources.operations;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
@@ -62,14 +65,9 @@ import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -311,11 +309,10 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
-    airflowPipeline = addHref(uriInfo, dao.create(uriInfo, airflowPipeline));
+    Response response = create(uriInfo, securityContext, airflowPipeline, ADMIN | BOT);
     deploy(airflowPipeline, true);
-    return Response.created(airflowPipeline.getHref()).entity(airflowPipeline).build();
+    return response;
   }
 
   @PATCH
@@ -340,15 +337,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    AirflowPipeline airflowPipeline = dao.get(uriInfo, id, getFields(FIELD_OWNER));
-    EntityInterface<AirflowPipeline> entityInterface = dao.getEntityInterface(airflowPipeline);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
-
-    PatchResponse<AirflowPipeline> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -368,11 +357,9 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline update)
       throws IOException, ParseException {
     AirflowPipeline pipeline = getAirflowPipeline(securityContext, update);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(pipeline));
-    PutResponse<AirflowPipeline> response = dao.createOrUpdate(uriInfo, pipeline);
-    deploy(pipeline, SecurityUtil.isAdminOrBotRole(authorizer, securityContext));
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    Response response = createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
+    deploy(pipeline, true); // TODO cleanup
+    return response;
   }
 
   @POST
@@ -410,12 +397,10 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Fields fields = getFields(FIELD_OWNER);
-    AirflowPipeline pipeline = dao.get(uriInfo, id, fields);
+    Response response = delete(uriInfo, securityContext, id, false, ADMIN | BOT);
+    AirflowPipeline pipeline = (AirflowPipeline) response.getEntity();
     airflowRESTClient.deletePipeline(pipeline.getName());
-    DeleteResponse<AirflowPipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return response;
   }
 
   private AirflowPipeline getAirflowPipeline(SecurityContext securityContext, CreateAirflowPipeline create) {

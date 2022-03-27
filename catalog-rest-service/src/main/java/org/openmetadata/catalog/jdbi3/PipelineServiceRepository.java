@@ -40,6 +40,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
         dao,
         "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override

@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.bots;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -46,7 +48,6 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -130,11 +131,9 @@ public class BotsResource extends EntityResource<Bots, BotsRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminRole(authorizer, securityContext);
     bot.withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
-    dao.create(uriInfo, bot);
-    return Response.created(bot.getHref()).entity(bot).build();
+    return create(uriInfo, securityContext, bot, ADMIN);
   }
 }

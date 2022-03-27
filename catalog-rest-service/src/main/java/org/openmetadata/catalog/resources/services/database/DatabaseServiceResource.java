@@ -14,6 +14,10 @@
 package org.openmetadata.catalog.resources.services.database;
 
 import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,9 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
@@ -66,8 +68,6 @@ import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/services/databaseServices")
@@ -300,10 +300,10 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService service = getService(create, securityContext);
-    service = addHref(uriInfo, decryptOrNullify(securityContext, dao.create(uriInfo, service)));
-    return Response.created(service.getHref()).entity(service).build();
+    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -325,10 +325,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException, ParseException {
     DatabaseService service = getService(update, securityContext);
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(service));
-    PutResponse<DatabaseService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, decryptOrNullify(securityContext, response.getEntity()));
-    return response.toResponse();
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -352,16 +351,14 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<DatabaseService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    decryptOrNullify(securityContext, response.getEntity());
-    return response.toResponse();
+    Response response = delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   private ResultList<DatabaseService> decryptOrNullify(
       SecurityContext securityContext, ResultList<DatabaseService> databaseServices) {
-    Optional.ofNullable(databaseServices.getData())
-        .orElse(Collections.emptyList())
+    listOrEmpty(databaseServices.getData())
         .forEach(databaseService -> decryptOrNullify(securityContext, databaseService));
     return databaseServices;
   }
