@@ -330,9 +330,6 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
         .withName(create.getName())
         .withDescription(create.getDescription())
         .withServiceType(create.getServiceType())
-        .withBrokers(create.getBrokers())
-        .withSchemaRegistry(create.getSchemaRegistry())
-        .withIngestionSchedule(create.getIngestionSchedule())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
