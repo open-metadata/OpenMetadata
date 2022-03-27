@@ -1,12 +1,12 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/mssqlConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/athenaConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MssqlConnection",
-  "description": "Mssql Database Connection Config",
+  "title": "AthenaConnection",
+  "description": "AWS Athena Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.MssqlConnection",
+  "javaType": "org.openmetadata.catalog.services.connections.database.AthenaConnection",
   "properties": {
-    "mssqlConnection": {
+    "athenaConnection": {
       "description": "a boolean config value to enable/disable connection for a service.",
       "type": "boolean",
       "default": "true"
@@ -14,23 +14,35 @@
     "sqlDriverScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"],
-      "default": "mssql+pymssql"
+      "enum": ["awsathena+rest"],
+      "default": "awsathena+rest"
     },
     "username": {
-      "description": "username to connect  to the MsSQL. This user should have privileges to read all the metadata in MsSQL.",
+      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
       "type": "string"
     },
     "password": {
-      "description": "password to connect  to the MsSQL.",
+      "description": "password to connect  to the Athena.",
       "type": "string"
     },
     "hostPort": {
-      "description": "Host and port of the MsSQL.",
+      "description": "Host and port of the Athena",
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in MsSQL.",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
+      "type": "string"
+    },
+    "awsRegion": {
+      "description": "AWS Athena AWS Region. ",
+      "type": "string"
+    },
+    "s3StagingDir": {
+      "description": "S3 Staging Directory.",
+      "type": "string"
+    },
+    "workgroup": {
+      "description": "Athena workgroup.",
       "type": "string"
     },
     "connectionOptions": {

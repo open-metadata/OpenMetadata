@@ -1,12 +1,12 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/mysqlConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/mariaDBConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MysqlConnection",
+  "title": "MariaDBConnection",
   "description": "Mysql Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.MysqlConnection",
   "properties": {
-    "mysqlConnection": {
+    "mariaDBConnection": {
       "description": "a boolean config value to enable/disable connection for a service.",
       "type": "boolean",
       "default": "true"
@@ -18,11 +18,11 @@
       "default": "mysql+pymysql"
     },
     "username": {
-      "description": "username to connect  to the SingleStore. This user should have privileges to read all the metadata in SingleStore.",
+      "description": "username to connect  to the MariaDB. This user should have privileges to read all the metadata in MariaDB.",
       "type": "string"
     },
     "password": {
-      "description": "password to connect  to the SingleStore.",
+      "description": "password to connect  to the MariaDB.",
       "type": "string"
     },
     "hostPort": {
@@ -30,7 +30,7 @@
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in SingleStore.",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in MariaDB.",
       "type": "string"
     },
     "connectionOptions": {

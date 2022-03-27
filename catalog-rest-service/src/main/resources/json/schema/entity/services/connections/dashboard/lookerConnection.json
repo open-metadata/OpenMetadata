@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/lookerConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LookerConnection",
+  "description": "Looker Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.dashboard.LookerConnection",
+  "properties": {
+    "lookerConnection": {
+      "description": "a boolean config value to enable/disable connection for a service.",
+      "type": "boolean",
+      "default": "true"
+    },
+    "username": {
+      "description": "username to connect  to the Looker. This user should have privileges to read all the metadata in Looker.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Looker.",
+      "type": "string"
+    },
+    "url": {
+      "description": "URL to Looker instance.",
+      "type": "string"
+    },
+    "platformName": {
+      "description": "Looker Platform Name",
+      "type": "string",
+      "default": "looker"
+    },
+    "actor": {
+      "description": "Looker actor.",
+      "type": "string"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "enum": ["Metadata"],
+      "javaEnums": [
+        {
+          "name": "Metadata"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}
