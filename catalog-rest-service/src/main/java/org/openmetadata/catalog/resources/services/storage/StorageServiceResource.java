@@ -70,7 +70,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
 
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(StorageService.class);
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
@@ -133,8 +132,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -277,7 +275,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
 
   @PUT
   @Operation(
-      summary = "Update a storage service",
+      summary = "Update storage service",
       tags = "services",
       description = "Update an existing storage service identified by `id`.",
       responses = {
@@ -288,7 +286,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
                 @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException, ParseException {
     StorageService service = getService(update, securityContext);

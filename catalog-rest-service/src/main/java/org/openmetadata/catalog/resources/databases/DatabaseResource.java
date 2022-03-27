@@ -59,6 +59,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -96,7 +97,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   static final String FIELDS = "owner,tables,usageSummary,location";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Database.class);
 
   @GET
   @Operation(
@@ -144,8 +144,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -291,7 +290,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       description = "Update an existing database using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -305,14 +304,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Database database = dao.get(uriInfo, id, fields);
+    Database database = dao.get(uriInfo, id, getFields(Entity.FIELD_OWNER));
+    EntityInterface<Database> entityInterface = dao.getEntityInterface(database);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(database).getEntityReference(),
-        dao.getOriginalOwner(database),
-        patch);
+        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
 
     PatchResponse<Database> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
@@ -349,9 +344,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, "location");
     dao.deleteLocation(id);
-    Database database = dao.get(uriInfo, id, fields);
+    Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     return addHref(uriInfo, database);
   }
 

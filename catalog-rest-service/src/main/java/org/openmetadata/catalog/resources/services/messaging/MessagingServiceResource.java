@@ -70,7 +70,6 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
 
   public static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(MessagingService.class);
 
   @Override
   public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
@@ -133,8 +132,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -279,7 +277,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
 
   @PUT
   @Operation(
-      summary = "Update a messaging service",
+      summary = "Update messaging service",
       tags = "services",
       description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
       responses = {
@@ -292,7 +290,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
                     schema = @Schema(implementation = CreateMessagingService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")

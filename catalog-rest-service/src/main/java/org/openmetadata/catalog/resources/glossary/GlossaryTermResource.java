@@ -63,6 +63,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
@@ -106,7 +107,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   static final String FIELDS = "children,relatedTerms,reviewers,tags,usageCount";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
 
   @GET
   @Valid
@@ -165,7 +165,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       throws IOException, GeneralSecurityException, ParseException {
     // TODO make this common implementation
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
 
     // Filter by glossary
     String fqn = null;
@@ -186,8 +186,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             CatalogExceptionMessage.glossaryTermMismatch(parentTermParam, glossaryIdParam));
       }
     }
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("parent", fqn);
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
@@ -339,7 +338,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       description = "Update an existing glossary using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -353,14 +352,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    GlossaryTerm term = dao.get(uriInfo, id, fields);
+    GlossaryTerm term = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    EntityInterface<GlossaryTerm> entityInterface = dao.getEntityInterface(term);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(term).getEntityReference(),
-        dao.getOriginalOwner(term),
-        patch);
+        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
     PatchResponse<GlossaryTerm> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());
@@ -383,8 +378,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException, ParseException {
     GlossaryTerm term = getGlossaryTerm(securityContext, create);
-    EntityReference owner = dao.getOriginalOwner(term);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, owner);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(term));
     PutResponse<GlossaryTerm> response = dao.createOrUpdate(uriInfo, term);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

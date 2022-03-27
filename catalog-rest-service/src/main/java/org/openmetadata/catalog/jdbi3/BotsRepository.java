@@ -26,14 +26,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class BotsRepository extends EntityRepository<Bots> {
   public BotsRepository(CollectionDAO dao) {
-    super(
-        BotsResource.COLLECTION_PATH,
-        Entity.BOTS,
-        Bots.class,
-        dao.botsDAO(),
-        dao,
-        Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
+    super(BotsResource.COLLECTION_PATH, Entity.BOTS, Bots.class, dao.botsDAO(), dao, "", "");
   }
 
   @Override

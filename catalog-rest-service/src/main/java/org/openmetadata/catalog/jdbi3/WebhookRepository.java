@@ -62,14 +62,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   private static final ConcurrentHashMap<UUID, WebhookPublisher> webhookPublisherMap = new ConcurrentHashMap<>();
 
   public WebhookRepository(CollectionDAO dao) {
-    super(
-        WebhookResource.COLLECTION_PATH,
-        Entity.WEBHOOK,
-        Webhook.class,
-        dao.webhookDAO(),
-        dao,
-        Fields.EMPTY_FIELDS,
-        Fields.EMPTY_FIELDS);
+    super(WebhookResource.COLLECTION_PATH, Entity.WEBHOOK, Webhook.class, dao.webhookDAO(), dao, "", "");
   }
 
   @Override

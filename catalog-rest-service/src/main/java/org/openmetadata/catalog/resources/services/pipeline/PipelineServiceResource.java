@@ -70,7 +70,6 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
 
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(PipelineService.class);
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -133,8 +132,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -279,7 +277,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
 
   @PUT
   @Operation(
-      summary = "Update a pipeline service",
+      summary = "Update pipeline service",
       tags = "services",
       description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
       responses = {
@@ -292,7 +290,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
                     schema = @Schema(implementation = CreatePipelineService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException, ParseException {
     PipelineService service = getService(update, securityContext);

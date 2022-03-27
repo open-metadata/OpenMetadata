@@ -33,6 +33,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -40,8 +41,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
-  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
+  static final String USER_PATCH_FIELDS = "profile,roles,teams";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams";
 
   public UserRepository(CollectionDAO dao) {
     super(
@@ -82,7 +83,7 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> teamsRef = listOrEmpty(user.getTeams());
     List<EntityReference> defaultRoles = new ArrayList<>();
     for (EntityReference teamRef : teamsRef) {
-      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")));
+      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")), Include.NON_DELETED);
       if (team != null && team.getDefaultRoles() != null) {
         defaultRoles.addAll(team.getDefaultRoles());
       }

@@ -216,19 +216,9 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
-  public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields) throws IOException, ParseException {
-    return getEntity(ref, fields, Include.NON_DELETED);
-  }
-
   public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include)
       throws IOException, ParseException {
     return getEntity(ref.getType(), ref.getId(), fields, include);
-  }
-
-  /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(String entityType, UUID id, EntityUtil.Fields fields)
-      throws IOException, ParseException {
-    return getEntity(entityType, id, fields, Include.NON_DELETED);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */

@@ -59,9 +59,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
@@ -101,7 +99,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   static final String FIELDS = "owner,tags,reviewers,usageCount";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Glossary.class);
 
   @GET
   @Valid
@@ -145,8 +142,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -306,8 +302,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Glossary glossary = dao.get(uriInfo, id, fields);
+    Glossary glossary = dao.get(uriInfo, id, getFields(Entity.FIELD_OWNER));
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer,
         securityContext,
@@ -336,8 +331,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException, ParseException {
     Glossary glossary = getGlossary(securityContext, create);
-    EntityReference owner = dao.getOriginalOwner(glossary);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, owner);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(glossary));
     PutResponse<Glossary> response = dao.createOrUpdate(uriInfo, glossary);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

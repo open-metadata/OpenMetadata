@@ -1603,7 +1603,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void assertFields(Table table, String fieldsParam) {
-    Fields fields = new Fields(TableResource.ALLOWED_FIELDS, fieldsParam);
+    // TODO cleanup
+    Fields fields = new Fields(Entity.getEntityFields(Table.class), fieldsParam);
 
     if (fields.contains("usageSummary")) {
       assertNotNull(table.getUsageSummary());

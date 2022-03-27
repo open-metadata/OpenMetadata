@@ -110,7 +110,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   public static final String FIELDS = "owner,location";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Policy.class);
 
   @GET
   @Valid
@@ -154,8 +153,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -313,7 +311,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNER);
     Policy policy = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
 

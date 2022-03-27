@@ -79,7 +79,6 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
 
   static final String FIELDS = "airflowPipeline,owner";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(DatabaseService.class);
   private final Fernet fernet;
 
   @Override
@@ -140,12 +139,10 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = new EntityUtil.Fields(ALLOWED_FIELDS, fieldsParam);
+    EntityUtil.Fields fields = getFields(fieldsParam);
     ResultList<DatabaseService> dbServices;
 
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-
+    ListFilter filter = new ListFilter(include);
     if (before != null) {
       dbServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
@@ -311,9 +308,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   @PUT
   @Operation(
-      summary = "Update a database service",
+      summary = "Update database service",
       tags = "services",
-      description = "Update an existing database service identified by `id`.",
+      description = "Update an existing or create a new database service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -324,7 +321,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
                     schema = @Schema(implementation = CreateDatabaseService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException, ParseException {
     DatabaseService service = getService(update, securityContext);

@@ -31,7 +31,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
-  private static final Fields UPDATE_FIELDS = new Fields(DashboardServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
 
   public DashboardServiceRepository(CollectionDAO dao) {
     super(
@@ -40,7 +40,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         DashboardService.class,
         dao.dashboardServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
   }
 

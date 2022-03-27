@@ -28,21 +28,20 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository;
-import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
-  private static final String FIELDS_PARAM = "roles,teams";
   private UserRepository userRepository;
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     this.userRepository = new UserRepository(collectionDAO);
+    // TODO: fixme
     // RoleRepository and TeamRepository needs to be instantiated for Entity.DAO_MAP to populated.
     // As we create default admin/bots we need to have RoleRepository and TeamRepository available in DAO_MAP.
     // This needs to be handled better in future releases.
@@ -84,10 +83,9 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   private void addAnonymousUser() {
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     String username = "anonymous";
     try {
-      userRepository.getByName(null, username, fields);
+      userRepository.getByName(null, username, Fields.EMPTY_FIELDS);
     } catch (EntityNotFoundException ex) {
       User user =
           new User()

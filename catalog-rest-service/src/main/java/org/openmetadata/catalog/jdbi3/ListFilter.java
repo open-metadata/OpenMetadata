@@ -3,9 +3,19 @@ package org.openmetadata.catalog.jdbi3;
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.type.Include;
 
 public class ListFilter {
+  private final Include include;
   Map<String, String> queryParams = new HashMap<>();
+
+  public ListFilter() {
+    this(Include.NON_DELETED);
+  }
+
+  public ListFilter(Include include) {
+    this.include = include;
+  }
 
   public ListFilter addQueryParam(String name, String value) {
     queryParams.put(name, value);
@@ -13,6 +23,9 @@ public class ListFilter {
   }
 
   public String getQueryParam(String name) {
+    if (name.equals("include")) {
+      return include.value();
+    }
     return queryParams.get(name);
   }
 
@@ -29,12 +42,11 @@ public class ListFilter {
   }
 
   public String getIncludeCondition(String tableName) {
-    String include = queryParams.get("include");
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == null || include.equals("non-deleted")) {
+    if (include == Include.NON_DELETED) {
       return columnName + " = false";
     }
-    if (include.equals("deleted")) {
+    if (include == Include.DELETED) {
       return columnName + " = true";
     }
     return "";

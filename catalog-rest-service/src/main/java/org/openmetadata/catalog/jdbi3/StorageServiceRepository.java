@@ -28,7 +28,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
-  private static final Fields UPDATE_FIELDS = new Fields(StorageServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
 
   public StorageServiceRepository(CollectionDAO dao) {
     super(
@@ -37,7 +37,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         StorageService.class,
         dao.storageServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
   }
 

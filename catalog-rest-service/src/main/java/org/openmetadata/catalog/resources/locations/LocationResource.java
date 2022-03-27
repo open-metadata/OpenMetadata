@@ -96,7 +96,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Location.class);
 
   @GET
   @Operation(
@@ -144,8 +143,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -243,7 +241,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           String after)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
@@ -383,7 +381,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
+    Fields fields = getFields(FIELDS);
     Location location = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer,

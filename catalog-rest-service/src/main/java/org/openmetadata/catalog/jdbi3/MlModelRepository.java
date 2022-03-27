@@ -45,8 +45,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.ALLOWED_FIELDS, "owner,dashboard,tags");
-  private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.ALLOWED_FIELDS, "owner,dashboard,tags");
+  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags";
+  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags";
 
   public MlModelRepository(CollectionDAO dao) {
     super(

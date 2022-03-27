@@ -39,10 +39,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final Fields DASHBOARD_UPDATE_FIELDS =
-      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
-  private static final Fields DASHBOARD_PATCH_FIELDS =
-      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
+  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts";
+  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts";
 
   public DashboardRepository(CollectionDAO dao) {
     super(

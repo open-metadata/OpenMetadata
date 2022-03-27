@@ -123,9 +123,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-
+    ListFilter filter = new ListFilter(include);
     ResultList<Webhook> webhooks;
     if (before != null) { // Reverse paging
       webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
@@ -277,9 +275,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException, ParseException, InterruptedException {
-    // TODO
-    //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    //    Table table = getTable(securityContext, create);
+    SecurityUtil.checkAdminRole(authorizer, securityContext);
     Webhook webhook = getWebhook(securityContext, create);
     webhook.setStatus(Boolean.TRUE.equals(webhook.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
     PutResponse<Webhook> putResponse = dao.createOrUpdate(uriInfo, webhook);

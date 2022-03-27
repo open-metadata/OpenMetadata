@@ -99,7 +99,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   static final String FIELDS = "owner,dashboard,followers,tags,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(MlModel.class);
 
   @GET
   @Valid
@@ -143,8 +142,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -255,7 +253,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
+    Fields fields = getFields(FIELDS);
     MlModel mlModel = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer,

@@ -41,9 +41,9 @@ import org.openmetadata.catalog.util.ResultList;
 
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
-  private static final Fields LOCATION_PATCH_FIELDS = new Fields(LocationResource.ALLOWED_FIELDS, "owner,tags");
+  private static final String LOCATION_PATCH_FIELDS = "owner,tags";
   // Location fields that can be updated in a PUT request
-  private static final Fields LOCATION_UPDATE_FIELDS = new Fields(LocationResource.ALLOWED_FIELDS, "owner,tags");
+  private static final String LOCATION_UPDATE_FIELDS = "owner,tags";
 
   public LocationRepository(CollectionDAO dao) {
     super(

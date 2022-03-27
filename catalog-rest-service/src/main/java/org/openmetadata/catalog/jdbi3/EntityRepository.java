@@ -113,6 +113,7 @@ public abstract class EntityRepository<T> {
   private final String entityType;
   protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
+  protected final List<String> allowedFields;
   protected boolean supportsSoftDelete = true;
   protected final boolean supportsTags;
   protected final boolean supportsOwner;
@@ -130,17 +131,17 @@ public abstract class EntityRepository<T> {
       Class<T> entityClass,
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
-      Fields patchFields,
-      Fields putFields) {
+      String patchFields,
+      String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
+    allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
     this.daoCollection = collectionDAO;
-    this.patchFields = patchFields;
-    this.putFields = putFields;
+    this.patchFields = getFields(patchFields);
+    this.putFields = getFields(putFields);
     this.entityType = entityType;
 
-    List<String> allowedFields = getEntityFields(entityClass);
     this.supportsTags = allowedFields.contains("tags");
     this.supportsOwner = allowedFields.contains("owner");
     this.supportsFollower = allowedFields.contains("followers");
@@ -571,14 +572,14 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public static final Fields FIELDS_OWNER = new Fields(List.of(FIELD_OWNER), FIELD_OWNER);
-
-  // TODO fix this
   public final EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
+    if (!supportsOwner) {
+      return null;
+    }
     // Try to find the owner if entity exists
     try {
       String fqn = getFullyQualifiedName(entity);
-      entity = getByName(null, fqn, FIELDS_OWNER);
+      entity = getByName(null, fqn, getFields(FIELD_OWNER));
       return getEntityInterface(entity).getOwner();
     } catch (EntityNotFoundException e) {
       // If entity is not found, we can return null for owner and ignore this exception
@@ -794,6 +795,9 @@ public abstract class EntityRepository<T> {
   }
 
   public EntityReference getOwner(UUID id, String entityType) throws IOException, ParseException {
+    if (!supportsOwner) {
+      return null;
+    }
     List<EntityReference> refs = findFrom(id, entityType, Relationship.OWNS);
     ensureSingleRelationship(entityType, id, refs, "owners", false);
     return refs.isEmpty() ? null : Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId(), ALL);
@@ -832,6 +836,10 @@ public abstract class EntityRepository<T> {
         entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
       }
     }
+  }
+
+  public final Fields getFields(String fields) {
+    return new Fields(allowedFields, fields);
   }
 
   enum Operation {

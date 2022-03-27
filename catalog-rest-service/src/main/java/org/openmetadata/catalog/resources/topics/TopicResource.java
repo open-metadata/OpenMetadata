@@ -101,7 +101,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Topic.class);
 
   @GET
   @Operation(
@@ -149,8 +148,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -309,7 +307,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNER);
     Topic topic = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer,
@@ -326,7 +324,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @PUT
   @Operation(
-      summary = "Create or update topic",
+      summary = "Update topic",
       tags = "topics",
       description = "Create a topic, it it does not exist or update an existing topic.",
       responses = {

@@ -101,7 +101,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   public static final String FIELDS = "policy,teams,users";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Role.class);
 
   @GET
   @Valid
@@ -148,8 +147,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    ListFilter filter = new ListFilter().addQueryParam("include", include.value());
+    Fields fields = getFields(fieldsParam);
+    ListFilter filter = new ListFilter(include);
 
     ResultList<Role> roles;
     if (defaultParam) {
@@ -213,8 +212,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -301,7 +299,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @PUT
   @Operation(
-      summary = "Create or Update a role",
+      summary = "Update role",
       tags = "roles",
       description = "Create or Update a role.",
       responses = {

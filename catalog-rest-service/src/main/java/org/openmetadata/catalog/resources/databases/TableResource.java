@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +28,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -115,14 +116,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
-  public static final List<String> ALLOWED_FIELDS;
-
-  static {
-    List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
-    list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
-    list.add("customMetrics"); // Add a field parameter to add customMetrics information to the columns
-    ALLOWED_FIELDS = Collections.unmodifiableList(list);
-  }
 
   @GET
   @Operation(
@@ -170,8 +163,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("database", databaseParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -302,8 +294,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
     return Response.created(table.getHref()).entity(table).build();
   }
@@ -352,8 +344,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Table table = dao.get(uriInfo, id, fields);
+    Table table = dao.get(uriInfo, id, getFields(FIELD_OWNER));
     SecurityUtil.checkAdminRoleOrPermissions(
         authorizer,
         securityContext,
@@ -638,7 +629,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, "location");
+    Fields fields = getFields("location");
     dao.deleteLocation(id);
     Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);

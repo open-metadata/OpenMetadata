@@ -59,6 +59,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
@@ -99,7 +100,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Chart.class);
 
   @GET
   @Operation(
@@ -145,8 +145,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -304,14 +303,11 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
+    Fields fields = getFields(Entity.FIELD_OWNER);
     Chart chart = dao.get(uriInfo, id, fields);
+    EntityInterface<Chart> entityInterface = dao.getEntityInterface(chart);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(chart).getEntityReference(),
-        dao.getOriginalOwner(chart),
-        patch);
+        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
 
     PatchResponse<Chart> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
