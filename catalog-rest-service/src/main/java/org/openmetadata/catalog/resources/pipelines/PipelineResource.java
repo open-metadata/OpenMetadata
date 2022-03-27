@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,11 +64,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/pipelines")
@@ -280,10 +280,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Pipeline pipeline = getPipeline(securityContext, create);
-    pipeline = addHref(uriInfo, dao.create(uriInfo, pipeline));
-    return Response.created(pipeline.getHref()).entity(pipeline).build();
+    return create(uriInfo, securityContext, pipeline, ADMIN | BOT);
   }
 
   @PATCH
@@ -308,19 +306,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = getFields(FIELDS);
-    Pipeline pipeline = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(pipeline).getEntityReference(),
-        dao.getOwnerReference(pipeline),
-        patch);
-
-    PatchResponse<Pipeline> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -340,10 +326,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException, ParseException {
     Pipeline pipeline = getPipeline(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(pipeline));
-    PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
   }
 
   @PUT
@@ -365,7 +348,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
       PipelineStatus pipelineStatus)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
     return addHref(uriInfo, pipeline);
   }
@@ -422,9 +405,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Pipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private Pipeline getPipeline(SecurityContext securityContext, CreatePipeline create) {

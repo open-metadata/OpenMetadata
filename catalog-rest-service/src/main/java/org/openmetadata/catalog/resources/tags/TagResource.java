@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.tags;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
@@ -284,7 +286,7 @@ public class TagResource {
   public Response createCategory(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     TagCategory category =
         new TagCategory()
             .withName(create.getName())
@@ -316,7 +318,7 @@ public class TagResource {
           String category,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())
@@ -357,7 +359,7 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())
@@ -384,7 +386,7 @@ public class TagResource {
           String categoryName,
       @Valid CreateTagCategory create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     TagCategory category =
         new TagCategory()
             .withName(create.getName())
@@ -416,7 +418,7 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())
@@ -456,7 +458,7 @@ public class TagResource {
           String secondaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())

@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.reports;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -48,7 +51,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/reports")
@@ -147,8 +149,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
       throws IOException, ParseException {
     addToReport(securityContext, report);
-    dao.create(uriInfo, report);
-    return Response.created(report.getHref()).entity(report).build();
+    return create(uriInfo, securityContext, report, ADMIN | BOT);
   }
 
   @PUT
@@ -167,8 +168,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
       throws IOException, ParseException {
     addToReport(securityContext, report);
-    PutResponse<Report> response = dao.createOrUpdate(uriInfo, report);
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, report);
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

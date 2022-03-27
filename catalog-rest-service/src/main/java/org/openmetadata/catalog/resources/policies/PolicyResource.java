@@ -13,7 +13,9 @@
 
 package org.openmetadata.catalog.resources.policies;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -59,15 +61,10 @@ import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/policies")
@@ -283,10 +280,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Policy policy = getPolicy(securityContext, create);
-    policy = addHref(uriInfo, dao.create(uriInfo, policy));
-    return Response.created(policy.getHref()).entity(policy).build();
+    return create(uriInfo, securityContext, policy, ADMIN | BOT);
   }
 
   @PATCH
@@ -311,14 +306,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = getFields(FIELD_OWNER);
-    Policy policy = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
-
-    PatchResponse<Policy> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -337,10 +325,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException, ParseException {
     Policy policy = getPolicy(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(policy));
-    PutResponse<Policy> response = dao.createOrUpdate(uriInfo, policy);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, policy, ADMIN | BOT | OWNER);
   }
 
   @DELETE
@@ -355,9 +340,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Policy> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private Policy getPolicy(SecurityContext securityContext, CreatePolicy create) {

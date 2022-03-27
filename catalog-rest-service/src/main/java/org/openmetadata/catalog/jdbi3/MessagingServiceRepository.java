@@ -43,6 +43,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         dao,
         "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override

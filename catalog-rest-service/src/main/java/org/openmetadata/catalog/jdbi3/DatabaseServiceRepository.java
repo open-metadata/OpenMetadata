@@ -53,6 +53,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         "",
         UPDATE_FIELDS);
     fernet = Fernet.getInstance();
+    this.allowEdits = true;
   }
 
   public void rotate() throws IOException {

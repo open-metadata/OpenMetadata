@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -56,13 +60,8 @@ import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/teams")
@@ -271,10 +270,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
-    addHref(uriInfo, dao.create(uriInfo, team));
-    return Response.created(team.getHref()).entity(team).build();
+    return create(uriInfo, securityContext, team, ADMIN | BOT);
   }
 
   @PUT
@@ -293,10 +290,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException, ParseException {
     Team team = getTeam(ct, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(team));
-    RestUtil.PutResponse<Team> response = dao.createOrUpdate(uriInfo, team);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, team, ADMIN | BOT | OWNER);
   }
 
   @PATCH
@@ -321,14 +315,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Team team = dao.get(uriInfo, id, getFields(Entity.FIELD_OWNER));
-    EntityInterface<Team> entityInterface = dao.getEntityInterface(team);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
-    PatchResponse<Team> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -343,9 +330,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Team> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private Team getTeam(CreateTeam ct, SecurityContext securityContext) {

@@ -39,6 +39,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         dao,
         "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override

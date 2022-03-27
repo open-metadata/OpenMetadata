@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,14 +60,9 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/databases")
@@ -276,10 +275,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = getDatabase(securityContext, create);
-    database = addHref(uriInfo, dao.create(uriInfo, database));
-    return Response.created(database.getHref()).entity(database).build();
+    return create(uriInfo, securityContext, database, ADMIN | BOT);
   }
 
   @PATCH
@@ -304,15 +301,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Database database = dao.get(uriInfo, id, getFields(Entity.FIELD_OWNER));
-    EntityInterface<Database> entityInterface = dao.getEntityInterface(database);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
-
-    PatchResponse<Database> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -330,10 +319,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException, ParseException {
     Database database = getDatabase(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(database));
-    PutResponse<Database> response = dao.createOrUpdate(uriInfo, database);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, database, ADMIN | BOT | OWNER);
   }
 
   @DELETE
@@ -368,9 +354,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           boolean recursive,
       @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Database> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
   }
 
   private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {

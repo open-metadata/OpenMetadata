@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.mlmodels;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,14 +60,9 @@ import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/mlmodels")
@@ -225,10 +224,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MlModel mlModel = getMlModel(securityContext, create);
-    mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));
-    return Response.created(mlModel.getHref()).entity(mlModel).build();
+    return create(uriInfo, securityContext, mlModel, ADMIN | BOT);
   }
 
   @PATCH
@@ -253,19 +250,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = getFields(FIELDS);
-    MlModel mlModel = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(mlModel).getEntityReference(),
-        dao.getOwnerReference(mlModel),
-        patch);
-
-    PatchResponse<MlModel> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -284,10 +269,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException, ParseException {
     MlModel mlModel = getMlModel(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(mlModel));
-    PutResponse<MlModel> response = dao.createOrUpdate(uriInfo, mlModel);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, mlModel, ADMIN | BOT | OWNER);
   }
 
   @PUT
@@ -393,9 +375,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<MlModel> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private MlModel getMlModel(SecurityContext securityContext, CreateMlModel create) {

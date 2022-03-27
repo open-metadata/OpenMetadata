@@ -25,7 +25,6 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.resources.glossary.GlossaryResource;
@@ -52,11 +51,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Glossary glossary) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), glossary.getOwner());
   }
 
   @Override

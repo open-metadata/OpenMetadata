@@ -210,10 +210,6 @@ public final class RestUtil {
     private final T entity;
     private final String changeType;
 
-    /**
-     * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
-     * a new entity
-     */
     public DeleteResponse(T entity, String changeType) {
       this.entity = entity;
       this.changeType = changeType;

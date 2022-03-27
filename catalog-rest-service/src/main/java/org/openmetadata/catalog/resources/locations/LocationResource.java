@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.locations;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,14 +60,10 @@ import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/locations")
@@ -331,10 +331,8 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Location location = getLocation(securityContext, create);
-    location = addHref(uriInfo, dao.create(uriInfo, location));
-    return Response.created(location.getHref()).entity(location).build();
+    return create(uriInfo, securityContext, location, ADMIN | BOT);
   }
 
   @PUT
@@ -353,10 +351,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException, ParseException {
     Location location = getLocation(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(location));
-    PutResponse<Location> response = dao.createOrUpdate(uriInfo, validateNewLocation(location));
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
   }
 
   @PATCH
@@ -381,19 +376,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = getFields(FIELDS);
-    Location location = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(location).getEntityReference(),
-        dao.getOwnerReference(location),
-        patch);
-
-    PatchResponse<Location> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -411,9 +394,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Location> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   @PUT

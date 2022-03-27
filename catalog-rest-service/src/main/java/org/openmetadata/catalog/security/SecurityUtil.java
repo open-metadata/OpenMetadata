@@ -30,53 +30,50 @@ import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonPatchUtils;
 
 public final class SecurityUtil {
+  public static final int ADMIN = 1;
+  public static final int BOT = 2;
+  public static final int OWNER = 4;
+  public static final int PERMISSIONS = 8;
+
   private SecurityUtil() {}
 
-  public static void checkAdminRole(Authorizer authorizer, SecurityContext securityContext) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)) {
-      throw new AuthorizationException(notAdmin(principal));
+  public static void authorizeAdmin(Authorizer authorizer, SecurityContext securityContext, int checkFlags) {
+    if (checkOwner(checkFlags) || checkPermissions(checkFlags)) {
+      throw new IllegalArgumentException("Only ADMIN or BOT authorization is allowed");
     }
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
+    if (authorizer.isAdmin(authenticationCtx)) {
+      return;
+    }
+    if (checkBot(checkFlags) && authorizer.isBot(authenticationCtx)) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(authenticationCtx.getPrincipal()));
   }
 
-  public static Boolean isAdminOrBotRole(Authorizer authorizer, SecurityContext securityContext) {
-    try {
-      checkAdminOrBotRole(authorizer, securityContext);
-      return true;
-    } catch (AuthorizationException e) {
-      return false;
+  public static void authorize(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      EntityReference entity,
+      EntityReference owner,
+      int checkFlags) {
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
+    if (authorizer.isAdmin(authenticationCtx)) {
+      return;
     }
-  }
-
-  public static void checkAdminOrBotRole(Authorizer authorizer, SecurityContext securityContext) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx) && !authorizer.isBot(authenticationCtx)) {
-      throw new AuthorizationException(notAdmin(principal));
+    if (checkFlags == 0) {
+      throw new AuthorizationException(notAdmin(authenticationCtx.getPrincipal()));
     }
-  }
-
-  public static void checkAdminOrBotOrOwner(
-      Authorizer authorizer, SecurityContext securityContext, EntityReference ownerReference) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)
-        && !authorizer.isBot(authenticationCtx)
-        && !authorizer.isOwner(authenticationCtx, ownerReference)) {
-      throw new AuthorizationException(noPermission(principal));
+    if ((checkFlags | BOT) > 0 && authorizer.isBot(authenticationCtx)) {
+      return;
     }
-  }
-
-  public static void checkAdminRoleOrPermissions(
-      Authorizer authorizer, SecurityContext securityContext, EntityReference entityReference) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
-    if (!authorizer.isAdmin(authenticationCtx)
-        && !authorizer.isBot(authenticationCtx)
-        && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
-      throw new AuthorizationException(noPermission(principal));
+    if ((checkFlags | OWNER) > 0 && authorizer.isOwner(authenticationCtx, owner)) {
+      return;
     }
+    if ((checkFlags | PERMISSIONS) > 0 && authorizer.hasPermissions(authenticationCtx, entity)) {
+      return;
+    }
+    throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal()));
   }
 
   /** This helper function checks if user has permission to perform the given metadata operation. */
@@ -85,15 +82,14 @@ public final class SecurityUtil {
       SecurityContext securityContext,
       EntityReference entityReference,
       MetadataOperation metadataOperation) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
 
     if (authorizer.isAdmin(authenticationCtx) || authorizer.isBot(authenticationCtx)) {
       return;
     }
 
     if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-      throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
+      throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal(), metadataOperation.value()));
     }
   }
 
@@ -108,8 +104,7 @@ public final class SecurityUtil {
       EntityReference entityReference,
       EntityReference ownerReference,
       JsonPatch patch) {
-    Principal principal = securityContext.getUserPrincipal();
-    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
+    AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(securityContext);
 
     if (authorizer.isAdmin(authenticationCtx)
         || authorizer.isBot(authenticationCtx)
@@ -121,11 +116,11 @@ public final class SecurityUtil {
 
     // If there are no specific metadata operations that can be determined from the JSON Patch, deny the changes.
     if (metadataOperations.isEmpty()) {
-      throw new AuthorizationException(noPermission(principal));
+      throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal()));
     }
     for (MetadataOperation metadataOperation : metadataOperations) {
       if (!authorizer.hasPermissions(authenticationCtx, entityReference, metadataOperation)) {
-        throw new AuthorizationException(noPermission(principal, metadataOperation.value()));
+        throw new AuthorizationException(noPermission(authenticationCtx.getPrincipal(), metadataOperation.value()));
       }
     }
   }
@@ -136,13 +131,7 @@ public final class SecurityUtil {
 
   public static AuthenticationContext getAuthenticationContext(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
-    return SecurityUtil.getAuthenticationContext(principal);
-  }
-
-  private static AuthenticationContext getAuthenticationContext(Principal principal) {
-    AuthenticationContext context = new AuthenticationContext();
-    context.setPrincipal(principal);
-    return context;
+    return new AuthenticationContext(principal);
   }
 
   public static Map<String, String> authHeaders(String username) {
@@ -171,5 +160,17 @@ public final class SecurityUtil {
               headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
     }
     return target.request();
+  }
+
+  public static boolean checkBot(int checkFlags) {
+    return (checkFlags & BOT) > 0;
+  }
+
+  public static boolean checkOwner(int checkFlags) {
+    return (checkFlags & OWNER) > 0;
+  }
+
+  public static boolean checkPermissions(int checkFlags) {
+    return (checkFlags & PERMISSIONS) > 0;
   }
 }

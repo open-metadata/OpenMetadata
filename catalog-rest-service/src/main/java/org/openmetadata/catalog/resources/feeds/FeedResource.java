@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -326,7 +330,7 @@ public class FeedResource {
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
     // delete post only if the admin/bot/author tries to delete it
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOwnerOfPost(post));
+    SecurityUtil.authorize(authorizer, securityContext, null, dao.getOwnerOfPost(post), ADMIN | BOT | OWNER);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
