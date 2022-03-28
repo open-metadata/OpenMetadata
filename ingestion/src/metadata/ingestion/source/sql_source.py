@@ -443,7 +443,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, schema, table_name):
-        table_fqn = f"{schema}.{table_name}"
+        table_fqn = f"{schema}.{table_name}".lower()
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
