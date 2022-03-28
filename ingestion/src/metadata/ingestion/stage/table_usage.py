@@ -144,9 +144,7 @@ class TableUsageStage(Stage[QueryParserData]):
 
     def close(self):
         for key, value in self.table_usage.items():
-            value.sql_queries = (
-                self.table_queries.get(key) if self.table_queries.get(key) else []
-            )
+            value.sql_queries = self.table_queries.get(key, [])
             data = value.json()
             self.file.write(json.dumps(data))
             self.file.write("\n")
