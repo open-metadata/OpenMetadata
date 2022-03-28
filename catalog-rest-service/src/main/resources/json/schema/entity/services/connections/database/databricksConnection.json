@@ -5,16 +5,33 @@
   "description": "Databricks Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.DatabricksConnection",
-  "properties": {
-    "databricksConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+  "definitions": {
+    "databricksType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Databricks"
+      ],
+      "default": "Databricks"
     },
-    "sqlDriverScheme": {
+    "databricksScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["databricks+connector"],
+      "enum": [
+        "databricks+connector"
+      ],
+      "default": "databricks+connector"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/databricksType",
+      "default": "Databricks"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/databricksScheme",
       "default": "databricks+connector"
     },
     "username": {

@@ -5,11 +5,21 @@
   "description": "DynamoDB Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.DynamoDBConnection",
+  "definitions": {
+    "dynamoDBType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "DynamoDB"
+      ],
+      "default": "DynamoDB"
+    }
+  },
   "properties": {
-    "dynamoDBConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/dynamoDBType",
+      "default": "DynamoDB"
     },
     "hostPort": {
       "description": "Host and port of the DynamoDB",

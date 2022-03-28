@@ -5,16 +5,33 @@
   "description": "Azure SQL Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.AzureSQLConnection",
-  "properties": {
-    "azureSQLConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+  "definitions": {
+    "azureSQLType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "AzureSQL"
+      ],
+      "default": "AzureSQL"
     },
-    "sqlDriverScheme": {
+    "azureSQLScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mssql+pyodbc"],
+      "enum": [
+        "mssql+pyodbc"
+      ],
+      "default": "mssql+pyodbc"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/azureSQLType",
+      "default": "AzureSQL"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/azureSQLScheme",
       "default": "mssql+pyodbc"
     },
     "username": {

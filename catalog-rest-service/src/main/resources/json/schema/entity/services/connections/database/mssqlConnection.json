@@ -5,17 +5,36 @@
   "description": "Mssql Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.MssqlConnection",
-  "properties": {
-    "mssqlConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+  "definitions": {
+    "mssqlType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "MSSQL"
+      ],
+      "default": "MSSQL"
     },
-    "sqlDriverScheme": {
+    "mssqlScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"],
-      "default": "mssql+pymssql"
+      "enum": [
+        "mssql+pyodbc",
+        "mssql+pytds",
+        "mssql+pymssql"
+      ],
+      "default": "mysql+pymysql"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/mssqlType",
+      "default": "MSSQL"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/mssqlScheme",
+      "default": "mssql+pyodbc"
     },
     "username": {
       "description": "username to connect  to the MsSQL. This user should have privileges to read all the metadata in MsSQL.",

@@ -5,16 +5,33 @@
   "description": "Redshift  Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.RedshiftConnection",
+  "definitions": {
+    "redshiftType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Redshift"
+      ],
+      "default": "Redshift"
+    },
+    "redshiftScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "redshift+psycopg2"
+      ],
+      "default": "redshift+psycopg2"
+    }
+  },
   "properties": {
-    "redshiftConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/redshiftType",
+      "default": "Redshift"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["redshift+psycopg2"],
+      "$ref": "#/definitions/redshiftScheme",
       "default": "redshift+psycopg2"
     },
     "username": {

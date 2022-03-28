@@ -5,16 +5,33 @@
   "description": "Salesforce Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.SalesforceConnection",
+  "definitions": {
+    "salesforceType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Salesforce"
+      ],
+      "default": "Salesforce"
+    },
+    "salesforceScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "salesforce"
+      ],
+      "default": "salesforce"
+    }
+  },
   "properties": {
-    "salesforceConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/salesforceType",
+      "default": "Salesforce"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["salesforce"],
+      "$ref": "#/definitions/salesforceScheme",
       "default": "salesforce"
     },
     "username": {

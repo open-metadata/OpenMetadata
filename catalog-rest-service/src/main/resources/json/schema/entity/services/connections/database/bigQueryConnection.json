@@ -5,16 +5,33 @@
   "description": "Google BigQuery Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.BigQueryConnection",
-  "properties": {
-    "bigqueryConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+  "definitions": {
+    "bigqueryType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "BigQuery"
+      ],
+      "default": "BigQuery"
     },
-    "sqlDriverScheme": {
+    "bigqueryScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["bigquery"],
+      "enum": [
+        "bigquery"
+      ],
+      "default": "bigquery"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/bigqueryType",
+      "default": "BigQuery"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/bigqueryScheme",
       "default": "bigquery"
     },
     "hostPort": {
