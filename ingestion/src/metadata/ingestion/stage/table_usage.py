@@ -89,15 +89,18 @@ class TableUsageStage(Stage[QueryParserData]):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
+    def _add_sql_query(self, record, table):
+        if self.table_queries.get(table):
+            self.table_queries[table].append(SqlQuery(query=record.sql))
+        else:
+            self.table_queries[table] = [SqlQuery(query=record.sql)]
+
     def stage_record(self, record: QueryParserData) -> None:
         if record is None:
             return None
         for table in record.tables:
             try:
-                try:
-                    self.table_queries[table].append(SqlQuery(query=record.sql))
-                except KeyError:
-                    self.table_queries[table] = [SqlQuery(query=record.sql)]
+                self._add_sql_query(record=record, table=table)
                 table_usage_count = self.table_usage.get(table)
                 if table_usage_count is not None:
                     table_usage_count.count = table_usage_count.count + 1
@@ -141,10 +144,9 @@ class TableUsageStage(Stage[QueryParserData]):
 
     def close(self):
         for key, value in self.table_usage.items():
-            try:
-                value.sql_queries = self.table_queries[key]
-            except KeyError:
-                pass
+            value.sql_queries = (
+                self.table_queries.get(key) if self.table_queries.get(key) else []
+            )
             data = value.json()
             self.file.write(json.dumps(data))
             self.file.write("\n")
