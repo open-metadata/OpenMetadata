@@ -250,7 +250,7 @@ class Profiler(Generic[MetricType]):
                     f"We need {metric.required_metrics()} for {metric.name}, but only got {names} in the profiler"
                 )
 
-    def sql_col_run(self, col: Column):
+    def run_static_metrics(self, col: Column):
         """
         Run the profiler and store its results
 
@@ -276,7 +276,7 @@ class Profiler(Generic[MetricType]):
             )
             self.session.rollback()
 
-    def sql_table_run(self):
+    def run_table_metrics(self):
         """
         Run Table Static metrics
 
@@ -298,7 +298,7 @@ class Profiler(Generic[MetricType]):
         if row:
             self._table_results.update(dict(row))
 
-    def sql_col_query_run(self, col: Column) -> None:
+    def run_query_metrics(self, col: Column) -> None:
         """
         Run QueryMetrics
         """
@@ -336,7 +336,7 @@ class Profiler(Generic[MetricType]):
                 )
                 self.session.rollback()
 
-    def post_col_run(self, col: Column):
+    def run_composed_metrics(self, col: Column):
         """
         Run this after the metrics have been computed
 
@@ -360,15 +360,6 @@ class Profiler(Generic[MetricType]):
                 current_col_results
             )
 
-    def execute_table(self) -> None:
-        """
-        Run table metrics
-
-        So far we only support Static Metrics
-        for Table Metrics
-        """
-        self.sql_table_run()
-
     def execute_column(self, col: Column) -> None:
         """
         Run the profiler on all the columns that
@@ -377,9 +368,9 @@ class Profiler(Generic[MetricType]):
         We can assume from this point onwards that
         columns are of allowed types
         """
-        self.sql_col_run(col)
-        self.sql_col_query_run(col)
-        self.post_col_run(col)
+        self.run_static_metrics(col)
+        self.run_query_metrics(col)
+        self.run_composed_metrics(col)
 
     def execute(self) -> "Profiler":
         """
@@ -388,7 +379,7 @@ class Profiler(Generic[MetricType]):
 
         logger.debug(f"Running profiler for {self.table.__tablename__}")
 
-        self.execute_table()
+        self.run_table_metrics()
 
         for col in self.columns:
             logger.debug(
