@@ -42,6 +42,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -82,13 +83,15 @@ const MyDataPage = () => {
         if (res.data) {
           setCountTables(res.data.paging.total || 0);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((error: AxiosError) => {
         handleShowErrorToast(
-          error.response?.data?.message ||
+          getErrorText(
+            error,
             jsonData['api-error-messages']['unexpected-server-response']
+          )
         );
         setCountTables(0);
       });
@@ -99,13 +102,15 @@ const MyDataPage = () => {
         if (res.data) {
           setCountTopics(res.data.paging.total || 0);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((error: AxiosError) => {
         handleShowErrorToast(
-          error.response?.data?.message ||
+          getErrorText(
+            error,
             jsonData['api-error-messages']['unexpected-server-response']
+          )
         );
         setCountTopics(0);
       });
@@ -116,13 +121,15 @@ const MyDataPage = () => {
         if (res.data) {
           setCountPipelines(res.data.paging.total || 0);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((error: AxiosError) => {
         handleShowErrorToast(
-          error.response?.data?.message ||
+          getErrorText(
+            error,
             jsonData['api-error-messages']['unexpected-server-response']
+          )
         );
         setCountPipelines(0);
       });
@@ -133,13 +140,15 @@ const MyDataPage = () => {
         if (res.data) {
           setCountDashboards(res.data.paging.total || 0);
         } else {
-          throw '';
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((error: AxiosError) => {
         handleShowErrorToast(
-          error.response?.data?.message ||
+          getErrorText(
+            error,
             jsonData['api-error-messages']['unexpected-server-response']
+          )
         );
         setCountDashboards(0);
       });
@@ -155,8 +164,10 @@ const MyDataPage = () => {
         })
         .catch((error: AxiosError) => {
           handleShowErrorToast(
-            error.response?.data?.message ||
+            getErrorText(
+              error,
               jsonData['api-error-messages']['unexpected-server-response']
+            )
           );
           setCountServices(0);
         });

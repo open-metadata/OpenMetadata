@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
+import { isString } from 'lodash';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -92,4 +94,19 @@ export const bytesToSize = (bytes: number) => {
       return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
     }
   }
+};
+
+/**
+ * Checks the value and return error text
+ * @param value - The value to check
+ * @param fallbackText
+ * @returns Returns the error text
+ */
+export const getErrorText = (
+  value: AxiosError | string,
+  fallbackText: string
+): string => {
+  return (
+    (isString(value) ? value : value.response?.data?.message) || fallbackText
+  );
 };
