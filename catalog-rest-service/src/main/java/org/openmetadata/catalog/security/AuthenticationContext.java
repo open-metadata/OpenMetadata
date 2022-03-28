@@ -14,10 +14,14 @@
 package org.openmetadata.catalog.security;
 
 import java.security.Principal;
+import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 /** Holds context information of authenticated user, which will be used for authorization. */
 public final class AuthenticationContext {
   private final Principal principal;
+  private User user;
+  private Fields userFields;
 
   public AuthenticationContext(Principal principal) {
     this.principal = principal;
@@ -30,5 +34,21 @@ public final class AuthenticationContext {
   @Override
   public String toString() {
     return "AuthenticationContext{" + ", principal=" + principal + '}';
+  }
+
+  public User getUser() {
+    return user;
+  }
+
+  public void setUser(User user) {
+    this.user = user;
+  }
+
+  public Fields getUserFields() {
+    return userFields;
+  }
+
+  public void setUserFields(Fields userFields) {
+    this.userFields = userFields;
   }
 }

@@ -760,7 +760,8 @@ public interface CollectionDAO {
 
     default void deleteAllByPrefix(String fqnPrefix, int relation) {
       String prefix = String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR);
-      String cond = String.format("WHERE (toFQN LIKE %s OR fromFQN LIKE %s) AND relation = %s)", prefix, relation);
+      String cond =
+          String.format("WHERE (toFQN LIKE %s OR fromFQN LIKE %s) AND relation = %s)", prefix, prefix, relation);
       deleteAllByPrefix(cond);
     }
 
