@@ -46,6 +46,7 @@ import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Tag;
@@ -81,10 +82,7 @@ public final class TestUtils {
   static {
     DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withHostPort("localhost:1000")
-            .withUsername("user_name")
-            .withPassword("password")
-            .withDatabase("test");
+            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
   }
 
   static {

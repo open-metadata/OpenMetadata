@@ -307,7 +307,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         databaseServiceResourceTest
             .createRequest(test, 1)
             .withServiceType(DatabaseServiceType.Snowflake)
-            .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
+            .withConnection(TestUtils.DATABASE_CONNECTION);
     DatabaseService databaseService =
         new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
@@ -327,18 +327,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create Kafka messaging service
     MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
     CreateMessagingService createMessaging =
-        new CreateMessagingService()
-            .withName("kafka")
-            .withServiceType(MessagingServiceType.Kafka)
-            .withBrokers(List.of("192.168.1.1:0"));
+        new CreateMessagingService().withName("kafka").withServiceType(MessagingServiceType.Kafka);
     MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
     // Create Pulsar messaging service
-    createMessaging
-        .withName("pulsar")
-        .withServiceType(MessagingServiceType.Pulsar)
-        .withBrokers(List.of("192.168.1.1:0"));
+    createMessaging.withName("pulsar").withServiceType(MessagingServiceType.Pulsar);
+
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
@@ -380,10 +375,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
-        dashboardResourceTest
-            .createRequest("superset", "", "", null)
-            .withServiceType(DashboardServiceType.Superset)
-            .withDashboardUrl(TestUtils.DASHBOARD_URL);
+        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Superset);
 
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
