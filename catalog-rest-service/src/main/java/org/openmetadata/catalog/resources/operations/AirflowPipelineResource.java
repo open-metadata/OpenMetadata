@@ -29,8 +29,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -158,7 +156,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     ResultList<AirflowPipeline> airflowPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -184,7 +182,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "AirflowPipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -217,7 +215,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     AirflowPipeline airflowPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       airflowPipeline = addStatus(airflowPipeline);
@@ -250,7 +248,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -283,7 +281,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     AirflowPipeline airflowPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
       airflowPipeline = addStatus(airflowPipeline);
@@ -308,7 +306,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline create)
-      throws IOException, ParseException {
+      throws IOException {
     AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
     Response response = create(uriInfo, securityContext, airflowPipeline, ADMIN | BOT);
     deploy(airflowPipeline, true);
@@ -336,7 +334,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -355,7 +353,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline update)
-      throws IOException, ParseException {
+      throws IOException {
     AirflowPipeline pipeline = getAirflowPipeline(securityContext, update);
     Response response = createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
     deploy(pipeline, true); // TODO cleanup
@@ -378,7 +376,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
       })
   public AirflowPipeline triggerIngestion(
       @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     AirflowPipeline pipeline = dao.get(uriInfo, id, fields);
     airflowRESTClient.runPipeline(pipeline.getName());
@@ -396,7 +394,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
         @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     Response response = delete(uriInfo, securityContext, id, false, ADMIN | BOT);
     AirflowPipeline pipeline = (AirflowPipeline) response.getEntity();
     airflowRESTClient.deletePipeline(pipeline.getName());

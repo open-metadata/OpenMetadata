@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -57,7 +56,7 @@ public class LocationRepository extends EntityRepository<Location> {
   }
 
   @Override
-  public Location setFields(Location location, Fields fields) throws IOException, ParseException {
+  public Location setFields(Location location, Fields fields) throws IOException {
     location.setService(getService(location));
     location.setOwner(fields.contains(FIELD_OWNER) ? getOwner(location) : null);
     location.setFollowers(fields.contains("followers") ? getFollowers(location) : null);
@@ -77,7 +76,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
-      throws IOException, ParseException {
+      throws IOException {
     String service = EntityUtil.splitFQN(fqn)[0];
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
@@ -113,7 +112,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
-      throws IOException, ParseException {
+      throws IOException {
     String service = EntityUtil.splitFQN(fqn)[0];
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =

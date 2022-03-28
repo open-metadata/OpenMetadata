@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -44,7 +43,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
+  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
@@ -55,7 +54,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public void prepare(PipelineService entity) throws IOException, ParseException {
+  public void prepare(PipelineService entity) throws IOException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());

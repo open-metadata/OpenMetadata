@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -54,7 +53,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public Metrics setFields(Metrics metrics, Fields fields) throws IOException, ParseException {
+  public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
     metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains(FIELD_OWNER) ? getOwner(metrics) : null);
     metrics.setUsageSummary(

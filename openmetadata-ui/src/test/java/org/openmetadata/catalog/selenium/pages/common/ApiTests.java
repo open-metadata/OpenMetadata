@@ -1,6 +1,5 @@
 package org.openmetadata.catalog.selenium.pages.common;
 
-import static io.restassured.RestAssured.*;
 import static io.restassured.RestAssured.given;
 
 import com.google.gson.JsonParseException;

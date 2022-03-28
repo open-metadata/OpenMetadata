@@ -21,7 +21,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -74,7 +73,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException, ParseException {
+  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
     pipeline.setService(getService(pipeline));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
@@ -102,7 +101,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException, ParseException {
+  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
     Map<Long, PipelineStatus> storedMapStatus = new HashMap<>();

@@ -28,8 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonObject;
@@ -148,7 +146,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -169,7 +167,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "user Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -202,7 +200,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -235,7 +233,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -261,7 +259,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = getFields(fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(uriInfo, currentUserName, fields);
@@ -292,7 +290,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -309,8 +307,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     }
@@ -333,8 +330,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     }
@@ -368,7 +364,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
@@ -392,7 +388,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 

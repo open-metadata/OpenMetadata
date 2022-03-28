@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -177,7 +176,7 @@ public class FeedResource {
           @DefaultValue("false")
           @QueryParam("resolved")
           boolean resolved)
-      throws IOException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
 
     ResultList<Thread> threads;
@@ -230,7 +229,7 @@ public class FeedResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     PatchResponse<Thread> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return response.toResponse();
@@ -276,7 +275,7 @@ public class FeedResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
-      throws IOException, ParseException {
+      throws IOException {
     Thread thread = getThread(securityContext, create);
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();

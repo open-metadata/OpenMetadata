@@ -27,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -142,7 +140,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -163,7 +161,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -195,7 +193,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -227,7 +225,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -255,7 +253,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -272,7 +270,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
-      throws IOException, ParseException {
+      throws IOException {
     Chart chart = getChart(securityContext, create);
     return create(uriInfo, securityContext, chart, ADMIN | BOT);
   }
@@ -298,7 +296,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -315,7 +313,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
-      throws IOException, ParseException {
+      throws IOException {
     Chart chart = getChart(securityContext, create);
     return createOrUpdate(uriInfo, securityContext, chart, ADMIN | BOT | OWNER);
   }
@@ -371,7 +369,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 

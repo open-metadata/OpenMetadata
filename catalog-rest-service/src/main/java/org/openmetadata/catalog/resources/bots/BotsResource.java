@@ -22,8 +22,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.constraints.Max;
@@ -95,7 +93,7 @@ public class BotsResource extends EntityResource<Bots, BotsRepository> {
       @Parameter(description = "Returns list of bots after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     return super.listInternal(uriInfo, securityContext, "", new ListFilter(), limitParam, before, after);
   }
 
@@ -113,7 +111,7 @@ public class BotsResource extends EntityResource<Bots, BotsRepository> {
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
       })
   public Bots get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
   }
 
@@ -130,7 +128,7 @@ public class BotsResource extends EntityResource<Bots, BotsRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
-      throws IOException, ParseException {
+      throws IOException {
     bot.withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

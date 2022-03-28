@@ -28,8 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -137,7 +135,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -158,7 +156,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "team Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -191,7 +189,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -224,7 +222,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -252,7 +250,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -269,7 +267,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
-      throws IOException, ParseException {
+      throws IOException {
     Team team = getTeam(ct, securityContext);
     return create(uriInfo, securityContext, team, ADMIN | BOT);
   }
@@ -287,8 +285,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
     Team team = getTeam(ct, securityContext);
     return createOrUpdate(uriInfo, securityContext, team, ADMIN | BOT | OWNER);
   }
@@ -314,7 +311,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -329,7 +326,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 

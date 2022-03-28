@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -178,7 +177,7 @@ public final class Entity {
     return dao.findEntityReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException, ParseException {
+  public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException {
     EntityRepository<?> repository = getEntityRepository(reference.getType());
     return repository.getOwner(reference.getId(), reference.getType());
   }
@@ -216,14 +215,13 @@ public final class Entity {
     return entityRepository.getEntityInterface(entity);
   }
 
-  public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include)
-      throws IOException, ParseException {
+  public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include) throws IOException {
     return getEntity(ref.getType(), ref.getId(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntity(String entityType, UUID id, EntityUtil.Fields fields, Include include)
-      throws IOException, ParseException {
+      throws IOException {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
     T entity = (T) entityRepository.get(null, id.toString(), fields, include);
@@ -244,14 +242,12 @@ public final class Entity {
   }
 
   public static void deleteEntity(
-      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean internal)
-      throws IOException, ParseException {
+      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean internal) throws IOException {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.delete(updatedBy, entityId.toString(), recursive, internal);
   }
 
-  public static void restoreEntity(String updatedBy, String entityType, UUID entityId)
-      throws IOException, ParseException {
+  public static void restoreEntity(String updatedBy, String entityType, UUID entityId) throws IOException {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.restoreEntity(updatedBy, entityType, entityId);
   }

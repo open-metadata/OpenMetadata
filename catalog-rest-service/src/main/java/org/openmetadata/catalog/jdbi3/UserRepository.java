@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -61,14 +60,14 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityReference getOriginalOwner(User entity) throws IOException, ParseException {
+  public EntityReference getOriginalOwner(User entity) throws IOException {
     // For User entity, the entity and the owner are the same
     return getEntityInterface(entity).getEntityReference();
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) throws IOException, ParseException {
+  public void prepare(User user) throws IOException {
     // Get roles assigned to the user.
     Set<UUID> roleIds = listOrEmpty(user.getRoles()).stream().map(EntityReference::getId).collect(Collectors.toSet());
     // Get default role set up globally.
@@ -85,7 +84,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setRoles(rolesRef);
   }
 
-  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException, ParseException {
+  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException {
     List<EntityReference> teamsRef = listOrEmpty(user.getTeams());
     List<EntityReference> defaultRoles = new ArrayList<>();
     for (EntityReference teamRef : teamsRef) {
@@ -124,20 +123,18 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException, ParseException {
+  public User getByEmail(String email, Fields fields) throws IOException {
     User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
     return setFields(user, fields);
   }
 
   @Override
-  public User setFields(User user, Fields fields) throws IOException, ParseException {
-
+  public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
-
     return user;
   }
 

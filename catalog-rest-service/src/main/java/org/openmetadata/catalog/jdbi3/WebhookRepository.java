@@ -23,7 +23,6 @@ import com.lmax.disruptor.LifecycleAware;
 import java.io.IOException;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +70,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public Webhook setFields(Webhook entity, Fields fields) throws IOException, ParseException {
+  public Webhook setFields(Webhook entity, Fields fields) throws IOException {
     return entity; // No fields to set
   }
 
@@ -394,22 +393,21 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       webhook.getEventFilters().forEach(f -> filter.put(f.getEventType(), f.getEntities()));
     }
 
-    private void setErrorStatus(Long attemptTime, Integer statusCode, String reason)
-        throws IOException, ParseException {
+    private void setErrorStatus(Long attemptTime, Integer statusCode, String reason) throws IOException {
       if (!attemptTime.equals(webhook.getFailureDetails().getLastFailedAt())) {
         setStatus(Status.FAILED, attemptTime, statusCode, reason, null);
       }
       throw new RuntimeException(reason);
     }
 
-    private void setAwaitingRetry(Long attemptTime, int statusCode, String reason) throws IOException, ParseException {
+    private void setAwaitingRetry(Long attemptTime, int statusCode, String reason) throws IOException {
       if (!attemptTime.equals(webhook.getFailureDetails().getLastFailedAt())) {
         setStatus(Status.AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + currentBackoffTime);
       }
     }
 
     private void setStatus(Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp)
-        throws IOException, ParseException {
+        throws IOException {
       Webhook stored = daoCollection.webhookDAO().findEntityById(webhook.getId());
       webhook.setStatus(status);
       webhook

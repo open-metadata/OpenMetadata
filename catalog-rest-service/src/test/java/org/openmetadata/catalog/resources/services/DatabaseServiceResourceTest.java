@@ -25,8 +25,6 @@ import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import io.dropwizard.db.DataSourceFactory;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -200,7 +198,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  void fernet_rotateDatabaseService(TestInfo test) throws IOException, GeneralSecurityException, ParseException {
+  void fernet_rotateDatabaseService(TestInfo test) throws IOException {
     DatabaseConnection databaseConnection =
         new DatabaseConnection()
             .withDatabase("test")

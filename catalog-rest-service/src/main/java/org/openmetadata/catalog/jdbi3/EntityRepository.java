@@ -28,8 +28,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -156,7 +154,7 @@ public abstract class EntityRepository<T> {
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
-  public abstract T setFields(T entity, Fields fields) throws IOException, ParseException;
+  public abstract T setFields(T entity, Fields fields) throws IOException;
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
@@ -180,7 +178,7 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#prepare(Table) for an example implementation
    */
-  public abstract void prepare(T entity) throws IOException, ParseException;
+  public abstract void prepare(T entity) throws IOException;
 
   /**
    * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the entity and
@@ -256,29 +254,28 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final T get(UriInfo uriInfo, String id, Fields fields) throws IOException, ParseException {
+  public final T get(UriInfo uriInfo, String id, Fields fields) throws IOException {
     return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id)), fields));
   }
 
   @Transaction
-  public final T get(UriInfo uriInfo, String id, Fields fields, Include include) throws IOException, ParseException {
+  public final T get(UriInfo uriInfo, String id, Fields fields, Include include) throws IOException {
     return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id), include), fields));
   }
 
   @Transaction
-  public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException, ParseException {
+  public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
     return withHref(uriInfo, setFields(dao.findEntityByName(fqn), fields));
   }
 
   @Transaction
-  public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include)
-      throws IOException, ParseException {
+  public final T getByName(UriInfo uriInfo, String fqn, Fields fields, Include include) throws IOException {
     return withHref(uriInfo, setFields(dao.findEntityByName(fqn, include), fields));
   }
 
   @Transaction
   public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
-      throws GeneralSecurityException, IOException, ParseException {
+      throws IOException {
     int total = dao.listCount(filter);
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
@@ -306,8 +303,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final ResultList<T> listBefore(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before)
-      throws IOException, GeneralSecurityException, ParseException {
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) throws IOException {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
 
@@ -329,7 +325,7 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public T getVersion(String id, String version) throws IOException, ParseException {
+  public T getVersion(String id, String version) throws IOException {
     Double requestedVersion = Double.parseDouble(version);
     String extension = EntityUtil.getVersionExtension(entityType, requestedVersion);
 
@@ -349,7 +345,7 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public EntityHistory listVersions(String id) throws IOException, ParseException {
+  public EntityHistory listVersions(String id) throws IOException {
     T latest = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     List<EntityVersionPair> oldVersions = daoCollection.entityExtensionDAO().getEntityVersions(id, extensionPrefix);
@@ -361,18 +357,18 @@ public abstract class EntityRepository<T> {
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
   }
 
-  public final T create(UriInfo uriInfo, T entity) throws IOException, ParseException {
+  public final T create(UriInfo uriInfo, T entity) throws IOException {
     return withHref(uriInfo, createInternal(entity));
   }
 
   @Transaction
-  public final T createInternal(T entity) throws IOException, ParseException {
+  public final T createInternal(T entity) throws IOException {
     prepare(entity);
     return createNewEntity(entity);
   }
 
   @Transaction
-  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
+  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException {
     prepare(updated);
     EntityInterface<T> updatedInterface = getEntityInterface(updated);
 
@@ -398,8 +394,7 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
-      throws IOException, ParseException {
+  public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFields(dao.findEntityById(id), patchFields);
 
@@ -454,14 +449,13 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive)
-      throws IOException, ParseException {
+  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive) throws IOException {
     return delete(updatedBy, id, recursive, false);
   }
 
   @Transaction
   public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean internal)
-      throws IOException, ParseException {
+      throws IOException {
     // Validate entity
     String json = dao.findJsonById(id, Include.NON_DELETED);
     if (json == null) {
@@ -563,7 +557,7 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
+  public EntityReference getOriginalOwner(T entity) throws IOException {
     if (!supportsOwner) {
       return null;
     }
@@ -578,7 +572,7 @@ public abstract class EntityRepository<T> {
     return null;
   }
 
-  protected EntityReference getOwner(T entity) throws IOException, ParseException {
+  protected EntityReference getOwner(T entity) throws IOException {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     return getOwner(entityInterface.getId(), entityType);
   }
@@ -701,7 +695,7 @@ public abstract class EntityRepository<T> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException, ParseException {
+  public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityReference> contains =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
@@ -785,7 +779,7 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public EntityReference getOwner(UUID id, String entityType) throws IOException, ParseException {
+  public EntityReference getOwner(UUID id, String entityType) throws IOException {
     if (!supportsOwner) {
       return null;
     }
@@ -876,7 +870,7 @@ public abstract class EntityRepository<T> {
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
-    public final void update() throws IOException, ParseException {
+    public final void update() throws IOException {
       if (operation.isDelete()) { // DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -893,7 +887,7 @@ public abstract class EntityRepository<T> {
       storeUpdate();
     }
 
-    public void entitySpecificUpdate() throws IOException, ParseException {
+    public void entitySpecificUpdate() throws IOException {
       // Default implementation. Override this to add any entity specific field updates
     }
 

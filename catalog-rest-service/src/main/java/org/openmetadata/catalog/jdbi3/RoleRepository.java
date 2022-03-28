@@ -17,8 +17,6 @@ import static org.openmetadata.catalog.type.Include.ALL;
 
 import java.io.IOException;
 import java.net.URI;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -295,11 +293,11 @@ public class RoleRepository extends EntityRepository<Role> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException, ParseException {
+    public void entitySpecificUpdate() throws IOException {
       updateDefault(original.getEntity(), updated.getEntity());
     }
 
-    private void updateDefault(Role origRole, Role updatedRole) throws IOException, ParseException {
+    private void updateDefault(Role origRole, Role updatedRole) throws IOException {
       long startTime = System.nanoTime();
       if (Boolean.FALSE.equals(origRole.getDefaultRole()) && Boolean.TRUE.equals(updatedRole.getDefaultRole())) {
         setDefaultToTrue(updatedRole);
@@ -316,7 +314,7 @@ public class RoleRepository extends EntityRepository<Role> {
           updatedRole.getDefaultRole());
     }
 
-    private void setDefaultToTrue(Role role) throws IOException, ParseException {
+    private void setDefaultToTrue(Role role) throws IOException {
       List<Role> defaultRoles = getDefaultRoles(null, Fields.EMPTY_FIELDS);
       EntityRepository<Role> roleRepository = Entity.getEntityRepository(Entity.ROLE);
       // Set default=FALSE for all existing default roles.
@@ -357,7 +355,7 @@ public class RoleRepository extends EntityRepository<Role> {
         // - we do not need to update deleted user's roles.
         ListFilter filter = new ListFilter();
         return userRepository.listAfter(null, Fields.EMPTY_FIELDS, filter, Integer.MAX_VALUE - 1, null).getData();
-      } catch (GeneralSecurityException | IOException | ParseException e) {
+      } catch (IOException e) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));
       }
     }

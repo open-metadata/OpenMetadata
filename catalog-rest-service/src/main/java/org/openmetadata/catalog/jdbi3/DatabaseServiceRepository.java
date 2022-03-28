@@ -20,7 +20,6 @@ import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -75,7 +74,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException {
     entity.setAirflowPipelines(fields.contains("airflowPipelines") ? getAirflowPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
@@ -101,7 +100,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public void prepare(DatabaseService databaseService) throws IOException, ParseException {
+  public void prepare(DatabaseService databaseService) throws IOException {
     // Check if owner is valid and set the relationship
     databaseService.setOwner(Entity.getEntityReference(databaseService.getOwner()));
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();

@@ -28,8 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -144,7 +142,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
@@ -165,7 +163,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Topic Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -197,7 +195,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -229,7 +227,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -257,7 +255,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -274,7 +272,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
-      throws IOException, ParseException {
+      throws IOException {
     Topic topic = getTopic(securityContext, create);
     return create(uriInfo, securityContext, topic, ADMIN | BOT);
   }
@@ -300,7 +298,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -317,7 +315,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
-      throws IOException, ParseException {
+      throws IOException {
     Topic topic = getTopic(securityContext, create);
     return createOrUpdate(uriInfo, securityContext, topic, ADMIN | BOT | OWNER);
   }
@@ -373,7 +371,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 

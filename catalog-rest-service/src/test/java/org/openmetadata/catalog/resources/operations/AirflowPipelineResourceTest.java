@@ -35,7 +35,6 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -345,7 +344,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
 
   @Test
   void post_AirflowWithDatabaseServiceMetadata_GeneratedIngestionPipelineConfig_200_ok(TestInfo test)
-      throws IOException, ParseException {
+      throws IOException {
     CreateAirflowPipeline request =
         createRequest(test)
             .withPipelineType(PipelineType.METADATA)
@@ -530,8 +529,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     }
   }
 
-  private void validateGeneratedAirflowPipelineConfig(AirflowPipeline airflowPipeline)
-      throws IOException, ParseException {
+  private void validateGeneratedAirflowPipelineConfig(AirflowPipeline airflowPipeline) throws IOException {
     IngestionAirflowPipeline ingestionPipeline =
         AirflowUtils.toIngestionPipeline(airflowPipeline, AIRFLOW_CONFIG, true);
     DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
@@ -539,7 +537,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     DatabaseServiceMetadataPipeline metadataPipeline =
         JsonUtils.convertValue(airflowPipeline.getPipelineConfig().getConfig(), DatabaseServiceMetadataPipeline.class);
     assertEquals(ingestionPipeline.getConcurrency(), airflowPipeline.getConcurrency());
-    // there should be one airflow task that encompases all of metadata pipeline config
+    // there should be one airflow task that encompasses all of the metadata pipeline config
     assertEquals(1, ingestionPipeline.getTasks().size());
     OpenMetadataIngestionTask airflowTask = ingestionPipeline.getTasks().get(0);
     IngestionTaskConfig taskConfig = airflowTask.getConfig();

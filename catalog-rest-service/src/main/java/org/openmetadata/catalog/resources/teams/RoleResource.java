@@ -27,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -145,7 +143,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter(include);
@@ -178,7 +176,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "role Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -211,7 +209,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -244,7 +242,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -272,7 +270,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -290,7 +288,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException, ParseException {
+      throws IOException {
     Role role = getRole(createRole, securityContext);
     return create(uriInfo, securityContext, role, ADMIN | BOT);
   }
@@ -309,7 +307,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       })
   public Response createOrUpdateRole(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException, ParseException {
+      throws IOException {
     Role role = getRole(createRole, securityContext);
     return createOrUpdate(uriInfo, securityContext, role, ADMIN | BOT);
   }
@@ -335,7 +333,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -350,7 +348,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
     return delete(uriInfo, securityContext, id, true, ADMIN | BOT);
