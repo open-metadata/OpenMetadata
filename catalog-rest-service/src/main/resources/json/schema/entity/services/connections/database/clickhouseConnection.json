@@ -5,16 +5,33 @@
   "description": "Clickhouse Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.ClickhouseConnection",
-  "properties": {
-    "clickhouseConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+  "definitions": {
+    "clickhouseType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "ClickHouse"
+      ],
+      "default": "ClickHouse"
     },
-    "sqlDriverScheme": {
+    "clickhouseScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["clickhouse+http"],
+      "enum": [
+        "clickhouse+http"
+      ],
+      "default": "clickhouse+http"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/clickhouseType",
+      "default": "ClickHouse"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/clickhouseScheme",
       "default": "clickhouse+http"
     },
     "username": {

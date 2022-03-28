@@ -5,16 +5,33 @@
   "description": "Snowflake Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.SnowflakeConnection",
+  "definitions": {
+    "snowflakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Snowflake"
+      ],
+      "default": "Snowflake"
+    },
+    "snowflakeScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "snowflake"
+      ],
+      "default": "snowflake"
+    }
+  },
   "properties": {
-    "snowflakeConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/snowflakeType",
+      "default": "Snowflake"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["snowflake"],
+      "$ref": "#/definitions/snowflakeScheme",
       "default": "snowflake"
     },
     "username": {

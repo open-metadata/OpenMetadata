@@ -5,16 +5,33 @@
   "description": "Vertica Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.VerticaConnection",
+  "definitions": {
+    "verticaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Vertica"
+      ],
+      "default": "Vertica"
+    },
+    "verticaScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "vertica+vertica_python"
+      ],
+      "default": "vertica+vertica_python"
+    }
+  },
   "properties": {
-    "verticaConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/verticaType",
+      "default": "Vertica"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["vertica+vertica_python"],
+      "$ref": "#/definitions/verticaScheme",
       "default": "vertica+vertica_python"
     },
     "username": {

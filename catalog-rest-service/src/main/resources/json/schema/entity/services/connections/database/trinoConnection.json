@@ -5,16 +5,33 @@
   "description": "Trino Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.TrinoConnection",
+  "definitions": {
+    "trinoType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Trino"
+      ],
+      "default": "Trino"
+    },
+    "trinoScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "trino"
+      ],
+      "default": "trino"
+    }
+  },
   "properties": {
-    "trinoConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/trinoType",
+      "default": "Trino"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["trino"],
+      "$ref": "#/definitions/trinoScheme",
       "default": "trino"
     },
     "username": {

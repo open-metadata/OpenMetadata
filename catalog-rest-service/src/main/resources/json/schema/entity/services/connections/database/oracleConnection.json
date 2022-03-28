@@ -5,16 +5,33 @@
   "description": "Oracle Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.OracleConnection",
+  "definitions": {
+    "oracleType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Oracle"
+      ],
+      "default": "Oracle"
+    },
+    "oracleScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "oracle+cx_oracle"
+      ],
+      "default": "oracle+cx_oracle"
+    }
+  },
   "properties": {
-    "oracleConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/oracleType",
+      "default": "Oracle"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["oracle+cx_oracle"],
+      "$ref": "#/definitions/oracleScheme",
       "default": "oracle+cx_oracle"
     },
     "username": {

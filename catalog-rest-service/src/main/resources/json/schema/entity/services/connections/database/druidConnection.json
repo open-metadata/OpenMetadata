@@ -5,16 +5,33 @@
   "description": "Druid Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.DruidConnection",
-  "properties": {
-    "druidConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+  "definitions": {
+    "druidType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Druid"
+      ],
+      "default": "Druid"
     },
-    "sqlDriverScheme": {
+    "druidScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["druid"],
+      "enum": [
+        "druid"
+      ],
+      "default": "druid"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/druidType",
+      "default": "Druid"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/druidScheme",
       "default": "druid"
     },
     "username": {

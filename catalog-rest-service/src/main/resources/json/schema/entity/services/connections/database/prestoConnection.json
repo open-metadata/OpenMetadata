@@ -5,16 +5,33 @@
   "description": "Presto Database Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.PrestoConnection",
+  "definitions": {
+    "prestoType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Presto"
+      ],
+      "default": "Presto"
+    },
+    "prestoScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "presto"
+      ],
+      "default": "presto"
+    }
+  },
   "properties": {
-    "prestoConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/prestoType",
+      "default": "Presto"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["presto"],
+      "$ref": "#/definitions/prestoScheme",
       "default": "presto"
     },
     "username": {
