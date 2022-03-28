@@ -12,3 +12,4 @@
  */
 
 export const WILD_CARD_CHAR = '*';
+export const FQN_SEPARATOR_CHAR = '.';

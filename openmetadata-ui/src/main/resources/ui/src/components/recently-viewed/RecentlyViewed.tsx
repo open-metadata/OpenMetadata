@@ -13,6 +13,7 @@
 
 import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getRecentlyViewedData } from '../../utils/CommonUtils';
 import EntityList from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
@@ -28,7 +29,7 @@ const RecentlyViewed: FunctionComponent = () => {
       const formatedData = recentlyViewedData.map((data) => {
         return {
           serviceType: data.serviceType,
-          name: data.displayName || data.fqn.split('.').pop(),
+          name: data.displayName || data.fqn.split(FQN_SEPARATOR_CHAR).pop(),
           fullyQualifiedName: data.fqn,
           index: data.entityType,
         };

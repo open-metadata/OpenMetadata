@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import PopOver from '../popover/PopOver';
 import { FilterContainerProp } from './FacetTypes';
@@ -27,7 +28,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
 }: FilterContainerProp) => {
   const getFilterName = (name = '') => {
     const formattedName = name.startsWith('Tier.Tier')
-      ? name.split('.')[1]
+      ? name.split(FQN_SEPARATOR_CHAR)[1]
       : name;
 
     return (

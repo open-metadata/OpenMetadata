@@ -5,6 +5,7 @@ import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getAddGlossaryTermsPath,
   getGlossaryTermsPath,
@@ -177,7 +178,7 @@ const GlossaryTerms = ({
           glossaryFormatedData[selectedKey],
           selectedKey
         );
-        handleBreadcrum(queryParams.split('.').splice(1));
+        handleBreadcrum(queryParams.split(FQN_SEPARATOR_CHAR).splice(1));
         // if (queryParams.length > 1) {
         //   const expandedKey = [...queryParams];
         //   expandedKey.pop();

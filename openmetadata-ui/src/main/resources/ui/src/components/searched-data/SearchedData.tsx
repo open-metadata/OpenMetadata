@@ -15,6 +15,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
 import { TableType } from '../../generated/entity/data/table';
 import { pluralize } from '../../utils/CommonUtils';
@@ -129,7 +130,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             tags={table.tags}
             tier={
               (table.tier || getTierFromSearchTableTags(table.tags))?.split(
-                '.'
+                FQN_SEPARATOR_CHAR
               )[1]
             }
             usage={table.weeklyPercentileRank}
