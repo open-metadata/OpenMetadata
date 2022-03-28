@@ -5,11 +5,21 @@
   "description": "Kafka Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.messaging.KafkaConnection",
+  "definitions": {
+    "kafkaType": {
+      "description": "Kafka service type",
+      "type": "string",
+      "enum": [
+        "Kafka"
+      ],
+      "default": "Kafka"
+    }
+  },
   "properties": {
-    "kafkaConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/kafkaType",
+      "default": "Kafka"
     },
     "bootstrapServers": {
       "description": "Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092",
