@@ -31,6 +31,7 @@ from metadata.orm_profiler.metrics.core import (
 )
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
+from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.utils import logger
 from metadata.utils.timeout import cls_timeout
@@ -43,52 +44,6 @@ class MissingMetricException(Exception):
     Raise when building the profiler with Composed Metrics
     and not all the required metrics are present
     """
-
-
-class QueryRunner:
-    """
-    Handles the query runs and returns the results
-    to the caller.
-
-    The goal of this class is abstract a bit
-    how to get the query results. Moreover,
-    we can then wrap it up with a timeout
-    to make sure that methods executed from this class
-    won't take more than X seconds to execute.
-    """
-
-    def __init__(
-        self,
-        session: Session,
-        table: DeclarativeMeta,
-        sample: Union[DeclarativeMeta, AliasedClass],
-    ):
-        self._session = session
-        self._table = table
-        self._sample = sample
-
-    def _build_query(self, *entities, **kwargs) -> Query:
-        return self._session.query(*entities, **kwargs)
-
-    def _select_from_sample(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._sample)
-
-    def select_first_from_table(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._table).first()
-
-    def select_first_from_sample(self, *entities, **kwargs):
-        return self._select_from_sample(*entities, **kwargs).first()
-
-    def select_all_from_sample(self, *entities, **kwargs):
-        return self._select_from_sample(*entities, **kwargs).all()
-
-    @staticmethod
-    def select_first_from_query(query: Query):
-        return query.first()
-
-    @staticmethod
-    def select_all_from_query(query: Query):
-        return query.all()
 
 
 class Profiler(Generic[MetricType]):
