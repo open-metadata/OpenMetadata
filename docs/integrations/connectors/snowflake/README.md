@@ -10,7 +10,7 @@ description: >-
 2. [Install Snowflake Connector](./#install-snowflake-connector)
 3. [Configure Snowflake Connector](./#3.-configure-snowflake-connector)
 4. [Run Snowflake Connector](./#run-manually)
-5. [Troubleshooting](./#troubleshooting)
+5. [Troubleshooting](./#5.-troubleshooting)
 
 ## 1. Confirm your system meets r**equirements**
 
