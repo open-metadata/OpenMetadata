@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +58,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void prepare(Chart chart) throws IOException, ParseException {
+  public void prepare(Chart chart) throws IOException {
     DashboardService dashboardService = Entity.getEntity(chart.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     chart.setService(new DashboardServiceEntityInterface(dashboardService).getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
@@ -93,7 +92,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public Chart setFields(Chart chart, Fields fields) throws IOException, ParseException {
+  public Chart setFields(Chart chart, Fields fields) throws IOException {
     chart.setService(getService(chart));
     chart.setOwner(fields.contains(FIELD_OWNER) ? getOwner(chart) : null);
     chart.setFollowers(fields.contains("followers") ? getFollowers(chart) : null);

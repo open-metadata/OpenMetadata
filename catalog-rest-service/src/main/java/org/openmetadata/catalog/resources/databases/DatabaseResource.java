@@ -27,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -142,7 +140,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -163,7 +161,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "database Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -195,7 +193,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -227,7 +225,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -255,7 +253,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -274,7 +272,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException, ParseException {
+      throws IOException {
     Database database = getDatabase(securityContext, create);
     return create(uriInfo, securityContext, database, ADMIN | BOT);
   }
@@ -300,7 +298,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -317,7 +315,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
-      throws IOException, ParseException {
+      throws IOException {
     Database database = getDatabase(securityContext, create);
     return createOrUpdate(uriInfo, securityContext, database, ADMIN | BOT | OWNER);
   }
@@ -329,7 +327,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     dao.deleteLocation(id);
     Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
     return addHref(uriInfo, database);
@@ -353,7 +351,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("recursive")
           boolean recursive,
       @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
   }
 

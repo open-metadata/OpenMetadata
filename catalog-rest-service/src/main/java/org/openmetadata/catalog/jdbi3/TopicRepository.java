@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -65,7 +64,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void prepare(Topic topic) throws IOException, ParseException {
+  public void prepare(Topic topic) throws IOException {
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
@@ -98,7 +97,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setFields(Topic topic, Fields fields) throws IOException, ParseException {
+  public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getService(topic));
     topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
     topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);

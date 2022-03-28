@@ -4,8 +4,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -59,7 +57,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
       int limitParam,
       String before,
       String after)
-      throws GeneralSecurityException, IOException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
@@ -73,20 +71,19 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
   }
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
 
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
-      throws IOException, ParseException {
+      throws IOException {
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
 
-  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity, int flags)
-      throws IOException, ParseException {
+  public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity, int flags) throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, flags);
     entity = addHref(uriInfo, dao.create(uriInfo, entity));
     EntityInterface<T> entityInterface = dao.getEntityInterface(entity);
@@ -94,7 +91,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, int checkFlags)
-      throws IOException, ParseException {
+      throws IOException {
     EntityReference owner = SecurityUtil.checkOwner(checkFlags) ? dao.getOriginalOwner(entity) : null;
     SecurityUtil.authorize(authorizer, securityContext, null, owner, checkFlags);
     PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
@@ -103,7 +100,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
   }
 
   public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, String id, JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     T entity = dao.get(uriInfo, id, supportsOwner ? getFields(FIELD_OWNER) : Fields.EMPTY_FIELDS);
     EntityInterface<T> entityInterface = dao.getEntityInterface(entity);
     SecurityUtil.checkAdminRoleOrPermissions(
@@ -115,7 +112,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
   }
 
   public Response delete(UriInfo uriInfo, SecurityContext securityContext, String id, boolean recursive, int checkFlags)
-      throws IOException, ParseException {
+      throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, checkFlags);
     DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
     addHref(uriInfo, response.getEntity());

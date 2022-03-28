@@ -23,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -121,7 +119,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException, GeneralSecurityException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
     ListFilter filter = new ListFilter(include);
     ResultList<Webhook> webhooks;
@@ -158,7 +156,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, "", include);
   }
 
@@ -185,7 +183,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
@@ -205,7 +203,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -233,7 +231,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -251,7 +249,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       })
   public Response createWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, ParseException {
+      throws IOException {
     Webhook webhook = getWebhook(securityContext, create);
     Response response = create(uriInfo, securityContext, webhook, ADMIN);
     dao.addWebhookPublisher(webhook);
@@ -272,7 +270,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       })
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException, InterruptedException {
     Webhook webhook = getWebhook(securityContext, create);
     Response response = createOrUpdate(uriInfo, securityContext, webhook, ADMIN | BOT);
     dao.updateWebhookPublisher((Webhook) response.getEntity());
@@ -297,7 +295,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException, InterruptedException {
     Response response = delete(uriInfo, securityContext, id, false, ADMIN);
     dao.deleteWebhookPublisher(UUID.fromString(id));
     return response;

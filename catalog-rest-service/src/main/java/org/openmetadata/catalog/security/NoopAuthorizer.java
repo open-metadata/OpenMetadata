@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.security;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -95,7 +94,7 @@ public class NoopAuthorizer implements Authorizer {
               .withUpdatedBy(username)
               .withUpdatedAt(System.currentTimeMillis());
       addOrUpdateUser(user);
-    } catch (IOException | ParseException e) {
+    } catch (IOException e) {
       LOG.error("Failed to create anonymous user {}", username, e);
     }
   }
@@ -104,7 +103,7 @@ public class NoopAuthorizer implements Authorizer {
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added anonymous user entry: {}", addedUser);
-    } catch (IOException | ParseException exception) {
+    } catch (IOException exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("Anonymous user entry: {} already exists.", user);

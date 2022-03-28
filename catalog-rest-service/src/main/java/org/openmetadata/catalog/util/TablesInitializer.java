@@ -26,12 +26,10 @@ import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.ParseException;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -187,7 +185,7 @@ public final class TablesInitializer {
       RestHighLevelClient client,
       SchemaMigrationOption schemaMigrationOption,
       DataSourceFactory dataSourceFactory)
-      throws SQLException, GeneralSecurityException, IOException, ParseException {
+      throws SQLException, IOException {
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
       case CREATE:
@@ -255,7 +253,7 @@ public final class TablesInitializer {
     formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
   }
 
-  public static void rotate(DataSourceFactory dataSourceFactory) throws IOException, ParseException {
+  public static void rotate(DataSourceFactory dataSourceFactory) throws IOException {
     String user = dataSourceFactory.getUser() != null ? dataSourceFactory.getUser() : "";
     String password = dataSourceFactory.getPassword() != null ? dataSourceFactory.getPassword() : "";
     Jdbi jdbi = Jdbi.create(dataSourceFactory.getUrl(), user, password);

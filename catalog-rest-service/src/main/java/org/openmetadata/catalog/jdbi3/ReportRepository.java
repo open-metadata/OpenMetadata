@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +40,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public Report setFields(Report report, Fields fields) throws IOException, ParseException {
+  public Report setFields(Report report, Fields fields) throws IOException {
     report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains(FIELD_OWNER) ? getOwner(report) : null);
     report.setUsageSummary(
@@ -55,7 +54,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void prepare(Report report) throws IOException, ParseException {
+  public void prepare(Report report) throws IOException {
     // TODO report does not have service yet
     report.setOwner(Entity.getEntityReference(report.getOwner()));
   }

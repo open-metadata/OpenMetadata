@@ -25,7 +25,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -61,7 +60,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException, ParseException {
+  public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException {
     entity.setGlossary(getGlossary(entity));
     entity.setParent(getParent(entity));
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
@@ -97,7 +96,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public void prepare(GlossaryTerm entity) throws IOException, ParseException {
+  public void prepare(GlossaryTerm entity) throws IOException {
     // Validate glossary
     EntityReference glossary = Entity.getEntityReference(entity.getGlossary());
     entity.setGlossary(glossary);

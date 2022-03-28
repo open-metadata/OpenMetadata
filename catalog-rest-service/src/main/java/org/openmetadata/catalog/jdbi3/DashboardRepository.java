@@ -19,7 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -70,7 +69,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException, ParseException {
+  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setService(getService(dashboard));
     dashboard.setOwner(fields.contains(FIELD_OWNER) ? getOwner(dashboard) : null);

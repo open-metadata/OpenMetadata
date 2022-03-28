@@ -27,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -142,7 +140,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -163,7 +161,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -195,7 +193,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -239,7 +237,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
@@ -284,7 +282,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -312,7 +310,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -330,7 +328,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
-      throws IOException, ParseException {
+      throws IOException {
     Location location = getLocation(securityContext, create);
     return create(uriInfo, securityContext, location, ADMIN | BOT);
   }
@@ -349,7 +347,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
-      throws IOException, ParseException {
+      throws IOException {
     Location location = getLocation(securityContext, create);
     return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
   }
@@ -375,7 +373,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -393,7 +391,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 

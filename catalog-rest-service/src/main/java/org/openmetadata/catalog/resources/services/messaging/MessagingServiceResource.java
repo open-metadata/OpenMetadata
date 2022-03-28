@@ -25,8 +25,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -131,7 +129,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException, GeneralSecurityException {
+      throws IOException {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
@@ -165,7 +163,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -198,7 +196,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -218,7 +216,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -247,7 +245,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -268,7 +266,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
-      throws IOException, ParseException {
+      throws IOException {
     MessagingService service = getService(create, securityContext);
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
@@ -294,7 +292,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id,
       @Valid CreateMessagingService update)
-      throws IOException, ParseException {
+      throws IOException {
     MessagingService service = getService(update, securityContext);
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
@@ -318,7 +316,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           boolean recursive,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
+      throws IOException {
     return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
   }
 
