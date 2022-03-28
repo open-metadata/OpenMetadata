@@ -149,7 +149,7 @@ const MyDataPage = () => {
       getAllServices(true, 0)
         .then((res) => {
           const total = res.reduce((prev, curr) => {
-            return prev + (curr.paging?.total || 0);
+            return prev + (curr?.paging?.total || 0);
           }, 0);
           setCountServices(total);
         })
