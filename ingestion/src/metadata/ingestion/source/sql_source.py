@@ -200,7 +200,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         yield inspect(self.engine)
 
     def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}.{schema}.{table_name}"
+        return f"{service_name}.{schema}.{table_name}".lower()
 
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
@@ -418,7 +418,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = f"{schema}.{model_name}"
+                    model_fqdn = f"{schema}.{model_name}".lower()
                 except Exception as err:
                     logger.debug(traceback.print_exc())
                     logger.error(err)
