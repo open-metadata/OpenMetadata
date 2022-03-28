@@ -34,6 +34,8 @@ pip install "openmetadata-ingestion[airflow-container]"
 
 What this does is add the full core `openmetadata-ingestion` package plus some version alignments for a few libraries to make everything compatible with Airflow.
 
+> If you see any `pip` errors when running this command due to `sqlalchemy`, please check that the correct version of the packages got installed. E.g., `SQLAlchemy==1.4.xx` and your `apache-airflow==2.x.y`. We are waiting for Airflow to remove the upper constraint on `sqlalchemy`, but the code should be compatible as is. You can find further information [here](https://github.com/apache/airflow/pull/16630).
+
 Afterward, you can jump into `airflow.cfg` following the [Airflow Lineage Backend](airflow-lineage.md) guide.
 
 ### Airflow 1.10.15
