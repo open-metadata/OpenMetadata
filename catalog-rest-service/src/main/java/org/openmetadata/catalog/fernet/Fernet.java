@@ -14,8 +14,8 @@
 package org.openmetadata.catalog.fernet;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.FERNET_KEY_NULL;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.isAlreadyTokenized;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.isNotTokenized;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.FIELD_ALREADY_TOKENIZED;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.FIELD_NOT_TOKENIZED;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.macasaet.fernet.Key;
@@ -86,7 +86,7 @@ public class Fernet {
 
   public String encrypt(@NonNull String secret) {
     if (secret.startsWith(FERNET_PREFIX)) {
-      throw new IllegalArgumentException(isAlreadyTokenized());
+      throw new IllegalArgumentException(FIELD_ALREADY_TOKENIZED);
     }
     if (isKeyDefined()) {
       Key key = new Key(fernetKey.split(",")[0]);
@@ -109,7 +109,7 @@ public class Fernet {
       List<Key> keys = Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
       return token.validateAndDecrypt(keys, validator);
     }
-    throw new IllegalArgumentException(isNotTokenized());
+    throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
   }
 
   public static String decryptIfTokenized(String tokenized) {

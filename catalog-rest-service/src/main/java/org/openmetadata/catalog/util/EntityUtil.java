@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.type.Include.ALL;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -327,20 +326,32 @@ public final class EntityUtil {
 
     public Fields(List<String> allowedFields, String fieldsParam) {
       if (fieldsParam == null || fieldsParam.isEmpty()) {
-        fieldList = Collections.emptyList();
+        fieldList = new ArrayList<>();
         return;
       }
       fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
       for (String field : fieldList) {
         if (!allowedFields.contains(field)) {
-
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
         }
       }
     }
 
+    @Override
+    public String toString() {
+      return fieldList.toString();
+    }
+
+    public void add(Fields fields) {
+      fieldList.addAll(fields.fieldList);
+    }
+
     public boolean contains(String field) {
       return fieldList.contains(field);
+    }
+
+    public List<String> getList() {
+      return fieldList;
     }
   }
 
