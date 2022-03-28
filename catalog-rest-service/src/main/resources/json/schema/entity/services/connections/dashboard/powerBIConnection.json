@@ -5,11 +5,21 @@
   "description": "PowerBI Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.PowerBIConnection",
+  "definitions": {
+    "powerBiType": {
+      "description": "PowerBI service type",
+      "type": "string",
+      "enum": [
+        "PowerBI"
+      ],
+      "default": "PowerBI"
+    }
+  },
   "properties": {
-    "powerBIConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/powerBiType",
+      "default": "PowerBI"
     },
     "clientId": {
       "description": "client_id for the PowerBI.",
