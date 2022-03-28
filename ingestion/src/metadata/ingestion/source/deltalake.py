@@ -1,7 +1,6 @@
 import logging
 import uuid
-from collections import Iterable
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from pyspark.sql import SparkSession
 from pyspark.sql.catalog import Table
@@ -27,7 +26,7 @@ from metadata.utils.helpers import get_database_service_or_create
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class DeltaLakeSourceConfig(ConfigModel):
+class DeltalakeSourceConfig(ConfigModel):
     database: str = "delta"
     platform_name: str = "deltalake"
     schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
@@ -38,13 +37,16 @@ class DeltaLakeSourceConfig(ConfigModel):
     def get_service_name(self) -> str:
         return self.service_name
 
+    def get_service_type(self) -> DatabaseServiceType:
+        return DatabaseServiceType[self.service_type]
 
-class DeltaLakeSource(Source):
+
+class DeltalakeSource(Source):
     spark: SparkSession = None
 
     def __init__(
         self,
-        config: DeltaLakeSourceConfig,
+        config: DeltalakeSourceConfig,
         metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
@@ -59,16 +61,22 @@ class DeltaLakeSource(Source):
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
-        config = DeltaLakeSourceConfig.parse_obj(config_dict)
+        config = DeltalakeSourceConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         schemas = self.spark.catalog.listDatabases()
         for schema in schemas:
-            if not self.config.schema_filter_pattern.included(schema):
-                self.status.filter(schema, "Schema pattern not allowed")
+            if not self.config.schema_filter_pattern.included(schema.name):
+                self.status.filter(schema.name, "Schema pattern not allowed")
                 continue
-            yield from self.fetch_tables(schema)
+            yield from self.fetch_tables(schema.name)
+
+    def get_status(self):
+        return self.status
+
+    def prepare(self):
+        return super().prepare()
 
     def fetch_tables(self, schema: str) -> Iterable[OMetaDatabaseAndTable]:
         for table in self.spark.catalog.listTables(schema):
