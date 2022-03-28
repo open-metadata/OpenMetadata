@@ -16,13 +16,18 @@ import { DatabaseService } from '../generated/entity/services/databaseService';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 
+export interface IngestionSchedule {
+  repeatFrequency: string;
+  startDate: string;
+}
+
 export interface DashboardService {
   description: string;
   href: string;
   id: string;
   name: string;
   serviceType: string;
-  ingestionSchedule?: { repeatFrequency: string; startDate: string };
+  ingestionSchedule?: IngestionSchedule;
   dashboardUrl?: string;
   username?: string;
   password?: string;
@@ -34,25 +39,22 @@ export interface DashboardService {
   env?: string;
 }
 
+export interface DatabaseConnection {
+  hostPort: string;
+  password: string;
+  username: string;
+  database: string;
+  connectionArguments: DynamicObj;
+  connectionOptions: DynamicObj;
+}
+
 export interface DataObj {
   id?: string;
   description: string | undefined;
-  ingestionSchedule?:
-    | {
-        repeatFrequency: string;
-        startDate: string;
-      }
-    | undefined;
+  ingestionSchedule?: IngestionSchedule;
   name: string;
   serviceType: string;
-  databaseConnection?: {
-    hostPort: string;
-    password: string;
-    username: string;
-    database: string;
-    connectionArguments: DynamicObj;
-    connectionOptions: DynamicObj;
-  };
+  databaseConnection?: DatabaseConnection;
   brokers?: Array<string>;
   schemaRegistry?: string;
   dashboardUrl?: string;
