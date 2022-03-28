@@ -20,9 +20,9 @@ import os
 import signal
 import traceback
 
-logger = logging.getLogger(__name__)
+from metadata.utils.constants import TEN_MIN
 
-TEN_MIN = 10 * 60
+logger = logging.getLogger(__name__)
 
 
 def _handle_timeout(signum, frame):

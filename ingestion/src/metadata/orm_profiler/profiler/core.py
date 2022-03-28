@@ -12,6 +12,7 @@
 """
 Main Profile definition and queries to execute
 """
+import traceback
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
 
@@ -34,6 +35,7 @@ from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.utils import logger
+from metadata.utils.constants import TEN_MIN
 from metadata.utils.timeout import cls_timeout
 
 logger = logger()
@@ -65,7 +67,7 @@ class Profiler(Generic[MetricType]):
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
         profile_sample: Optional[float] = None,
-        timeout_seconds: Optional[int] = None,
+        timeout_seconds: Optional[int] = TEN_MIN,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -286,6 +288,8 @@ class Profiler(Generic[MetricType]):
                     self._column_results[col.name].update(dict(row))
 
             except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
+                print(err)
+                print(traceback.format_exc())
                 logger.error(
                     f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
                 )
