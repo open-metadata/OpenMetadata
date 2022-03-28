@@ -33,6 +33,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -40,8 +41,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
-  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
+  static final String USER_PATCH_FIELDS = "profile,roles,teams";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams";
 
   public UserRepository(CollectionDAO dao) {
     super(
@@ -57,6 +58,12 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public EntityInterface<User> getEntityInterface(User entity) {
     return new UserEntityInterface(entity);
+  }
+
+  @Override
+  public EntityReference getOriginalOwner(User entity) throws IOException, ParseException {
+    // For User entity, the entity and the owner are the same
+    return getEntityInterface(entity).getEntityReference();
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
@@ -82,8 +89,8 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> teamsRef = listOrEmpty(user.getTeams());
     List<EntityReference> defaultRoles = new ArrayList<>();
     for (EntityReference teamRef : teamsRef) {
-      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")));
-      if (team != null && team.getDefaultRoles() != null) {
+      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")), Include.NON_DELETED);
+      if (team.getDefaultRoles() != null) {
         defaultRoles.addAll(team.getDefaultRoles());
       }
     }
@@ -202,11 +209,9 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  public static class UserEntityInterface implements EntityInterface<User> {
-    private final User entity;
-
+  public static class UserEntityInterface extends EntityInterface<User> {
     public UserEntityInterface(User entity) {
-      this.entity = entity;
+      super(Entity.USER, entity);
     }
 
     @Override
@@ -257,18 +262,6 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.USER)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override

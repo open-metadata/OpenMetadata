@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.tags;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
@@ -53,6 +55,7 @@ import org.openmetadata.catalog.type.CreateTag;
 import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -94,6 +97,7 @@ public class TagResource {
             LOG.info("Loading tag definitions from file {}", tagFile);
             String tagJson =
                 IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
+            tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
             // TODO hack for now
             long now = System.currentTimeMillis();
@@ -210,7 +214,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    String fqn = category + "." + primaryTag;
+    String fqn = EntityUtil.getFQN(category, primaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
@@ -257,7 +261,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    String fqn = category + "." + primaryTag + "." + secondaryTag;
+    String fqn = EntityUtil.getFQN(category, primaryTag, secondaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category + "/" + primaryTag);
@@ -282,7 +286,7 @@ public class TagResource {
   public Response createCategory(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     TagCategory category =
         new TagCategory()
             .withName(create.getName())
@@ -314,7 +318,7 @@ public class TagResource {
           String category,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())
@@ -355,7 +359,7 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())
@@ -382,7 +386,7 @@ public class TagResource {
           String categoryName,
       @Valid CreateTagCategory create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     TagCategory category =
         new TagCategory()
             .withName(create.getName())
@@ -414,7 +418,7 @@ public class TagResource {
           String primaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())
@@ -454,7 +458,7 @@ public class TagResource {
           String secondaryTag,
       @Valid CreateTag create)
       throws IOException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag =
         new Tag()
             .withName(create.getName())

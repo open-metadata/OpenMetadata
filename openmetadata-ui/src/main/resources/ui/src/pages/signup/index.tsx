@@ -23,14 +23,11 @@ import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
 import DropDown from '../../components/dropdown/DropDown';
 import { ROUTES } from '../../constants/constants';
+import { Team } from '../../generated/entity/teams/team';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { fetchAllUsers } from '../../utils/UsedDataUtils';
-type Team = {
-  id: string;
-  displayName: string;
-};
 
 const Signup = () => {
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
@@ -113,12 +110,14 @@ const Signup = () => {
   };
 
   const getTeamsData = (teams: Array<Team>) => {
-    return teams.map((team: Team) => {
-      return {
-        name: team.displayName,
-        value: team.id,
-      };
-    });
+    return teams
+      .filter((team) => team.isJoinable)
+      .map((team: Team) => {
+        return {
+          name: team.displayName as string,
+          value: team.id,
+        };
+      });
   };
   const errorMsg = (value: string) => {
     return (

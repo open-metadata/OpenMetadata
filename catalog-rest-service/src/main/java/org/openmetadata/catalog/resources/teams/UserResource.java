@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -65,8 +69,6 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -101,7 +103,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(User.class);
 
   @GET
   @Valid
@@ -148,8 +149,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("team", teamParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -262,7 +262,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(uriInfo, currentUserName, fields);
     return addHref(uriInfo, user);
@@ -311,9 +311,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
       throws IOException, ParseException {
-    if (create.getIsAdmin() != null && create.getIsAdmin()) {
-      SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    if (Boolean.TRUE.equals(create.getIsAdmin())) {
+      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     }
+    // TODO do we need to authenticate user is creating himself?
     User user = getUser(securityContext, create);
     addHref(uriInfo, dao.create(uriInfo, user));
     return Response.created(user.getHref()).entity(user).build();
@@ -321,7 +322,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Operation(
-      summary = "Create or Update a user",
+      summary = "Update user",
       tags = "users",
       description = "Create or Update a user.",
       responses = {
@@ -334,12 +335,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create)
       throws IOException, ParseException {
-    if ((create.getIsAdmin() != null && create.getIsAdmin()) || (create.getIsBot() != null && create.getIsBot())) {
-      SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
+      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     }
+    // TODO this is different from POST method
     User user = getUser(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, new UserEntityInterface(user).getEntityReference());
+    SecurityUtil.authorize(
+        authorizer, securityContext, null, new UserEntityInterface(user).getEntityReference(), ADMIN | BOT | OWNER);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -372,17 +374,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
         if (path.equals("/isAdmin") || path.equals("/isBot")) {
-          SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+          SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
         }
       }
     }
-    User user = dao.get(uriInfo, id, new Fields(ALLOWED_FIELDS, null));
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, new UserEntityInterface(user).getEntityReference());
-    PatchResponse<User> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -397,9 +393,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<User> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private User getUser(SecurityContext securityContext, CreateUser create) throws IOException {

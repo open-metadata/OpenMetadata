@@ -113,10 +113,12 @@ public abstract class EntityRepository<T> {
   private final String entityType;
   protected final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
+  protected final List<String> allowedFields;
   protected boolean supportsSoftDelete = true;
   protected final boolean supportsTags;
   protected final boolean supportsOwner;
   protected final boolean supportsFollower;
+  protected boolean allowEdits = false;
 
   /** Fields that can be updated during PATCH operation */
   private final Fields patchFields;
@@ -130,17 +132,17 @@ public abstract class EntityRepository<T> {
       Class<T> entityClass,
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
-      Fields patchFields,
-      Fields putFields) {
+      String patchFields,
+      String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
+    allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
     this.daoCollection = collectionDAO;
-    this.patchFields = patchFields;
-    this.putFields = putFields;
+    this.patchFields = getFields(patchFields);
+    this.putFields = getFields(putFields);
     this.entityType = entityType;
 
-    List<String> allowedFields = getEntityFields(entityClass);
     this.supportsTags = allowedFields.contains("tags");
     this.supportsOwner = allowedFields.contains("owner");
     this.supportsFollower = allowedFields.contains("followers");
@@ -369,14 +371,8 @@ public abstract class EntityRepository<T> {
     return createNewEntity(entity);
   }
 
-  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
-    // By default, do not allow updates on original description or display names of entities
-    return createOrUpdate(uriInfo, updated, false);
-  }
-
   @Transaction
-  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, boolean allowEdits)
-      throws IOException, ParseException {
+  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     prepare(updated);
     EntityInterface<T> updatedInterface = getEntityInterface(updated);
 
@@ -396,7 +392,7 @@ public abstract class EntityRepository<T> {
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT);
-    entityUpdater.update(allowEdits);
+    entityUpdater.update();
     String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -458,10 +454,6 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(String updatedBy, String id) throws IOException, ParseException {
-    return delete(updatedBy, id, false, false);
-  }
-
   public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive)
       throws IOException, ParseException {
     return delete(updatedBy, id, recursive, false);
@@ -571,14 +563,14 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public static final Fields FIELDS_OWNER = new Fields(List.of(FIELD_OWNER), FIELD_OWNER);
-
-  // TODO fix this
-  public final EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
+  public EntityReference getOriginalOwner(T entity) throws IOException, ParseException {
+    if (!supportsOwner) {
+      return null;
+    }
     // Try to find the owner if entity exists
     try {
       String fqn = getFullyQualifiedName(entity);
-      entity = getByName(null, fqn, FIELDS_OWNER);
+      entity = getByName(null, fqn, getFields(FIELD_OWNER));
       return getEntityInterface(entity).getOwner();
     } catch (EntityNotFoundException e) {
       // If entity is not found, we can return null for owner and ignore this exception
@@ -794,6 +786,9 @@ public abstract class EntityRepository<T> {
   }
 
   public EntityReference getOwner(UUID id, String entityType) throws IOException, ParseException {
+    if (!supportsOwner) {
+      return null;
+    }
     List<EntityReference> refs = findFrom(id, entityType, Relationship.OWNS);
     ensureSingleRelationship(entityType, id, refs, "owners", false);
     return refs.isEmpty() ? null : Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId(), ALL);
@@ -832,6 +827,10 @@ public abstract class EntityRepository<T> {
         entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
       }
     }
+  }
+
+  public final Fields getFields(String fields) {
+    return new Fields(allowedFields, fields);
   }
 
   enum Operation {
@@ -876,19 +875,15 @@ public abstract class EntityRepository<T> {
       this.operation = operation;
     }
 
-    public final void update() throws IOException, ParseException {
-      update(false);
-    }
-
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
-    public final void update(boolean allowEdits) throws IOException, ParseException {
+    public final void update() throws IOException, ParseException {
       if (operation.isDelete()) { // DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
         updateDeleted();
-        updateDescription(allowEdits);
-        updateDisplayName(allowEdits);
+        updateDescription();
+        updateDisplayName();
         updateOwner();
         updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
         entitySpecificUpdate();
@@ -902,7 +897,7 @@ public abstract class EntityRepository<T> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
-    private void updateDescription(boolean allowEdits) throws JsonProcessingException {
+    private void updateDescription() throws JsonProcessingException {
       if (operation.isPut()
           && original.getDescription() != null
           && !original.getDescription().isEmpty()
@@ -931,7 +926,7 @@ public abstract class EntityRepository<T> {
       }
     }
 
-    private void updateDisplayName(boolean allowEdits) throws JsonProcessingException {
+    private void updateDisplayName() throws JsonProcessingException {
       if (operation.isPut()
           && original.getDisplayName() != null
           && !original.getDisplayName().isEmpty()

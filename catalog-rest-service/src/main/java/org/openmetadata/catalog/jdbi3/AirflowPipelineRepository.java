@@ -31,10 +31,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
-  private static final Fields AIRFLOW_PIPELINE_UPDATE_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
-  private static final Fields AIRFLOW_PIPELINE_PATCH_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
+  private static final String AIRFLOW_PIPELINE_UPDATE_FIELDS = FIELD_OWNER;
+  private static final String AIRFLOW_PIPELINE_PATCH_FIELDS = FIELD_OWNER;
 
   public AirflowPipelineRepository(CollectionDAO dao) {
     super(
@@ -49,7 +47,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   public static String getFQN(AirflowPipeline airflowPipeline) {
     return (airflowPipeline != null && airflowPipeline.getService() != null)
-        ? (airflowPipeline.getService().getName() + "." + airflowPipeline.getName())
+        ? EntityUtil.getFQN(airflowPipeline.getService().getName(), airflowPipeline.getName())
         : null;
   }
 
@@ -72,7 +70,6 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   @Override
   public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(airflowPipeline));
     EntityReference entityReference = Entity.getEntityReference(airflowPipeline.getService());
     airflowPipeline.setService(entityReference);
     airflowPipeline.setFullyQualifiedName(getFQN(airflowPipeline));
@@ -112,11 +109,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     return getContainer(airflowPipeline.getId(), Entity.AIRFLOW_PIPELINE);
   }
 
-  public static class AirflowPipelineEntityInterface implements EntityInterface<AirflowPipeline> {
-    private final AirflowPipeline entity;
-
+  public static class AirflowPipelineEntityInterface extends EntityInterface<AirflowPipeline> {
     public AirflowPipelineEntityInterface(AirflowPipeline entity) {
-      this.entity = entity;
+      super(Entity.AIRFLOW_PIPELINE, entity);
     }
 
     @Override
@@ -179,17 +174,6 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.AIRFLOW_PIPELINE)
-          .withDeleted(isDeleted());
     }
 
     @Override

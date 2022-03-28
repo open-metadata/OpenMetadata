@@ -68,7 +68,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
   public PolicyResourceTest() {
     super(Entity.POLICY, Policy.class, PolicyList.class, "policies", PolicyResource.FIELDS);
-    supportsDots = false;
     supportsAuthorizedMetadataOperations = false; // TODO why
   }
 

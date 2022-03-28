@@ -66,7 +66,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         "services/pipelineServices",
         "owner");
     this.supportsPatch = false;
-    this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
 

@@ -40,7 +40,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
-  private static final Fields UPDATE_FIELDS = new Fields(DatabaseServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
   private final Fernet fernet;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
@@ -50,16 +50,17 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         DatabaseService.class,
         dao.dbServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
     fernet = Fernet.getInstance();
+    this.allowEdits = true;
   }
 
   public void rotate() throws IOException {
     if (!fernet.isKeyDefined()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.FERNET_KEY_NULL);
     }
-    ListFilter filter = new ListFilter().addQueryParam("include", Include.ALL.value());
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
     for (String json : jsons) {
       DatabaseService databaseService = JsonUtils.readValue(json, DatabaseService.class);
@@ -138,11 +139,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     return new DatabaseServiceUpdater(original, updated, operation);
   }
 
-  public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
-    private final DatabaseService entity;
-
+  public static class DatabaseServiceEntityInterface extends EntityInterface<DatabaseService> {
     public DatabaseServiceEntityInterface(DatabaseService entity) {
-      this.entity = entity;
+      super(Entity.DATABASE_SERVICE, entity);
     }
 
     @Override
@@ -203,17 +202,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DATABASE_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

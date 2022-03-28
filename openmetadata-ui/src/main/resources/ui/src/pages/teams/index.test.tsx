@@ -305,10 +305,12 @@ describe('Test Teams page', () => {
 
   it('OnClick of manage tab, manage tab content should render', async () => {
     const { container } = render(<TeamsPage />);
-    const assets = await findByTestId(container, 'manage');
+    const manage = await findByTestId(container, 'manage');
+
+    expect(manage).toBeInTheDocument();
 
     fireEvent.click(
-      assets,
+      manage,
       new MouseEvent('click', {
         bubbles: true,
         cancelable: true,

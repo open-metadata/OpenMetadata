@@ -32,10 +32,7 @@
     },
     "name": {
       "description": "Name that identifies this pipeline service.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "serviceType": {
       "description": "Type of pipeline service such as Airflow or Prefect...",

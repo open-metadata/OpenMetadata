@@ -21,70 +21,87 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
-public interface EntityInterface<T> {
-  UUID getId();
+public abstract class EntityInterface<T> {
+  protected final String entityType;
+  protected final T entity;
 
-  String getDescription();
+  public EntityInterface(String entityType, T entity) {
+    this.entity = entity;
+    this.entityType = entityType;
+  }
 
-  String getDisplayName();
+  public abstract UUID getId();
 
-  String getName();
+  public abstract String getDescription();
 
-  Boolean isDeleted();
+  public abstract String getDisplayName();
 
-  default EntityReference getOwner() {
+  public abstract String getName();
+
+  public abstract Boolean isDeleted();
+
+  public EntityReference getOwner() {
     return null;
   }
 
-  String getFullyQualifiedName();
+  public abstract String getFullyQualifiedName();
 
-  default List<TagLabel> getTags() {
+  public List<TagLabel> getTags() {
     return null;
   }
 
-  Double getVersion();
+  public abstract Double getVersion();
 
-  String getUpdatedBy();
+  public abstract String getUpdatedBy();
 
-  long getUpdatedAt();
+  public abstract long getUpdatedAt();
 
-  URI getHref();
+  public abstract URI getHref();
 
-  default List<EntityReference> getFollowers() {
+  public List<EntityReference> getFollowers() {
     return null;
   }
 
-  ChangeDescription getChangeDescription();
+  public abstract ChangeDescription getChangeDescription();
 
-  EntityReference getEntityReference();
+  public final EntityReference getEntityReference() {
+    return new EntityReference()
+        .withId(getId())
+        .withName(getFullyQualifiedName())
+        .withDescription(getDescription())
+        .withDisplayName(getDisplayName())
+        .withType(entityType)
+        .withDeleted(isDeleted())
+        .withHref(getHref());
+  }
 
-  T getEntity();
+  public abstract T getEntity();
 
-  default EntityReference getContainer() {
+  public EntityReference getContainer() {
     return null;
   }
 
-  void setId(UUID id);
+  public abstract void setId(UUID id);
 
-  void setDescription(String description);
+  public abstract void setDescription(String description);
 
-  default void setTags(List<TagLabel> tags) {
+  public void setTags(List<TagLabel> tags) {
     return;
   };
 
-  void setDisplayName(String displayName);
+  public abstract void setDisplayName(String displayName);
 
-  void setName(String name);
+  public abstract void setName(String name);
 
-  void setUpdateDetails(String updatedBy, long updatedAt);
+  public abstract void setUpdateDetails(String updatedBy, long updatedAt);
 
-  void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
+  public abstract void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
 
-  default void setOwner(EntityReference owner) {
+  public void setOwner(EntityReference owner) {
     return;
   };
 
-  void setDeleted(boolean flag);
+  public abstract void setDeleted(boolean flag);
 
-  T withHref(URI href);
+  public abstract T withHref(URI href);
 }

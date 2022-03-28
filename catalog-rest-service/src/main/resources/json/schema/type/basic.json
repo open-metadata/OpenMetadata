@@ -61,7 +61,19 @@
     "entityLink": {
       "description": "Link to an entity or field within an entity using this format `<#E/{entities}/{entityType}/{field}/{arrayFieldName}/{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^<#E\/\\S+\/\\S+>$"
+      "pattern": "^<#E/\\S+/\\S+>$"
+    },
+    "entityName": {
+      "description": "Name that identifies this dashboard service.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "fullyQualifiedEntityName": {
+      "description": "A unique name that identifies an entity. Example for table 'DatabaseService:Database:Table'.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
     },
     "sqlQuery": {
       "description": "SQL query statement. Example - 'select * from orders'.",

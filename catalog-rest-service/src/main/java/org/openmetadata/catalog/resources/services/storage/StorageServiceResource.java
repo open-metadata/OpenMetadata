@@ -14,6 +14,9 @@
 package org.openmetadata.catalog.resources.services.storage;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,12 +56,9 @@ import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/services/storageServices")
@@ -70,7 +70,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
 
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(StorageService.class);
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
@@ -133,8 +132,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -269,15 +267,13 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     StorageService service = getService(create, securityContext);
-    service = addHref(uriInfo, dao.create(uriInfo, service));
-    return Response.created(service.getHref()).entity(service).build();
+    return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
-      summary = "Update a storage service",
+      summary = "Update storage service",
       tags = "services",
       description = "Update an existing storage service identified by `id`.",
       responses = {
@@ -288,14 +284,11 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
                 @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException, ParseException {
     StorageService service = getService(update, securityContext);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(service));
-    PutResponse<StorageService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
   @DELETE
@@ -318,9 +311,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<StorageService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
   }
 
   private StorageService getService(CreateStorageService create, SecurityContext securityContext) {

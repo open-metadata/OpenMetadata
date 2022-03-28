@@ -565,10 +565,18 @@ const TeamsPage = () => {
     return uniqueList;
   };
 
-  const handleUpdateOwner = (owner: Team['owner']) => {
+  const handleUpdateOwner = (
+    owner: Team['owner'],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _tier = '',
+    isJoinable?: boolean
+  ) => {
     const updatedTeam = {
       ...currentTeam,
-      owner,
+      owner: !isUndefined(owner) ? owner : currentTeam?.owner,
+      isJoinable: !isUndefined(isJoinable)
+        ? isJoinable
+        : currentTeam?.isJoinable,
     };
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
 
@@ -629,7 +637,7 @@ const TeamsPage = () => {
                           title={currentTeam?.displayName ?? currentTeam?.name}>
                           {currentTeam?.displayName ?? currentTeam?.name}
                         </div>
-                        <div>
+                        <div className="tw-flex">
                           <NonAdminAction
                             html={
                               <Fragment>
@@ -731,6 +739,7 @@ const TeamsPage = () => {
                             allowTeamOwner={false}
                             currentUser={currentTeam?.owner?.id}
                             hasEditAccess={isOwner()}
+                            isJoinable={currentTeam?.isJoinable}
                             onSave={handleUpdateOwner}
                           />
                         )}

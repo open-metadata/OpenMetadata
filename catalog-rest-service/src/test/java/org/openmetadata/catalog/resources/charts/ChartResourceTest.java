@@ -39,6 +39,7 @@ import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -62,7 +63,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
     create.withName(getEntityName(test, 1)).withDescription("description");
     Chart chart = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = SUPERSET_REFERENCE.getName() + "." + chart.getName();
+    String expectedFQN = EntityUtil.getFQN(SUPERSET_REFERENCE.getName(), chart.getName());
     assertEquals(expectedFQN, chart.getFullyQualifiedName());
   }
 

@@ -13,7 +13,9 @@
 
 package org.openmetadata.catalog.resources.topics;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -59,13 +61,8 @@ import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/topics")
@@ -101,7 +98,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Topic.class);
 
   @GET
   @Operation(
@@ -149,8 +145,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -280,11 +275,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Topic topic = getTopic(securityContext, create);
-
-    topic = addHref(uriInfo, dao.create(uriInfo, topic));
-    return Response.created(topic.getHref()).entity(topic).build();
+    return create(uriInfo, securityContext, topic, ADMIN | BOT);
   }
 
   @PATCH
@@ -309,24 +301,12 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELD_OWNER);
-    Topic topic = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(topic).getEntityReference(),
-        dao.getOwnerReference(topic),
-        patch);
-
-    PatchResponse<Topic> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
   @Operation(
-      summary = "Create or update topic",
+      summary = "Update topic",
       tags = "topics",
       description = "Create a topic, it it does not exist or update an existing topic.",
       responses = {
@@ -339,10 +319,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException, ParseException {
     Topic topic = getTopic(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(topic));
-    PutResponse<Topic> response = dao.createOrUpdate(uriInfo, topic);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, topic, ADMIN | BOT | OWNER);
   }
 
   @PUT
@@ -397,9 +374,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Topic> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private Topic getTopic(SecurityContext securityContext, CreateTopic create) {

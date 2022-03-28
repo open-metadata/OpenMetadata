@@ -30,7 +30,8 @@
         "DynamoDB",
         "AzureSQL",
         "SingleStore",
-        "SQLite"
+        "SQLite",
+        "DeltaLake"
       ],
       "javaEnums": [
         {
@@ -98,6 +99,9 @@
         },
         {
           "name": "SQLite"
+        },
+        {
+          "name": "DeltaLake"
         }
       ]
     },
@@ -141,10 +145,7 @@
     },
     "name": {
       "description": "Name that identifies this database service.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this database service.",
@@ -195,12 +196,6 @@
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "serviceType",
-    "href",
-    "databaseConnection"
-  ],
+  "required": ["id", "name", "serviceType", "href", "databaseConnection"],
   "additionalProperties": false
 }

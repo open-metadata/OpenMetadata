@@ -69,7 +69,7 @@ class PermissionsResourceTest extends CatalogApplicationTest {
 
   @ParameterizedTest
   @MethodSource("getPermissionsTestParams")
-  void get_permissiofns(String username, Map<MetadataOperation, Boolean> expectedOperations)
+  void get_permissions(String username, Map<MetadataOperation, Boolean> expectedOperations)
       throws HttpResponseException {
     WebTarget target = getResource("permissions");
     Map<String, String> authHeaders = SecurityUtil.authHeaders(username + "@open-metadata.org");

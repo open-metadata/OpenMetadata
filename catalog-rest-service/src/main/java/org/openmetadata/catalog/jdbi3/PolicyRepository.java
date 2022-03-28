@@ -36,7 +36,6 @@ import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
@@ -47,8 +46,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
-  private static final Fields POLICY_UPDATE_FIELDS = new Fields(PolicyResource.ALLOWED_FIELDS, "owner,location");
-  private static final Fields POLICY_PATCH_FIELDS = new Fields(PolicyResource.ALLOWED_FIELDS, "owner,location");
+  private static final String POLICY_UPDATE_FIELDS = "owner,location";
+  private static final String POLICY_PATCH_FIELDS = "owner,location";
   public static final String ENABLED = "enabled";
 
   private final PolicyEvaluator policyEvaluator;
@@ -66,7 +65,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public static String getFQN(Policy policy) {
-    return (policy.getName());
+    return policy.getName();
   }
 
   @Transaction
@@ -206,7 +205,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   private List<Policy> getAccessControlPolicies() throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
-    ListFilter filter = new ListFilter().addQueryParam("include", Include.NON_DELETED.value());
+    ListFilter filter = new ListFilter();
     List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
@@ -248,11 +247,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
         policy.getId(), policy.getLocation().getId(), Entity.POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
   }
 
-  public static class PolicyEntityInterface implements EntityInterface<Policy> {
-    private final Policy entity;
-
+  public static class PolicyEntityInterface extends EntityInterface<Policy> {
     public PolicyEntityInterface(Policy entity) {
-      this.entity = entity;
+      super(Entity.POLICY, entity);
     }
 
     @Override
@@ -312,17 +309,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.POLICY)
-          .withDeleted(isDeleted());
     }
 
     @Override

@@ -31,7 +31,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
-  private static final Fields UPDATE_FIELDS = new Fields(DashboardServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
 
   public DashboardServiceRepository(CollectionDAO dao) {
     super(
@@ -40,8 +40,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         DashboardService.class,
         dao.dashboardServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override
@@ -87,11 +88,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     return new DashboardServiceUpdater(original, updated, operation);
   }
 
-  public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
-    private final DashboardService entity;
-
+  public static class DashboardServiceEntityInterface extends EntityInterface<DashboardService> {
     public DashboardServiceEntityInterface(DashboardService entity) {
-      this.entity = entity;
+      super(Entity.DASHBOARD_SERVICE, entity);
     }
 
     @Override
@@ -152,17 +151,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DASHBOARD_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

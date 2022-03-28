@@ -93,7 +93,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
-    this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
 

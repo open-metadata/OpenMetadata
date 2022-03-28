@@ -15,16 +15,17 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityThread, FormatedTableData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { searchData } from '../../axiosAPIs/miscAPI';
+import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
 import { getAllTopics } from '../../axiosAPIs/topicsAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import {
@@ -59,6 +60,7 @@ const MyDataPage = () => {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
   const handleShowErrorToast = (msg: string) => {
     showToast({
@@ -283,7 +285,28 @@ const MyDataPage = () => {
       });
   };
 
+  const fetchOMDMode = () => {
+    fetchSandboxConfig()
+      .then((res) => {
+        if (res.data) {
+          setIsSandbox(Boolean(res.data.sandboxModeEnabled));
+        } else {
+          throw '';
+        }
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body:
+            err.response?.data?.message ||
+            jsonData['api-error-messages']['unexpected-server-response'],
+        });
+        setIsSandbox(false);
+      });
+  };
+
   useEffect(() => {
+    fetchOMDMode();
     fetchData(true);
   }, []);
 
@@ -308,22 +331,25 @@ const MyDataPage = () => {
       !isUndefined(countTopics) &&
       !isUndefined(countDashboards) &&
       !isUndefined(countPipelines) ? (
-        <MyData
-          countDashboards={countDashboards}
-          countPipelines={countPipelines}
-          countServices={countServices}
-          countTables={countTables}
-          countTopics={countTopics}
-          deletePostHandler={deletePostHandler}
-          error={error}
-          feedData={entityThread || []}
-          feedFilter={feedFilter}
-          feedFilterHandler={feedFilterHandler}
-          followedData={followedData || []}
-          isFeedLoading={isFeedLoading}
-          ownedData={ownedData || []}
-          postFeedHandler={postFeedHandler}
-        />
+        <Fragment>
+          <MyData
+            countDashboards={countDashboards}
+            countPipelines={countPipelines}
+            countServices={countServices}
+            countTables={countTables}
+            countTopics={countTopics}
+            deletePostHandler={deletePostHandler}
+            error={error}
+            feedData={entityThread || []}
+            feedFilter={feedFilter}
+            feedFilterHandler={feedFilterHandler}
+            followedData={followedData || []}
+            isFeedLoading={isFeedLoading}
+            ownedData={ownedData || []}
+            postFeedHandler={postFeedHandler}
+          />
+          {isSandbox ? <GithubStarButton /> : null}
+        </Fragment>
       ) : (
         <Loader />
       )}

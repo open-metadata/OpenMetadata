@@ -43,6 +43,7 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.type.topic.SchemaType;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -63,7 +64,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
     create.withName(getEntityName(test, 1)).withDescription("description");
     Topic topic = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = KAFKA_REFERENCE.getName() + "." + topic.getName();
+    String expectedFQN = EntityUtil.getFQN(KAFKA_REFERENCE.getName(), topic.getName());
     assertEquals(expectedFQN, topic.getFullyQualifiedName());
   }
 
