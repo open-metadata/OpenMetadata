@@ -12,9 +12,10 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy.orm import DeclarativeMeta, Session, aliased
+from sqlalchemy.orm.util import AliasedClass
 
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 
@@ -35,8 +36,7 @@ class Sampler:
         self.session = session
         self.table = table
 
-    @property
-    def random_sample(self):
+    def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
