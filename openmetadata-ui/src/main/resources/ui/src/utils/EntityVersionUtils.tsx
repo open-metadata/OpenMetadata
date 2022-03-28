@@ -18,6 +18,7 @@ import Markdown from 'markdown-to-jsx';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { Link } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DESCRIPTIONLENGTH, getTeamDetailsPath } from '../constants/constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
@@ -194,11 +195,11 @@ export const getPreposition = (type: ChangeType) => {
 };
 
 const getColumnName = (column: string) => {
-  const name = column.split('.');
+  const name = column.split(FQN_SEPARATOR_CHAR);
   const length = name.length;
   return name
     .slice(length > 1 ? 1 : 0, length > 1 ? length - 1 : length)
-    .join('.');
+    .join(FQN_SEPARATOR_CHAR);
 };
 
 const getLinkWithColumn = (column: string, eFqn: string, eType: string) => {
@@ -348,7 +349,7 @@ export const feedSummaryFromatter = (
           ) : null}
           {tier ? (
             <p key={uniqueId()}>{`${type} tier ${
-              tier?.tagFQN?.split('.')[1]
+              tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1]
             }`}</p>
           ) : null}
         </div>

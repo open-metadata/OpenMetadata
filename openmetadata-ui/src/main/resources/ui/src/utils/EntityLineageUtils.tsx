@@ -36,6 +36,7 @@ import {
   SelectedNode,
 } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   nodeHeight,
   nodeWidth,
@@ -57,7 +58,7 @@ export const getHeaderLabel = (
   fqn: string,
   type: string,
   isMainNode: boolean,
-  separator = '.'
+  separator = FQN_SEPARATOR_CHAR
 ) => {
   const length = v.split(separator).length;
 
@@ -420,7 +421,7 @@ export const getLineageData = (
 export const getDataLabel = (
   displayName?: string,
   name = '',
-  separator = '.',
+  separator = FQN_SEPARATOR_CHAR,
   isTextOnly = false,
   type?: string
 ) => {

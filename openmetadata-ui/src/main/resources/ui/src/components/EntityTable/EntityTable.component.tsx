@@ -19,6 +19,7 @@ import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -683,7 +684,7 @@ const EntityTable = ({
                                         {getPartialNameFromFQN(
                                           columnJoin?.fullyQualifiedName as string,
                                           ['database', 'table', 'column'],
-                                          '.'
+                                          FQN_SEPARATOR_CHAR
                                         )}
                                       </Link>
                                     </Fragment>

@@ -14,6 +14,7 @@
 import { isNil, isString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getInfoElements } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -33,12 +34,14 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 }: Props) => {
   const getTagValue = (tag: string | TagLabel): string | TagLabel => {
     if (isString(tag)) {
-      return tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag;
+      return tag.startsWith('Tier.Tier')
+        ? tag.split(FQN_SEPARATOR_CHAR)[1]
+        : tag;
     } else {
       return {
         ...tag,
         tagFQN: tag.tagFQN.startsWith('Tier.Tier')
-          ? tag.tagFQN.split('.')[1]
+          ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
           : tag.tagFQN,
       };
     }

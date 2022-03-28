@@ -23,6 +23,7 @@ import {
   TagOption,
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { User } from '../../../generated/entity/teams/user';
@@ -368,7 +369,10 @@ const EntityPageInfo = ({
             {tier?.tagFQN && (
               <Tags
                 startWith="#"
-                tag={{ ...tier, tagFQN: tier.tagFQN.split('.')[1] }}
+                tag={{
+                  ...tier,
+                  tagFQN: tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1],
+                }}
                 type="label"
               />
             )}

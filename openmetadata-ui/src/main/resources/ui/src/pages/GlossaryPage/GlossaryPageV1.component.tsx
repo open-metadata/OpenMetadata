@@ -36,6 +36,7 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getAddGlossaryTermsPath,
   getGlossaryPath,
@@ -621,7 +622,7 @@ const GlossaryPageV1 = () => {
    * To redirct to add glossary term page
    */
   const handleAddGlossaryTermClick = () => {
-    const activeTerm = selectedKey.split('.');
+    const activeTerm = selectedKey.split(FQN_SEPARATOR_CHAR);
     const glossaryName = activeTerm[0];
     if (activeTerm.length > 1) {
       history.push(getAddGlossaryTermsPath(glossaryName, selectedKey));

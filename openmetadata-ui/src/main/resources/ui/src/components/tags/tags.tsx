@@ -15,6 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
@@ -41,7 +42,7 @@ const Tags: FunctionComponent<TagProps> = ({
   };
 
   const getTag = (tag: string, startWith = '') => {
-    const tagName = showOnlyName ? tag.split('.').pop() : tag;
+    const tagName = showOnlyName ? tag.split(FQN_SEPARATOR_CHAR).pop() : tag;
 
     return (
       <span
