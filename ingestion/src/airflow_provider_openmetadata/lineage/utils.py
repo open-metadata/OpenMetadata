@@ -14,7 +14,7 @@ OpenMetadata Airflow Lineage Backend
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from airflow.configuration import conf
 
@@ -70,9 +70,37 @@ def is_airflow_version_1() -> bool:
         return True
 
 
+def parse_v1_xlets(xlet: dict) -> Optional[List[str]]:
+    """
+    Parse airflow xlets for V1
+    :param xlet: airflow v1 xlet dict
+    :return: table list or None
+    """
+    if isinstance(xlet, dict):
+        tables = xlet.get("tables")
+        if tables and isinstance(tables, list):
+            return tables
+
+    return None
+
+
+def parse_xlets(xlet: List[dict]) -> Optional[List[str]]:
+    """
+    Parse airflow xlets for V1
+    :param xlet: airflow v2 xlet dict
+    :return: table list or None
+    """
+    if len(xlet) and isinstance(xlet[0], dict):
+        tables = xlet[0].get("tables")
+        if tables and isinstance(tables, list):
+            return tables
+
+    return None
+
+
 def get_xlets(
     operator: "BaseOperator", xlet_mode: str = "_inlets"
-) -> Union[Optional[List[str]], Any]:
+) -> Optional[List[str]]:
     """
     Given an Airflow DAG Task, obtain the tables
     set in inlets or outlets.
@@ -86,15 +114,15 @@ def get_xlets(
     """
     xlet = getattr(operator, xlet_mode)
     if is_airflow_version_1():
-        return xlet
+        tables = parse_v1_xlets(xlet)
 
-    if len(xlet) and isinstance(xlet[0], dict):
-        tables = xlet[0].get("tables")
-        if isinstance(tables, list) and len(tables):
-            return tables
+    else:
+        tables = parse_xlets(xlet)
 
-    operator.log.info(f"Not finding proper {xlet_mode} in task {operator.task_id}")
-    return None
+    if not tables:
+        operator.log.info(f"Not finding proper {xlet_mode} in task {operator.task_id}")
+
+    return tables
 
 
 def create_or_update_pipeline(  # pylint: disable=too-many-locals
