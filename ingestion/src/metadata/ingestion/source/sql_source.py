@@ -263,7 +263,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 try:
                     if self.sql_config.generate_sample_data:
                         table_data = self.fetch_sample_data(schema, table_name)
-                        table_entity.sampleData = table_data
+                        if table_data:
+                            table_entity.sampleData = table_data
                 # Catch any errors during the ingestion and continue
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(repr(err))
