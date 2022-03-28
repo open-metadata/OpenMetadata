@@ -66,10 +66,10 @@ def _get_column_rows(self, connection, table_name, schema):
 def get_columns(self, connection, table_name, schema=None, **kw):
     # This function overrides the sqlalchemy_databricks._dialect.DatabricksDialect.get_columns
     # to add support for struct, array & map datatype
-    
+
     # The Database name is present in the URL on the SqlAlchemy engine object. This value is the same as
     # the one present in databricks.json in the 'database' field. This approach, while it works, may still not be optimal.
-    db_name = re.sub(r'^.+/([^/]+)$', r'\1', str(connection.engine.url))
+    db_name = re.sub(r"^.+/([^/]+)$", r"\1", str(connection.engine.url))
 
     rows = _get_column_rows(self, connection, table_name, schema)
     result = []
