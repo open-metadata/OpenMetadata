@@ -256,7 +256,7 @@ public class TagsPageTest {
   public void TagUsageCheck() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.usageCountElementIndex(2));
+    Events.click(webDriver, tagsPage.usageCountElementIndex(1));
     Thread.sleep(2000);
     String beforeFilterCount = webDriver.findElement(tagsPage.tagFilterCount(1)).getAttribute("innerHTML");
     Events.click(webDriver, common.entityTabIndex(2));
