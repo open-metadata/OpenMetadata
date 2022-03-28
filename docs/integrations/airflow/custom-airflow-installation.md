@@ -34,7 +34,21 @@ pip install "openmetadata-ingestion[airflow-container]"
 
 What this does is add the full core `openmetadata-ingestion` package plus some version alignments for a few libraries to make everything compatible with Airflow.
 
-Afterward, you can jump into `airflow.cfg` following the guide above.
+Afterward, you can jump into `airflow.cfg` following the [Airflow Lineage Backend](airflow-lineage.md) guide.
+
+### Airflow 1.10.15
+
+If running on a lower Airflow version, then you'll need to install:
+
+{% tabs %}
+{% tab title="Install Using PyPI" %}
+```bash
+pip install "openmetadata-ingestion[airflow-container-1.10.15]"
+```
+{% endtab %}
+{% endtabs %}
+
+You should either run this command or the one above, but not both, which will result in version incompatibilities. Then, follow the [Airflow Lineage Backend](airflow-lineage.md) guide to prepare the `airflow.cfg` file and configure your DAGs.
 
 ## Connector Modules
 
