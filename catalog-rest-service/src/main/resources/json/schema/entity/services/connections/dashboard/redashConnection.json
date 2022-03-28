@@ -5,11 +5,21 @@
   "description": "Redash Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.RedashConnection",
+  "definitions": {
+    "redashType": {
+      "description": "Redash service type",
+      "type": "string",
+      "enum": [
+        "Redash"
+      ],
+      "default": "Redash"
+    }
+  },
   "properties": {
-    "redashConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/redashType",
+      "default": "Redash"
     },
     "username": {
       "description": "username for the Redash",

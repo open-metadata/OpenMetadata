@@ -5,11 +5,21 @@
   "description": "Superset Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.SupersetConnection",
+  "definitions": {
+    "supersetType": {
+      "description": "Superset service type",
+      "type": "string",
+      "enum": [
+        "Superset"
+      ],
+      "default": "Superset"
+    }
+  },
   "properties": {
-    "supersetConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/supersetType",
+      "default": "Superset"
     },
     "supersetURL": {
       "description": "URL for the superset instance",

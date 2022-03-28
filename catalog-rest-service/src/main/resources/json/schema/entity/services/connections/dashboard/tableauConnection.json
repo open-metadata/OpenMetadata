@@ -5,11 +5,21 @@
   "description": "Tableau Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.TableauConnection",
+  "definitions": {
+    "tableauType": {
+      "description": "Tableau service type",
+      "type": "string",
+      "enum": [
+        "Tableau"
+      ],
+      "default": "Tableau"
+    }
+  },
   "properties": {
-    "tableauConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/tableauType",
+      "default": "Tableau"
     },
     "server": {
       "description": "Tableau Server",

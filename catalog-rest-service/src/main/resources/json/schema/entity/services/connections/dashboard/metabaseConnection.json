@@ -5,11 +5,21 @@
   "description": "Metabase Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.MetabaseConnection",
+  "definitions": {
+    "metabaseType": {
+      "description": "Metabase service type",
+      "type": "string",
+      "enum": [
+        "Metabase"
+      ],
+      "default": "Metabase"
+    }
+  },
   "properties": {
-    "metabaseConnection": {
-      "description": "a boolean config value to enable/disable connection for a service.",
-      "type": "boolean",
-      "default": "true"
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/metabaseType",
+      "default": "Metabase"
     },
     "username": {
       "description": "username to connect  to the Metabase. This user should have privileges to read all the metadata in Metabase.",
