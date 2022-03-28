@@ -16,7 +16,6 @@ package org.openmetadata.catalog.resources.services.database;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,7 +57,6 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -346,23 +344,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           String id)
       throws IOException, ParseException {
     Response response = delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
-    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
-  }
-
-  private ResultList<DatabaseService> decryptOrNullify(
-      SecurityContext securityContext, ResultList<DatabaseService> databaseServices) {
-    listOrEmpty(databaseServices.getData())
-        .forEach(databaseService -> decryptOrNullify(securityContext, databaseService));
-    return databaseServices;
-  }
-
-  private DatabaseService decryptOrNullify(SecurityContext securityContext, DatabaseService databaseService) {
-    try {
-      SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.DecryptTokens);
-    response.getEntity();
-      return databaseService.withDatabaseConnection(null);
-    }
   }
 
   private DatabaseService getService(CreateDatabaseService create, SecurityContext securityContext) {
