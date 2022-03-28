@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import ColumnJoins
+from metadata.generated.schema.entity.data.table import ColumnJoins, SqlQuery
 from metadata.ingestion.models.json_serializable import JsonSerializable
 
 
@@ -61,6 +61,7 @@ class TableUsageCount(BaseModel):
     table: str
     date: str
     database: str
+    sql_queries: List[SqlQuery]
     count: int = 1
     joins: TableColumnJoins
     service_name: str
