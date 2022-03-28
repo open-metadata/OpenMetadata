@@ -200,7 +200,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         yield inspect(self.engine)
 
     def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}.{schema}.{table_name}".lower()
+        return f"{service_name}.{schema}.{table_name}"
 
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
@@ -433,7 +433,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table = table.replace(".", "_DOT_")
                     table_fqn = self.get_table_fqn(
                         self.config.service_name, database, table
-                    )
+                    ).lower()
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
