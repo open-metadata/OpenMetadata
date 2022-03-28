@@ -40,11 +40,13 @@ import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
   error,
+  countDashboards,
+  countPipelines,
   countServices,
-  ingestionCount,
+  countTables,
+  countTopics,
   ownedData,
   followedData,
-  entityCounts,
   feedData,
   feedFilter,
   feedFilterHandler,
@@ -102,9 +104,11 @@ const MyData: React.FC<MyDataProps> = ({
     return (
       <div className="tw-mt-12">
         <MyAssetStats
+          countDashboards={countDashboards}
+          countPipelines={countPipelines}
           countServices={countServices}
-          entityCounts={entityCounts}
-          ingestionCount={ingestionCount}
+          countTables={countTables}
+          countTopics={countTopics}
         />
         <div className="tw-filter-seperator" />
         <RecentlyViewed />
