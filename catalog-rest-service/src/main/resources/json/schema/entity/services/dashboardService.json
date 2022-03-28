@@ -42,7 +42,7 @@
       "javaType": "org.openmetadata.catalog.type.DashboardConnection",
       "description": "Dashboard Connection.",
       "properties": {
-        "config": {
+        "connection": {
           "oneOf": [
             {
               "$ref": "./connections/dashboard/lookerConnection.json"
@@ -129,6 +129,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "dashboardUrl"],
+  "required": ["id", "name", "serviceType", "dashboardUrl", "connection"],
   "additionalProperties": false
 }
