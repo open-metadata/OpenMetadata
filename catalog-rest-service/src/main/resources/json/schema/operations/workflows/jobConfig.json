@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/jobConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Job Config",
+  "description": "Workflow job configurations.",
+  "type": "object",
+  "definitions": {
+    "includes": {
+      "description": "Tables or schemas to include",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
+    "excludes": {
+      "description": "Tables or schemas to exclude",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
+    "filterPattern": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/includes"
+        },
+        {
+          "$ref": "#/definitions/excludes"
+        }
+      ]
+    },
+    "jobConfig": {
+      "description": "Job Configuration",
+      "properties": {
+        "serviceName": {
+          "description": "Name of the service",
+          "type": "string"
+        },
+        "schemaFilterPattern": {
+          "description": "Filter source schemas",
+          "$ref": "#/definitions/filterPattern"
+        },
+        "tableFilterPattern": {
+          "description": "Filter source tables",
+          "$ref": "#/definitions/filterPattern"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["serviceName"]
+    }
+  }
+}

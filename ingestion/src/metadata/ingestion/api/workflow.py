@@ -22,6 +22,7 @@ from metadata.config.common import (
     DynamicTypedConfig,
     WorkflowExecutionError,
 )
+from metadata.generated.schema.operations.workflows.sourceConfig import SourceConfig
 from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor
@@ -36,7 +37,7 @@ T = TypeVar("T")
 
 class WorkflowConfig(ConfigModel):
     run_id: str = Field(default_factory=lambda: str(uuid.uuid1()))
-    source: DynamicTypedConfig
+    source: SourceConfig
     metadata_server: DynamicTypedConfig
     processor: Optional[DynamicTypedConfig] = None
     sink: Optional[DynamicTypedConfig] = None

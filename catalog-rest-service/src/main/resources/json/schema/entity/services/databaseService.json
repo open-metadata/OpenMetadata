@@ -110,7 +110,7 @@
       "javaType": "org.openmetadata.catalog.type.DatabaseConnection",
       "description": "Database Connection.",
       "properties": {
-        "config": {
+        "connection": {
           "oneOf": [
             {
               "$ref": "./connections/database/mysqlConnection.json"
@@ -122,9 +122,6 @@
               "$ref": "./connections/database/postgresConnection.json"
             }
           ]
-        },
-        "databaseType": {
-          "$ref": "#/definitions/databaseServiceType"
         }
       },
       "additionalProperties": false
@@ -188,6 +185,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "href", "databaseConnection"],
+  "required": ["id", "name", "serviceType", "href", "connection"],
   "additionalProperties": false
 }
