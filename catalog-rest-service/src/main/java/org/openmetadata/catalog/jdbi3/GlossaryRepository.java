@@ -25,7 +25,6 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.resources.glossary.GlossaryResource;
@@ -40,8 +39,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final Fields UPDATE_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags,reviewers");
-  private static final Fields PATCH_FIELDS = new Fields(GlossaryResource.ALLOWED_FIELDS, "owner,tags,reviewers");
+  private static final String UPDATE_FIELDS = "owner,tags,reviewers";
+  private static final String PATCH_FIELDS = "owner,tags,reviewers";
 
   public GlossaryRepository(CollectionDAO dao) {
     super(
@@ -52,11 +51,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Glossary glossary) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), glossary.getOwner());
   }
 
   @Override
@@ -122,11 +116,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
-  public static class GlossaryEntityInterface implements EntityInterface<Glossary> {
-    private final Glossary entity;
-
+  public static class GlossaryEntityInterface extends EntityInterface<Glossary> {
     public GlossaryEntityInterface(Glossary entity) {
-      this.entity = entity;
+      super(Entity.GLOSSARY, entity);
     }
 
     @Override
@@ -192,17 +184,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.GLOSSARY)
-          .withDeleted(isDeleted());
     }
 
     @Override

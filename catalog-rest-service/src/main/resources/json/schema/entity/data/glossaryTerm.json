@@ -51,9 +51,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",

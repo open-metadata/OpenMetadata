@@ -14,6 +14,9 @@
 package org.openmetadata.catalog.resources.services.dashboard;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,12 +56,9 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/services/dashboardServices")
@@ -70,7 +70,6 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
 
   static final String FIELDS = FIELD_OWNER;
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(DashboardService.class);
 
   @Override
   public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
@@ -130,8 +129,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -268,10 +266,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = getService(create, securityContext);
-    service = addHref(uriInfo, dao.create(uriInfo, service));
-    return Response.created(service.getHref()).entity(service).build();
+    return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
   @PUT
@@ -289,14 +285,11 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
                     schema = @Schema(implementation = CreateDashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response update(
+  public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException, ParseException {
     DashboardService service = getService(update, securityContext);
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOriginalOwner(service));
-    PutResponse<DashboardService> response = dao.createOrUpdate(uriInfo, service, true);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
   @DELETE
@@ -320,9 +313,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<DashboardService> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
   }
 
   private DashboardService getService(CreateDashboardService create, SecurityContext securityContext) {

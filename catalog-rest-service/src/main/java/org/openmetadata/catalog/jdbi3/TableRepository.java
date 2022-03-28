@@ -81,11 +81,9 @@ import org.openmetadata.common.utils.CommonUtil;
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
   // Table fields that can be patched in a PATCH request
-  static final Fields TABLE_PATCH_FIELDS =
-      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,tablePartition");
+  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition";
   // Table fields that can be updated in a PUT request
-  static final Fields TABLE_UPDATE_FIELDS =
-      new Fields(TableResource.ALLOWED_FIELDS, "owner,tags,tableConstraints,tablePartition,dataModel,profileSample");
+  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,profileSample";
 
   public TableRepository(CollectionDAO dao) {
     super(
@@ -145,7 +143,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static String getFQN(Table table) {
     return (table != null && table.getDatabase() != null)
-        ? (table.getDatabase().getName() + "." + table.getName())
+        ? EntityUtil.getFQN(table.getDatabase().getName(), table.getName())
         : null;
   }
 
@@ -165,7 +163,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // With all validation done, add new joins
     for (ColumnJoin join : joins.getColumnJoins()) {
-      String columnFQN = table.getFullyQualifiedName() + "." + join.getColumnName();
+      String columnFQN = EntityUtil.getFQN(table.getFullyQualifiedName(), join.getColumnName());
       addJoin(joins.getStartDate(), columnFQN, join.getJoinedWith());
     }
     return table.withJoins(getJoins(table));
@@ -514,7 +512,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
-          String columnFqn = parentFQN + "." + c.getName();
+          String columnFqn = EntityUtil.getFQN(parentFQN, c.getName());
           c.setFullyQualifiedName(columnFqn);
           if (c.getChildren() != null) {
             setColumnFQN(columnFqn, c.getChildren());
@@ -537,9 +535,6 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(table));
-    EntityUtil.escapeReservedChars(table.getColumns());
-    EntityUtil.escapeReservedChars(table.getTableConstraints());
     Database database = Entity.getEntity(table.getDatabase(), Fields.EMPTY_FIELDS, Include.ALL);
     table.setDatabase(new DatabaseEntityInterface(database).getEntityReference());
     table.setService(database.getService());
@@ -688,12 +683,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   private String getTableFQN(String columnFQN) {
     // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
-    String[] split = columnFQN.split("\\.");
+    String[] split = EntityUtil.splitFQN(columnFQN);
     if (split.length != 4) {
       throw new IllegalArgumentException("Invalid fully qualified column name " + columnFQN);
     }
     // Return table FQN of format databaseService.tableName
-    return split[0] + "." + split[1] + "." + split[2];
+    return EntityUtil.getFQN(split[0], split[1], split[2]);
   }
 
   private void addJoin(String date, String columnFQN, List<JoinedWith> joinedWithList)
@@ -815,7 +810,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // list [ [fromFQN, toFQN, json], ...] contains inner list [fromFQN, toFQN, json]
     for (List<String> innerList : list) {
-      String columnName = innerList.get(0).split("\\.")[3]; // Get from column name from FQN
+      String columnName = EntityUtil.splitFQN(innerList.get(0))[3]; // Get from column name from FQN
       List<JoinedWith> columnJoinList = map.computeIfAbsent(columnName, k -> new ArrayList<>());
 
       // Parse JSON to get daily counts and aggregate it
@@ -896,11 +891,9 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public static class TableEntityInterface implements EntityInterface<Table> {
-    private final Table entity;
-
+  public static class TableEntityInterface extends EntityInterface<Table> {
     public TableEntityInterface(Table entity) {
-      this.entity = entity;
+      super(Entity.TABLE, entity);
     }
 
     @Override
@@ -956,17 +949,6 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     public long getUpdatedAt() {
       return entity.getUpdatedAt();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(TABLE)
-          .withDeleted(isDeleted());
     }
 
     @Override
@@ -1126,13 +1108,13 @@ public class TableRepository extends EntityRepository<Table> {
         updateColumnDataLength(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            fieldName + "." + updated.getName() + ".tags",
+            EntityUtil.getFieldName(fieldName, updated.getName(), "tags"),
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          String childrenFieldName = fieldName + "." + updated.getName();
+          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
           updateColumns(childrenFieldName, stored.getChildren(), updated.getChildren(), columnMatch);
         }
       }
@@ -1146,18 +1128,18 @@ public class TableRepository extends EntityRepository<Table> {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      recordChange(
-          getColumnField(origColumn, FIELD_DESCRIPTION), origColumn.getDescription(), updatedColumn.getDescription());
+      String columnField = getColumnField(original.getEntity(), origColumn, FIELD_DESCRIPTION);
+      recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      recordChange(getColumnField(origColumn, "constraint"), origColumn.getConstraint(), updatedColumn.getConstraint());
+      String columnField = getColumnField(original.getEntity(), origColumn, "constraint");
+      recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
     }
 
     private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      boolean updated =
-          recordChange(
-              getColumnField(origColumn, "dataLength"), origColumn.getDataLength(), updatedColumn.getDataLength());
+      String columnField = getColumnField(original.getEntity(), origColumn, "dataLength");
+      boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
       if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
         // The data length of a column changed. Treat it as backward-incompatible change
         majorVersionChange = true;

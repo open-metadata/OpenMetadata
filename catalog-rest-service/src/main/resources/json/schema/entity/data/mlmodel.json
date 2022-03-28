@@ -37,29 +37,19 @@
     },
     "featureName": {
       "description": "Local name (not fully qualified name) of the ML Feature.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "featureSourceName": {
       "description": "Local name (not fully qualified name) of a ML Feature source.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedFeatureSourceName": {
       "description": "Fully qualified name of the ML Feature Source that includes `serviceName.[databaseName].tableName/fileName/apiName.columnName[.nestedColumnName]`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "fullyQualifiedFeatureName": {
       "description": "Fully qualified name of the ML Feature that includes `modelName.featureName`.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "featureSource": {
       "type": "object",
@@ -187,9 +177,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies an ML Model.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this ML Model.",

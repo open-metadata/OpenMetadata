@@ -34,11 +34,12 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.jdbi3.UserRepository;
-import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
@@ -74,10 +75,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddAdminUsers() {
     LOG.debug("Checking user entries for admin users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     for (String adminUser : adminUsers) {
       try {
-        User user = userRepository.getByName(null, adminUser, fields);
+        User user = userRepository.getByName(null, adminUser, Fields.EMPTY_FIELDS);
         if (user != null && (user.getIsAdmin() == null || !user.getIsAdmin())) {
           user.setIsAdmin(true);
         }
@@ -100,10 +100,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   private void mayBeAddBotUsers() {
     LOG.debug("Checking user entries for bot users");
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     for (String botUser : botUsers) {
       try {
-        User user = userRepository.getByName(null, botUser, fields);
+        User user = userRepository.getByName(null, botUser, Fields.EMPTY_FIELDS);
         if (user != null && (user.getIsBot() == null || !user.getIsBot())) {
           user.setIsBot(true);
         }
@@ -153,7 +152,8 @@ public class DefaultAuthorizer implements Authorizer {
         return policyEvaluator.hasPermission(user, null, operation);
       }
 
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
+      Object entity =
+          Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
 
       if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
@@ -180,7 +180,8 @@ public class DefaultAuthorizer implements Authorizer {
       if (entityReference == null) {
         return policyEvaluator.getAllowedOperations(user, null);
       }
-      Object entity = Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)));
+      Object entity =
+          Entity.getEntity(entityReference, new EntityUtil.Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
       if (owner == null || isOwnedByUser(user, owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
@@ -213,9 +214,8 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isAdmin(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     try {
-      User user = userRepository.getByName(null, userName, fields);
+      User user = userRepository.getByName(null, userName, Fields.EMPTY_FIELDS);
       if (user.getIsAdmin() == null) {
         return false;
       }
@@ -229,9 +229,8 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isBot(AuthenticationContext ctx) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     try {
-      User user = userRepository.getByName(null, userName, fields);
+      User user = userRepository.getByName(null, userName, Fields.EMPTY_FIELDS);
       if (user.getIsBot() == null) {
         return false;
       }
@@ -245,9 +244,8 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean isOwner(AuthenticationContext ctx, EntityReference owner) {
     validateAuthenticationContext(ctx);
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
     try {
-      User user = userRepository.getByName(null, userName, fields);
+      User user = userRepository.getByName(null, userName, Fields.EMPTY_FIELDS);
       if (owner == null) {
         return false;
       }
@@ -265,7 +263,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   private User getUserFromAuthenticationContext(AuthenticationContext ctx) throws IOException, ParseException {
     String userName = SecurityUtil.getUserName(ctx);
-    EntityUtil.Fields fields = new EntityUtil.Fields(UserResource.ALLOWED_FIELDS, FIELDS_PARAM);
+    EntityUtil.Fields fields = userRepository.getFields(FIELDS_PARAM);
     return userRepository.getByName(null, userName, fields);
   }
 

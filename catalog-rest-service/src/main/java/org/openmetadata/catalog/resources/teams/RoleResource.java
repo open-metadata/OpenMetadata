@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.teams;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -57,13 +60,10 @@ import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/roles")
@@ -101,7 +101,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   public static final String FIELDS = "policy,teams,users";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Role.class);
 
   @GET
   @Valid
@@ -148,8 +147,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    ListFilter filter = new ListFilter().addQueryParam("include", include.value());
+    Fields fields = getFields(fieldsParam);
+    ListFilter filter = new ListFilter(include);
 
     ResultList<Role> roles;
     if (defaultParam) {
@@ -213,8 +212,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -293,15 +291,13 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
-    role = addHref(uriInfo, dao.create(uriInfo, role));
-    return Response.created(role.getHref()).entity(role).build();
+    return create(uriInfo, securityContext, role, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
-      summary = "Create or Update a role",
+      summary = "Update role",
       tags = "roles",
       description = "Create or Update a role.",
       responses = {
@@ -314,11 +310,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Response createOrUpdateRole(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Role role = getRole(createRole, securityContext);
-    RestUtil.PutResponse<Role> response = dao.createOrUpdate(uriInfo, role);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, role, ADMIN | BOT);
   }
 
   @PATCH
@@ -343,11 +336,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    PatchResponse<Role> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -362,11 +351,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    DeleteResponse<Role> response = dao.delete(securityContext.getUserPrincipal().getName(), id, true);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, true, ADMIN | BOT);
   }
 
   private Role getRole(CreateRole cr, SecurityContext securityContext) {

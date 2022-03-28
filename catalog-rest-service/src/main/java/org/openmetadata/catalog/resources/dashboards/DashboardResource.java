@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,13 +60,8 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/dashboards")
@@ -98,7 +97,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   static final String FIELDS = "owner,charts,followers,tags,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Dashboard.class);
 
   @GET
   @Valid
@@ -147,8 +145,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -280,10 +277,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = getDashboard(securityContext, create);
-    dashboard = addHref(uriInfo, dao.create(uriInfo, dashboard));
-    return Response.created(dashboard.getHref()).entity(dashboard).build();
+    return create(uriInfo, securityContext, dashboard, ADMIN | BOT);
   }
 
   @PATCH
@@ -308,19 +303,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Dashboard dashboard = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(dashboard).getEntityReference(),
-        dao.getOwnerReference(dashboard),
-        patch);
-
-    PatchResponse<Dashboard> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -340,10 +323,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException, ParseException {
     Dashboard dashboard = getDashboard(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(dashboard));
-    PutResponse<Dashboard> response = dao.createOrUpdate(uriInfo, dashboard);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, dashboard, ADMIN | BOT | OWNER);
   }
 
   @PUT
@@ -398,9 +378,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Dashboard> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private Dashboard getDashboard(SecurityContext securityContext, CreateDashboard create) {

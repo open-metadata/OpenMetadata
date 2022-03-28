@@ -39,8 +39,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseRepository extends EntityRepository<Database> {
-  private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.ALLOWED_FIELDS, "owner");
-  private static final Fields DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
+  private static final String DATABASE_UPDATE_FIELDS = "owner";
+  private static final String DATABASE_PATCH_FIELDS = DATABASE_UPDATE_FIELDS;
 
   public DatabaseRepository(CollectionDAO dao) {
     super(
@@ -55,7 +55,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static String getFQN(Database database) {
     return (database != null && database.getService() != null)
-        ? (database.getService().getName() + "." + database.getName())
+        ? EntityUtil.getFQN(database.getService().getName(), database.getName())
         : null;
   }
 
@@ -66,7 +66,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void prepare(Database database) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(database));
     populateService(database);
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(
@@ -174,11 +173,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return CREATED;
   }
 
-  public static class DatabaseEntityInterface implements EntityInterface<Database> {
-    private final Database entity;
-
+  public static class DatabaseEntityInterface extends EntityInterface<Database> {
     public DatabaseEntityInterface(Database entity) {
-      this.entity = entity;
+      super(Entity.DATABASE, entity);
     }
 
     @Override
@@ -236,17 +233,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DATABASE)
-          .withDeleted(isDeleted());
     }
 
     @Override

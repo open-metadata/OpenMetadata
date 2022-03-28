@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +30,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -73,9 +76,6 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/tables")
@@ -115,14 +115,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
-  public static final List<String> ALLOWED_FIELDS;
-
-  static {
-    List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
-    list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
-    list.add("customMetrics"); // Add a field parameter to add customMetrics information to the columns
-    ALLOWED_FIELDS = Collections.unmodifiableList(list);
-  }
 
   @GET
   @Operation(
@@ -170,8 +162,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException, ParseException, GeneralSecurityException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("database", databaseParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -302,10 +293,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
-    table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
-    return Response.created(table.getHref()).entity(table).build();
+    return create(uriInfo, securityContext, table, ADMIN | BOT);
   }
 
   @PUT
@@ -324,10 +313,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException, ParseException {
     Table table = getTable(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(table));
-    PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, table, ADMIN | BOT | OWNER);
   }
 
   @PATCH
@@ -352,19 +338,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       }))
           JsonPatch patch)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Table table = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(table).getEntityReference(),
-        dao.getOriginalOwner(table),
-        patch);
-
-    PatchResponse<Table> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -382,9 +356,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Table> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   @PUT
@@ -427,7 +399,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       TableJoins joins)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addJoins(UUID.fromString(id), joins);
     return addHref(uriInfo, table);
   }
@@ -441,7 +413,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       TableData tableData)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addSampleData(UUID.fromString(id), tableData);
     return addHref(uriInfo, table);
   }
@@ -455,7 +427,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       TableProfile tableProfile)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addTableProfileData(UUID.fromString(id), tableProfile);
     return addHref(uriInfo, table);
   }
@@ -489,7 +461,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       SQLQuery sqlQuery)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addQuery(UUID.fromString(id), sqlQuery);
     return addHref(uriInfo, table);
   }
@@ -506,7 +478,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       DataModel dataModel)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addDataModel(UUID.fromString(id), dataModel);
     return addHref(uriInfo, table);
   }
@@ -520,7 +492,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       CreateTableTest createTableTest)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     TableTest tableTest = getTableTest(securityContext, createTableTest);
     Table table = dao.addTableTest(UUID.fromString(id), tableTest);
     return addHref(uriInfo, table);
@@ -536,7 +508,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Table Test Type", schema = @Schema(type = "string")) @PathParam("tableTestType")
           String tableTestType)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.deleteTableTest(UUID.fromString(id), tableTestType);
     return addHref(uriInfo, table);
   }
@@ -550,7 +522,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       CreateColumnTest createColumnTest)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     ColumnTest columnTest = getColumnTest(securityContext, createColumnTest);
     Table table = dao.addColumnTest(UUID.fromString(id), columnTest);
     return addHref(uriInfo, table);
@@ -565,7 +537,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       CreateCustomMetric createCustomMetric)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
     Table table = dao.addCustomMetric(UUID.fromString(id), customMetric);
     return addHref(uriInfo, table);
@@ -586,7 +558,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("columnTestType")
           String columnTestType)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.deleteColumnTest(UUID.fromString(id), columnName, columnTestType);
     return addHref(uriInfo, table);
   }
@@ -606,7 +578,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("customMetricName")
           String customMetricName)
       throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.deleteCustomMetric(UUID.fromString(id), columnName, customMetricName);
     return addHref(uriInfo, table);
   }
@@ -638,7 +610,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, "location");
+    Fields fields = getFields("location");
     dao.deleteLocation(id);
     Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);
@@ -654,21 +626,22 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   private Table getTable(SecurityContext securityContext, CreateTable create) {
-    return new Table()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withColumns(create.getColumns())
-        .withDescription(create.getDescription())
-        .withTableConstraints(create.getTableConstraints())
-        .withTablePartition(create.getTablePartition())
-        .withTableType(create.getTableType())
-        .withTags(create.getTags())
-        .withViewDefinition(create.getViewDefinition())
-        .withProfileSample(create.getProfileSample())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withOwner(create.getOwner())
-        .withUpdatedAt(System.currentTimeMillis())
-        .withDatabase(create.getDatabase());
+    return validateNewTable(
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName(create.getName())
+            .withColumns(create.getColumns())
+            .withDescription(create.getDescription())
+            .withTableConstraints(create.getTableConstraints())
+            .withTablePartition(create.getTablePartition())
+            .withTableType(create.getTableType())
+            .withTags(create.getTags())
+            .withViewDefinition(create.getViewDefinition())
+            .withProfileSample(create.getProfileSample())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withOwner(create.getOwner())
+            .withUpdatedAt(System.currentTimeMillis())
+            .withDatabase(create.getDatabase()));
   }
 
   private TableTest getTableTest(SecurityContext securityContext, CreateTableTest create) {

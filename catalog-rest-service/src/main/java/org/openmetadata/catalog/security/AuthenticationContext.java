@@ -17,14 +17,14 @@ import java.security.Principal;
 
 /** Holds context information of authenticated user, which will be used for authorization. */
 public final class AuthenticationContext {
-  private Principal principal;
+  private final Principal principal;
+
+  public AuthenticationContext(Principal principal) {
+    this.principal = principal;
+  }
 
   public Principal getPrincipal() {
     return principal;
-  }
-
-  public void setPrincipal(Principal principal) {
-    this.principal = principal;
   }
 
   @Override

@@ -48,8 +48,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.ALLOWED_FIELDS, "owner,tags,tasks");
-  private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.ALLOWED_FIELDS, "owner,tags,tasks");
+  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks";
+  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks";
 
   public PipelineRepository(CollectionDAO dao) {
     super(
@@ -64,7 +64,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline != null && pipeline.getService() != null)
-        ? (pipeline.getService().getName() + "." + pipeline.getName())
+        ? EntityUtil.getFQN(pipeline.getService().getName(), pipeline.getName())
         : null;
   }
 
@@ -159,8 +159,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(pipeline));
-    EntityUtil.escapeReservedChars(pipeline.getTasks());
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
@@ -218,11 +216,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE, PIPELINE_SERVICE));
   }
 
-  public static class PipelineEntityInterface implements EntityInterface<Pipeline> {
-    private final Pipeline entity;
-
+  public static class PipelineEntityInterface extends EntityInterface<Pipeline> {
     public PipelineEntityInterface(Pipeline entity) {
-      this.entity = entity;
+      super(Entity.PIPELINE, entity);
     }
 
     @Override
@@ -290,17 +286,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.PIPELINE)
-          .withDeleted(isDeleted());
     }
 
     @Override
