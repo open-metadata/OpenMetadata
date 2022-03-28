@@ -1,0 +1,66 @@
+name: Node Yarn Coverage + Sonar
+
+on:
+  # Trigger analysis when pushing in master or pull requests, and when creating
+  # a pull request.
+  push:
+    branches:
+      - main
+    paths:
+      - openmetadata-ui/src/main/resources/ui/**
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - openmetadata-ui/src/main/resources/ui/**
+env:
+  UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
+jobs:
+  coverage-tests:
+    strategy:
+      matrix:
+        node-version: [14.x]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        # Disabling shallow clone is recommended for improving relevancy of reporting
+        fetch-depth: 0
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v2
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'yarn'
+        cache-dependency-path: ${{ env.UI_WORKING_DIRECTORY }}/yarn.lock
+    - name: Install Yarn Packages
+      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+      run: yarn install
+    - name: Run Coverage
+      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+      run: yarn test:coverage
+      id: yarn_coverage
+    - name: SonarCloud Scan On PR
+      uses: sonarsource/sonarcloud-github-action@master
+      if: steps.yarn_coverage.outcome == 'success' && github.event_name == 'pull_request'
+      with:
+        projectBaseDir: ${{ env.UI_WORKING_DIRECTORY }}
+        args: >
+          -Dproject.settings=sonar-project.properties
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          -Dsonar.pullrequest.branch=${{ github.head_ref }}
+          -Dsonar.pullrequest.base=main
+          -Donar.pullrequest.github.repository=OpenMetadata"
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+          -Dsonar.pullrequest.provider=github
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@master
+      if: github.event_name == 'push' && steps.yarn_coverage.outcome == 'success'
+      with:
+        projectBaseDir: ${{ env.UI_WORKING_DIRECTORY }}
+        args: >
+          -Dproject.settings=sonar-project.properties
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
