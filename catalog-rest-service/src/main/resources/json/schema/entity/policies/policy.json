@@ -7,9 +7,7 @@
   "definitions": {
     "policyName": {
       "description": "Name that identifies this Policy.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "policyType": {
       "javaType": "org.openmetadata.catalog.type.PolicyType",

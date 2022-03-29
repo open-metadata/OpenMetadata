@@ -8,9 +8,7 @@
   "definitions": {
     "userName": {
       "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     }
   },
 
