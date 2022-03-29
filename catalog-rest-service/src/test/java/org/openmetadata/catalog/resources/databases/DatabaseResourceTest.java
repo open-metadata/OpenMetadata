@@ -70,18 +70,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Test
-  void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateDatabase create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
+    // Create database with different optional fields
     CreateDatabase create = createRequest(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -170,7 +160,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // Validate service
     assertNotNull(database.getServiceType());
-    assertService(createRequest.getService(), database.getService());
+    assertReference(createRequest.getService(), database.getService());
   }
 
   @Override
@@ -181,7 +171,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
     // Validate service
-    assertService(expected.getService(), updated.getService());
+    assertReference(expected.getService(), updated.getService());
   }
 
   @Override

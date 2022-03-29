@@ -1886,12 +1886,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
   }
 
-  protected static void assertService(EntityReference expected, EntityReference actual) {
-    TestUtils.validateEntityReference(actual);
-    assertEquals(expected.getId(), actual.getId());
-    assertEquals(expected.getType(), actual.getType());
-  }
-
   protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
       throws HttpResponseException {
     if (owner != null) {

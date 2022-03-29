@@ -152,16 +152,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Test
-  void post_validLocations_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateLocation create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_locationWithoutRequiredFields_4xx(TestInfo test) {
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),

@@ -113,7 +113,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
     assertNotNull(pipeline.getServiceType());
-    assertService(createRequest.getService(), pipeline.getService());
+    assertReference(createRequest.getService(), pipeline.getService());
     validateTasks(createRequest.getTasks(), pipeline.getTasks());
     TestUtils.validateTags(createRequest.getTags(), pipeline.getTags());
   }
@@ -143,7 +143,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
-    assertService(expected.getService(), updated.getService());
+    assertReference(expected.getService(), updated.getService());
     validateTasks(expected.getTasks(), updated.getTasks());
     TestUtils.validateTags(expected.getTags(), updated.getTags());
   }
@@ -166,16 +166,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
-  }
-
-  @Test
-  void post_validPipelines_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreatePipeline create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test

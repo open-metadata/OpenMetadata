@@ -160,7 +160,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
-    assertService(expected.getService(), updated.getService());
+    assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getPipelineConfig(), updated.getPipelineConfig());
   }
 
@@ -175,16 +175,6 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
       return;
     }
     assertCommonFieldChange(fieldName, expected, actual);
-  }
-
-  @Test
-  void post_validAirflowPipeline_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateAirflowPipeline create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test

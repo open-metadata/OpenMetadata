@@ -75,16 +75,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Test
-  void post_validDashboards_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateDashboard create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_DashboardWithCharts_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(createRequest(test).withCharts(CHART_REFERENCES), ADMIN_AUTH_HEADERS);
   }
@@ -246,7 +236,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
     assertNotNull(dashboard.getServiceType());
-    assertService(createRequest.getService(), dashboard.getService());
+    assertReference(createRequest.getService(), dashboard.getService());
     validateDashboardCharts(dashboard, createRequest.getCharts());
     TestUtils.validateTags(createRequest.getTags(), dashboard.getTags());
   }
