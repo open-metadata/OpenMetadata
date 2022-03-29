@@ -26,8 +26,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -137,7 +135,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = getFields(fieldsParam);
     ResultList<DatabaseService> dbServices;
@@ -180,7 +178,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     DatabaseService service = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, service);
   }
@@ -214,7 +212,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     DatabaseService service = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, service);
   }
@@ -235,7 +233,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     EntityHistory entityHistory = dao.listVersions(id);
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -278,7 +276,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return decryptOrNullify(securityContext, dao.getVersion(id, version));
   }
 
@@ -299,7 +297,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
-      throws IOException, ParseException {
+      throws IOException {
     DatabaseService service = getService(create, securityContext);
     Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
@@ -323,7 +321,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
-      throws IOException, ParseException {
+      throws IOException {
     DatabaseService service = getService(update, securityContext);
     Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
@@ -350,7 +348,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           boolean recursive,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
-      throws IOException, ParseException {
+      throws IOException {
     Response response = delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;

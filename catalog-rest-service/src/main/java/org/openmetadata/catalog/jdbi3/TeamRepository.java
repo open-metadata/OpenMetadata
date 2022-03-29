@@ -20,7 +20,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -54,7 +53,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public Team setFields(Team team, Fields fields) throws IOException, ParseException {
+  public Team setFields(Team team, Fields fields) throws IOException {
     if (!fields.contains("profile")) {
       team.setProfile(null); // Clear the profile attribute, if it was not requested
     }

@@ -16,6 +16,7 @@ import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -292,7 +293,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           );
 
           return {
-            name: getPartialNameFromFQN(tableFQN, ['database', 'table'], '.'),
+            name: getPartialNameFromFQN(
+              tableFQN,
+              ['database', 'table'],
+              FQN_SEPARATOR_CHAR
+            ),
             fullyQualifiedName: tableFQN,
             joinCount: joinedCol.joinCount,
           };
@@ -320,7 +325,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
+    {
+      key: 'Tier',
+      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
     { key: 'Type', value: `${tableType}`, showLabel: true },
     { value: usage },
     { value: `${weeklyUsageCount} queries` },
@@ -569,7 +577,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     columnName={getPartialNameFromFQN(
                       datasetFQN,
                       ['column'],
-                      '.'
+                      FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
                     entityFieldThreads={getEntityFieldThreadCounts(

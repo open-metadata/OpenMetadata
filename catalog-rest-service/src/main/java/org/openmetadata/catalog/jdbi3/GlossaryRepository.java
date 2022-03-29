@@ -22,7 +22,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -54,7 +53,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public Glossary setFields(Glossary glossary, Fields fields) throws IOException, ParseException {
+  public Glossary setFields(Glossary glossary, Fields fields) throws IOException {
     glossary.setOwner(fields.contains(FIELD_OWNER) ? getOwner(glossary) : null);
     glossary.setTags(fields.contains("tags") ? getTags(glossary.getName()) : null);
     glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
@@ -62,7 +61,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void prepare(Glossary glossary) throws IOException, ParseException {
+  public void prepare(Glossary glossary) throws IOException {
     glossary.setOwner(Entity.getEntityReference(glossary.getOwner()));
     validateUsers(glossary.getReviewers());
     glossary.setTags(addDerivedTags(glossary.getTags()));
@@ -256,7 +255,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException, ParseException {
+    public void entitySpecificUpdate() throws IOException {
       updateReviewers(original.getEntity(), updated.getEntity());
     }
 

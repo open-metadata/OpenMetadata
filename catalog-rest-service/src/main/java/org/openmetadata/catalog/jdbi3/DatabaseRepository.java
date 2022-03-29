@@ -19,7 +19,6 @@ import static org.openmetadata.catalog.type.Include.ALL;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
@@ -107,7 +106,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 
-  public Database setFields(Database database, Fields fields) throws IOException, ParseException {
+  public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getService(database));
     database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);

@@ -68,9 +68,6 @@ public class MyDataPageTest {
     String servicesCount = webDriver.findElement(common.overviewFilterCount("service")).getText();
     Assert.assertEquals(servicesCount, "0");
 
-    String ingestionCount = webDriver.findElement(common.overviewFilterCount("ingestion")).getText();
-    Assert.assertEquals(ingestionCount, "0");
-
     String usersCount = webDriver.findElement(common.overviewFilterCount("user")).getText();
     Assert.assertEquals(usersCount, "1");
 

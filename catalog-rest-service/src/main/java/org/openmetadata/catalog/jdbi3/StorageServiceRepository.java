@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
@@ -43,7 +42,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public StorageService setFields(StorageService entity, Fields fields) throws IOException, ParseException {
+  public StorageService setFields(StorageService entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
@@ -54,7 +53,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   }
 
   @Override
-  public void prepare(StorageService entity) throws IOException, ParseException {
+  public void prepare(StorageService entity) throws IOException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
   }

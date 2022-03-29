@@ -50,6 +50,7 @@ import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getExplorePathWithSearch,
@@ -103,7 +104,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [tableData, setTableData] = useState<Array<Table>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
-    databaseFQN.split('.').slice(-1).pop() || ''
+    databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
   );
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
@@ -662,7 +663,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                   tags={(table.tags || []).map((tag) => ({
                                     ...tag,
                                     tagFQN: tag.tagFQN?.startsWith('Tier.Tier')
-                                      ? tag.tagFQN.split('.')[1]
+                                      ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
                                       : tag.tagFQN,
                                   }))}
                                 />

@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   ChangeDescription,
   Column,
@@ -57,7 +58,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   );
 
   const getChangeColName = (name: string | undefined) => {
-    return name?.split('.')?.slice(-2, -1)[0];
+    return name?.split(FQN_SEPARATOR_CHAR)?.slice(-2, -1)[0];
   };
 
   const isEndsWithField = (name: string | undefined, checkWith: string) => {
@@ -124,11 +125,11 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         value:
           !isUndefined(newTier) || !isUndefined(oldTier)
             ? getDiffValue(
-                oldTier?.tagFQN?.split('.')[1] || '',
-                newTier?.tagFQN?.split('.')[1] || ''
+                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
+                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
               )
             : tier?.tagFQN
-            ? tier?.tagFQN.split('.')[1]
+            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
             : '',
       },
     ];
@@ -344,7 +345,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     return [
       ...uniqueTags.map((t) =>
         t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split('.')[1] }
+          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
           : t
       ),
     ];
@@ -409,7 +410,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                       columnName={getPartialNameFromFQN(
                         datasetFQN,
                         ['column'],
-                        '.'
+                        FQN_SEPARATOR_CHAR
                       )}
                       columns={updatedColumns()}
                       joins={currentVersionData.joins as ColumnJoins[]}

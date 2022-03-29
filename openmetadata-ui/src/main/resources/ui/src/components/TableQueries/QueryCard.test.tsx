@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import { findByText, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import QueryCard from './QueryCard';
@@ -34,14 +34,21 @@ jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 
+jest.mock('../buttons/CopyToClipboardButton/CopyToClipboardButton', () => {
+  return jest.fn().mockReturnValue(<>CopyToClipboardButton</>);
+});
+
 describe('Test QueryCard Component', () => {
   it('Check if QueryCard has all child elements', async () => {
     const { container } = render(<QueryCard query={mockQueryData} />, {
       wrapper: MemoryRouter,
     });
-    const queryHeader = await findByTestId(container, 'query-header');
+    const queryHeader = getByTestId(container, 'query-header');
     const query = await findByText(container, /SchemaEditor/i);
-    const copyQueryButton = await findByTestId(container, 'copy-query');
+    const copyQueryButton = await findByText(
+      container,
+      /CopyToClipboardButton/i
+    );
 
     expect(queryHeader).toBeInTheDocument();
     expect(query).toBeInTheDocument();

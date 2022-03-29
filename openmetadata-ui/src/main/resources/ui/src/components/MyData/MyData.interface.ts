@@ -12,28 +12,27 @@
  */
 
 import {
-  EntityCounts,
   EntityThread,
   FormatedTableData,
   SearchDataFunctionType,
-  SearchResponse,
 } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
 
 export interface MyDataProps {
   error: string;
-  ingestionCount: number;
   countServices: number;
+  countTables: number;
+  countTopics: number;
+  countDashboards: number;
+  countPipelines: number;
   userDetails?: User;
-  searchResult: SearchResponse | undefined;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
   feedData: EntityThread[];
   feedFilter: FeedFilter;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
-  entityCounts: EntityCounts;
   isFeedLoading?: boolean;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;

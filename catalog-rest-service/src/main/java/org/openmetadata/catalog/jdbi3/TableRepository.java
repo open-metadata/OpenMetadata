@@ -97,7 +97,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public Table setFields(Table table, Fields fields) throws IOException, ParseException {
+  public Table setFields(Table table, Fields fields) throws IOException {
     setDefaultFields(table);
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains(FIELD_OWNER) ? getOwner(table) : null);
@@ -119,7 +119,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
-  private void setDefaultFields(Table table) throws IOException, ParseException {
+  private void setDefaultFields(Table table) throws IOException {
     EntityReference databaseRef = getContainer(table.getId(), TABLE);
     Database database = Entity.getEntity(databaseRef, Fields.EMPTY_FIELDS, Include.ALL);
     table.withDatabase(databaseRef).withService(database.getService());
@@ -148,7 +148,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addJoins(UUID tableId, TableJoins joins) throws IOException, ParseException {
+  public Table addJoins(UUID tableId, TableJoins joins) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
@@ -170,7 +170,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addSampleData(UUID tableId, TableData tableData) throws IOException, ParseException {
+  public Table addSampleData(UUID tableId, TableData tableData) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
 
@@ -195,7 +195,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException, ParseException {
+  public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
 
@@ -221,7 +221,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addLocation(UUID tableId, UUID locationId) throws IOException, ParseException {
+  public Table addLocation(UUID tableId, UUID locationId) throws IOException {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
@@ -232,7 +232,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addQuery(UUID tableId, SQLQuery query) throws IOException, ParseException {
+  public Table addQuery(UUID tableId, SQLQuery query) throws IOException {
     // Validate the request content
     try {
       byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
@@ -258,7 +258,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addTableTest(UUID tableId, TableTest tableTest) throws IOException, ParseException {
+  public Table addTableTest(UUID tableId, TableTest tableTest) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     // if ID is not passed we treat it as a new test case being added
@@ -295,7 +295,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table deleteTableTest(UUID tableId, String tableTestType) throws IOException, ParseException {
+  public Table deleteTableTest(UUID tableId, String tableTestType) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     // if ID is not passed we treat it as a new test case being added
@@ -322,7 +322,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addColumnTest(UUID tableId, ColumnTest columnTest) throws IOException, ParseException {
+  public Table addColumnTest(UUID tableId, ColumnTest columnTest) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     String columnName = columnTest.getColumnName();
@@ -404,7 +404,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException, ParseException {
+  public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException {
     // Validate the request content
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     String columnName = customMetric.getColumnName();
@@ -477,7 +477,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException, ParseException {
+  public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException {
     Table table = daoCollection.tableDAO().findEntityById(tableId);
     table.withDataModel(dataModel);
 
@@ -534,7 +534,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void prepare(Table table) throws IOException, ParseException {
+  public void prepare(Table table) throws IOException {
     Database database = Entity.getEntity(table.getDatabase(), Fields.EMPTY_FIELDS, Include.ALL);
     table.setDatabase(new DatabaseEntityInterface(database).getEntityReference());
     table.setService(database.getService());
@@ -691,8 +691,7 @@ public class TableRepository extends EntityRepository<Table> {
     return EntityUtil.getFQN(split[0], split[1], split[2]);
   }
 
-  private void addJoin(String date, String columnFQN, List<JoinedWith> joinedWithList)
-      throws IOException, ParseException {
+  private void addJoin(String date, String columnFQN, List<JoinedWith> joinedWithList) throws IOException {
     for (JoinedWith joinedWith : joinedWithList) {
       // Use the column that comes alphabetically first as the from field and the other as to field.
       // This helps us keep the bidirectional relationship to a single row instead one row for
@@ -778,7 +777,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private TableJoins getJoins(Table table) throws ParseException, IOException {
+  private TableJoins getJoins(Table table) throws IOException {
     String today = RestUtil.DATE_FORMAT.format(new Date()); // today
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     TableJoins tableJoins =

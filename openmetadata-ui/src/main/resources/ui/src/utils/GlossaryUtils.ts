@@ -25,7 +25,10 @@ import {
   getGlossaryTerms,
 } from '../axiosAPIs/glossaryAPI';
 import { searchData } from '../axiosAPIs/miscAPI';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
@@ -125,7 +128,7 @@ const createGlossaryTermNode = (
   name: string
 ): GlossaryTermTreeNode => {
   const arrFQN = leafFqn.split(`${name}.`);
-  const childName = arrFQN[1]?.split('.')[0];
+  const childName = arrFQN[1]?.split(FQN_SEPARATOR_CHAR)[0];
 
   return !childName
     ? {
@@ -182,7 +185,7 @@ export const getSearchedGlossaryTermTree = (
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
-    const arrFQN = term.fqdn.split('.');
+    const arrFQN = term.fqdn.split(FQN_SEPARATOR_CHAR);
     const rootName = arrFQN[0];
     termTree.push(createGlossaryTermNode(term.fqdn, rootName));
   }
@@ -235,7 +238,7 @@ export const getActionsList = () => {
  * @returns list of fqns
  */
 export const getHierarchicalKeysByFQN = (fqn: string) => {
-  const keys = fqn.split('.').reduce((prev, curr) => {
+  const keys = fqn.split(FQN_SEPARATOR_CHAR).reduce((prev, curr) => {
     const currFqn = prev.length ? `${prev[prev.length - 1]}.${curr}` : curr;
 
     return [...prev, currFqn];

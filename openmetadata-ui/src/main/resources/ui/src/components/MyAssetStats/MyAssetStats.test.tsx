@@ -32,14 +32,11 @@ describe('Test MyDataHeader Component', () => {
   it('Component should render', () => {
     const { container } = render(
       <MyAssetStats
+        countDashboards={10}
+        countPipelines={3}
         countServices={193}
-        entityCounts={{
-          tableCount: 40,
-          topicCount: 13,
-          dashboardCount: 10,
-          pipelineCount: 3,
-        }}
-        ingestionCount={0}
+        countTables={40}
+        countTopics={13}
       />,
       {
         wrapper: MemoryRouter,
@@ -54,14 +51,11 @@ describe('Test MyDataHeader Component', () => {
   it('Should have 7 data summary details', () => {
     const { container } = render(
       <MyAssetStats
+        countDashboards={10}
+        countPipelines={3}
         countServices={193}
-        entityCounts={{
-          tableCount: 40,
-          topicCount: 13,
-          dashboardCount: 10,
-          pipelineCount: 3,
-        }}
-        ingestionCount={0}
+        countTables={40}
+        countTopics={13}
       />,
       {
         wrapper: MemoryRouter,
@@ -70,20 +64,17 @@ describe('Test MyDataHeader Component', () => {
 
     const dataSummary = getByTestId(container, 'data-summary-container');
 
-    expect(dataSummary.childElementCount).toBe(8);
+    expect(dataSummary.childElementCount).toBe(7);
   });
 
   it('OnClick it should redirect to respective page', () => {
     const { container } = render(
       <MyAssetStats
+        countDashboards={10}
+        countPipelines={3}
         countServices={4}
-        entityCounts={{
-          tableCount: 40,
-          topicCount: 13,
-          dashboardCount: 10,
-          pipelineCount: 3,
-        }}
-        ingestionCount={0}
+        countTables={40}
+        countTopics={13}
       />,
       {
         wrapper: MemoryRouter,

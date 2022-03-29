@@ -18,6 +18,7 @@ import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
@@ -68,7 +69,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   const history = useHistory();
   const getTier = () => {
     if (tier) {
-      return isString(tier) ? tier : tier.tagFQN.split('.')[1];
+      return isString(tier) ? tier : tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
     }
 
     return '';

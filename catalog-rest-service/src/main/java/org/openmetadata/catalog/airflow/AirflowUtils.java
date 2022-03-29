@@ -16,7 +16,6 @@ package org.openmetadata.catalog.airflow;
 import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -65,7 +64,7 @@ public final class AirflowUtils {
   private AirflowUtils() {}
 
   public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(
-      AirflowPipeline airflowPipeline, Boolean decrypt) throws IOException, ParseException {
+      AirflowPipeline airflowPipeline, Boolean decrypt) throws IOException {
     DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
     PipelineConfig pipelineConfig = airflowPipeline.getPipelineConfig();
@@ -139,8 +138,7 @@ public final class AirflowUtils {
   }
 
   public static OpenMetadataIngestionConfig buildDatabaseIngestion(
-      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration, Boolean decrypt)
-      throws IOException, ParseException {
+      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration, Boolean decrypt) throws IOException {
     return OpenMetadataIngestionConfig.builder()
         .source(makeOpenMetadataDatasourceComponent(airflowPipeline, decrypt))
         .sink(makeOpenMetadataSinkComponent())
@@ -149,8 +147,7 @@ public final class AirflowUtils {
   }
 
   public static IngestionAirflowPipeline toIngestionPipeline(
-      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration, Boolean decrypt)
-      throws IOException, ParseException {
+      AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration, Boolean decrypt) throws IOException {
     Map<String, Object> taskParams = new HashMap<>();
     taskParams.put("workflow_config", buildDatabaseIngestion(airflowPipeline, airflowConfiguration, decrypt));
     IngestionTaskConfig taskConfig = IngestionTaskConfig.builder().opKwargs(taskParams).build();

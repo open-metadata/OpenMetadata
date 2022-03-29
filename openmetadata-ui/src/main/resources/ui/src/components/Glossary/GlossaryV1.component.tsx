@@ -19,6 +19,7 @@ import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getGlossaryPath,
   TITLE_FOR_NON_ADMIN_ACTION,
@@ -113,7 +114,7 @@ Props) => {
    * @param fqn fqn of glossary or glossary term
    */
   const handleBreadcrum = (fqn: string) => {
-    const arr = fqn.split('.');
+    const arr = fqn.split(FQN_SEPARATOR_CHAR);
     const dataFQN: Array<string> = [];
     const newData = arr.map((d, i) => {
       dataFQN.push(d);
@@ -121,7 +122,7 @@ Props) => {
 
       return {
         name: d,
-        url: isLink ? getGlossaryPath(dataFQN.join('.')) : '',
+        url: isLink ? getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)) : '',
         activeTitle: isLink,
       };
     });

@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidEntityLink;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.INVALID_ENTITY_LINK;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -80,7 +80,7 @@ public final class MessageParser {
 
       if (arrayFieldValue != null) {
         if (arrayFieldName == null) {
-          throw new IllegalArgumentException(invalidEntityLink());
+          throw new IllegalArgumentException(INVALID_ENTITY_LINK);
         }
         this.linkType = LinkType.ENTITY_ARRAY_FIELD;
         this.fullyQualifiedFieldType = String.format("%s.%s.member", entityType, fieldName);

@@ -23,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -96,7 +94,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
     return dao.listAfter(uriInfo, fields, filter, 10000, null);
@@ -130,7 +128,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -147,7 +145,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException, ParseException {
+      throws IOException {
     addToReport(securityContext, report);
     return create(uriInfo, securityContext, report, ADMIN | BOT);
   }
@@ -165,8 +163,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) throws IOException {
     addToReport(securityContext, report);
     return createOrUpdate(uriInfo, securityContext, report);
   }

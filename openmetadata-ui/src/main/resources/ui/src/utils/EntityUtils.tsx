@@ -17,6 +17,7 @@ import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import Avatar from '../components/common/avatar/Avatar';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
@@ -92,8 +93,8 @@ export const getEntityOverview = (
       const [service, database] = getPartialNameFromFQN(
         fullyQualifiedName ?? '',
         ['service', 'database'],
-        '.'
-      ).split('.');
+        FQN_SEPARATOR_CHAR
+      ).split(FQN_SEPARATOR_CHAR);
       const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
       const usage = !isNil(usageSummary?.weeklyStats?.percentileRank)
@@ -118,7 +119,7 @@ export const getEntityOverview = (
             getPartialNameFromFQN(
               fullyQualifiedName ?? '',
               ['service', 'database'],
-              '.'
+              FQN_SEPARATOR_CHAR
             )
           ),
           isLink: true,
@@ -135,7 +136,7 @@ export const getEntityOverview = (
         },
         {
           name: 'Tier',
-          value: tier ? tier.split('.')[1] : '--',
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
@@ -213,12 +214,12 @@ export const getEntityOverview = (
         },
         {
           name: 'Tier',
-          value: tier ? tier.split('.')[1] : '--',
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
           name: `${serviceType} url`,
-          value: fullyQualifiedName?.split('.')[1] as string,
+          value: fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string,
           url: pipelineUrl as string,
           isLink: true,
           isExternal: true,
@@ -261,12 +262,14 @@ export const getEntityOverview = (
         },
         {
           name: 'Tier',
-          value: tier ? tier.split('.')[1] : '--',
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : '--',
           isLink: false,
         },
         {
           name: `${serviceType} url`,
-          value: displayName || (fullyQualifiedName?.split('.')[1] as string),
+          value:
+            displayName ||
+            (fullyQualifiedName?.split(FQN_SEPARATOR_CHAR)[1] as string),
           url: dashboardUrl as string,
           isLink: true,
           isExternal: true,

@@ -13,7 +13,12 @@
 
 import { findByText, queryByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
+import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { fetchSandboxConfig } from '../../axiosAPIs/miscAPI';
+import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
+import { getAllTables } from '../../axiosAPIs/tableAPI';
+import { getAllTopics } from '../../axiosAPIs/topicsAPI';
+import { getAllServices } from '../../utils/ServiceUtils';
 import MyDataPageComponent from './MyDataPage.component';
 
 const mockAuth = {
@@ -52,11 +57,53 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
   ),
 }));
 
-jest.mock('../../axiosAPIs/airflowPipelineAPI', () => ({
-  getAirflowPipelines: jest.fn().mockImplementation(() =>
+jest.mock('../../axiosAPIs/tableAPI', () => ({
+  getAllTables: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
         data: [],
+        paging: {
+          total: 3,
+        },
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/topicsAPI', () => ({
+  getAllTopics: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+        paging: {
+          total: 3,
+        },
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/dashboardAPI', () => ({
+  getAllDashboards: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+        paging: {
+          total: 3,
+        },
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/pipelineAPI', () => ({
+  getAllPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+        paging: {
+          total: 3,
+        },
       },
     })
   ),
@@ -190,6 +237,203 @@ describe('Test MyData page component', () => {
 
       expect(myData).toBeInTheDocument();
       expect(githubStarButton).not.toBeInTheDocument();
+    });
+
+    it('should render component if table count api fails', async () => {
+      (getAllTables as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: 'Error!' } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if table count api has no data', async () => {
+      (getAllTables as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({})
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if table count api has no paging', async () => {
+      (getAllTables as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          data: {
+            data: [],
+          },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if topic count api fails', async () => {
+      (getAllTopics as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: 'Error!' } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if topic count api has no data', async () => {
+      (getAllTopics as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({})
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if topic count api has no paging', async () => {
+      (getAllTopics as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          data: {
+            data: [],
+          },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if dashboard count api fails', async () => {
+      (getAllDashboards as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: 'Error!' } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if dashboard count api has no data', async () => {
+      (getAllDashboards as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({})
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if dashboard count api has no paging', async () => {
+      (getAllDashboards as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          data: {
+            data: [],
+          },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if pipeline count api fails', async () => {
+      (getAllPipelines as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: 'Error!' } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if pipeline count api has no data', async () => {
+      (getAllPipelines as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({})
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if pipeline count api has no paging', async () => {
+      (getAllPipelines as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          data: {
+            data: [],
+          },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if service util fails', async () => {
+      (getAllServices as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: 'Error!' } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if service util has no data', async () => {
+      (getAllServices as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve([{}])
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if service util has no paging', async () => {
+      (getAllServices as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve([
+          {
+            data: {
+              data: [],
+            },
+          },
+        ])
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
     });
   });
 });

@@ -54,11 +54,6 @@ import {
   getServiceDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import {
-  onConfirmText,
-  onErrorText,
-  onUpdatedConversastionError,
-} from '../../constants/feed.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -71,6 +66,7 @@ import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -84,6 +80,7 @@ import {
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 
 const PipelineDetailsPage = () => {
@@ -150,20 +147,38 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN)).then(
-      (res: AxiosResponse) => {
-        setFeedCount(res.data.totalCount);
-        setEntityFieldThreadCount(res.data.counts);
-      }
-    );
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
   };
 
-  useEffect(() => {
-    if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentPipelineTab(tab));
-    }
-  }, [tab]);
+  const handleShowSuccessToast = (message: string) => {
+    showToast({
+      variant: 'success',
+      body: message,
+    });
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setFeedCount(res.data.totalCount);
+          setEntityFieldThreadCount(res.data.counts);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
+        handleShowErrorToast(errMsg);
+      });
+  };
 
   const saveUpdatedPipelineData = (
     updatedData: Pipeline
@@ -180,13 +195,18 @@ const PipelineDetailsPage = () => {
     setIsLineageLoading(true);
     getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
       .then((res: AxiosResponse) => {
-        setEntityLineage(res.data);
+        if (res.data) {
+          setEntityLineage(res.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message ?? 'Error while fetching lineage data',
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-error']
+        );
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLineageLoading(false);
@@ -197,70 +217,77 @@ const PipelineDetailsPage = () => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, defaultFields)
       .then((res: AxiosResponse) => {
-        const {
-          id,
-          deleted,
-          description,
-          followers,
-          fullyQualifiedName,
-          service,
-          serviceType,
-          tags,
-          owner,
-          displayName,
-          tasks,
-          pipelineUrl,
-          version,
-        } = res.data;
-        setDisplayName(displayName);
-        setPipelineDetails(res.data);
-        setCurrentVersion(version);
-        setPipelineId(id);
-        setDescription(description ?? '');
-        setFollowers(followers);
-        setOwner(owner);
-        setTier(getTierTags(tags));
-        setTags(getTagsWithoutTier(tags));
-        setServiceType(serviceType);
-        setDeleted(deleted);
-        setSlashedPipelineName([
-          {
-            name: service.name,
-            url: service.name
-              ? getServiceDetailsPath(
-                  service.name,
-                  ServiceCategory.PIPELINE_SERVICES
-                )
-              : '',
-            imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-          },
-          {
-            name: displayName,
-            url: '',
-            activeTitle: true,
-          },
-        ]);
+        if (res.data) {
+          const {
+            id,
+            deleted,
+            description,
+            followers,
+            fullyQualifiedName,
+            service,
+            serviceType,
+            tags,
+            owner,
+            displayName,
+            tasks,
+            pipelineUrl,
+            version,
+          } = res.data;
+          setDisplayName(displayName);
+          setPipelineDetails(res.data);
+          setCurrentVersion(version);
+          setPipelineId(id);
+          setDescription(description ?? '');
+          setFollowers(followers);
+          setOwner(owner);
+          setTier(getTierTags(tags));
+          setTags(getTagsWithoutTier(tags));
+          setServiceType(serviceType);
+          setDeleted(deleted);
+          setSlashedPipelineName([
+            {
+              name: service.name,
+              url: service.name
+                ? getServiceDetailsPath(
+                    service.name,
+                    ServiceCategory.PIPELINE_SERVICES
+                  )
+                : '',
+              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+            },
+            {
+              name: displayName,
+              url: '',
+              activeTitle: true,
+            },
+          ]);
 
-        addToRecentViewed({
-          displayName,
-          entityType: EntityType.PIPELINE,
-          fqn: fullyQualifiedName,
-          serviceType: serviceType,
-          timestamp: 0,
-        });
+          addToRecentViewed({
+            displayName,
+            entityType: EntityType.PIPELINE,
+            fqn: fullyQualifiedName,
+            serviceType: serviceType,
+            timestamp: 0,
+          });
 
-        setPipelineUrl(pipelineUrl);
-        setTasks(tasks);
+          setPipelineUrl(pipelineUrl);
+          setTasks(tasks);
+        } else {
+          setIsError(true);
+
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg = err.message || 'Error while fetching pipeline details';
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-pipeline-details-error']
+          );
+
+          handleShowErrorToast(errMsg);
         }
       })
       .finally(() => setLoading(false));
@@ -284,13 +311,21 @@ const PipelineDetailsPage = () => {
         getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
           .then((res: AxiosResponse) => {
             const { data } = res.data;
-            setEntityThread(data);
+            if (data) {
+              setEntityThread(data);
+            } else {
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
+            }
           })
-          .catch(() => {
-            showToast({
-              variant: 'error',
-              body: 'Error while fetching entity feeds',
-            });
+          .catch((err: AxiosError) => {
+            const errMsg = getErrorText(
+              err,
+              jsonData['api-error-messages']['fetch-entity-feed-error']
+            );
+
+            handleShowErrorToast(errMsg);
           })
           .finally(() => setIsentityThreadLoading(false));
 
@@ -305,56 +340,66 @@ const PipelineDetailsPage = () => {
   const followPipeline = () => {
     addFollower(pipelineId, USERId)
       .then((res: AxiosResponse) => {
-        const { newValue } = res.data.changeDescription.fieldsAdded[0];
+        if (res.data) {
+          const { newValue } = res.data.changeDescription.fieldsAdded[0];
 
-        setFollowers([...followers, ...newValue]);
+          setFollowers([...followers, ...newValue]);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data.message ||
-          'Error while following pipeline entity.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-entity-follow-error']
+        );
+        handleShowErrorToast(errMsg);
       });
   };
+
   const unfollowPipeline = () => {
     removeFollower(pipelineId, USERId)
       .then((res: AxiosResponse) => {
-        const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
+        if (res.data) {
+          const { oldValue } = res.data.changeDescription.fieldsDeleted[0];
 
-        setFollowers(
-          followers.filter((follower) => follower.id !== oldValue[0].id)
-        );
+          setFollowers(
+            followers.filter((follower) => follower.id !== oldValue[0].id)
+          );
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data.message ||
-          'Error while unfollowing pipeline entity.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-entity-unfollow-error']
+        );
+
+        handleShowErrorToast(errMsg);
       });
   };
 
   const descriptionUpdateHandler = (updatedPipeline: Pipeline) => {
     saveUpdatedPipelineData(updatedPipeline)
       .then((res: AxiosResponse) => {
-        const { description, version } = res.data;
-        setCurrentVersion(version);
-        setPipelineDetails(res.data);
-        setDescription(description);
-        getEntityFeedCount();
+        if (res.data) {
+          const { description, version } = res.data;
+          setCurrentVersion(version);
+          setPipelineDetails(res.data);
+          setDescription(description);
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data.message || 'Error while updating description.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-description-error']
+        );
+
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -362,21 +407,24 @@ const PipelineDetailsPage = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedPipelineData(updatedPipeline)
         .then((res) => {
-          setPipelineDetails(res.data);
-          setCurrentVersion(res.data.version);
-          setOwner(res.data.owner);
-          setTier(getTierTags(res.data.tags));
-          getEntityFeedCount();
-          resolve();
+          if (res.data) {
+            setPipelineDetails(res.data);
+            setCurrentVersion(res.data.version);
+            setOwner(res.data.owner);
+            setTier(getTierTags(res.data.tags));
+            getEntityFeedCount();
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
-          const errMsg =
-            err.response?.data.message || 'Error while updating entity.';
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['update-entity-error']
+          );
+          handleShowErrorToast(errMsg);
           reject();
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
         });
     });
   };
@@ -384,26 +432,43 @@ const PipelineDetailsPage = () => {
   const onTagUpdate = (updatedPipeline: Pipeline) => {
     saveUpdatedPipelineData(updatedPipeline)
       .then((res: AxiosResponse) => {
-        setTier(getTierTags(res.data.tags));
-        setCurrentVersion(res.data.version);
-        setTags(getTagsWithoutTier(res.data.tags));
-        getEntityFeedCount();
+        if (res.data) {
+          setTier(getTierTags(res.data.tags));
+          setCurrentVersion(res.data.version);
+          setTags(getTagsWithoutTier(res.data.tags));
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data.message || 'Error while updating tags.';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-tags-error']
+        );
+
+        handleShowErrorToast(errMsg);
       });
   };
 
   const onTaskUpdate = (jsonPatch: Array<Operation>) => {
-    patchPipelineDetails(pipelineId, jsonPatch).then((res: AxiosResponse) => {
-      setTasks(res.data.tasks || []);
-      getEntityFeedCount();
-    });
+    patchPipelineDetails(pipelineId, jsonPatch)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setTasks(res.data.tasks || []);
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-task-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      });
   };
 
   const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
@@ -448,11 +513,12 @@ const PipelineDetailsPage = () => {
         .then(() => {
           resolve();
         })
-        .catch(() => {
-          showToast({
-            variant: 'error',
-            body: `Error while adding adding new edge`,
-          });
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['add-lineage-error']
+          );
+          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -464,11 +530,12 @@ const PipelineDetailsPage = () => {
       data.fromId,
       data.toEntity,
       data.toId
-    ).catch(() => {
-      showToast({
-        variant: 'error',
-        body: `Error while removing edge`,
-      });
+    ).catch((err: AxiosError) => {
+      const errMsg = getErrorText(
+        err,
+        jsonData['api-error-messages']['delete-lineage-error']
+      );
+      handleShowErrorToast(errMsg);
     });
   };
 
@@ -492,31 +559,39 @@ const PipelineDetailsPage = () => {
               }
             });
           });
+          getEntityFeedCount();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while posting feed',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['add-feed-error']
+        );
+        handleShowErrorToast(errMsg);
       });
   };
 
   const createThread = (data: CreateThread) => {
     postThread(data)
       .then((res: AxiosResponse) => {
-        setEntityThread((pre) => [...pre, res.data]);
-        getEntityFeedCount();
-        showToast({
-          variant: 'success',
-          body: 'Conversation created successfully',
-        });
+        if (res.data) {
+          setEntityThread((pre) => [...pre, res.data]);
+          getEntityFeedCount();
+          handleShowSuccessToast(
+            jsonData['api-success-messages']['create-conversation']
+          );
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while creating the conversation',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -525,38 +600,48 @@ const PipelineDetailsPage = () => {
       .then(() => {
         getUpdatedThread(threadId)
           .then((data) => {
-            setEntityThread((pre) => {
-              return pre.map((thread) => {
-                if (thread.id === data.id) {
-                  return {
-                    ...thread,
-                    posts: data.posts.slice(-3),
-                    postsCount: data.postsCount,
-                  };
-                } else {
-                  return thread;
-                }
+            if (data) {
+              setEntityThread((pre) => {
+                return pre.map((thread) => {
+                  if (thread.id === data.id) {
+                    return {
+                      ...thread,
+                      posts: data.posts.slice(-3),
+                      postsCount: data.postsCount,
+                    };
+                  } else {
+                    return thread;
+                  }
+                });
               });
-            });
+            } else {
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
+            }
           })
-          .catch((error) => {
-            const message = error?.message;
-            showToast({
-              variant: 'error',
-              body: message ?? onUpdatedConversastionError,
-            });
+          .catch((error: AxiosError) => {
+            const errMsg = getErrorText(
+              error,
+              jsonData['api-error-messages']['fetch-updated-conversation-error']
+            );
+
+            handleShowErrorToast(errMsg);
           });
 
-        showToast({
-          variant: 'success',
-          body: onConfirmText,
-        });
+        handleShowSuccessToast(
+          jsonData['api-success-messages']['delete-message']
+        );
       })
-      .catch((error) => {
-        const message = error?.message;
-        showToast({ variant: 'error', body: message ?? onErrorText });
+      .catch((error: AxiosError) => {
+        const message = getErrorText(
+          error,
+          jsonData['api-error-messages']['delete-message-error']
+        );
+        handleShowErrorToast(message);
       });
   };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -569,6 +654,12 @@ const PipelineDetailsPage = () => {
     fetchPipelineDetail(pipelineFQN);
     setEntityLineage({} as EntityLineage);
   }, [pipelineFQN]);
+
+  useEffect(() => {
+    if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentPipelineTab(tab));
+    }
+  }, [tab]);
 
   return (
     <>

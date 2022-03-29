@@ -14,18 +14,16 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityCounts,
-  EntityThread,
-  FormatedTableData,
-  SearchResponse,
-} from 'Models';
+import { EntityThread, FormatedTableData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getAirflowPipelines } from '../../axiosAPIs/airflowPipelineAPI';
+import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
+import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
+import { getAllTables } from '../../axiosAPIs/tableAPI';
+import { getAllTopics } from '../../axiosAPIs/topicsAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
@@ -35,19 +33,16 @@ import {
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
-import {
-  myDataEntityCounts,
-  myDataSearchIndex,
-} from '../../constants/Mydata.constants';
+import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
-import { getEntityCountByType } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -55,10 +50,10 @@ const MyDataPage = () => {
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [countServices, setCountServices] = useState<number>();
-  const [ingestionCount, setIngestionCount] = useState<number>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [searchResult, setSearchResult] = useState<SearchResponse>();
-  const [entityCounts, setEntityCounts] = useState<EntityCounts>();
+  const [countTables, setCountTables] = useState<number>();
+  const [countTopics, setCountTopics] = useState<number>();
+  const [countDashboards, setCountDashboards] = useState<number>();
+  const [countPipelines, setCountPipelines] = useState<number>();
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
@@ -67,6 +62,14 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
+
+  const handleShowErrorToast = (msg: string) => {
+    showToast({
+      variant: 'error',
+      body: msg,
+    });
+  };
+
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
   };
@@ -74,31 +77,101 @@ const MyDataPage = () => {
   const fetchData = (fetchService = false) => {
     setError('');
 
-    searchData('', 1, 0, '', '', '', myDataSearchIndex)
-      .then((res: SearchResponse) => {
-        setSearchResult(res);
-        if (isUndefined(entityCounts)) {
-          setEntityCounts(
-            getEntityCountByType(
-              res.data.aggregations?.['sterms#EntityType']?.buckets
-            )
-          );
+    // limit=0 will fetch empty data list with total count
+    getAllTables('', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountTables(res.data.paging.total || 0);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
-        setEntityCounts(myDataEntityCounts);
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          getErrorText(
+            error,
+            jsonData['api-error-messages']['unexpected-server-response']
+          )
+        );
+        setCountTables(0);
+      });
+
+    // limit=0 will fetch empty data list with total count
+    getAllTopics('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountTopics(res.data.paging.total || 0);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          getErrorText(
+            error,
+            jsonData['api-error-messages']['unexpected-server-response']
+          )
+        );
+        setCountTopics(0);
+      });
+
+    // limit=0 will fetch empty data list with total count
+    getAllPipelines('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountPipelines(res.data.paging.total || 0);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          getErrorText(
+            error,
+            jsonData['api-error-messages']['unexpected-server-response']
+          )
+        );
+        setCountPipelines(0);
+      });
+
+    // limit=0 will fetch empty data list with total count
+    getAllDashboards('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountDashboards(res.data.paging.total || 0);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((error: AxiosError) => {
+        handleShowErrorToast(
+          getErrorText(
+            error,
+            jsonData['api-error-messages']['unexpected-server-response']
+          )
+        );
+        setCountDashboards(0);
       });
 
     if (fetchService) {
-      getAllServices()
-        .then((res) => setCountServices(res.length))
-        .catch(() => setCountServices(0));
-      getAirflowPipelines([], '', '?limit=1000000')
-        .then((res) => setIngestionCount(res.data.data.length))
-        .catch(() => setIngestionCount(0));
+      // limit=0 will fetch empty data list with total count
+      getAllServices(true, 0)
+        .then((res) => {
+          const total = res.reduce((prev, curr) => {
+            return prev + (curr?.paging?.total || 0);
+          }, 0);
+          setCountServices(total);
+        })
+        .catch((error: AxiosError) => {
+          handleShowErrorToast(
+            getErrorText(
+              error,
+              jsonData['api-error-messages']['unexpected-server-response']
+            )
+          );
+          setCountServices(0);
+        });
     }
-    setIsLoading(false);
   };
 
   const fetchMyData = () => {
@@ -265,24 +338,26 @@ const MyDataPage = () => {
   return (
     <PageContainerV1>
       {!isUndefined(countServices) &&
-      !isUndefined(entityCounts) &&
-      !isUndefined(ingestionCount) &&
-      !isLoading ? (
+      !isUndefined(countTables) &&
+      !isUndefined(countTopics) &&
+      !isUndefined(countDashboards) &&
+      !isUndefined(countPipelines) ? (
         <Fragment>
           <MyData
+            countDashboards={countDashboards}
+            countPipelines={countPipelines}
             countServices={countServices}
+            countTables={countTables}
+            countTopics={countTopics}
             deletePostHandler={deletePostHandler}
-            entityCounts={entityCounts}
             error={error}
             feedData={entityThread || []}
             feedFilter={feedFilter}
             feedFilterHandler={feedFilterHandler}
             followedData={followedData || []}
-            ingestionCount={ingestionCount}
             isFeedLoading={isFeedLoading}
             ownedData={ownedData || []}
             postFeedHandler={postFeedHandler}
-            searchResult={searchResult}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>

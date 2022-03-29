@@ -23,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -105,7 +103,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
       @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     ListFilter filter = new ListFilter();
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -138,7 +136,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -155,7 +153,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException, ParseException {
+      throws IOException {
     addToMetrics(securityContext, metrics);
     return create(uriInfo, securityContext, metrics, ADMIN | BOT);
   }
@@ -173,8 +171,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
     addToMetrics(securityContext, metrics);
     return createOrUpdate(uriInfo, securityContext, metrics);
   }

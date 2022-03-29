@@ -40,6 +40,7 @@ import DatasetVersion from '../../components/DatasetVersion/DatasetVersion.compo
 import Loader from '../../components/Loader/Loader';
 import PipelineVersion from '../../components/PipelineVersion/PipelineVersion.component';
 import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
@@ -142,7 +143,7 @@ const EntityVersionPage: FunctionComponent = () => {
           getPartialNameFromFQN(
             entityFQN,
             ['service', 'database', 'table'],
-            '.'
+            FQN_SEPARATOR_CHAR
           ),
           ['owner', 'tags']
         )
@@ -196,7 +197,11 @@ const EntityVersionPage: FunctionComponent = () => {
       }
       case EntityType.TOPIC: {
         getTopicByFqn(
-          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.'),
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          ),
           ['owner', 'tags']
         )
           .then((res: AxiosResponse) => {
@@ -244,7 +249,11 @@ const EntityVersionPage: FunctionComponent = () => {
       }
       case EntityType.DASHBOARD: {
         getDashboardByFqn(
-          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.'),
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          ),
           ['owner', 'tags', 'charts']
         )
           .then((res: AxiosResponse) => {
@@ -293,7 +302,11 @@ const EntityVersionPage: FunctionComponent = () => {
       }
       case EntityType.PIPELINE: {
         getPipelineByFqn(
-          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.'),
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          ),
           ['owner', 'tags', 'tasks']
         )
           .then((res: AxiosResponse) => {
@@ -354,7 +367,7 @@ const EntityVersionPage: FunctionComponent = () => {
           getPartialNameFromFQN(
             entityFQN,
             ['service', 'database', 'table'],
-            '.'
+            FQN_SEPARATOR_CHAR
           )
         )
           .then((res: AxiosResponse) => {
@@ -411,7 +424,11 @@ const EntityVersionPage: FunctionComponent = () => {
 
       case EntityType.TOPIC: {
         getTopicByFqn(
-          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.')
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          )
         )
           .then((res: AxiosResponse) => {
             const { id, name, service, serviceType } = res.data;
@@ -462,7 +479,11 @@ const EntityVersionPage: FunctionComponent = () => {
       }
       case EntityType.DASHBOARD: {
         getDashboardByFqn(
-          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.')
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          )
         )
           .then((res: AxiosResponse) => {
             const { id, displayName, service, serviceType } = res.data;
@@ -513,7 +534,11 @@ const EntityVersionPage: FunctionComponent = () => {
       }
       case EntityType.PIPELINE: {
         getPipelineByFqn(
-          getPartialNameFromFQN(entityFQN, ['service', 'database'], '.')
+          getPartialNameFromFQN(
+            entityFQN,
+            ['service', 'database'],
+            FQN_SEPARATOR_CHAR
+          )
         )
           .then((res: AxiosResponse) => {
             const { id, displayName, service, serviceType } = res.data;

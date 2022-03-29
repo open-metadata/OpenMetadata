@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -57,7 +56,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   }
 
   @Override
-  public AirflowPipeline setFields(AirflowPipeline airflowPipeline, Fields fields) throws IOException, ParseException {
+  public AirflowPipeline setFields(AirflowPipeline airflowPipeline, Fields fields) throws IOException {
     airflowPipeline.setService(getService(airflowPipeline));
     airflowPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(airflowPipeline) : null);
     return airflowPipeline;
@@ -69,7 +68,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   }
 
   @Override
-  public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
+  public void prepare(AirflowPipeline airflowPipeline) throws IOException {
     EntityReference entityReference = Entity.getEntityReference(airflowPipeline.getService());
     airflowPipeline.setService(entityReference);
     airflowPipeline.setFullyQualifiedName(getFQN(airflowPipeline));
