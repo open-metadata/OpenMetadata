@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
