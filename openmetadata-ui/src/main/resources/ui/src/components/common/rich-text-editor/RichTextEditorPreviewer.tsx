@@ -16,6 +16,7 @@ import Markdown from 'markdown-to-jsx';
 import React, { useEffect, useState } from 'react';
 import { Paragraph, UnOrderedList } from '../../../utils/MarkdownUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { ElementProp } from './RichTextEditor.interface';
 
 const MAX_LENGTH = 300;
 
@@ -82,6 +83,22 @@ const RichTextEditorPreviewer = ({
                 className: 'tw-ml-3',
               },
             },
+          },
+          createElement(type, props, children) {
+            const {
+              className,
+              // eslint-disable-next-line react/prop-types
+              class: classes,
+              ...restProps
+            } = props as ElementProp;
+            const modifiedProps = {
+              ...restProps,
+              className: `${className ? className : ''} ${
+                classes ? classes : ''
+              }`,
+            };
+
+            return React.createElement(type, modifiedProps, children);
           },
         }}>
         {content}
