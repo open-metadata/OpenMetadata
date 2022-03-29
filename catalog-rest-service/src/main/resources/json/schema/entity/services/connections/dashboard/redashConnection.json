@@ -9,9 +9,7 @@
     "redashType": {
       "description": "Redash service type",
       "type": "string",
-      "enum": [
-        "Redash"
-      ],
+      "enum": ["Redash"],
       "default": "Redash"
     }
   },
@@ -28,6 +26,7 @@
     "redashURL": {
       "description": "URL for the redash instance",
       "type": "string",
+      "format": "uri",
       "default": "http://localhost:5000"
     },
     "apiKey": {

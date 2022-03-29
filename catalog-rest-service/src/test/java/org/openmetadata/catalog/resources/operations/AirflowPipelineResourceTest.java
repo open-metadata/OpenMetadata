@@ -53,6 +53,7 @@ import org.openmetadata.catalog.airflow.models.OpenMetadataIngestionTask;
 import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
 import org.openmetadata.catalog.api.operations.pipelines.PipelineConfig;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
@@ -63,8 +64,9 @@ import org.openmetadata.catalog.operations.pipelines.FilterPattern;
 import org.openmetadata.catalog.operations.pipelines.PipelineType;
 import org.openmetadata.catalog.resources.EntityOperationsResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.catalog.services.connections.database.ConnectionArguments;
+import org.openmetadata.catalog.services.connections.database.ConnectionOptions;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
@@ -374,14 +376,14 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
     // Update and connector orgs and options to database connection
     DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     DatabaseConnection databaseConnection = databaseService.getConnection();
-    /*ConnectionArguments connectionArguments =
+    ConnectionArguments connectionArguments =
         new ConnectionArguments()
             .withAdditionalProperty("credentials", "/tmp/creds.json")
             .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
     ConnectionOptions connectionOptions =
         new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
-    databaseConnection.withConnectionOptions(connectionOptions).withConnectionArguments(connectionArguments);
-    databaseService.setDatabaseConnection(databaseConnection);
+
+    databaseService.setConnection(databaseConnection);
     // TODO this needs to be fixed
     //    DatabaseService updatedService =
     //        DATABASE_SERVICE_RESOURCE_TEST.updateEntity(databaseService, OK, ADMIN_AUTH_HEADERS);
@@ -396,7 +398,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         new CreateDatabaseService()
             .withName("snowflake_test_list")
             .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake)
-            .withConnection(TestUtils.DATABASE_CONNECTION);
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     DatabaseService snowflakeDatabaseService =
         databaseServiceResourceTest.createEntity(createSnowflakeService, ADMIN_AUTH_HEADERS);
     EntityReference snowflakeRef = new DatabaseServiceEntityInterface(snowflakeDatabaseService).getEntityReference();
@@ -405,7 +407,7 @@ public class AirflowPipelineResourceTest extends EntityOperationsResourceTest<Ai
         new CreateDatabaseService()
             .withName("bigquery_test_list")
             .withServiceType(CreateDatabaseService.DatabaseServiceType.BigQuery)
-            .withConnection(TestUtils.DATABASE_CONNECTION);
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     DatabaseService databaseService =
         databaseServiceResourceTest.createEntity(createBigQueryService, ADMIN_AUTH_HEADERS);
     EntityReference bigqueryRef = new DatabaseServiceEntityInterface(databaseService).getEntityReference();

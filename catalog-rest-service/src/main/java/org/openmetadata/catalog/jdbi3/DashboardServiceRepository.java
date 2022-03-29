@@ -23,6 +23,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -213,7 +214,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     private void updateConnection() throws JsonProcessingException {
-      recordChange("connection", original.getEntity().getConnection(), updated.getEntity().getConnection());
+      DashboardConnection origConn = original.getEntity().getConnection();
+      DashboardConnection updatedConn = updated.getEntity().getConnection();
+      recordChange("connection", origConn, updatedConn, true);
     }
   }
 }

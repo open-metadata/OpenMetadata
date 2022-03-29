@@ -6,12 +6,10 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.dashboard.LookerConnection",
   "definitions": {
-    "lookerType":{
+    "lookerType": {
       "description": "Looker service type",
       "type": "string",
-      "enum": [
-        "Looker"
-      ],
+      "enum": ["Looker"],
       "default": "Looker"
     }
   },
@@ -31,7 +29,8 @@
     },
     "url": {
       "description": "URL to Looker instance.",
-      "type": "string"
+      "type": "string",
+      "format": "uri"
     },
     "platformName": {
       "description": "Looker Platform Name",

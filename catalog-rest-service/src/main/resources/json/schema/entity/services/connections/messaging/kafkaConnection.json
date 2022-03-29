@@ -9,9 +9,7 @@
     "kafkaType": {
       "description": "Kafka service type",
       "type": "string",
-      "enum": [
-        "Kafka"
-      ],
+      "enum": ["Kafka"],
       "default": "Kafka"
     }
   },
@@ -29,6 +27,7 @@
     "schemaRegistryURL": {
       "description": "Confluent Kafka Schema Registry URL.",
       "type": "string",
+      "format": "uri",
       "default": "http://localhost:8081"
     },
     "supportedPipelineTypes": {

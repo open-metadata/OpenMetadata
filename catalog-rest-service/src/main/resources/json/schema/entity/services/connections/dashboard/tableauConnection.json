@@ -9,9 +9,7 @@
     "tableauType": {
       "description": "Tableau service type",
       "type": "string",
-      "enum": [
-        "Tableau"
-      ],
+      "enum": ["Tableau"],
       "default": "Tableau"
     }
   },
@@ -43,7 +41,8 @@
     },
     "siteURL": {
       "description": "Tableau Site URL",
-      "type": "string"
+      "type": "string",
+      "format": "uri"
     },
     "personalAccessTokenName": {
       "description": "Personal Access Token Name",

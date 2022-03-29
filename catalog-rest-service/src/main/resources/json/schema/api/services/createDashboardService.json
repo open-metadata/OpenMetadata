@@ -24,6 +24,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "dashboardUrl"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }
