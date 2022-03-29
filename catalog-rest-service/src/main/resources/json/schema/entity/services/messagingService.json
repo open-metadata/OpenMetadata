@@ -40,9 +40,6 @@
               "$ref": "./connections/messaging/pulsarConnection.json"
             }
           ]
-        },
-        "databaseType": {
-          "$ref": "#/definitions/messagingServiceType"
         }
       },
       "additionalProperties": false
@@ -88,7 +85,6 @@
       "description": "User who made the update.",
       "type": "string"
     },
-
     "owner": {
       "description": "Owner of this messaging service.",
       "$ref": "../../type/entityReference.json"
@@ -107,6 +103,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "brokers", "connection"],
+  "required": ["id", "name", "serviceType", "connection"],
   "additionalProperties": false
 }

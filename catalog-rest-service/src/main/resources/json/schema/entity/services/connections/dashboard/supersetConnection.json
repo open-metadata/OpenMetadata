@@ -9,9 +9,7 @@
     "supersetType": {
       "description": "Superset service type",
       "type": "string",
-      "enum": [
-        "Superset"
-      ],
+      "enum": ["Superset"],
       "default": "Superset"
     }
   },
@@ -24,6 +22,7 @@
     "supersetURL": {
       "description": "URL for the superset instance",
       "type": "string",
+      "format": "uri",
       "default": "http://localhost:8088"
     },
     "username": {

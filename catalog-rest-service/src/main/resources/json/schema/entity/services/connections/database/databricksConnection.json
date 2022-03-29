@@ -9,17 +9,13 @@
     "databricksType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "Databricks"
-      ],
+      "enum": ["Databricks"],
       "default": "Databricks"
     },
     "databricksScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": [
-        "databricks+connector"
-      ],
+      "enum": ["databricks+connector"],
       "default": "databricks+connector"
     }
   },
@@ -55,22 +51,19 @@
       "type": "string"
     },
     "connectionOptions": {
-      "description": "Additional connection options that can be sent to service during the connection.",
-      "type": "object"
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
-      "type": "object"
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportedPipelineTypes": {
       "description": "Supported Metadata Extraction Pipelines.",
       "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
     }
   },
   "additionalProperties": false

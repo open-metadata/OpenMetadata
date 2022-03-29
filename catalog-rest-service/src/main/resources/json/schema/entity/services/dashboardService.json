@@ -63,9 +63,6 @@
               "$ref": "./connections/dashboard/tableauConnection.json"
             }
           ]
-        },
-        "databaseType": {
-          "$ref": "#/definitions/dashboardServiceType"
         }
       },
       "additionalProperties": false

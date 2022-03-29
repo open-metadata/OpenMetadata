@@ -9,17 +9,13 @@
     "clickhouseType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "ClickHouse"
-      ],
+      "enum": ["ClickHouse"],
       "default": "ClickHouse"
     },
     "clickhouseScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": [
-        "clickhouse+http"
-      ],
+      "enum": ["clickhouse+http"],
       "default": "clickhouse+http"
     }
   },
@@ -55,25 +51,19 @@
       "type": "integer"
     },
     "connectionOptions": {
-      "description": "Additional connection options that can be sent to service during the connection.",
-      "type": "object"
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
-      "type": "object"
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportedPipelineTypes": {
       "description": "Supported Metadata Extraction Pipelines.",
       "type": "string",
-      "enum": ["Metadata", "Usage"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        },
-        {
-          "name": "Usage"
-        }
-      ]
+      "items": {
+        "type": "string",
+        "enum": ["Metadata", "Usage"]
+      },
+      "default": ["Metadata", "Usage"]
     }
   },
   "additionalProperties": false

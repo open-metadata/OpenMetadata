@@ -2,24 +2,20 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/mariaDBConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MariaDBConnection",
-  "description": "Mysql Database Connection Config",
+  "description": "MariaDB Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.MysqlConnection",
+  "javaType": "org.openmetadata.catalog.services.connections.database.MariaDBConnection",
   "definitions": {
     "mariaDBType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "MariaDB"
-      ],
+      "enum": ["MariaDB"],
       "default": "MariaDB"
     },
     "mariaDBScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": [
-        "mysql+pymysql"
-      ],
+      "enum": ["mysql+pymysql"],
       "default": "mysql+pymysql"
     }
   },
@@ -51,22 +47,19 @@
       "type": "string"
     },
     "connectionOptions": {
-      "description": "Additional connection options that can be sent to service during the connection.",
-      "type": "object"
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
-      "type": "object"
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportedPipelineTypes": {
       "description": "Supported Metadata Extraction Pipelines.",
       "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
     }
   },
   "additionalProperties": false

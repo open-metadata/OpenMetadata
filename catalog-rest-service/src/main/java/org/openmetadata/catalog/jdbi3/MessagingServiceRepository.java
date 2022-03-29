@@ -28,7 +28,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private static final String UPDATE_FIELDS = "owner";
+  private static final String UPDATE_FIELDS = "owner, connection";
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(

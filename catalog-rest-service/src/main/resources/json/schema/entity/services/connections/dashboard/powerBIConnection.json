@@ -9,9 +9,7 @@
     "powerBiType": {
       "description": "PowerBI service type",
       "type": "string",
-      "enum": [
-        "PowerBI"
-      ],
+      "enum": ["PowerBI"],
       "default": "PowerBI"
     }
   },
@@ -40,6 +38,7 @@
     "dashboardURL": {
       "description": "Dashboard URL for the power BI.",
       "type": "string",
+      "format": "uri",
       "default": "https://analysis.windows.net/powerbi"
     },
     "scope": {
