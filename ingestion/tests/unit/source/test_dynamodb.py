@@ -16,7 +16,11 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Table as GTable
 from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 CONFIG = """
 {
@@ -35,8 +39,10 @@ CONFIG = """
       }
     },
     "sink": {
-      "type": "metadata-rest",
-      "config": {}
+      "type": "file",
+      "config": {
+        "filename": "var/tmp/datasets.json"
+      }
     },
     "metadata_server": {
       "type": "metadata-server",
@@ -46,7 +52,7 @@ CONFIG = """
       }
     }
   }
-    
+
 """
 
 
@@ -118,3 +124,15 @@ class DynamoDbIngestionTest(TestCase):
     def test_dynamodb_other_datatype_table(self, mock_connect, all):
         all.return_value = MOCK_GET_TABLE_NAMES_OTHER_DATATYPE
         execute_workflow()
+
+    def test_dynamodb_file_sink(self, mock_connect, all):
+        all.return_value = MOCK_GET_TABLE_NAMES
+        execute_workflow()
+        file_path = json.loads(CONFIG)["sink"]["config"]["filename"]
+        with open(file_path, "r") as file:
+            for item in json.loads(file.read()):
+                OMetaDatabaseAndTable.parse_obj(item)
+                Database.parse_obj(item.get("database"))
+                table_obj = GTable.parse_obj(item.get("table"))
+                for column in table_obj.columns:
+                    Column.parse_obj(column)
