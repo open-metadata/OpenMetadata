@@ -67,6 +67,10 @@ class MetadataUsageBulkSink(BulkSink):
     def handle_work_unit_end(self, wu):
         pass
 
+    def ingest_sql_queries(self, queries):
+        for query in queries:
+            self.metadata.ingest_lineage(query.query, self.service_name)
+
     def write_records(self) -> None:
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]
         table_usage_map = {}
@@ -127,6 +131,7 @@ class MetadataUsageBulkSink(BulkSink):
                 table=value_dict["table_entity"],
                 table_queries=value_dict["sql_queries"],
             )
+            self.ingest_sql_queries(value_dict["sql_queries"])
             table_usage_request = TableUsageRequest(
                 date=value_dict["usage_date"], count=value_dict["usage_count"]
             )
