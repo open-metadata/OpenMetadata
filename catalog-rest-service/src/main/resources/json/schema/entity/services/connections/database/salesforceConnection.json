@@ -36,7 +36,8 @@
     },
     "password": {
       "description": "password to connect  to the Redshift.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "securityToken": {
       "description": "Salesforce Security Token.",

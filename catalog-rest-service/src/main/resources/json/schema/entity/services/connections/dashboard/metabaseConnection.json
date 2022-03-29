@@ -9,9 +9,7 @@
     "metabaseType": {
       "description": "Metabase service type",
       "type": "string",
-      "enum": [
-        "Metabase"
-      ],
+      "enum": ["Metabase"],
       "default": "Metabase"
     }
   },
@@ -27,7 +25,8 @@
     },
     "password": {
       "description": "password to connect  to the Metabase.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "description": "Host and Port of Metabase instance.",

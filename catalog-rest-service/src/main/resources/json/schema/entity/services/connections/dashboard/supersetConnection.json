@@ -31,7 +31,8 @@
     },
     "password": {
       "description": "password for the Superset",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "provider": {
       "description": "authenticaiton provider for the Superset",

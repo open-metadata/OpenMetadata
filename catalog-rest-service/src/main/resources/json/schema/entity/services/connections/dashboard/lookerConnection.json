@@ -25,7 +25,8 @@
     },
     "password": {
       "description": "password to connect  to the Looker.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "url": {
       "description": "URL to Looker instance.",

@@ -36,7 +36,8 @@
     },
     "password": {
       "description": "password to connect  to the Athena.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "description": "Host and port of the Athena",

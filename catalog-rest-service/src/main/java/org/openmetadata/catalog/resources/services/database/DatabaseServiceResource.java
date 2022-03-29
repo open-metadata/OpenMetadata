@@ -70,7 +70,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class DatabaseServiceResource extends EntityResource<DatabaseService, DatabaseServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
 
-  static final String FIELDS = "airflowPipeline,owner";
+  static final String FIELDS = "pipelines,owner";
   private final Fernet fernet;
 
   @Override
