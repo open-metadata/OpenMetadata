@@ -797,7 +797,7 @@ const TeamsPage = () => {
                 )}
                 {deletingUser.state && (
                   <ConfirmationModal
-                    bodyText={`Are you sure want to remove ${
+                    bodyText={`Are you sure you want to remove ${
                       deletingUser.user?.displayName ?? deletingUser.user?.name
                     }?`}
                     cancelText="Cancel"

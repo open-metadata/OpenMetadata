@@ -1,6 +1,13 @@
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+} from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { deleteUser } from '../../axiosAPIs/userAPI';
 import UserListPage from './UserListPage';
 
 jest.mock('../../components/containers/PageContainerV1', () => {
@@ -12,12 +19,22 @@ jest.mock('../../components/containers/PageContainerV1', () => {
 });
 
 jest.mock('../../components/UserList/UserList', () => {
-  return jest.fn().mockImplementation(() => <div>UserListComponent</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ deleteUser }) => (
+      <div onClick={deleteUser}>UserListComponent</div>
+    ));
 });
 
 jest.mock('../../axiosAPIs/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
+
+jest.mock('../../axiosAPIs/userAPI', () => ({
+  deleteUser: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+const mockDeleteUser = jest.fn(() => Promise.resolve({}));
 
 describe('Test UserListPage component', () => {
   it('UserListPage component should render properly', async () => {
@@ -30,5 +47,19 @@ describe('Test UserListPage component', () => {
 
     expect(PageContainerV1).toBeInTheDocument();
     expect(UserListComponent).toBeInTheDocument();
+  });
+
+  it('should delete users', async () => {
+    (deleteUser as jest.Mock).mockImplementationOnce(mockDeleteUser);
+
+    const { container } = render(<UserListPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await act(async () => {
+      fireEvent.click(await findByText(container, 'UserListComponent'));
+    });
+
+    expect(mockDeleteUser).toBeCalled();
   });
 });
