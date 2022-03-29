@@ -106,3 +106,7 @@ export const getUserCounts = () => {
     `/search/query?q=*&from=0&size=0&index=${SearchIndex.USER}`
   );
 };
+
+export const deleteUser = (id: string) => {
+  return APIClient.delete(`/users/${id}`);
+};
