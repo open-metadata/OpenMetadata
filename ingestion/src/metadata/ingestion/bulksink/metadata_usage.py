@@ -177,13 +177,13 @@ class MetadataUsageBulkSink(BulkSink):
                 joined_column_fqdn = self.__get_column_fqdn(
                     table_usage.database, column
                 )
-                if joined_column_fqdn in joined_with.keys():
-                    column_joined_with = joined_with[joined_column_fqdn]
+                if str(joined_column_fqdn) in joined_with.keys():
+                    column_joined_with = joined_with[str(joined_column_fqdn)]
                     column_joined_with.joinCount += 1
-                    joined_with[joined_column_fqdn] = column_joined_with
+                    joined_with[str(joined_column_fqdn)] = column_joined_with
                 elif joined_column_fqdn is not None:
-                    joined_with[joined_column_fqdn] = ColumnJoinedWith(
-                        fullyQualifiedName=joined_column_fqdn, joinCount=1
+                    joined_with[str(joined_column_fqdn)] = ColumnJoinedWith(
+                        fullyQualifiedName=str(joined_column_fqdn), joinCount=1
                     )
                 else:
                     logger.info(

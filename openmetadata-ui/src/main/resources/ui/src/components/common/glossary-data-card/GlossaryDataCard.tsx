@@ -53,7 +53,7 @@ const GlossaryDataCard: FunctionComponent<Props> = ({
       <div className="tw-mb-3 tw-flex tw-items-center">
         {owner && (
           <div className="tw-inline-block tw-mr-2">
-            <Avatar name={owner} textClass="tw-text-xs" width="22" />
+            <Avatar name={owner} textClass="tw-text-xs" width="20" />
           </div>
         )}
         <span className="tw-text-grey-muted">{owner || 'No owner'}</span>
