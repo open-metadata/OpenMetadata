@@ -165,7 +165,7 @@ const EntityPageInfo = ({
               <div className="tw-flex" key={index}>
                 <Avatar
                   name={(follower?.displayName || follower?.name) as string}
-                  width="30"
+                  width="20"
                 />
                 <span className="tw-self-center tw-ml-2">
                   {follower?.displayName || follower?.name}
