@@ -1074,7 +1074,7 @@ const ServicePage: FunctionComponent = () => {
       ) : (
         <PageContainer>
           <div
-            className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col"
+            className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="service-page">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
