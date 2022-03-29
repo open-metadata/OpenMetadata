@@ -51,7 +51,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException {
     entity.setPipelines(fields.contains("pipelines") ? getAirflowPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
