@@ -1,15 +1,16 @@
 import logging
+import re
 import uuid
 from typing import Any, Dict, Iterable, List, Optional
 
 from pyspark.sql import SparkSession
-from pyspark.sql.catalog import Table
+from pyspark.sql.catalog import Table as pyTable
 from pyspark.sql.types import ArrayType, MapType, StructField, StructType
 from pyspark.sql.utils import AnalysisException, ParseException
 
 from metadata.config.common import FQDN_SEPARATOR, ConfigModel
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -21,6 +22,7 @@ from metadata.ingestion.api.common import IncludeFilterPattern
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -78,6 +80,17 @@ class DeltalakeSource(Source):
     def prepare(self):
         return super().prepare()
 
+    def _get_table_type(self, table_type):
+        if table_type.lower() == TableType.External.value.lower():
+            return TableType.External.value
+        elif table_type.lower() == TableType.View.value.lower():
+            return TableType.View.value
+        elif table_type.lower() == TableType.SecureView.value.lower():
+            return TableType.SecureView.value
+        elif table_type.lower() == TableType.Iceberg.value.lower():
+            return TableType.Iceberg.value
+        return TableType.Regular.value
+
     def fetch_tables(self, schema: str) -> Iterable[OMetaDatabaseAndTable]:
         for table in self.spark.catalog.listTables(schema):
             try:
@@ -95,12 +108,11 @@ class DeltalakeSource(Source):
                 table_columns = self._fetch_columns(schema, table_name)
                 fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
                 if table.tableType and table.tableType.lower() != "view":
-                    table_description = self._fetch_table_description(table_name)
                     table_entity = Table(
                         id=uuid.uuid4(),
                         name=table_name,
-                        tableType=table.tableType,
-                        description=table_description,
+                        tableType=self._get_table_type(table.tableType),
+                        description=table.description,
                         fullyQualifiedName=fqn,
                         columns=table_columns,
                     )
@@ -109,8 +121,8 @@ class DeltalakeSource(Source):
                     table_entity = Table(
                         id=uuid.uuid4(),
                         name=table_name,
-                        tableType=table.tableType,
-                        description=" ",
+                        tableType=self._get_table_type(table.tableType),
+                        description=table.description,
                         fullyQualifiedName=fqn,
                         columns=table_columns,
                         viewDefinition=view_definition,
@@ -156,7 +168,7 @@ class DeltalakeSource(Source):
                 view_detail[row_dict["col_name"]] = row_dict["data_type"]
             if "# Detailed Table" in row_dict["col_name"]:
                 col_details = True
-        return view_detail
+        return view_detail.get("View Text")
 
     def _fetch_columns(self, schema: str, table: str) -> List[Column]:
         raw_columns = []
@@ -178,11 +190,23 @@ class DeltalakeSource(Source):
                 partition_cols = True
                 continue
             if not partition_cols:
+                col_type = re.search(r"^\w+", row["data_type"]).group(0)
+                col_type = ColumnTypeParser.get_column_type(col_type)
+                charlen = re.search(r"\(([\d]+)\)", row["data_type"])
+                if charlen:
+                    charlen = int(charlen.group(1))
+                if (
+                    col_type.upper() in {"CHAR", "VARCHAR", "VARBINARY", "BINARY"}
+                    and charlen is None
+                ):
+                    charlen = 1
+
                 column = Column(
                     name=row["col_name"],
                     description=row["comment"] if row["comment"] else None,
-                    data_type=row["data_type"],
-                    ordinal_position=row_order,
+                    dataType=col_type,
+                    dataLength=charlen,
+                    displayName=row["data_type"],
                 )
                 parsed_columns.append(column)
                 row_order += 1
