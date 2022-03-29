@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import java.io.IOException;
 import java.net.URI;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.resources.operations.AirflowPipelineResource;
@@ -48,11 +47,6 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     return (airflowPipeline != null && airflowPipeline.getService() != null)
         ? EntityUtil.getFQN(airflowPipeline.getService().getName(), airflowPipeline.getName())
         : null;
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(AirflowPipeline airflowPipeline) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), airflowPipeline.getOwner());
   }
 
   @Override

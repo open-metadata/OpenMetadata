@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
@@ -60,11 +59,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   public static String getFQN(MlModel model) {
     return model.getName();
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(MlModel mlModel) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), mlModel.getOwner());
   }
 
   @Override
@@ -141,7 +135,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     // Check if owner is valid and set the relationship
-    mlModel.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), mlModel.getOwner()));
+    populateOwner(mlModel.getOwner());
 
     // Check that the dashboard exists
     if (mlModel.getDashboard() != null) {
@@ -169,7 +163,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeRelationships(MlModel mlModel) {
-    setOwner(mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
+    addOwnerRelationship(mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
 
     setDashboard(mlModel, mlModel.getDashboard());
 

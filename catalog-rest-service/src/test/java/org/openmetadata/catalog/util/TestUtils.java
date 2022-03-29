@@ -310,16 +310,21 @@ public final class TestUtils {
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
-    boolean exists = false;
-    for (EntityReference ref : list) {
-      validateEntityReference(ref);
-      if (ref.getId().equals(id)) {
-        exists = true;
+    EntityReference ref = null;
+    for (EntityReference r : list) {
+      validateEntityReference(r);
+      if (r.getId().equals(id)) {
+        ref = r;
         break;
       }
     }
-    assertEquals(
-        expectedExistsInList, exists, "Entry exists in list - expected:" + expectedExistsInList + " actual:" + exists);
+    if (expectedExistsInList) {
+      assertNotNull(ref, "EntityReference does not exist for " + id);
+    } else {
+      if (ref != null) {
+        assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + id);
+      }
+    }
   }
 
   public static void assertListNull(Object... values) {
