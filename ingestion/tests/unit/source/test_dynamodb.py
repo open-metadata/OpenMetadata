@@ -41,7 +41,7 @@ CONFIG = """
     "sink": {
       "type": "file",
       "config": {
-        "filename": "var/tmp/datasets.json"
+        "filename": "./datasets.json"
       }
     },
     "metadata_server": {
