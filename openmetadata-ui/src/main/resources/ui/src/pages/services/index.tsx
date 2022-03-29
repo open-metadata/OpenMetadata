@@ -33,12 +33,7 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
-import {
-  AddServiceModal,
-  DataObj,
-  EditObj,
-  ServiceDataObj,
-} from '../../components/Modals/AddServiceModal/AddServiceModal';
+import { AddServiceModal } from '../../components/Modals/AddServiceModal/AddServiceModal';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
@@ -62,6 +57,11 @@ import { PipelineService } from '../../generated/entity/services/pipelineService
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import {
+  DataObj,
+  EditObj,
+  ServiceDataObj,
+} from '../../interface/service.interface';
 import {
   getActiveCatClass,
   getCountBadge,

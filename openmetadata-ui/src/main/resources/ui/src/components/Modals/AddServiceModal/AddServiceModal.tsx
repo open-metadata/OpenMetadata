@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
+import {
+  faArrowLeft,
+  faArrowRight,
+  faEye,
+  faEyeSlash,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { isEmpty, isUndefined } from 'lodash';
 import {
   DynamicFormFieldType,
-  DynamicObj,
   EditorContentRef,
   ServiceTypes,
   StepperStepType,
@@ -37,16 +43,14 @@ import {
   Schema,
 } from '../../../generated/api/operations/pipelines/createAirflowPipeline';
 import { DashboardServiceType } from '../../../generated/entity/services/dashboardService';
-import {
-  DatabaseService,
-  DatabaseServiceType,
-} from '../../../generated/entity/services/databaseService';
-import {
-  MessagingService,
-  MessagingServiceType,
-} from '../../../generated/entity/services/messagingService';
-import { PipelineService } from '../../../generated/entity/services/pipelineService';
+import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
+import { MessagingServiceType } from '../../../generated/entity/services/messagingService';
 import { PipelineType } from '../../../generated/operations/pipelines/airflowPipeline';
+import {
+  DataObj,
+  EditObj,
+  ServiceDataObj,
+} from '../../../interface/service.interface';
 import {
   errorMsg,
   getCurrentDate,
@@ -68,78 +72,6 @@ import CronEditor from '../../common/CronEditor/CronEditor';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import IngestionStepper from '../../IngestionStepper/IngestionStepper.component';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faEyeSlash,
-  faEye,
-  faArrowLeft,
-  faArrowRight,
-} from '@fortawesome/free-solid-svg-icons';
-
-export type DataObj = {
-  id?: string;
-  description: string | undefined;
-  ingestionSchedule?:
-    | {
-        repeatFrequency: string;
-        startDate: string;
-      }
-    | undefined;
-  name: string;
-  serviceType: string;
-  databaseConnection?: {
-    hostPort: string;
-    password: string;
-    username: string;
-    database: string;
-    connectionArguments: DynamicObj;
-    connectionOptions: DynamicObj;
-  };
-  brokers?: Array<string>;
-  schemaRegistry?: string;
-  dashboardUrl?: string;
-  username?: string;
-  password?: string;
-  url?: string;
-  api_key?: string;
-  site_name?: string;
-  api_version?: string;
-  server?: string;
-  env?: string;
-  pipelineUrl?: string;
-};
-
-// type DataObj = CreateDatabaseService &
-//   Partial<CreateMessagingService> &
-//   Partial<CreateDashboardService>;
-
-type DashboardService = {
-  description: string;
-  href: string;
-  id: string;
-  name: string;
-  serviceType: string;
-  ingestionSchedule?: { repeatFrequency: string; startDate: string };
-  dashboardUrl?: string;
-  username?: string;
-  password?: string;
-  url?: string;
-  api_key?: string;
-  site_name?: string;
-  api_version?: string;
-  server?: string;
-  env?: string;
-};
-
-export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
-  Partial<MessagingService> &
-  Partial<DashboardService> &
-  Partial<PipelineService>;
-
-export type EditObj = {
-  edit: boolean;
-  id?: string;
-};
 
 type Props = {
   header: string;

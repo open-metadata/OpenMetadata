@@ -145,10 +145,7 @@
     },
     "name": {
       "description": "Name that identifies this database service.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[^.]*$"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this database service.",

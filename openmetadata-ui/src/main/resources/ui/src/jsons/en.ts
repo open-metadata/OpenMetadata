@@ -48,6 +48,7 @@ const jsonData = {
     'fetch-glossary-term-error': 'Error while fetching glossary term!',
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
+    'fetch-pipeline-details-error': 'Error while fetching pipeline details!',
     'fetch-sample-data-error': 'Error while fetching sample data!',
     'fetch-table-details-error': 'Error while fetching table details!',
     'fetch-table-queries-error': 'Error while fetching table queries!',
@@ -59,6 +60,8 @@ const jsonData = {
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-service-error': 'Error while fetching service details!',
 
+    'unexpected-server-response': 'Unexpected response from server!',
+
     'update-chart-error': 'Error while updating charts!',
     'update-owner-error': 'Error while updating owner',
     'update-glossary-term-error': 'Error while updating glossary term!',
@@ -66,11 +69,11 @@ const jsonData = {
     'update-entity-error': 'Error while updating entity!',
     'update-team-error': 'Error while updating team',
     'update-tags-error': 'Error while updating tags!',
+    'update-task-error': 'Error while updating tasks!',
     'update-entity-follow-error': 'Error while following entity!',
     'update-entity-unfollow-error': 'Error while unfollowing entity!',
     'update-ingestion-error': 'Error while updating ingestion workflow',
     'update-service-config-error': 'Error while updating ingestion workflow',
-    'unexpected-server-response': 'Unexpected response from server!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',

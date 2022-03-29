@@ -19,6 +19,9 @@ import java.util.UUID;
 public final class CatalogExceptionMessage {
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
   public static final String FERNET_KEY_NULL = "Fernet key is null";
+  public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
+  public static final String FIELD_ALREADY_TOKENIZED = "Field is already tokenized";
+  public static final String INVALID_ENTITY_LINK = "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
 
   private CatalogExceptionMessage() {}
 
@@ -64,18 +67,6 @@ public final class CatalogExceptionMessage {
 
   public static String invalidServiceEntity(String serviceType, String entityType, String expected) {
     return String.format("Invalid service type `%s` for %s. Expected %s.", serviceType, entityType, expected);
-  }
-
-  public static String invalidEntityLink() {
-    return "Entity link must have both {arrayFieldName} and {arrayFieldValue}";
-  }
-
-  public static String isNotTokenized() {
-    return "The field is not tokenized";
-  }
-
-  public static String isAlreadyTokenized() {
-    return "The field is already tokenized";
   }
 
   public static String glossaryTermMismatch(String parentId, String glossaryId) {

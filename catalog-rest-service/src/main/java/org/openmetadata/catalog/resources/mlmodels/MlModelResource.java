@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.mlmodels;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -56,14 +58,9 @@ import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/mlmodels")
@@ -99,7 +96,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   static final String FIELDS = "owner,dashboard,followers,tags,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(MlModel.class);
 
   @GET
   @Valid
@@ -142,9 +138,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
+      throws IOException {
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -176,7 +171,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -208,7 +203,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -226,11 +221,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      throws IOException {
     MlModel mlModel = getMlModel(securityContext, create);
-    mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));
-    return Response.created(mlModel.getHref()).entity(mlModel).build();
+    return create(uriInfo, securityContext, mlModel, ADMIN | BOT);
   }
 
   @PATCH
@@ -254,20 +247,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    MlModel mlModel = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(mlModel).getEntityReference(),
-        dao.getOwnerReference(mlModel),
-        patch);
-
-    PatchResponse<MlModel> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -284,12 +265,9 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
-      throws IOException, ParseException {
+      throws IOException {
     MlModel mlModel = getMlModel(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(mlModel));
-    PutResponse<MlModel> response = dao.createOrUpdate(uriInfo, mlModel);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, mlModel, ADMIN | BOT | OWNER);
   }
 
   @PUT
@@ -348,7 +326,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "ML Model Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -376,7 +354,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -394,10 +372,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<MlModel> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private MlModel getMlModel(SecurityContext securityContext, CreateMlModel create) {

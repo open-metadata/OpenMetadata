@@ -11,4 +11,8 @@
  *  limitations under the License.
  */
 
+// To query All results from Elasticsearch
 export const WILD_CARD_CHAR = '*';
+
+// Separator used for fullyQualifiedName of all entities
+export const FQN_SEPARATOR_CHAR = '.';

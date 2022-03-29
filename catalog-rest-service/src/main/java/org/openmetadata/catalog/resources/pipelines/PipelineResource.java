@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -60,11 +62,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/pipelines")
@@ -100,7 +98,6 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Pipeline.class);
 
   @GET
   @Valid
@@ -148,9 +145,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+      throws IOException {
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -170,7 +166,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -202,7 +198,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -234,7 +230,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -262,7 +258,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -281,11 +277,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      throws IOException {
     Pipeline pipeline = getPipeline(securityContext, create);
-    pipeline = addHref(uriInfo, dao.create(uriInfo, pipeline));
-    return Response.created(pipeline.getHref()).entity(pipeline).build();
+    return create(uriInfo, securityContext, pipeline, ADMIN | BOT);
   }
 
   @PATCH
@@ -309,20 +303,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Pipeline pipeline = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(pipeline).getEntityReference(),
-        dao.getOwnerReference(pipeline),
-        patch);
-
-    PatchResponse<Pipeline> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -340,12 +322,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
-      throws IOException, ParseException {
+      throws IOException {
     Pipeline pipeline = getPipeline(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(pipeline));
-    PutResponse<Pipeline> response = dao.createOrUpdate(uriInfo, pipeline);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
   }
 
   @PUT
@@ -366,8 +345,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
       PipelineStatus pipelineStatus)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      throws IOException {
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);
     return addHref(uriInfo, pipeline);
   }
@@ -423,10 +402,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Pipeline> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private Pipeline getPipeline(SecurityContext securityContext, CreatePipeline create) {

@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -32,7 +31,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private static final Fields UPDATE_FIELDS = new Fields(MessagingServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(
@@ -41,12 +40,13 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
         MessagingService.class,
         dao.messagingServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override
-  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
+  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
@@ -57,7 +57,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void prepare(MessagingService entity) throws IOException, ParseException {
+  public void prepare(MessagingService entity) throws IOException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
@@ -88,11 +88,9 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     return new MessagingServiceUpdater(original, updated, operation);
   }
 
-  public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
-    private final MessagingService entity;
-
+  public static class MessagingServiceEntityInterface extends EntityInterface<MessagingService> {
     public MessagingServiceEntityInterface(MessagingService entity) {
-      this.entity = entity;
+      super(Entity.MESSAGING_SERVICE, entity);
     }
 
     @Override
@@ -153,17 +151,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.MESSAGING_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

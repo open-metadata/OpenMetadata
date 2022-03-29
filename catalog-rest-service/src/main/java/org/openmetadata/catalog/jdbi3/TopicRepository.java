@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -39,12 +38,12 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.ALLOWED_FIELDS, "owner,tags");
-  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.ALLOWED_FIELDS, "owner,tags");
+  private static final String TOPIC_UPDATE_FIELDS = "owner,tags";
+  private static final String TOPIC_PATCH_FIELDS = "owner,tags";
 
   public static String getFQN(Topic topic) {
     return (topic != null && topic.getService() != null)
-        ? (topic.getService().getName() + "." + topic.getName())
+        ? EntityUtil.getFQN(topic.getService().getName(), topic.getName())
         : null;
   }
 
@@ -65,8 +64,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void prepare(Topic topic) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(topic));
+  public void prepare(Topic topic) throws IOException {
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
@@ -99,7 +97,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setFields(Topic topic, Fields fields) throws IOException, ParseException {
+  public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getService(topic));
     topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
     topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
@@ -128,11 +126,9 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
   }
 
-  public static class TopicEntityInterface implements EntityInterface<Topic> {
-    private final Topic entity;
-
+  public static class TopicEntityInterface extends EntityInterface<Topic> {
     public TopicEntityInterface(Topic entity) {
-      this.entity = entity;
+      super(Entity.TOPIC, entity);
     }
 
     @Override
@@ -198,17 +194,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.TOPIC)
-          .withDeleted(isDeleted());
     }
 
     @Override

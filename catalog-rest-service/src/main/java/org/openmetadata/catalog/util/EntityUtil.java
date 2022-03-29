@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.type.Include.ALL;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -26,6 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.NonNull;
@@ -36,6 +36,7 @@ import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -325,20 +326,32 @@ public final class EntityUtil {
 
     public Fields(List<String> allowedFields, String fieldsParam) {
       if (fieldsParam == null || fieldsParam.isEmpty()) {
-        fieldList = Collections.emptyList();
+        fieldList = new ArrayList<>();
         return;
       }
       fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
       for (String field : fieldList) {
         if (!allowedFields.contains(field)) {
-
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
         }
       }
     }
 
+    @Override
+    public String toString() {
+      return fieldList.toString();
+    }
+
+    public void add(Fields fields) {
+      fieldList.addAll(fields.fieldList);
+    }
+
     public boolean contains(String field) {
       return fieldList.contains(field);
+    }
+
+    public List<String> getList() {
+      return fieldList;
     }
   }
 
@@ -365,23 +378,30 @@ public final class EntityUtil {
     return Double.valueOf(versionString);
   }
 
-  public static String getLocalColumnName(String fqn) {
-    // Return for fqn=service.database.table.c1 -> c1
-    // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
-    StringBuilder localColumnName = new StringBuilder();
-    String[] s = fqn.split("\\.");
-    for (int i = 3; i < s.length - 1; i++) {
-      localColumnName.append(s[i]).append(".");
-    }
-    localColumnName.append(s[s.length - 1]);
-    return localColumnName.toString();
+  public static String getLocalColumnName(String tableFqn, String columnFqn) {
+    // Return for fqn=service:database:table:c1 -> c1
+    // Return for fqn=service:database:table:c1:c2 -> c1:c2 (note different from just the local name of the column c2)
+    return columnFqn.replace(tableFqn + Entity.SEPARATOR, "");
+  }
+
+  public static String getFQN(String... strings) {
+    return String.join(Entity.SEPARATOR, strings);
+  }
+
+  public static String[] splitFQN(String string) {
+    return string.split(Pattern.quote(Entity.SEPARATOR));
+  }
+
+  public static String getFieldName(String... strings) {
+    return String.join(Entity.SEPARATOR, strings);
   }
 
   /** Return column field name of format columnName.fieldName */
-  public static String getColumnField(Column column, String columnField) {
+  public static String getColumnField(Table table, Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
-    String localColumnName = EntityUtil.getLocalColumnName(column.getFullyQualifiedName());
-    return "columns." + localColumnName + (columnField == null ? "" : "." + columnField);
+    String localColumnName =
+        EntityUtil.getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName());
+    return columnField == null ? getFQN("columns", localColumnName) : getFQN("columns", localColumnName, columnField);
   }
 
   public static Double nextVersion(Double version) {
@@ -402,37 +422,5 @@ public final class EntityUtil {
                 new EventFilter()
                     .withEventType(EventType.ENTITY_SOFT_DELETED)
                     .withEntities(eventFilter.getEntities())));
-  }
-
-  public static void escapeReservedChars(EntityInterface<?> entityInterface) {
-    entityInterface.setDisplayName(
-        entityInterface.getDisplayName() != null ? entityInterface.getDisplayName() : entityInterface.getName());
-    entityInterface.setName(replaceDot(entityInterface.getName()));
-  }
-
-  public static void escapeReservedChars(List<?> collection) {
-    if (collection == null || collection.isEmpty()) {
-      return;
-    }
-    for (Object object : collection) {
-      if (object instanceof Column) {
-        Column column = (Column) object;
-        column.setDisplayName(column.getDisplayName() != null ? column.getDisplayName() : column.getName());
-        column.setName(replaceDot(column.getName()));
-        escapeReservedChars(column.getChildren());
-      } else if (object instanceof TableConstraint) {
-        TableConstraint constraint = (TableConstraint) object;
-        constraint.setColumns(
-            constraint.getColumns().stream().map(EntityUtil::replaceDot).collect(Collectors.toList()));
-      } else if (object instanceof Task) {
-        Task task = (Task) object;
-        task.setDisplayName(task.getDisplayName() != null ? task.getDisplayName() : task.getName());
-        task.setName(replaceDot(task.getName()));
-      }
-    }
-  }
-
-  public static String replaceDot(String string) {
-    return string.replace(".", "_DOT_");
   }
 }

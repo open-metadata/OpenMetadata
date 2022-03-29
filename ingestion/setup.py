@@ -26,7 +26,7 @@ base_requirements = {
     "openmetadata-ingestion-core==0.9.0",
     "commonregex",
     "idna<3,>=2.5",
-    "click>=7.1.1",
+    "click>=7.1.1,<8",
     "typing_extensions>=3.7.4",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
@@ -40,7 +40,7 @@ base_requirements = {
     "python-jose==3.3.0",
     "sqlalchemy>=1.4.0",
     "sql-metadata~=2.0.0",
-    "requests~=2.26",
+    "requests>=2.23",
     "cryptography",
     "Jinja2>=2.11.3",
     "PyYAML",
@@ -66,7 +66,9 @@ plugins: Dict[str, Set[str]] = {
         "marshmallow-sqlalchemy>=0.26.0",
         "SQLAlchemy-Utils>=0.38.0",
         "pymysql>=1.0.2",
+        "requests==2.26.0",
     },
+    "airflow-container-1.10.15": {"markupsafe==2.0.1 ", "requests==2.23.0"},
     "amundsen": {"neo4j~=4.4.0"},
     "athena": {"PyAthena[SQLAlchemy]"},
     "atlas": {},
@@ -187,7 +189,7 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin != "db2"
+                    if plugin not in {"airflow-container-1.10.15", "db2"}
                 ]
             )
         ),

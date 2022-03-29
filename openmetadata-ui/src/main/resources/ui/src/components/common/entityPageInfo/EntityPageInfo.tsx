@@ -23,6 +23,7 @@ import {
   TagOption,
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { User } from '../../../generated/entity/teams/user';
@@ -340,9 +341,9 @@ const EntityPageInfo = ({
           </div>
         </div>
       </div>
-      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
+      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap tw-items-center">
         {extraInfo.map((info, index) => (
-          <span className="tw-flex" key={index}>
+          <span className="tw-flex tw-items-center" key={index}>
             {getInfoElements(info)}
             {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
               <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
@@ -368,7 +369,10 @@ const EntityPageInfo = ({
             {tier?.tagFQN && (
               <Tags
                 startWith="#"
-                tag={{ ...tier, tagFQN: tier.tagFQN.split('.')[1] }}
+                tag={{
+                  ...tier,
+                  tagFQN: tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1],
+                }}
                 type="label"
               />
             )}
@@ -430,7 +434,7 @@ const EntityPageInfo = ({
             </NonAdminAction>
             {!isUndefined(tagThread) ? (
               <p
-                className="link-text tw-ml-1 tw-w-8 tw-h-8 tw-flex-none"
+                className="link-text tw-ml-1 tw-w-8 tw-flex-none"
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
                 <span className="tw-flex">
                   <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
@@ -439,7 +443,7 @@ const EntityPageInfo = ({
               </p>
             ) : (
               <p
-                className="link-text tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+                className="link-text tw-self-start tw-w-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
                 onClick={() =>
                   onThreadLinkSelect?.(
                     getEntityFeedLink(entityType, entityFqn, 'tags')

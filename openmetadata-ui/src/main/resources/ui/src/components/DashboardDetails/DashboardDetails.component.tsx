@@ -17,6 +17,7 @@ import { EntityTags, TagOption } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -196,7 +197,10 @@ const DashboardDetails = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
+    {
+      key: 'Tier',
+      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
     {
       key: `${serviceType} Url`,
       value: dashboardUrl,

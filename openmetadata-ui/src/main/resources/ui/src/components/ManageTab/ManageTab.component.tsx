@@ -324,9 +324,7 @@ const ManageTab: FunctionComponent<Props> = ({
             userPermissions[Operation.UpdateTeam] ||
             !hasEditAccess ? (
               <div className="tw-flex">
-                <label htmlFor="join-team">
-                  Allow users to join this team during signup
-                </label>
+                <label htmlFor="join-team">Allow users to join this team</label>
                 <div
                   className={classNames(
                     'toggle-switch ',

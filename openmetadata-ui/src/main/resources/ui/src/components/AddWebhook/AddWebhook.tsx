@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
+import { faArrowLeft, faSyncAlt } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { cloneDeep, isEmpty, isNil, startCase } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { FunctionComponent, useRef, useState } from 'react';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { UrlEntityCharRegEx } from '../../constants/regex.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -33,18 +34,16 @@ import {
   getSeparator,
   isValidUrl,
   requiredField,
-  validMsg,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
+import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AddWebhookProps } from './AddWebhook.interface';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faSyncAlt } from '@fortawesome/free-solid-svg-icons';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -164,7 +163,6 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     invalidEndpointUrl: false,
     invalidEventFilters: false,
   });
-  const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
   const [generatingSecret, setGeneratingSecret] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -224,14 +222,12 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
     const apiKey = cryptoRandomString({ length: 50, type: 'alphanumeric' });
     setGeneratingSecret(true);
     setTimeout(() => {
-      setCopiedSecret(false);
       setSecretKey(apiKey);
       setGeneratingSecret(false);
     }, 500);
   };
 
   const resetSecret = () => {
-    setCopiedSecret(false);
     setSecretKey('');
   };
 
@@ -756,22 +752,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       </Button>
                       {secretKey ? (
                         <>
-                          <CopyToClipboard
-                            text={secretKey}
-                            onCopy={() => setCopiedSecret(true)}>
-                            <Button
-                              className="tw-h-8 tw-ml-4"
-                              data-testid="copy-secret"
-                              size="custom"
-                              theme="default"
-                              variant="text">
-                              <SVGIcons
-                                alt="Copy"
-                                icon={Icons.COPY}
-                                width="16px"
-                              />
-                            </Button>
-                          </CopyToClipboard>
+                          <CopyToClipboardButton copyText={secretKey} />
                           <Button
                             className="tw-h-8 tw-ml-4"
                             data-testid="clear-secret"
@@ -801,22 +782,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       type="text"
                       value={secretKey}
                     />
-                    <CopyToClipboard
-                      text={secretKey}
-                      onCopy={() => setCopiedSecret(true)}>
-                      <Button
-                        className="tw-h-8 tw-ml-4"
-                        data-testid="copy-secret"
-                        size="custom"
-                        theme="default"
-                        variant="text">
-                        <SVGIcons alt="Copy" icon={Icons.COPY} width="16px" />
-                      </Button>
-                    </CopyToClipboard>
+                    <CopyToClipboardButton copyText={secretKey} />
                   </div>
                 ) : null
               ) : null}
-              {copiedSecret && validMsg('Copied to the clipboard.')}
             </Field>
           </>
         ) : null}

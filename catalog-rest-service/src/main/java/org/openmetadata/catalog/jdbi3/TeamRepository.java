@@ -20,7 +20,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -35,8 +34,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class TeamRepository extends EntityRepository<Team> {
-  static final Fields TEAM_UPDATE_FIELDS = new Fields(TeamResource.ALLOWED_FIELDS, "owner,profile,users,defaultRoles");
-  static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.ALLOWED_FIELDS, "owner,profile,users,defaultRoles");
+  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles";
+  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles";
 
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
@@ -54,7 +53,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public Team setFields(Team team, Fields fields) throws IOException, ParseException {
+  public Team setFields(Team team, Fields fields) throws IOException {
     if (!fields.contains("profile")) {
       team.setProfile(null); // Clear the profile attribute, if it was not requested
     }
@@ -133,11 +132,9 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
   }
 
-  public static class TeamEntityInterface implements EntityInterface<Team> {
-    private final Team entity;
-
+  public static class TeamEntityInterface extends EntityInterface<Team> {
     public TeamEntityInterface(Team entity) {
-      this.entity = entity;
+      super(Entity.TEAM, entity);
     }
 
     @Override
@@ -198,18 +195,6 @@ public class TeamRepository extends EntityRepository<Team> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(TEAM)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override

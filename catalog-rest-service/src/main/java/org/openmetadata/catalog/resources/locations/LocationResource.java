@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.locations;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -56,14 +58,10 @@ import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/locations")
@@ -96,7 +94,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   }
 
   static final String FIELDS = "owner,followers,tags";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Location.class);
 
   @GET
   @Operation(
@@ -143,9 +140,8 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("service", serviceParam);
+      throws IOException {
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -165,7 +161,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -197,7 +193,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -241,9 +237,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Parameter(description = "Returns list of locations after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
 
     ResultList<Location> locations;
     if (before != null) { // Reverse paging
@@ -286,7 +282,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -314,7 +310,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -332,11 +328,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      throws IOException {
     Location location = getLocation(securityContext, create);
-    location = addHref(uriInfo, dao.create(uriInfo, location));
-    return Response.created(location.getHref()).entity(location).build();
+    return create(uriInfo, securityContext, location, ADMIN | BOT);
   }
 
   @PUT
@@ -353,12 +347,9 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
-      throws IOException, ParseException {
+      throws IOException {
     Location location = getLocation(securityContext, create);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOriginalOwner(location));
-    PutResponse<Location> response = dao.createOrUpdate(uriInfo, validateNewLocation(location));
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
   }
 
   @PATCH
@@ -382,20 +373,8 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    Location location = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(location).getEntityReference(),
-        dao.getOwnerReference(location),
-        patch);
-
-    PatchResponse<Location> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -412,10 +391,8 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Location> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   @PUT

@@ -58,8 +58,8 @@ class OpenMetadataLineageBackend(LineageBackend):
         _ = get_lineage_config()
 
     # pylint: disable=protected-access
+    @staticmethod  # needed for Airflow 1.10.x
     def send_lineage(
-        self,
         operator: "BaseOperator",
         inlets: Optional[List] = None,
         outlets: Optional[List] = None,

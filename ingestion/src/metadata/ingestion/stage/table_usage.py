@@ -13,6 +13,7 @@ import json
 import logging
 import pathlib
 
+from metadata.generated.schema.entity.data.table import SqlQuery
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.models.table_queries import (
@@ -37,6 +38,7 @@ def get_table_column_join(table, table_aliases, joins, database):
             jtable, column = join.split(".")[-2:]
             if (
                 table == jtable
+                or jtable == table.split(".")[-1]
                 or table == f"{database}.{jtable}"
                 or jtable in table_aliases
             ):
@@ -74,6 +76,7 @@ class TableUsageStage(Stage[QueryParserData]):
         self.metadata_config = metadata_config
         self.status = StageStatus()
         self.table_usage = {}
+        self.table_queries = {}
         fpath = pathlib.Path(self.config.filename)
         self.file = fpath.open("w")
         self.wrote_something = False
@@ -86,11 +89,18 @@ class TableUsageStage(Stage[QueryParserData]):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
+    def _add_sql_query(self, record, table):
+        if self.table_queries.get(table):
+            self.table_queries[table].append(SqlQuery(query=record.sql))
+        else:
+            self.table_queries[table] = [SqlQuery(query=record.sql)]
+
     def stage_record(self, record: QueryParserData) -> None:
         if record is None:
             return None
         for table in record.tables:
             try:
+                self._add_sql_query(record=record, table=table)
                 table_usage_count = self.table_usage.get(table)
                 if table_usage_count is not None:
                     table_usage_count.count = table_usage_count.count + 1
@@ -121,7 +131,9 @@ class TableUsageStage(Stage[QueryParserData]):
                         date=record.date,
                         joins=joins,
                         service_name=record.service_name,
+                        sql_queries=[],
                     )
+
             except Exception as exc:
                 logger.error("Error in staging record {}".format(exc))
             self.table_usage[table] = table_usage_count
@@ -132,6 +144,7 @@ class TableUsageStage(Stage[QueryParserData]):
 
     def close(self):
         for key, value in self.table_usage.items():
+            value.sql_queries = self.table_queries.get(key, [])
             data = value.json()
             self.file.write(json.dumps(data))
             self.file.write("\n")

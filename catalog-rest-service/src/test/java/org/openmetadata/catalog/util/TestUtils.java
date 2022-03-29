@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.SEPARATOR;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -155,13 +156,12 @@ public final class TestUtils {
   }
 
   public static void post(WebTarget target, Map<String, String> headers) throws HttpResponseException {
-    Response response = SecurityUtil.addHeaders(target, headers).post(null);
-    readResponse(response, Status.CREATED.getStatusCode());
+    post(target, null, headers);
   }
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers) throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    Entity<K> entity = (request == null) ? null : Entity.entity(request, MediaType.APPLICATION_JSON);
+    Response response = SecurityUtil.addHeaders(target, headers).post(entity);
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
@@ -214,7 +214,7 @@ public final class TestUtils {
   }
 
   public static void assertDeleted(List<EntityReference> list, Boolean expected) {
-    listOrEmpty(list).forEach(e -> expected.equals(e.getDeleted()));
+    listOrEmpty(list).forEach(e -> assertEquals(expected, e.getDeleted()));
   }
 
   public static void validateEntityReference(EntityReference ref) {
@@ -226,7 +226,7 @@ public final class TestUtils {
     if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
         .contains(ref.getType())) {
       // FullyQualifiedName has "." as separator
-      assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
+      assertTrue(ref.getName().contains(SEPARATOR), "entity name is not fully qualified - " + ref.getName());
     }
   }
 

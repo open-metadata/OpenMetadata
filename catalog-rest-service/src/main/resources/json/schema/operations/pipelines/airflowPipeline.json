@@ -80,9 +80,7 @@
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a Pipeline.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "pipelineConfig": {
       "$ref": "#/definitions/pipelineConfig"

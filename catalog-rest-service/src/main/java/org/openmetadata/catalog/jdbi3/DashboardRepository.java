@@ -19,7 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -39,10 +38,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final Fields DASHBOARD_UPDATE_FIELDS =
-      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
-  private static final Fields DASHBOARD_PATCH_FIELDS =
-      new Fields(DashboardResource.ALLOWED_FIELDS, "owner,tags,charts");
+  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts";
+  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts";
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -57,7 +54,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard != null && dashboard.getService() != null)
-        ? (dashboard.getService().getName() + "." + dashboard.getName())
+        ? EntityUtil.getFQN(dashboard.getService().getName(), dashboard.getName())
         : null;
   }
 
@@ -72,7 +69,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException, ParseException {
+  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setService(getService(dashboard));
     dashboard.setOwner(fields.contains(FIELD_OWNER) ? getOwner(dashboard) : null);
@@ -125,7 +122,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(dashboard));
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
@@ -212,11 +208,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     updater.recordChange("charts", origChartIds, updatedChartIds);
   }
 
-  public static class DashboardEntityInterface implements EntityInterface<Dashboard> {
-    private final Dashboard entity;
-
+  public static class DashboardEntityInterface extends EntityInterface<Dashboard> {
     public DashboardEntityInterface(Dashboard entity) {
-      this.entity = entity;
+      super(Entity.DASHBOARD, entity);
     }
 
     @Override
@@ -284,18 +278,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DASHBOARD)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override

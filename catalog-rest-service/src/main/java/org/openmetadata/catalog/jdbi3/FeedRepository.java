@@ -70,7 +70,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException, ParseException {
+  public Thread create(Thread thread) throws IOException {
     String createdBy = thread.getCreatedBy();
 
     // Validate user creating thread
@@ -291,7 +291,7 @@ public class FeedRepository {
       String pageMarker,
       boolean isResolved,
       PaginationType paginationType)
-      throws IOException, ParseException {
+      throws IOException {
     List<Thread> threads;
     int total;
     // Here updatedAt time is used for page marker since threads are sorted by last update time
@@ -396,8 +396,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public final PatchResponse<Thread> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
-      throws IOException, ParseException {
+  public final PatchResponse<Thread> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
     // Get all the fields in the original thread that can be updated during PATCH operation
     Thread original = get(id.toString());
 

@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.reports;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -39,7 +40,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -49,7 +49,6 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/reports")
@@ -76,7 +75,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   }
 
   static final String FIELDS = "owner,usageSummary";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Report.class);
 
   @GET
   @Operation(
@@ -96,8 +94,8 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam)
-      throws IOException, GeneralSecurityException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+      throws IOException {
+    Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
     return dao.listAfter(uriInfo, fields, filter, 10000, null);
   }
@@ -130,7 +128,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -147,10 +145,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException, ParseException {
+      throws IOException {
     addToReport(securityContext, report);
-    dao.create(uriInfo, report);
-    return Response.created(report.getHref()).entity(report).build();
+    return create(uriInfo, securityContext, report, ADMIN | BOT);
   }
 
   @PUT
@@ -166,11 +163,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException, ParseException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) throws IOException {
     addToReport(securityContext, report);
-    PutResponse<Report> response = dao.createOrUpdate(uriInfo, report);
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, report);
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

@@ -46,7 +46,6 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlossary> {
   public GlossaryResourceTest() {
     super(Entity.GLOSSARY, Glossary.class, GlossaryResource.GlossaryList.class, "glossaries", GlossaryResource.FIELDS);
-    supportsDots = false;
   }
 
   @BeforeAll

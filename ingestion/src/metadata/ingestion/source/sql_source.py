@@ -418,7 +418,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = f"{schema}.{model_name}"
+                    model_fqdn = f"{schema}.{model_name}".lower()
                 except Exception as err:
                     logger.debug(traceback.print_exc())
                     logger.error(err)
@@ -433,7 +433,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table = table.replace(".", "_DOT_")
                     table_fqn = self.get_table_fqn(
                         self.config.service_name, database, table
-                    )
+                    ).lower()
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
@@ -443,7 +443,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, schema, table_name):
-        table_fqn = f"{schema}.{table_name}"
+        table_fqn = f"{schema}.{table_name}".lower()
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model

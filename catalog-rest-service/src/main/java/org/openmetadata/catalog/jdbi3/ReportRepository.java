@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -34,21 +33,14 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
-  private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.ALLOWED_FIELDS, "owner");
+  private static final String REPORT_UPDATE_FIELDS = "owner";
 
   public ReportRepository(CollectionDAO dao) {
-    super(
-        ReportResource.COLLECTION_PATH,
-        Entity.REPORT,
-        Report.class,
-        dao.reportDAO(),
-        dao,
-        Fields.EMPTY_FIELDS,
-        REPORT_UPDATE_FIELDS);
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, "", REPORT_UPDATE_FIELDS);
   }
 
   @Override
-  public Report setFields(Report report, Fields fields) throws IOException, ParseException {
+  public Report setFields(Report report, Fields fields) throws IOException {
     report.setService(getService(report)); // service is a default field
     report.setOwner(fields.contains(FIELD_OWNER) ? getOwner(report) : null);
     report.setUsageSummary(
@@ -62,7 +54,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void prepare(Report report) throws IOException, ParseException {
+  public void prepare(Report report) throws IOException {
     // TODO report does not have service yet
     report.setOwner(Entity.getEntityReference(report.getOwner()));
   }
@@ -86,11 +78,9 @@ public class ReportRepository extends EntityRepository<Report> {
     return null;
   }
 
-  public static class ReportEntityInterface implements EntityInterface<Report> {
-    private final Report entity;
-
+  public static class ReportEntityInterface extends EntityInterface<Report> {
     ReportEntityInterface(Report entity) {
-      this.entity = entity;
+      super(Entity.REPORT, entity);
     }
 
     @Override
@@ -156,17 +146,6 @@ public class ReportRepository extends EntityRepository<Report> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.REPORT)
-          .withDeleted(isDeleted());
     }
 
     @Override

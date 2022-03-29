@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.glossary;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -24,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -59,15 +60,11 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/glossaryTerms")
@@ -106,7 +103,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   static final String FIELDS = "children,relatedTerms,reviewers,tags,usageCount";
-  public static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(GlossaryTerm.class);
 
   @GET
   @Valid
@@ -162,10 +158,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, GeneralSecurityException, ParseException {
+      throws IOException {
     // TODO make this common implementation
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
+    Fields fields = getFields(fieldsParam);
 
     // Filter by glossary
     String fqn = null;
@@ -186,8 +182,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             CatalogExceptionMessage.glossaryTermMismatch(parentTermParam, glossaryIdParam));
       }
     }
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value()).addQueryParam("parent", fqn);
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
@@ -226,7 +221,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -258,7 +253,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -278,7 +273,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -306,7 +301,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -324,11 +319,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      throws IOException {
     GlossaryTerm term = getGlossaryTerm(securityContext, create);
-    term = addHref(uriInfo, dao.create(uriInfo, term));
-    return Response.created(term.getHref()).entity(term).build();
+    return create(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
   @PATCH
@@ -339,7 +332,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       description = "Update an existing glossary using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -352,19 +345,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
-    Fields fields = new Fields(ALLOWED_FIELDS, FIELDS);
-    GlossaryTerm term = dao.get(uriInfo, id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer,
-        securityContext,
-        dao.getEntityInterface(term).getEntityReference(),
-        dao.getOriginalOwner(term),
-        patch);
-    PatchResponse<GlossaryTerm> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
@@ -381,13 +363,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
-      throws IOException, ParseException {
+      throws IOException {
     GlossaryTerm term = getGlossaryTerm(securityContext, create);
-    EntityReference owner = dao.getOriginalOwner(term);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, owner);
-    PutResponse<GlossaryTerm> response = dao.createOrUpdate(uriInfo, term);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return createOrUpdate(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
   @DELETE
@@ -401,10 +379,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(responseCode = "404", description = "glossary for instance {id} is not found")
       })
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<GlossaryTerm> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
-    return response.toResponse();
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
   }
 
   private GlossaryTerm getGlossaryTerm(SecurityContext securityContext, CreateGlossaryTerm create) {

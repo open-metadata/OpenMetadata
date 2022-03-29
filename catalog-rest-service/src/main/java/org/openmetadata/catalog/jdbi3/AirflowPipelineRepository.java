@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -31,10 +30,8 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
-  private static final Fields AIRFLOW_PIPELINE_UPDATE_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
-  private static final Fields AIRFLOW_PIPELINE_PATCH_FIELDS =
-      new Fields(AirflowPipelineResource.ALLOWED_FIELDS, FIELD_OWNER);
+  private static final String AIRFLOW_PIPELINE_UPDATE_FIELDS = FIELD_OWNER;
+  private static final String AIRFLOW_PIPELINE_PATCH_FIELDS = FIELD_OWNER;
 
   public AirflowPipelineRepository(CollectionDAO dao) {
     super(
@@ -49,7 +46,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   public static String getFQN(AirflowPipeline airflowPipeline) {
     return (airflowPipeline != null && airflowPipeline.getService() != null)
-        ? (airflowPipeline.getService().getName() + "." + airflowPipeline.getName())
+        ? EntityUtil.getFQN(airflowPipeline.getService().getName(), airflowPipeline.getName())
         : null;
   }
 
@@ -59,7 +56,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   }
 
   @Override
-  public AirflowPipeline setFields(AirflowPipeline airflowPipeline, Fields fields) throws IOException, ParseException {
+  public AirflowPipeline setFields(AirflowPipeline airflowPipeline, Fields fields) throws IOException {
     airflowPipeline.setService(getService(airflowPipeline));
     airflowPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(airflowPipeline) : null);
     return airflowPipeline;
@@ -71,8 +68,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
   }
 
   @Override
-  public void prepare(AirflowPipeline airflowPipeline) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(airflowPipeline));
+  public void prepare(AirflowPipeline airflowPipeline) throws IOException {
     EntityReference entityReference = Entity.getEntityReference(airflowPipeline.getService());
     airflowPipeline.setService(entityReference);
     airflowPipeline.setFullyQualifiedName(getFQN(airflowPipeline));
@@ -112,11 +108,9 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     return getContainer(airflowPipeline.getId(), Entity.AIRFLOW_PIPELINE);
   }
 
-  public static class AirflowPipelineEntityInterface implements EntityInterface<AirflowPipeline> {
-    private final AirflowPipeline entity;
-
+  public static class AirflowPipelineEntityInterface extends EntityInterface<AirflowPipeline> {
     public AirflowPipelineEntityInterface(AirflowPipeline entity) {
-      this.entity = entity;
+      super(Entity.AIRFLOW_PIPELINE, entity);
     }
 
     @Override
@@ -179,17 +173,6 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.AIRFLOW_PIPELINE)
-          .withDeleted(isDeleted());
     }
 
     @Override

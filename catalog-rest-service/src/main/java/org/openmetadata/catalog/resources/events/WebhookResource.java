@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.resources.events;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,8 +23,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -49,7 +50,6 @@ import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
@@ -58,8 +58,6 @@ import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/webhook")
@@ -121,11 +119,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException, GeneralSecurityException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", include.value());
-
+    ListFilter filter = new ListFilter(include);
     ResultList<Webhook> webhooks;
     if (before != null) { // Reverse paging
       webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
@@ -160,7 +156,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getInternal(uriInfo, securityContext, id, "", include);
   }
 
@@ -187,7 +183,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include)
-      throws IOException, ParseException {
+      throws IOException {
     return getByNameInternal(uriInfo, securityContext, name, "", include);
   }
 
@@ -207,7 +203,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.listVersions(id);
   }
 
@@ -235,7 +231,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
-      throws IOException, ParseException {
+      throws IOException {
     return dao.getVersion(id, version);
   }
 
@@ -253,13 +249,11 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       })
   public Response createWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, ParseException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+      throws IOException {
     Webhook webhook = getWebhook(securityContext, create);
-    webhook.setStatus(Boolean.TRUE.equals(webhook.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
-    webhook = dao.create(uriInfo, webhook);
+    Response response = create(uriInfo, securityContext, webhook, ADMIN);
     dao.addWebhookPublisher(webhook);
-    return Response.created(webhook.getHref()).entity(webhook).build();
+    return response;
   }
 
   @PUT
@@ -276,15 +270,11 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       })
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, ParseException, InterruptedException {
-    // TODO
-    //    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    //    Table table = getTable(securityContext, create);
+      throws IOException, InterruptedException {
     Webhook webhook = getWebhook(securityContext, create);
-    webhook.setStatus(Boolean.TRUE.equals(webhook.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
-    PutResponse<Webhook> putResponse = dao.createOrUpdate(uriInfo, webhook);
-    dao.updateWebhookPublisher(webhook);
-    return putResponse.toResponse();
+    Response response = createOrUpdate(uriInfo, securityContext, webhook, ADMIN | BOT);
+    dao.updateWebhookPublisher((Webhook) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -305,11 +295,10 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException, ParseException, InterruptedException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    DeleteResponse<Webhook> response = dao.delete(securityContext.getUserPrincipal().getName(), id);
+      throws IOException, InterruptedException {
+    Response response = delete(uriInfo, securityContext, id, false, ADMIN);
     dao.deleteWebhookPublisher(UUID.fromString(id));
-    return response.toResponse();
+    return response;
   }
 
   public Webhook getWebhook(SecurityContext securityContext, CreateWebhook create) {
@@ -326,6 +315,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         .withEnabled(create.getEnabled())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
-        .withSecretKey(create.getSecretKey());
+        .withSecretKey(create.getSecretKey())
+        .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
   }
 }
