@@ -29,7 +29,8 @@
     },
     "password": {
       "description": "password for the Tableau",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "apiVersion": {
       "description": "Tableau API version",

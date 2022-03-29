@@ -36,7 +36,8 @@
     },
     "password": {
       "description": "password to connect  to the MariaDB.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "description": "Host and port of the data source.",
