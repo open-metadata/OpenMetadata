@@ -35,7 +35,6 @@ import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "owner,tags,reviewers";
@@ -77,11 +76,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
     glossary.withOwner(null).withHref(null).withTags(null);
 
-    if (update) {
-      daoCollection.glossaryDAO().update(glossary.getId(), JsonUtils.pojoToJson(glossary));
-    } else {
-      daoCollection.glossaryDAO().insert(glossary);
-    }
+    store(glossary.getId(), glossary, update);
 
     // Restore the relationships
     glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);

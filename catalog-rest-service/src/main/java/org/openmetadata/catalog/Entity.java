@@ -179,7 +179,7 @@ public final class Entity {
 
   public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException {
     EntityRepository<?> repository = getEntityRepository(reference.getType());
-    return repository.getOwner(reference.getId(), reference.getType());
+    return repository.getOwner(reference);
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {

@@ -67,11 +67,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         : null;
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Pipeline pipeline) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner());
-  }
-
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
@@ -160,7 +155,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
+    populateOwner(pipeline.getOwner()); // Validate owner
     pipeline.setTags(addDerivedTags(pipeline.getTags()));
   }
 
@@ -186,7 +181,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
 
     // Add owner relationship
-    setOwner(pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    addOwnerRelationship(pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);

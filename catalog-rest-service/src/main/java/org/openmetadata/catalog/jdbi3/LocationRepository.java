@@ -157,11 +157,6 @@ public class LocationRepository extends EntityRepository<Location> {
         : null;
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Location location) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), location.getOwner());
-  }
-
   private StorageService getService(UUID serviceId, String entityType) throws IOException {
     if (entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
       return daoCollection.storageServiceDAO().findEntityById(serviceId);
@@ -177,7 +172,7 @@ public class LocationRepository extends EntityRepository<Location> {
         new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
     location.setServiceType(storageService.getServiceType());
     location.setFullyQualifiedName(getFQN(location));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), location.getOwner()); // Validate owner
+    populateOwner(location.getOwner()); // Validate owner
     location.setTags(addDerivedTags(location.getTags()));
   }
 
@@ -200,7 +195,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void storeRelationships(Location location) {
     // Add location owner relationship
-    setOwner(location.getId(), Entity.LOCATION, location.getOwner());
+    addOwnerRelationship(location.getId(), Entity.LOCATION, location.getOwner());
     EntityReference service = location.getService();
     addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
 

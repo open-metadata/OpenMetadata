@@ -66,11 +66,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return policy.getName();
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(Policy policy) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), policy.getOwner());
-  }
-
   /** Find the location to which this policy applies to. * */
   @Transaction
   private EntityReference getLocationForPolicy(Policy policy) throws IOException {
@@ -113,7 +108,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.setFullyQualifiedName(getFQN(policy));
     policy.setLocation(getLocationReference(policy));
     // Check if owner is valid and set the relationship
-    policy.setOwner(EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), policy.getOwner()));
+    populateOwner(policy.getOwner());
   }
 
   @Override
