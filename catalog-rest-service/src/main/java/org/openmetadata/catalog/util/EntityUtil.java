@@ -13,8 +13,37 @@
 
 package org.openmetadata.catalog.util;
 
-import static org.openmetadata.catalog.type.Include.ALL;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.joda.time.Period;
+import org.joda.time.format.ISOPeriodFormat;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.TermReference;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventFilter;
+import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FailureDetails;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.MlFeature;
+import org.openmetadata.catalog.type.MlHyperParameter;
+import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.type.TableConstraint;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.Task;
+import org.openmetadata.catalog.type.UsageDetails;
+import org.openmetadata.catalog.type.UsageStats;
 
+import javax.ws.rs.WebApplicationException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,42 +56,8 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.ws.rs.WebApplicationException;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.joda.time.Period;
-import org.joda.time.format.ISOPeriodFormat;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.TermReference;
-import org.openmetadata.catalog.entity.data.GlossaryTerm;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
-import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.Column;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.EventFilter;
-import org.openmetadata.catalog.type.EventType;
-import org.openmetadata.catalog.type.FailureDetails;
-import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.MlFeature;
-import org.openmetadata.catalog.type.MlHyperParameter;
-import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.type.TableConstraint;
-import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.Task;
-import org.openmetadata.catalog.type.UsageDetails;
-import org.openmetadata.catalog.type.UsageStats;
+
+import static org.openmetadata.catalog.type.Include.ALL;
 
 @Slf4j
 public final class EntityUtil {
@@ -167,66 +162,6 @@ public final class EntityUtil {
     return entity;
   }
 
-  public static void validateUser(UserDAO userDAO, UUID userId) {
-    if (!userDAO.exists(userId)) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
-    }
-  }
-
-  public static EntityReference populateOwner(UserDAO userDAO, TeamDAO teamDAO, EntityReference owner)
-      throws IOException {
-    if (owner == null) {
-      return null;
-    }
-    UUID id = owner.getId();
-    if (owner.getType().equalsIgnoreCase("user")) {
-      User ownerInstance = userDAO.findEntityById(id);
-      owner.setName(ownerInstance.getName());
-      owner.setDisplayName(ownerInstance.getDisplayName());
-      if (Optional.ofNullable(ownerInstance.getDeleted()).orElse(false)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
-      }
-    } else if (owner.getType().equalsIgnoreCase("team")) {
-      Team ownerInstance = teamDAO.findEntityById(id);
-      owner.setDescription(ownerInstance.getDescription());
-      owner.setName(ownerInstance.getName());
-      owner.setDisplayName(ownerInstance.getDisplayName());
-    } else {
-      throw new IllegalArgumentException(String.format("Invalid ownerType %s", owner.getType()));
-    }
-    return owner;
-  }
-
-  public static void setOwner(
-      EntityRelationshipDAO dao, UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
-    // Add relationship owner --- owns ---> ownedEntity
-    if (owner != null) {
-      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
-      dao.insert(owner.getId(), ownedEntityId, owner.getType(), ownedEntityType, Relationship.OWNS.ordinal());
-    }
-  }
-
-  /** Unassign owner relationship for a given entity */
-  public static void unassignOwner(
-      EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId, String ownedEntityType) {
-    if (owner != null && owner.getId() != null) {
-      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
-      dao.delete(
-          owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
-    }
-  }
-
-  public static void updateOwner(
-      EntityRelationshipDAO dao,
-      EntityReference originalOwner,
-      EntityReference newOwner,
-      UUID ownedEntityId,
-      String ownedEntityType) {
-    // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
-    unassignOwner(dao, originalOwner, ownedEntityId.toString(), ownedEntityType);
-    setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
-  }
-
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
@@ -282,41 +217,6 @@ public final class EntityUtil {
         tags.add(derivedTag);
       }
     }
-  }
-
-  public static boolean addFollower(
-      EntityRelationshipDAO dao,
-      UserDAO userDAO,
-      UUID followedEntityId,
-      String followedEntityType,
-      UUID followerId,
-      String followerEntity)
-      throws IOException {
-    User user = userDAO.findEntityById(followerId);
-    if (Optional.ofNullable(user.getDeleted()).orElse(false)) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
-    }
-    return dao.insert(followerId, followedEntityId, followerEntity, followedEntityType, Relationship.FOLLOWS.ordinal())
-        > 0;
-  }
-
-  public static List<EntityReference> getFollowers(
-      EntityInterface<?> followedEntityInterface,
-      String name,
-      EntityRelationshipDAO entityRelationshipDAO,
-      UserDAO userDAO)
-      throws IOException {
-    List<String> followerIds =
-        entityRelationshipDAO.findFrom(
-            followedEntityInterface.getId().toString(), name, Relationship.FOLLOWS.ordinal(), Entity.USER);
-    List<EntityReference> followers = new ArrayList<>();
-    for (String followerId : followerIds) {
-      User user = userDAO.findEntityById(UUID.fromString(followerId), ALL);
-      if (followedEntityInterface.isDeleted() || !user.getDeleted()) {
-        followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
-      }
-    }
-    return followers;
   }
 
   @RequiredArgsConstructor
@@ -396,7 +296,7 @@ public final class EntityUtil {
     return String.join(Entity.SEPARATOR, strings);
   }
 
-  /** Return column field name of format columnName.fieldName */
+  /** Return column field name of format columnName:fieldName */
   public static String getColumnField(Table table, Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName =

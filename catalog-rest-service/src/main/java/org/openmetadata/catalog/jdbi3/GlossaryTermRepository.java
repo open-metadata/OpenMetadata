@@ -41,7 +41,6 @@ import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
@@ -139,11 +138,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .withHref(null)
         .withTags(null);
 
-    if (update) {
-      daoCollection.glossaryTermDAO().update(entity.getId(), JsonUtils.pojoToJson(entity));
-    } else {
-      daoCollection.glossaryTermDAO().insert(entity);
-    }
+    store(entity.getId(), entity, update);
 
     // Restore the relationships
     entity
