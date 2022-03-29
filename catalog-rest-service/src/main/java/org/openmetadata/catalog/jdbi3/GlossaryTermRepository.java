@@ -25,7 +25,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,10 +45,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
-  private static final Fields UPDATE_FIELDS =
-      new Fields(GlossaryTermResource.ALLOWED_FIELDS, "tags,references,relatedTerms,reviewers,synonyms");
-  private static final Fields PATCH_FIELDS =
-      new Fields(GlossaryTermResource.ALLOWED_FIELDS, "tags,references,relatedTerms,reviewers,synonyms");
+  private static final String UPDATE_FIELDS = "tags,references,relatedTerms,reviewers,synonyms";
+  private static final String PATCH_FIELDS = "tags,references,relatedTerms,reviewers,synonyms";
 
   public GlossaryTermRepository(CollectionDAO dao) {
     super(
@@ -63,7 +60,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException, ParseException {
+  public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException {
     entity.setGlossary(getGlossary(entity));
     entity.setParent(getParent(entity));
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
@@ -99,17 +96,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public void prepare(GlossaryTerm entity) throws IOException, ParseException {
+  public void prepare(GlossaryTerm entity) throws IOException {
     // Validate glossary
     EntityReference glossary = Entity.getEntityReference(entity.getGlossary());
     entity.setGlossary(glossary);
 
     // Validate parent
     if (entity.getParent() == null) {
-      entity.setFullyQualifiedName(entity.getGlossary().getName() + "." + entity.getName());
+      entity.setFullyQualifiedName(EntityUtil.getFQN(entity.getGlossary().getName(), entity.getName()));
     } else {
       EntityReference parent = Entity.getEntityReference(entity.getParent());
-      entity.setFullyQualifiedName(parent.getName() + "." + entity.getName());
+      entity.setFullyQualifiedName(EntityUtil.getFQN(parent.getName(), entity.getName()));
       entity.setParent(parent);
     }
 
@@ -201,11 +198,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
-  public static class GlossaryTermEntityInterface implements EntityInterface<GlossaryTerm> {
-    private final GlossaryTerm entity;
-
+  public static class GlossaryTermEntityInterface extends EntityInterface<GlossaryTerm> {
     public GlossaryTermEntityInterface(GlossaryTerm entity) {
-      this.entity = entity;
+      super(GLOSSARY_TERM, entity);
     }
 
     @Override
@@ -271,17 +266,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(GLOSSARY_TERM)
-          .withDeleted(isDeleted());
     }
 
     @Override

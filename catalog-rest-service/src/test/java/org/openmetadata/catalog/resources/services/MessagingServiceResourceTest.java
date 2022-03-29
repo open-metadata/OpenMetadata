@@ -70,7 +70,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         "services/messagingServices",
         MessagingServiceResource.FIELDS);
     supportsPatch = false;
-    supportsDots = false;
     supportsAuthorizedMetadataOperations = false;
   }
 

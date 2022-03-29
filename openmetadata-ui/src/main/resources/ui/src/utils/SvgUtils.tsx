@@ -45,9 +45,11 @@ import IconDoc from '../assets/svg/doc.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
+import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFitView from '../assets/svg/fitview.svg';
+import IconGithubStar from '../assets/svg/github-star.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
@@ -214,6 +216,7 @@ export const Icons = {
   SLACK_GREY: 'slack-grey',
   EXTERNAL_LINK: 'external-link',
   EXTERNAL_LINK_WHITE: 'external-link-white',
+  EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
   PIPELINE_GREY: 'pipeline-grey',
@@ -261,6 +264,7 @@ export const Icons = {
   WEBHOOK: 'icon-webhook',
   WEBHOOK_GREY: 'icon-webhook-grey',
   WEBHOOK_PRIMARY: 'icon-webhook-primary',
+  GITHUB_STAR: 'icon-github-star',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -563,6 +567,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconExternalLinkWhite;
 
       break;
+    case Icons.EXTERNAL_LINK_GREY:
+      IconComponent = IconExternalLinkGrey;
+
+      break;
     case Icons.PROFILER:
       IconComponent = IconProfiler;
 
@@ -755,6 +763,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.WEBHOOK_PRIMARY:
       IconComponent = IconWebhookPrimary;
+
+      break;
+    case Icons.GITHUB_STAR:
+      IconComponent = IconGithubStar;
 
       break;
 

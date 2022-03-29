@@ -44,6 +44,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResource.LocationList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -142,7 +143,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     LocationList allLocations =
         listPrefixes(
             null,
-            AWS_STORAGE_SERVICE_REFERENCE.getName() + "." + locationName,
+            EntityUtil.getFQN(AWS_STORAGE_SERVICE_REFERENCE.getName(), locationName),
             1000000,
             null,
             null,

@@ -13,6 +13,7 @@ Snowflake usage module
 """
 import logging
 import traceback
+from datetime import timedelta
 from typing import Any, Dict, Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -77,6 +78,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
         super().__init__(ctx)
         self.config = config
         start, end = get_start_and_end(config.duration)
+        end = end + timedelta(days=1)
         self.analysis_date = start
         self.metadata_config = metadata_config
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(

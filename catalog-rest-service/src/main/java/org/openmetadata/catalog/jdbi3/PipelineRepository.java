@@ -21,7 +21,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -48,8 +47,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
-  private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.ALLOWED_FIELDS, "owner,tags,tasks");
-  private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.ALLOWED_FIELDS, "owner,tags,tasks");
+  private static final String PIPELINE_UPDATE_FIELDS = "owner,tags,tasks";
+  private static final String PIPELINE_PATCH_FIELDS = "owner,tags,tasks";
 
   public PipelineRepository(CollectionDAO dao) {
     super(
@@ -64,7 +63,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline != null && pipeline.getService() != null)
-        ? (pipeline.getService().getName() + "." + pipeline.getName())
+        ? EntityUtil.getFQN(pipeline.getService().getName(), pipeline.getName())
         : null;
   }
 
@@ -74,7 +73,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException, ParseException {
+  public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
     pipeline.setService(getService(pipeline));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
@@ -102,7 +101,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException, ParseException {
+  public Pipeline addPipelineStatus(UUID pipelineId, PipelineStatus pipelineStatus) throws IOException {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityById(pipelineId);
     Map<Long, PipelineStatus> storedMapStatus = new HashMap<>();
@@ -159,8 +158,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void prepare(Pipeline pipeline) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(pipeline));
-    EntityUtil.escapeReservedChars(pipeline.getTasks());
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
@@ -218,11 +215,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.PIPELINE, PIPELINE_SERVICE));
   }
 
-  public static class PipelineEntityInterface implements EntityInterface<Pipeline> {
-    private final Pipeline entity;
-
+  public static class PipelineEntityInterface extends EntityInterface<Pipeline> {
     public PipelineEntityInterface(Pipeline entity) {
-      this.entity = entity;
+      super(Entity.PIPELINE, entity);
     }
 
     @Override
@@ -290,17 +285,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.PIPELINE)
-          .withDeleted(isDeleted());
     }
 
     @Override

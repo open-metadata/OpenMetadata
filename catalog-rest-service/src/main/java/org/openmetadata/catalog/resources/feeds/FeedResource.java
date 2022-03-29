@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.resources.feeds;
 
+import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
+import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -24,7 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -72,7 +75,6 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "feeds")
 public class FeedResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
-  public static final List<String> ALLOWED_FIELDS = getAllowedFields();
 
   private final FeedRepository dao;
   private final Authorizer authorizer;
@@ -174,7 +176,7 @@ public class FeedResource {
           @DefaultValue("false")
           @QueryParam("resolved")
           boolean resolved)
-      throws IOException, ParseException {
+      throws IOException {
     RestUtil.validateCursors(before, after);
 
     ResultList<Thread> threads;
@@ -227,7 +229,7 @@ public class FeedResource {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
           JsonPatch patch)
-      throws IOException, ParseException {
+      throws IOException {
     PatchResponse<Thread> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return response.toResponse();
@@ -273,7 +275,7 @@ public class FeedResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
-      throws IOException, ParseException {
+      throws IOException {
     Thread thread = getThread(securityContext, create);
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();
@@ -327,7 +329,7 @@ public class FeedResource {
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
     // delete post only if the admin/bot/author tries to delete it
-    SecurityUtil.checkAdminOrBotOrOwner(authorizer, securityContext, dao.getOwnerOfPost(post));
+    SecurityUtil.authorize(authorizer, securityContext, null, dao.getOwnerOfPost(post), ADMIN | BOT | OWNER);
     return dao.deletePost(thread, post, securityContext.getUserPrincipal().getName()).toResponse();
   }
 

@@ -93,7 +93,7 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(Date date, int days) throws ParseException {
+  public static Date getDateByOffset(Date date, int days) {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     calendar.setTime(date);
     calendar.add(Calendar.DATE, days);
@@ -109,23 +109,32 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days) throws ParseException {
-    Date date = dateFormat.parse(strDate);
+  public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days) {
+    Date date;
+    try {
+      date = dateFormat.parse(strDate);
+    } catch (ParseException e) {
+      throw new IllegalArgumentException("Failed to parse date " + strDate, e);
+    }
     return getDateByOffset(date, days);
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static String getDateStringByOffset(DateFormat dateFormat, String strDate, int days) throws ParseException {
+  public static String getDateStringByOffset(DateFormat dateFormat, String strDate, int days) {
     return dateFormat.format(getDateByOffset(dateFormat, strDate, days));
   }
 
   /** Check if given date is with in today - pastDays and today + futureDays */
-  public static boolean dateInRange(DateFormat dateFormat, String date, int futureDays, int pastDays)
-      throws ParseException {
+  public static boolean dateInRange(DateFormat dateFormat, String date, int futureDays, int pastDays) {
     Date today = new Date();
     Date startDate = getDateByOffset(today, -pastDays);
     Date endDate = getDateByOffset(today, futureDays);
-    Date givenDate = dateFormat.parse(date);
+    Date givenDate;
+    try {
+      givenDate = dateFormat.parse(date);
+    } catch (ParseException e) {
+      throw new IllegalArgumentException("Failed to parse date " + date, e);
+    }
     return givenDate.after(startDate) && givenDate.before(endDate);
   }
 

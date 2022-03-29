@@ -50,6 +50,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -122,7 +123,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
       ResultList<Dashboard> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Dashboard db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
-        String expectedFQN = service.getName() + "." + db.getName();
+        String expectedFQN = EntityUtil.getFQN(service.getName(), db.getName());
         assertEquals(expectedFQN, db.getFullyQualifiedName());
       }
     }

@@ -24,6 +24,7 @@ import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { Button } from '../components/buttons/Button/Button';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   imageTypes,
   LOCALSTORAGE_RECENTLY_SEARCHED,
@@ -65,9 +66,9 @@ export const isEven = (value: number): boolean => {
 };
 
 export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
-  const arrColFQN = columnFQN.split('.');
+  const arrColFQN = columnFQN.split(FQN_SEPARATOR_CHAR);
 
-  return arrColFQN.slice(0, arrColFQN.length - 1).join('.');
+  return arrColFQN.slice(0, arrColFQN.length - 1).join(FQN_SEPARATOR_CHAR);
 };
 
 export const getPartialNameFromFQN = (
@@ -75,7 +76,7 @@ export const getPartialNameFromFQN = (
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
   joinSeperator = '/'
 ): string => {
-  const arrFqn = fqn.split('.');
+  const arrFqn = fqn.split(FQN_SEPARATOR_CHAR);
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {
@@ -473,7 +474,7 @@ export const getDocButton = (label: string, url: string, dataTestId = '') => {
 };
 
 export const getNameFromFQN = (fqn: string): string => {
-  const arr = fqn.split('.');
+  const arr = fqn.split(FQN_SEPARATOR_CHAR);
 
   return arr[arr.length - 1];
 };

@@ -76,7 +76,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   public TeamResourceTest() {
     super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS);
-    this.supportsDots = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
 

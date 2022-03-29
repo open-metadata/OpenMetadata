@@ -12,7 +12,7 @@
  */
 
 import { observer } from 'mobx-react';
-import { LeafNodes, SearchResponse } from 'Models';
+import { LeafNodes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -42,10 +42,6 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
 
-const mockData = {
-  data: { hits: { hits: [] } },
-};
-
 const exploreCount = {
   table: 4,
   topic: 0,
@@ -60,7 +56,7 @@ const TourPage = () => {
   const [currentPage, setCurrentPage] = useState<CurrentTourPageType>(
     AppState.currentTourPage
   );
-  const [myDataSearchResult, setMyDataSearchResult] = useState(mockData);
+  const [myDataSearchResult, setMyDataSearchResult] = useState(mockFeedData);
   const [exploreSearchResult, setExploreSearchResult] =
     useState(exploreSearchData);
   const [datasetActiveTab, setdatasetActiveTab] = useState(
@@ -120,27 +116,23 @@ const TourPage = () => {
       case CurrentTourPageType.MY_DATA_PAGE:
         return (
           <MyData
+            countDashboards={10}
+            countPipelines={8}
             countServices={4}
-            entityCounts={{
-              tableCount: 21,
-              topicCount: 20,
-              dashboardCount: 10,
-              pipelineCount: 8,
-            }}
+            countTables={21}
+            countTopics={20}
             error=""
-            feedData={mockFeedData as MyDataProps['feedData']}
+            feedData={myDataSearchResult as MyDataProps['feedData']}
             feedFilter={FeedFilter.ALL}
             feedFilterHandler={() => {
-              setMyDataSearchResult(mockData);
+              setMyDataSearchResult(mockFeedData);
             }}
             fetchData={() => {
-              setMyDataSearchResult(mockData);
+              setMyDataSearchResult(mockFeedData);
             }}
             followedData={[]}
-            ingestionCount={0}
             ownedData={[]}
             postFeedHandler={handleOnClick}
-            searchResult={myDataSearchResult as unknown as SearchResponse}
             userDetails={AppState.userDetails}
           />
         );

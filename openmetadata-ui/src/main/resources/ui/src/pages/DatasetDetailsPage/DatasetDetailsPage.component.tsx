@@ -52,6 +52,7 @@ import {
   EdgeData,
 } from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
@@ -153,7 +154,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
     state: false,
   });
   const [tableFQN, setTableFQN] = useState<string>(
-    getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
+    getPartialNameFromFQN(
+      datasetFQN,
+      ['service', 'database', 'table'],
+      FQN_SEPARATOR_CHAR
+    )
   );
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
@@ -956,7 +961,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     setTableFQN(
-      getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.')
+      getPartialNameFromFQN(
+        datasetFQN,
+        ['service', 'database', 'table'],
+        FQN_SEPARATOR_CHAR
+      )
     );
     setEntityLineage({} as EntityLineage);
   }, [datasetFQN]);

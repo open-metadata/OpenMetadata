@@ -71,6 +71,7 @@ class MetadataUsageBulkSink(BulkSink):
 
     def write_records(self) -> None:
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]
+        table_usage_map = {}
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
             if "." in table_usage.table:
@@ -82,25 +83,20 @@ class MetadataUsageBulkSink(BulkSink):
                 table_usage.database, table_usage.table
             )
             if table_entity is not None:
-                table_usage_request = TableUsageRequest(
-                    date=table_usage.date, count=table_usage.count
-                )
-                try:
-                    self.metadata.publish_table_usage(table_entity, table_usage_request)
-
-                    logger.info(
-                        f"Successfully table usage published for {table_usage.table}"
+                if not table_usage_map.get(table_entity.id.__root__):
+                    table_usage_map[table_entity.id.__root__] = {
+                        "table_entity": table_entity,
+                        "usage_count": table_usage.count,
+                        "sql_queries": table_usage.sql_queries,
+                        "usage_date": table_usage.date,
+                    }
+                else:
+                    table_usage_map[table_entity.id.__root__][
+                        "usage_count"
+                    ] += table_usage.count
+                    table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
+                        table_usage.sql_queries
                     )
-                    self.status.records_written(f"Table: {table_usage.table}")
-
-                except Exception as err:
-                    self.status.failures.append(table_usage_request)
-                    logger.error(
-                        "Failed to update usage for {} {}".format(
-                            table_usage.table, err
-                        )
-                    )
-                    self.status.failures.append(f"Table: {table_usage.table}")
                 table_join_request = self.__get_table_joins(table_usage)
                 logger.debug("table join request {}".format(table_join_request))
                 try:
@@ -127,6 +123,36 @@ class MetadataUsageBulkSink(BulkSink):
                 )
                 self.status.warnings.append(f"Table: {table_usage.table}")
 
+        for table_id, value_dict in table_usage_map.items():
+            self.metadata.ingest_table_queries_data(
+                table=value_dict["table_entity"],
+                table_queries=value_dict["sql_queries"],
+            )
+            table_usage_request = TableUsageRequest(
+                date=value_dict["usage_date"], count=value_dict["usage_count"]
+            )
+            try:
+                self.metadata.publish_table_usage(
+                    value_dict["table_entity"], table_usage_request
+                )
+                logger.info(
+                    "Successfully table usage published for {}".format(
+                        value_dict["table_entity"].name.__root__
+                    )
+                )
+                self.status.records_written(
+                    "Table: {}".format(value_dict["table_entity"].name.__root__)
+                )
+            except Exception as err:
+                self.status.failures.append(table_usage_request)
+                logger.error(
+                    "Failed to update usage for {} {}".format(
+                        value_dict["table_entity"].name.__root__, err
+                    )
+                )
+                self.status.failures.append(
+                    "Table: {}".format(value_dict["table_entity"].name.__root__)
+                )
         try:
             self.metadata.compute_percentile(Table, self.today)
             self.metadata.compute_percentile(Database, self.today)

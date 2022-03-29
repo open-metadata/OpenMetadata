@@ -26,7 +26,6 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -119,7 +118,7 @@ class UsageResourceTest extends CatalogApplicationTest {
 
   @Order(1) // Run this method first before other usage records are created
   @Test
-  void post_validUsageForDatabaseAndTables_200_OK() throws HttpResponseException, ParseException {
+  void post_validUsageForDatabaseAndTables_200_OK() throws HttpResponseException {
     // This test creates TABLE_COUNT of tables.
     // For these tables, publish usage data for DAYS_OF_USAGE number of days starting from today.
     // For 100 tables send usage report for last 30 days

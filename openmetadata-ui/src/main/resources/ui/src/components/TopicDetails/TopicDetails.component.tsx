@@ -14,6 +14,7 @@
 import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
@@ -191,7 +192,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
-    { key: 'Tier', value: tier?.tagFQN ? tier.tagFQN.split('.')[1] : '' },
+    {
+      key: 'Tier',
+      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
     ...getConfigDetails(),
   ];
 

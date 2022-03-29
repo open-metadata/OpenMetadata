@@ -23,7 +23,6 @@ import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -45,8 +44,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final Fields MODEL_UPDATE_FIELDS = new Fields(MlModelResource.ALLOWED_FIELDS, "owner,dashboard,tags");
-  private static final Fields MODEL_PATCH_FIELDS = new Fields(MlModelResource.ALLOWED_FIELDS, "owner,dashboard,tags");
+  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags";
+  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags";
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -60,7 +59,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   public static String getFQN(MlModel model) {
-    return (model.getName());
+    return model.getName();
   }
 
   @Transaction
@@ -69,7 +68,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException, ParseException {
+  public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains("followers") ? getFollowers(mlModel) : null);
@@ -97,7 +96,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlSources.forEach(
         s -> {
           if (s.getDataSource() != null) {
-            s.setFullyQualifiedName(s.getDataSource().getName() + "." + s.getName());
+            s.setFullyQualifiedName(EntityUtil.getFQN(s.getDataSource().getName(), s.getName()));
           } else {
             s.setFullyQualifiedName(s.getName());
           }
@@ -107,7 +106,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
         f -> {
-          String featureFqn = parentFQN + "." + f.getName();
+          String featureFqn = EntityUtil.getFQN(parentFQN, f.getName());
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {
             setMlFeatureSourcesFQN(f.getFeatureSources());
@@ -134,7 +133,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void prepare(MlModel mlModel) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(mlModel));
     mlModel.setFullyQualifiedName(getFQN(mlModel));
 
     if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
@@ -211,11 +209,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     deleteTo(mlModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
   }
 
-  public static class MlModelEntityInterface implements EntityInterface<MlModel> {
-    private final MlModel entity;
-
+  public static class MlModelEntityInterface extends EntityInterface<MlModel> {
     public MlModelEntityInterface(MlModel entity) {
-      this.entity = entity;
+      super(MLMODEL, entity);
     }
 
     @Override
@@ -286,17 +282,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.MLMODEL)
-          .withDeleted(isDeleted());
     }
 
     @Override

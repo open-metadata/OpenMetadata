@@ -39,6 +39,7 @@ import ReactFlow, {
 } from 'react-flow-renderer';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import {
@@ -191,7 +192,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         ) : null}
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(node.displayName, node.name, '.', false, node.type)}
+          {getDataLabel(
+            node.displayName,
+            node.name,
+            FQN_SEPARATOR_CHAR,
+            false,
+            node.type
+          )}
         </p>
       </>
     );
@@ -544,7 +551,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             body: `Error while fetching ${getDataLabel(
               expandNode.displayName,
               expandNode.name,
-              '.',
+              FQN_SEPARATOR_CHAR,
               true
             )} columns`,
           });

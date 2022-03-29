@@ -87,7 +87,7 @@ with DAG(
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     schedule_interval=timedelta(days=1),
     start_date=days_ago(1),
-    is_paused_upon_creation=False,
+    is_paused_upon_creation=True,
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(

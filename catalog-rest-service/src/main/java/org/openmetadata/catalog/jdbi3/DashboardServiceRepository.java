@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -31,7 +30,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
-  private static final Fields UPDATE_FIELDS = new Fields(DashboardServiceResource.ALLOWED_FIELDS, "owner");
+  private static final String UPDATE_FIELDS = "owner";
 
   public DashboardServiceRepository(CollectionDAO dao) {
     super(
@@ -40,12 +39,13 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         DashboardService.class,
         dao.dashboardServiceDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         UPDATE_FIELDS);
+    this.allowEdits = true;
   }
 
   @Override
-  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
+  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException {
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
@@ -56,7 +56,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public void prepare(DashboardService entity) throws IOException, ParseException {
+  public void prepare(DashboardService entity) throws IOException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
     EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
@@ -87,11 +87,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     return new DashboardServiceUpdater(original, updated, operation);
   }
 
-  public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
-    private final DashboardService entity;
-
+  public static class DashboardServiceEntityInterface extends EntityInterface<DashboardService> {
     public DashboardServiceEntityInterface(DashboardService entity) {
-      this.entity = entity;
+      super(Entity.DASHBOARD_SERVICE, entity);
     }
 
     @Override
@@ -152,17 +150,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.DASHBOARD_SERVICE)
-          .withDeleted(isDeleted());
     }
 
     @Override

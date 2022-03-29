@@ -18,9 +18,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a metric in the format 'ServiceName.MetricName'.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this metric.",

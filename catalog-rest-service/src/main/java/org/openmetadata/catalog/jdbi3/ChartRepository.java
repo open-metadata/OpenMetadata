@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -38,8 +37,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
-  private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.ALLOWED_FIELDS, "owner");
-  private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.ALLOWED_FIELDS, "owner,tags");
+  private static final String CHART_UPDATE_FIELDS = "owner";
+  private static final String CHART_PATCH_FIELDS = "owner,tags";
 
   public ChartRepository(CollectionDAO dao) {
     super(
@@ -54,13 +53,12 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   public static String getFQN(Chart chart) {
     return (chart != null && chart.getService() != null)
-        ? (chart.getService().getName() + "." + chart.getName())
+        ? EntityUtil.getFQN(chart.getService().getName(), chart.getName())
         : null;
   }
 
   @Override
-  public void prepare(Chart chart) throws IOException, ParseException {
-    EntityUtil.escapeReservedChars(getEntityInterface(chart));
+  public void prepare(Chart chart) throws IOException {
     DashboardService dashboardService = Entity.getEntity(chart.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     chart.setService(new DashboardServiceEntityInterface(dashboardService).getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
@@ -94,7 +92,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public Chart setFields(Chart chart, Fields fields) throws IOException, ParseException {
+  public Chart setFields(Chart chart, Fields fields) throws IOException {
     chart.setService(getService(chart));
     chart.setOwner(fields.contains(FIELD_OWNER) ? getOwner(chart) : null);
     chart.setFollowers(fields.contains("followers") ? getFollowers(chart) : null);
@@ -121,11 +119,9 @@ public class ChartRepository extends EntityRepository<Chart> {
     return getContainer(chart.getId(), Entity.CHART);
   }
 
-  public static class ChartEntityInterface implements EntityInterface<Chart> {
-    private final Chart entity;
-
+  public static class ChartEntityInterface extends EntityInterface<Chart> {
     public ChartEntityInterface(Chart entity) {
-      this.entity = entity;
+      super(Entity.CHART, entity);
     }
 
     @Override
@@ -191,17 +187,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public List<EntityReference> getFollowers() {
       return entity.getFollowers();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.CHART)
-          .withDeleted(isDeleted());
     }
 
     @Override

@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
@@ -34,7 +33,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.ALLOWED_FIELDS, "owner");
+  private static final String METRICS_UPDATE_FIELDS = "owner";
 
   public MetricsRepository(CollectionDAO dao) {
     super(
@@ -43,16 +42,18 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         Metrics.class,
         dao.metricsDAO(),
         dao,
-        Fields.EMPTY_FIELDS,
+        "",
         METRICS_UPDATE_FIELDS);
   }
 
   public static String getFQN(Metrics metrics) {
-    return (metrics.getService().getName() + "." + metrics.getName());
+    return (metrics != null && metrics.getService() != null)
+        ? EntityUtil.getFQN(metrics.getService().getName(), metrics.getName())
+        : null;
   }
 
   @Override
-  public Metrics setFields(Metrics metrics, Fields fields) throws IOException, ParseException {
+  public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
     metrics.setService(getService(metrics)); // service is a default field
     metrics.setOwner(fields.contains(FIELD_OWNER) ? getOwner(metrics) : null);
     metrics.setUsageSummary(
@@ -67,7 +68,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void prepare(Metrics metrics) throws IOException {
-    EntityUtil.escapeReservedChars(getEntityInterface(metrics));
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
@@ -110,11 +110,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));
   }
 
-  static class MetricsEntityInterface implements EntityInterface<Metrics> {
-    private final Metrics entity;
-
+  static class MetricsEntityInterface extends EntityInterface<Metrics> {
     MetricsEntityInterface(Metrics entity) {
-      this.entity = entity;
+      super(Entity.METRICS, entity);
     }
 
     @Override
@@ -180,17 +178,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public ChangeDescription getChangeDescription() {
       return entity.getChangeDescription();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.METRICS)
-          .withDeleted(isDeleted());
     }
 
     @Override

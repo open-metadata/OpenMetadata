@@ -18,9 +18,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a report in the format 'ServiceName.ReportName'.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this report. It could be title or label from the source services.",

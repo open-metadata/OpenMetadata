@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +32,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -40,8 +40,8 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final Fields USER_PATCH_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
-  static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.ALLOWED_FIELDS, "profile,roles,teams");
+  static final String USER_PATCH_FIELDS = "profile,roles,teams";
+  static final String USER_UPDATE_FIELDS = "profile,roles,teams";
 
   public UserRepository(CollectionDAO dao) {
     super(
@@ -59,9 +59,15 @@ public class UserRepository extends EntityRepository<User> {
     return new UserEntityInterface(entity);
   }
 
+  @Override
+  public EntityReference getOriginalOwner(User entity) throws IOException {
+    // For User entity, the entity and the owner are the same
+    return getEntityInterface(entity).getEntityReference();
+  }
+
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) throws IOException, ParseException {
+  public void prepare(User user) throws IOException {
     // Get roles assigned to the user.
     Set<UUID> roleIds = listOrEmpty(user.getRoles()).stream().map(EntityReference::getId).collect(Collectors.toSet());
     // Get default role set up globally.
@@ -78,12 +84,12 @@ public class UserRepository extends EntityRepository<User> {
     user.setRoles(rolesRef);
   }
 
-  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException, ParseException {
+  private List<EntityReference> getTeamDefaultRoles(User user) throws IOException {
     List<EntityReference> teamsRef = listOrEmpty(user.getTeams());
     List<EntityReference> defaultRoles = new ArrayList<>();
     for (EntityReference teamRef : teamsRef) {
-      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")));
-      if (team != null && team.getDefaultRoles() != null) {
+      Team team = Entity.getEntity(teamRef, new Fields(List.of("defaultRoles")), Include.NON_DELETED);
+      if (team.getDefaultRoles() != null) {
         defaultRoles.addAll(team.getDefaultRoles());
       }
     }
@@ -117,20 +123,18 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException, ParseException {
+  public User getByEmail(String email, Fields fields) throws IOException {
     User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
     return setFields(user, fields);
   }
 
   @Override
-  public User setFields(User user, Fields fields) throws IOException, ParseException {
-
+  public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
-
     return user;
   }
 
@@ -202,11 +206,9 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  public static class UserEntityInterface implements EntityInterface<User> {
-    private final User entity;
-
+  public static class UserEntityInterface extends EntityInterface<User> {
     public UserEntityInterface(User entity) {
-      this.entity = entity;
+      super(Entity.USER, entity);
     }
 
     @Override
@@ -257,18 +259,6 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public URI getHref() {
       return entity.getHref();
-    }
-
-    @Override
-    public EntityReference getEntityReference() {
-      return new EntityReference()
-          .withId(getId())
-          .withName(getFullyQualifiedName())
-          .withDescription(getDescription())
-          .withDisplayName(getDisplayName())
-          .withType(Entity.USER)
-          .withHref(getHref())
-          .withDeleted(isDeleted());
     }
 
     @Override
