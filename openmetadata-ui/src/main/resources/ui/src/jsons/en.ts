@@ -75,7 +75,7 @@ const jsonData = {
     'update-service-config-error': 'Error while updating ingestion workflow',
     'update-tags-error': 'Error while updating tags!',
     'update-task-error': 'Error while updating tasks!',
-    'update-team-error': 'Error while updating team',
+    'update-team-error': 'Error while updating team!',
     'update-user-error': 'Error while updating user!',
   },
   'api-success-messages': {
