@@ -22,6 +22,9 @@ dist/
 # mockups
 mock-api/
 
+# coverage
+src/test/unit/coverage
+
 # Ignore files (Prettier has trouble parsing files without extension)
 .gitignore
 .prettierignore
