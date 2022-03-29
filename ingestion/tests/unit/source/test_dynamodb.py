@@ -128,11 +128,16 @@ class DynamoDbIngestionTest(TestCase):
     def test_dynamodb_file_sink(self, mock_connect, all):
         all.return_value = MOCK_GET_TABLE_NAMES
         execute_workflow()
+        table_names_list = [i.name for i in MOCK_GET_TABLE_NAMES]
+        column_names_list = [i["AttributeName"] for i in MOCK_GET_COLUMNS]
+
         file_path = json.loads(CONFIG)["sink"]["config"]["filename"]
         with open(file_path, "r") as file:
             for item in json.loads(file.read()):
                 OMetaDatabaseAndTable.parse_obj(item)
                 Database.parse_obj(item.get("database"))
                 table_obj = GTable.parse_obj(item.get("table"))
+                assert table_obj.name.__root__ in table_names_list
                 for column in table_obj.columns:
-                    Column.parse_obj(column)
+                    column_obj = Column.parse_obj(column)
+                    assert column_obj.name.__root__ in column_names_list
