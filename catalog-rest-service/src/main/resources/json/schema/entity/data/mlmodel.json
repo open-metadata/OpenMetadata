@@ -35,22 +35,6 @@
         "boolean"
       ]
     },
-    "featureName": {
-      "description": "Local name (not fully qualified name) of the ML Feature.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
-    "featureSourceName": {
-      "description": "Local name (not fully qualified name) of a ML Feature source.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
-    "fullyQualifiedFeatureSourceName": {
-      "description": "Fully qualified name of the ML Feature Source that includes `serviceName.[databaseName].tableName/fileName/apiName.columnName[.nestedColumnName]`.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
-    "fullyQualifiedFeatureName": {
-      "description": "Fully qualified name of the ML Feature that includes `modelName.featureName`.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
     "featureSource": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MlFeatureSource",
@@ -58,7 +42,7 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "$ref": "#/definitions/featureSourceName"
+          "$ref": "../../type/basic.json#/definitions/entityName"
         },
         "dataType": {
           "description": "Data type of the source (int, date etc.).",
@@ -69,7 +53,7 @@
           "type": "string"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedFeatureSourceName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "dataSource": {
           "description": "Description of the Data Source (e.g., a Table).",
@@ -92,7 +76,7 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "$ref": "#/definitions/featureName"
+          "$ref": "../../type/basic.json#/definitions/entityName"
         },
         "dataType": {
           "description": "Data type of the column (numerical vs. categorical).",
@@ -103,7 +87,7 @@
           "type": "string"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedFeatureName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "featureSources": {
           "description": "Columns used to create the ML Feature.",
@@ -209,7 +193,7 @@
     },
     "target": {
       "description": "For supervised ML Models, the value to estimate.",
-      "$ref": "#/definitions/featureName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "dashboard": {
       "description": "Performance Dashboard URL to track metric evolution.",

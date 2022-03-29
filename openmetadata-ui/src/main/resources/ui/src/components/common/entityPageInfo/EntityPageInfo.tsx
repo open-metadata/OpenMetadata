@@ -347,11 +347,11 @@ const EntityPageInfo = ({
         </div>
       </div>
       <div
-        className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap"
+        className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap tw-items-center"
         data-testid="extrainfo">
         {extraInfo.map((info, index) => (
           <span
-            className="tw-flex"
+            className="tw-flex tw-items-center"
             data-testid={info.key || `info${index}`}
             key={index}>
             {getInfoElements(info)}
@@ -444,7 +444,7 @@ const EntityPageInfo = ({
             </NonAdminAction>
             {!isUndefined(tagThread) ? (
               <p
-                className="link-text tw-ml-1 tw-w-8 tw-h-8 tw-flex-none"
+                className="link-text tw-ml-1 tw-w-8 tw-flex-none"
                 data-testid="tag-thread"
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
                 <span className="tw-flex">
@@ -456,7 +456,7 @@ const EntityPageInfo = ({
               </p>
             ) : (
               <p
-                className="link-text tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+                className="link-text tw-self-start tw-w-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
                 data-testid="start-tag-thread"
                 onClick={() =>
                   onThreadLinkSelect?.(
