@@ -237,7 +237,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
             <Avatar
               name={glossary.owner?.displayName || glossary.owner?.name || ''}
               textClass="tw-text-xs"
-              width="22"
+              width="20"
             />
           </div>
         )}
