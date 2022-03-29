@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -107,7 +106,6 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   }
 
   static final String FIELDS = FIELD_OWNER;
-  static final String PIPELINE_STATUSES = "pipelineStatuses";
 
   @GET
   @Valid
@@ -158,12 +156,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    ResultList<AirflowPipeline> airflowPipelines =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
-      addStatus(airflowPipelines.getData());
-    }
-    return airflowPipelines;
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -216,11 +209,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    AirflowPipeline airflowPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
-      airflowPipeline = addStatus(airflowPipeline);
-    }
-    return airflowPipeline;
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -282,11 +271,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    AirflowPipeline airflowPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains(PIPELINE_STATUSES)) {
-      airflowPipeline = addStatus(airflowPipeline);
-    }
-    return airflowPipeline;
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @POST
@@ -408,17 +393,8 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withPipelineType(create.getPipelineType())
-        .withForceDeploy(create.getForceDeploy())
-        .withConcurrency(create.getConcurrency())
-        .withPausePipeline(create.getPausePipeline())
-        .withStartDate(create.getStartDate())
-        .withEndDate(create.getEndDate())
-        .withRetries(create.getRetries())
-        .withRetryDelay(create.getRetryDelay())
+        .withAirflowConfig(create.getAirflowConfig())
         .withPipelineConfig(create.getPipelineConfig())
-        .withPipelineCatchup(create.getPipelineCatchup())
-        .withPipelineTimeout(create.getPipelineTimeout())
-        .withScheduleInterval(create.getScheduleInterval())
         .withOwner(create.getOwner())
         .withService(create.getService())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
@@ -426,21 +402,8 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   }
 
   private void deploy(AirflowPipeline airflowPipeline, Boolean decrypt) {
-    if (Boolean.TRUE.equals(airflowPipeline.getForceDeploy())) {
+    if (Boolean.TRUE.equals(airflowPipeline.getAirflowConfig().getForceDeploy())) {
       airflowRESTClient.deploy(airflowPipeline, config, decrypt);
     }
-  }
-
-  public void addStatus(List<AirflowPipeline> airflowPipelines) {
-    listOrEmpty(airflowPipelines).forEach(this::addStatus);
-  }
-
-  private AirflowPipeline addStatus(AirflowPipeline airflowPipeline) {
-    try {
-      airflowPipeline = airflowRESTClient.getStatus(airflowPipeline);
-    } catch (Exception e) {
-      LOG.error("Failed to fetch status for {}", airflowPipeline.getName());
-    }
-    return airflowPipeline;
   }
 }

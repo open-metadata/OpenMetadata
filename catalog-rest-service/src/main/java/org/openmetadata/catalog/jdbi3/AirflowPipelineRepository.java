@@ -243,10 +243,17 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     public void entitySpecificUpdate() throws IOException {
       AirflowPipeline origIngestion = original.getEntity();
       AirflowPipeline updatedIngestion = updated.getEntity();
-      recordChange("scheduleInterval", origIngestion.getScheduleInterval(), updatedIngestion.getScheduleInterval());
+      recordChange(
+          "scheduleInterval",
+          origIngestion.getAirflowConfig().getScheduleInterval(),
+          updatedIngestion.getAirflowConfig().getScheduleInterval());
       recordChange("pipelineConfig", origIngestion.getPipelineConfig(), updatedIngestion.getPipelineConfig());
-      recordChange("startDate", origIngestion.getStartDate(), updatedIngestion.getStartDate());
-      recordChange("endDate", origIngestion.getEndDate(), updatedIngestion.getEndDate());
+      recordChange(
+          "startDate",
+          origIngestion.getAirflowConfig().getStartDate(),
+          updatedIngestion.getAirflowConfig().getStartDate());
+      recordChange(
+          "endDate", origIngestion.getAirflowConfig().getEndDate(), updatedIngestion.getAirflowConfig().getEndDate());
     }
   }
 }

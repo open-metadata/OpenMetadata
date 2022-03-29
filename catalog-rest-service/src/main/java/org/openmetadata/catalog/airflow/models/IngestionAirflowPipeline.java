@@ -7,6 +7,7 @@ import lombok.Getter;
 @Builder
 @Getter
 public class IngestionAirflowPipeline {
+  // TODO Remove me
   String name;
   @Builder.Default Boolean forceDeploy = true;
   @Builder.Default Boolean pauseWorkflow = false;
