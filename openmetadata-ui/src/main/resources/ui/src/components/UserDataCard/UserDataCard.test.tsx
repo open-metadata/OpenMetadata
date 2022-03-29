@@ -26,16 +26,43 @@ const mockItem = {
   teamCount: 'Cloud_Infra',
 };
 
-const mockRemove = jest.fn();
+const mockSelect = jest.fn();
+const mockDelete = jest.fn();
+
+jest.mock('../../auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+      isAuthenticated: true,
+      isProtectedRoute: jest.fn().mockReturnValue(true),
+      isTourRoute: jest.fn().mockReturnValue(false),
+      onLogoutHandler: jest.fn(),
+    })),
+  };
+});
 
 jest.mock('../../components/common/avatar/Avatar', () => {
   return jest.fn().mockReturnValue(<p data-testid="avatar">Avatar</p>);
 });
 
+jest.mock('../../utils/SvgUtils', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockReturnValue(<p data-testid="svg-icon">SVGIcons</p>),
+    Icons: {
+      DELETE: 'delete',
+    },
+  };
+});
+
 describe('Test UserDataCard component', () => {
   it('Component should render', async () => {
     const { container } = render(
-      <UserDataCard item={mockItem} onClick={mockRemove} />,
+      <UserDataCard
+        item={mockItem}
+        onClick={mockSelect}
+        onDelete={mockDelete}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -50,7 +77,11 @@ describe('Test UserDataCard component', () => {
 
   it('Data should render', async () => {
     const { container } = render(
-      <UserDataCard item={mockItem} onClick={mockRemove} />,
+      <UserDataCard
+        item={mockItem}
+        onClick={mockSelect}
+        onDelete={mockDelete}
+      />,
       {
         wrapper: MemoryRouter,
       }

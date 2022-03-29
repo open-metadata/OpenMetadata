@@ -27,6 +27,7 @@ import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
@@ -34,14 +35,21 @@ interface Props {
   teams: Array<Team>;
   roles: Array<Role>;
   allUsers: Array<User>;
+  deleteUser: (id: string) => void;
   updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   handleAddUserClick: () => void;
   isLoading: boolean;
 }
 
+interface DeleteUserInfo {
+  name: string;
+  id: string;
+}
+
 const UserList: FunctionComponent<Props> = ({
   allUsers = [],
   isLoading,
+  deleteUser,
   updateUser,
   handleAddUserClick,
   teams = [],
@@ -55,6 +63,7 @@ const UserList: FunctionComponent<Props> = ({
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [selectedUser, setSelectedUser] = useState<User>();
   const [searchText, setSearchText] = useState('');
+  const [deletingUser, setDeletingUser] = useState<DeleteUserInfo>();
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
@@ -158,6 +167,18 @@ const UserList: FunctionComponent<Props> = ({
 
       setSelectedUser(undefined);
     }
+  };
+
+  const handleDeleteUser = (id: string, name: string) => {
+    setDeletingUser({
+      name,
+      id,
+    });
+  };
+
+  const onConfirmDeleteUser = (id: string) => {
+    deleteUser(id);
+    setDeletingUser(undefined);
   };
 
   const handleTabChange = (tab: number) => {
@@ -343,7 +364,11 @@ const UserList: FunctionComponent<Props> = ({
                 className="tw-cursor-pointer"
                 key={index}
                 onClick={() => selectUser(User.id)}>
-                <UserDataCard item={User} onClick={selectUser} />
+                <UserDataCard
+                  item={User}
+                  onClick={selectUser}
+                  onDelete={handleDeleteUser}
+                />
               </div>
             );
           })}
@@ -374,6 +399,18 @@ const UserList: FunctionComponent<Props> = ({
                     userData={selectedUser}
                     onCancel={() => setSelectedUser(undefined)}
                     onSave={handleSave}
+                  />
+                )}
+                {!isUndefined(deletingUser) && (
+                  <ConfirmationModal
+                    bodyText={`Are you sure you want to delete ${deletingUser.name}?`}
+                    cancelText="Cancel"
+                    confirmText="Confirm"
+                    header="Delete user"
+                    onCancel={() => setDeletingUser(undefined)}
+                    onConfirm={() => {
+                      onConfirmDeleteUser(deletingUser.id);
+                    }}
                   />
                 )}
               </>
