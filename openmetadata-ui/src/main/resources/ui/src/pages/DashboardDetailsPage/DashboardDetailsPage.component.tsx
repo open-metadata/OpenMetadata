@@ -78,6 +78,7 @@ import {
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 
 type ChartType = {
@@ -162,7 +163,7 @@ const DashboardDetailsPage = () => {
   const getEntityFeedCount = () => {
     getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN))
       .then((res: AxiosResponse) => {
-        if (!res.data) {
+        if (res.data) {
           setFeedCount(res.data.totalCount);
           setEntityFieldThreadCount(res.data.counts);
         } else {
@@ -170,10 +171,11 @@ const DashboardDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -206,9 +208,10 @@ const DashboardDetailsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-chart-error'];
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-chart-error']
+          );
           handleShowErrorToast(errMsg);
         });
     }
@@ -253,15 +256,15 @@ const DashboardDetailsPage = () => {
         if (res.data) {
           setEntityLineage(res.data);
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['fetch-lineage-error'];
-        handleShowErrorToast(msg);
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-error']
+        );
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLineageLoading(false);
@@ -330,17 +333,18 @@ const DashboardDetailsPage = () => {
         } else {
           setIsError(true);
 
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg =
-            err.response?.data?.message ||
-            err ||
-            jsonData['api-error-messages']['fetch-dashboard-details-error'];
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-dashboard-details-error']
+          );
+
           handleShowErrorToast(errMsg);
         }
       })
@@ -370,14 +374,17 @@ const DashboardDetailsPage = () => {
             if (data) {
               setEntityThread(data);
             } else {
-              jsonData['api-error-messages']['unexpected-server-response'];
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
             }
           })
           .catch((err: AxiosError) => {
-            const errMsg =
-              err.response?.data?.message ||
-              err ||
-              jsonData['api-error-messages']['fetch-entity-feed-error'];
+            const errMsg = getErrorText(
+              err,
+              jsonData['api-error-messages']['fetch-entity-feed-error']
+            );
+
             handleShowErrorToast(errMsg);
           })
           .finally(() => setIsentityThreadLoading(false));
@@ -400,15 +407,16 @@ const DashboardDetailsPage = () => {
           setDescription(description);
           getEntityFeedCount();
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-description-error'];
-        handleShowErrorToast(msg);
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-description-error']
+        );
+
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -420,17 +428,18 @@ const DashboardDetailsPage = () => {
 
           setFollowers([...followers, ...newValue]);
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-entity-follow-error'];
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-entity-follow-error']
+        );
         handleShowErrorToast(errMsg);
       });
   };
+
   const unfollowDashboard = () => {
     removeFollower(dashboardId, USERId)
       .then((res: AxiosResponse) => {
@@ -441,14 +450,15 @@ const DashboardDetailsPage = () => {
             followers.filter((follower) => follower.id !== oldValue[0].id)
           );
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-entity-unfollow-error'];
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-entity-unfollow-error']
+        );
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -462,14 +472,15 @@ const DashboardDetailsPage = () => {
           setTags(getTagsWithoutTier(res.data.tags));
           getEntityFeedCount();
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-tags-error'];
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-tags-error']
+        );
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -488,15 +499,15 @@ const DashboardDetailsPage = () => {
             getEntityFeedCount();
             resolve();
           } else {
-            jsonData['api-error-messages']['unexpected-server-response'];
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
         .catch((err: AxiosError) => {
-          const msg =
-            err.response?.data?.message ||
-            err ||
-            jsonData['api-error-messages']['update-entity-error'];
-          handleShowErrorToast(msg);
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['update-entity-error']
+          );
+          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -517,15 +528,16 @@ const DashboardDetailsPage = () => {
             return charts;
           });
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-chart-error'];
-        handleShowErrorToast(msg);
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-chart-error']
+        );
+
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -544,15 +556,16 @@ const DashboardDetailsPage = () => {
             return charts;
           });
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['update-chart-error'];
-        handleShowErrorToast(msg);
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-chart-error']
+        );
+
+        handleShowErrorToast(errMsg);
       });
   };
 
@@ -573,9 +586,10 @@ const DashboardDetailsPage = () => {
           resolve();
         })
         .catch((err: AxiosError) => {
-          const errMsg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['add-lineage-error'];
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['add-lineage-error']
+          );
           handleShowErrorToast(errMsg);
           reject();
         });
@@ -589,9 +603,10 @@ const DashboardDetailsPage = () => {
       data.toEntity,
       data.toId
     ).catch((err: AxiosError) => {
-      const errMsg =
-        err.response?.data?.message ||
-        jsonData['api-error-messages']['delete-lineage-error'];
+      const errMsg = getErrorText(
+        err,
+        jsonData['api-error-messages']['delete-lineage-error']
+      );
       handleShowErrorToast(errMsg);
     });
   };
@@ -618,14 +633,15 @@ const DashboardDetailsPage = () => {
           });
           getEntityFeedCount();
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['add-feed-error'];
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['add-feed-error']
+        );
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -640,14 +656,15 @@ const DashboardDetailsPage = () => {
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          jsonData['api-error-messages']['unexpected-server-response'];
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          err ||
-          jsonData['api-error-messages']['create-conversation-error'];
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
+
         handleShowErrorToast(errMsg);
       });
   };
@@ -672,17 +689,18 @@ const DashboardDetailsPage = () => {
                 });
               });
             } else {
-              jsonData['api-error-messages']['unexpected-server-response'];
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
             }
           })
           .catch((error: AxiosError) => {
-            const message =
-              error?.response?.data?.message ||
-              error ||
-              jsonData['api-error-messages'][
-                'fetch-updated-conversation-error'
-              ];
-            handleShowErrorToast(message);
+            const errMsg = getErrorText(
+              error,
+              jsonData['api-error-messages']['fetch-updated-conversation-error']
+            );
+
+            handleShowErrorToast(errMsg);
           });
 
         handleShowSuccessToast(
@@ -690,9 +708,10 @@ const DashboardDetailsPage = () => {
         );
       })
       .catch((error: AxiosError) => {
-        const message =
-          error?.response?.data?.message ||
-          jsonData['api-error-messages']['delete-message-error'];
+        const message = getErrorText(
+          error,
+          jsonData['api-error-messages']['delete-message-error']
+        );
         handleShowErrorToast(message);
       });
   };
