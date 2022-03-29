@@ -81,11 +81,10 @@ class Explore {
     WebElement tabCount = webDriver.findElement(explorePage.tableCount());
     int tableCount = Integer.parseInt(tabCount.getText());
     int getServiceCount = 0;
-    List<WebElement> listOfItems = explorePage.serviceName();
     List<WebElement> countOfItems = explorePage.serviceCount();
     List<String> Names = new ArrayList<>();
     List<Integer> count = new ArrayList<>();
-    for (WebElement sName : listOfItems) {
+    for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
       if (Names.contains("Tier1")) {
         break;
@@ -101,18 +100,17 @@ class Explore {
 
   @Test
   @Order(3)
-  void checkTopicCount() {
+  void checkTopicCount() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
     int topicCount = Integer.parseInt(topCount.getText());
     int getServiceCount = 0;
-    List<WebElement> listOfItems = explorePage.serviceName();
     List<WebElement> countOfItems = explorePage.serviceCount();
     List<String> Names = new ArrayList<>();
     List<Integer> count = new ArrayList<>();
-    for (WebElement sName : listOfItems) {
+    for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
       if (Names.contains("Tier1")) {
         break;
@@ -135,11 +133,10 @@ class Explore {
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
     int dashboardCount = Integer.parseInt(dashCount.getText());
     int getServiceCount = 0;
-    List<WebElement> listOfItems = explorePage.serviceName();
     List<WebElement> countOfItems = explorePage.serviceCount();
     List<String> Names = new ArrayList<>();
     List<Integer> count = new ArrayList<>();
-    for (WebElement sName : listOfItems) {
+    for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
       if (Names.contains("Tier1")) {
         break;
@@ -162,11 +159,10 @@ class Explore {
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
     int pipelineCount = Integer.parseInt(pipCount.getText());
     int getServiceCount = 0;
-    List<WebElement> listOfItems = explorePage.serviceName();
     List<WebElement> countOfItems = explorePage.serviceCount();
     List<String> Names = new ArrayList<>();
     List<Integer> count = new ArrayList<>();
-    for (WebElement sName : listOfItems) {
+    for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
       if (Names.contains("Tier1")) {
         break;
