@@ -11,31 +11,11 @@
       "javaType": "org.openmetadata.catalog.operations.pipelines.PipelineType",
       "enum": ["metadata", "queryUsage"]
     },
-    "pipelineStatus": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.operations.pipelines.PipelineStatus",
-      "description": "This defines the runtime status of Pipeline.",
-      "properties": {
-        "state": {
-          "description": "Pipeline status denotes if its failed or succeeded.",
-          "type": "string"
-        },
-        "startDate": {
-          "description": "startDate of the Pipeline run for this particular execution.",
-          "type": "string"
-        },
-        "endDate": {
-          "description": "endDate of the pipeline run for this particular execution.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "pipelineConfig": {
       "description": "OpenMetadata Pipeline Config.",
       "type": "object",
       "properties": {
-        "config": {
+        "ingestionConfig": {
           "oneOf": [
             { "$ref": "databaseServiceMetadataPipeline.json" },
             { "$ref": "databaseServiceQueryUsagePipeline.json" }
@@ -46,44 +26,113 @@
             "databaseServiceMetadataPipeline",
             "databaseServiceQueryUsagePipeline"
           ]
+        },
+        "sourceConfig": {
+          "description": "A connection to a dashboard service, database service or messaging service.",
+          "$ref": "../../entity/services/serviceConnection.json#/definitions/serviceConnection"
+        },
+        "sinkConfig": {
+          // let's do the same approach as with the source, currently just with the metadata-rest
         }
       },
       "additionalProperties": false
     },
-    "task": {
+    "airflowConfig": {
+      "description": "Properties to configure the Airflow pipeline that will run the workflow.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.Task",
+      "javaType": "org.openmetadata.catalog.operations.pipeline.AirflowConfig",
       "properties": {
-        "name": {
-          "description": "Name that identifies this task instance uniquely.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64
+        "forceDeploy": {
+          "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
+          "type": "boolean",
+          "default": "true"
         },
-        "operator": {
-          "description": "Python classname of the operator used in this Task.",
+        "pausePipeline": {
+          "description": "pause the pipeline from running once the deploy is finished successfully.",
+          "type": "boolean",
+          "default": "false"
+        },
+        "concurrency": {
+          "description": "Concurrency of the Pipeline.",
+          "type": "integer",
+          "default": 1
+        },
+        "startDate": {
+          "description": "Start date of the pipeline.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "endDate": {
+          "description": "End Date of the pipeline.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "nextExecutionDate": {
+          "description": "Next execution date from the underlying pipeline platform once the pipeline scheduled.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "pipelineTimezone": {
+          "description": "Timezone in which pipeline going to be scheduled.",
+          "type": "string",
+          "default": "UTC"
+        },
+        "retries": {
+          "description": "Retry pipeline in case of failure.",
+          "type": "integer",
+          "default": 3
+        },
+        "retryDelay": {
+          "description": "Delay between retries in seconds.",
+          "type": "integer",
+          "default": 300
+        },
+        "pipelineCatchup": {
+          "description": "Run past executions if the start date is in the past.",
+          "type": "boolean",
+          "default": "false"
+        },
+        "scheduleInterval": {
+          "description": "Scheduler Interval for the pipeline in cron format.",
           "type": "string"
         },
-        "dependencies": {
-          "description": "All the tasks that are downstream of this task.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "pipelineTimeout": {
+          "description": "Timeout for the pipeline in seconds.",
+          "type": "integer",
+          "default": 60
         },
-        "config": {
-          "description": "Task Config.",
-          "type": "object",
-          "additionalProperties": {
-            "anyOf": [
-              { "type": "string" },
-              { "type": "number" },
-              { "type": "object" }
-            ]
-          }
+        "maxActiveRuns": {
+          "description": "Maximum Number of active runs.",
+          "type": "integer",
+          "default": 1
+        },
+        "workflowTimeout": {
+          "description": "Timeout for the workflow in seconds.",
+          "type": "integer",
+          "default": 60
+        },
+        "workflowDefaultView": {
+          "description": "Default view in Airflow.",
+          "type": "string",
+          "default": "tree"
+        },
+        "workflowDefaultViewOrientation": {
+          "description": "Default view Orientation in Airflow.",
+          "type": "string",
+          "default": "LR"
+        },
+        "pythonOperatorLocation": {
+          "description": "File system directory path where managed python operator files are stored.",
+          "type": "string"
+        },
+        "slaMissCallback": {
+          "description": "python method call back on SLA miss.",
+          "type": "string"
+        },
+        "email": {
+          "description": "Email to notify workflow status.",
+          "$ref": "../../type/basic.json#/definitions/email"
         }
       },
-      "required": ["name", "operator"]
+      "additionalProperties": false,
+      "required": ["startDate"]
     }
   },
   "properties": {
@@ -118,136 +167,11 @@
     "pipelineConfig": {
       "$ref": "#/definitions/pipelineConfig"
     },
-    "forceDeploy": {
-      "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
-      "type": "boolean",
-      "default": "false"
-    },
-    "pausePipeline": {
-      "description": "pause the pipeline from running once the deploy is finished successfully.",
-      "type": "boolean",
-      "default": "false"
-    },
-    "concurrency": {
-      "description": "Concurrency of the Pipeline.",
-      "type": "integer",
-      "default": 1
-    },
-    "startDate": {
-      "description": "Start date of the pipeline.",
-      "$ref": "../../type/basic.json#/definitions/date"
-    },
-    "endDate": {
-      "description": "End Date of the pipeline.",
-      "$ref": "../../type/basic.json#/definitions/date"
-    },
-    "nextExecutionDate": {
-      "description": "Next execution date from the underlying pipeline platform once the pipeline scheduled.",
-      "$ref": "../../type/basic.json#/definitions/date"
-    },
-    "pipelineTimezone": {
-      "description": "Timezone in which pipeline going to be scheduled.",
-      "type": "string",
-      "default": "UTC"
-    },
-    "retries": {
-      "description": "Retry pipeline in case of failure.",
-      "type": "integer",
-      "default": 1
-    },
-    "retryDelay": {
-      "description": "Delay between retries in seconds.",
-      "type": "integer",
-      "default": 300
-    },
-    "pipelineCatchup": {
-      "description": "Run past executions if the start date is in the past.",
-      "type": "boolean",
-      "default": "false"
-    },
-    "scheduleInterval": {
-      "description": "Scheduler Interval for the pipeline in cron format.",
-      "type": "string"
-    },
-    "pipelineTimeout": {
-      "description": "Timeout for the pipeline in seconds.",
-      "type": "integer",
-      "default": 60
-    },
-    "pipelineStatuses": {
-      "description": "List of executions and status for the Pipeline.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/pipelineStatus"
-      },
-      "default": null
-    },
-    "maxActiveRuns": {
-      "description": "Maximum Number of active runs.",
-      "type": "integer",
-      "default": 1
-    },
-    "workflowTimeout": {
-      "description": "Timeout for the workflow in seconds.",
-      "type": "integer",
-      "default": 60
-    },
-    "workflowDefaultView": {
-      "description": "Default view in Airflow.",
-      "type": "string",
-      "default": "tree"
-    },
-    "workflowDefaultViewOrientation": {
-      "description": "Default view Orientation in Airflow.",
-      "type": "string",
-      "default": "LR"
-    },
-    "pythonOperatorLocation": {
-      "description": "File system directory path where managed python operator files are stored.",
-      "type": "string"
-    },
-    "slaMissCallback": {
-      "description": "python method call back on SLA miss.",
-      "type": "string"
-    },
-    "onSuccessCallback": {
-      "description": "callback method on successful execution of the pipeline.",
-      "type": "string"
-    },
-    "onFailureCallback": {
-      "description": "callback method on pipeline execution failure.",
-      "type": "string"
-    },
-    "onSuccessCallbackName": {
-      "description": "python method name to call when the pipeline successfully executes.",
-      "type": "string"
-    },
-    "onSuccessCallbackFile": {
-      "description": "python file where the successful callback method is stored.",
-      "type": "string"
-    },
-    "onFailureCallbackName": {
-      "description": "python method name to call when the pipeline failed executes.",
-      "type": "string"
-    },
-    "onFailureCallbackFile": {
-      "description": "python file where the failure callback method is stored",
-      "type": "string"
-    },
-    "tasks": {
-      "description": "All the tasks that are part of pipeline.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/task"
-      },
-      "default": null
-    },
-    "email": {
-      "description": "Email to notify workflow status.",
-      "$ref": "../../type/basic.json#/definitions/email"
+    "airflowConfig": {
+      "$ref": "#/definitions/airflowConfig"
     },
     "service": {
-      "description": "Link to the database service where this database is hosted in.",
+      "description": "Link to the pipeline service where this pipeline is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "href": {
@@ -281,7 +205,7 @@
     "service",
     "pipelineType",
     "pipelineConfig",
-    "startDate"
+    "airflowConfig"
   ],
   "additionalProperties": false
 }

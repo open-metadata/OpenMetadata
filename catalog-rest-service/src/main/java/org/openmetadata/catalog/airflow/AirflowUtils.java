@@ -27,74 +27,30 @@ import org.openmetadata.catalog.airflow.models.OpenMetadataIngestionConfig;
 import org.openmetadata.catalog.airflow.models.OpenMetadataIngestionTask;
 import org.openmetadata.catalog.api.operations.pipelines.PipelineConfig;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ServiceConnection;
+import org.openmetadata.catalog.operations.pipeline.AirflowConfig;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
-import org.openmetadata.catalog.operations.pipelines.DatabaseServiceMetadataPipeline;
-import org.openmetadata.catalog.operations.pipelines.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public final class AirflowUtils {
 
-  public static final String INGESTION_HOST_PORT = "host_port";
-  public static final String INGESTION_USERNAME = "username";
-  public static final String INGESTION_PASSWORD = "password";
-  public static final String INGESTION_DATABASE = "database";
-  public static final String INGESTION_SERVICE_NAME = "service_name";
-  public static final String INGESTION_SAMPLE_QUERY = "query";
-  public static final String INGESTION_INCLUDE_VIEWS = "include_views";
-  public static final String INGESTION_GENERATE_SAMPLE_DATA = "generate_sample_data";
-  public static final String INGESTION_ENABLE_DATA_PROFILER = "data_profiler_enabled";
-  public static final String INGESTION_TABLE_FILTER_PATTERN = "table_filter_pattern";
-  public static final String INGESTION_SCHEMA_FILTER_PATTERN = "schema_filter_pattern";
-  public static final String INGESTION_DBT_MANIFEST_FILE_PATH = "dbt_manifest_file";
-  public static final String INGESTION_DBT_CATALOG_FILE_PATH = "dbt_catalog_file";
-  public static final String INGESTION_MARK_DELETED_TABLES = "mark_deleted_tables_as_deleted";
-  public static final String INGESTION_USAGE_DURATION = "duration";
-  public static final String INGESTION_OPTIONS = "options";
-  public static final String INGESTION_CONNECTION_ARGS = "connect_args";
-  public static final String INGESTION_USAGE_STAGE_FILE_PATH = "filename";
-  public static final String INGESTION_STATUS = "status";
-  public static final String INGESTION_ACCOUNT = "account";
-  public static final String INGESTION_WAREHOUSE = "warehouse";
+  // TODO: Use this to enrich the AirflowPipeline info with default sink and metadata-rest config
 
   private AirflowUtils() {}
 
   public static OpenMetadataIngestionComponent makeOpenMetadataDatasourceComponent(
       AirflowPipeline airflowPipeline, Boolean decrypt) throws IOException {
+
     DatabaseService databaseService = Entity.getEntity(airflowPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     PipelineConfig pipelineConfig = airflowPipeline.getPipelineConfig();
-    Map<String, Object> dbConfig = new HashMap<>();
+    ServiceConnection connectionConfig =
+        JsonUtils.convertValue(pipelineConfig.getConnectionConfig(), ServiceConnection.class);
     String ingestionType = databaseService.getServiceType().value().toLowerCase(Locale.ROOT);
-    if (pipelineConfig.getSchema().equals(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE)) {
-      DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
-          JsonUtils.convertValue(pipelineConfig.getConfig(), DatabaseServiceMetadataPipeline.class);
-      dbConfig.put(INGESTION_SAMPLE_QUERY, databaseServiceMetadataPipeline.getSampleDataQuery());
-      dbConfig.put(INGESTION_ENABLE_DATA_PROFILER, databaseServiceMetadataPipeline.getEnableDataProfiler());
-      dbConfig.put(INGESTION_GENERATE_SAMPLE_DATA, databaseServiceMetadataPipeline.getGenerateSampleData());
-      dbConfig.put(INGESTION_INCLUDE_VIEWS, databaseServiceMetadataPipeline.getIncludeViews());
-      if (databaseServiceMetadataPipeline.getSchemaFilterPattern() != null) {
-        dbConfig.put(INGESTION_SCHEMA_FILTER_PATTERN, databaseServiceMetadataPipeline.getSchemaFilterPattern());
-      }
-      if (databaseServiceMetadataPipeline.getTableFilterPattern() != null) {
-        dbConfig.put(INGESTION_TABLE_FILTER_PATTERN, databaseServiceMetadataPipeline.getTableFilterPattern());
-      }
-      if (databaseServiceMetadataPipeline.getAccount() != null) {
-        dbConfig.put(INGESTION_ACCOUNT, databaseServiceMetadataPipeline.getAccount());
-      }
-      if (databaseServiceMetadataPipeline.getWarehouse() != null) {
-        dbConfig.put(INGESTION_WAREHOUSE, databaseServiceMetadataPipeline.getWarehouse());
-      }
-      dbConfig.put(INGESTION_MARK_DELETED_TABLES, databaseServiceMetadataPipeline.getMarkDeletedTables());
-      dbConfig.put(INGESTION_DBT_CATALOG_FILE_PATH, databaseServiceMetadataPipeline.getDbtCatalogFilePath());
-      dbConfig.put(INGESTION_DBT_MANIFEST_FILE_PATH, databaseServiceMetadataPipeline.getDbtManifestFilePath());
-    } else if (pipelineConfig.getSchema().equals(PipelineConfig.Schema.DATABASE_SERVICE_QUERY_USAGE_PIPELINE)) {
-      DatabaseServiceQueryUsagePipeline queryUsage =
-          JsonUtils.convertValue(pipelineConfig.getConfig(), DatabaseServiceQueryUsagePipeline.class);
-      dbConfig.put(INGESTION_USAGE_DURATION, queryUsage.getQueryLogDuration());
-      ingestionType += "-usage";
-    }
-    return OpenMetadataIngestionComponent.builder().type(ingestionType).config(dbConfig).build();
+    AirflowConfig airflowConfig = airflowPipeline.getAirflowConfig();
+
+    return OpenMetadataIngestionComponent.builder().type(ingestionType).config(airflowConfig).build();
   }
 
   public static OpenMetadataIngestionComponent makeElasticSearchSinkComponent() {
@@ -127,6 +83,7 @@ public final class AirflowUtils {
 
   public static IngestionAirflowPipeline toIngestionPipeline(
       AirflowPipeline airflowPipeline, AirflowConfiguration airflowConfiguration, Boolean decrypt) throws IOException {
+    // TODO: this might not be needed anymore, as we should be able to directly send an AirflowPipeline instance
     Map<String, Object> taskParams = new HashMap<>();
     taskParams.put("workflow_config", buildDatabaseIngestion(airflowPipeline, airflowConfiguration, decrypt));
     IngestionTaskConfig taskConfig = IngestionTaskConfig.builder().opKwargs(taskParams).build();

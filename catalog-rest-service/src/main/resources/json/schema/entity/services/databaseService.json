@@ -238,6 +238,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "href", "connection"],
+  "required": ["id", "name", "serviceType", "connection"],
   "additionalProperties": false
 }
