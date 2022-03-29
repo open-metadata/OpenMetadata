@@ -26,7 +26,7 @@ base_requirements = {
     "openmetadata-ingestion-core==0.9.0",
     "commonregex",
     "idna<3,>=2.5",
-    "click>=7.1.1",
+    "click>=7.1.1,<8",
     "typing_extensions>=3.7.4",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
