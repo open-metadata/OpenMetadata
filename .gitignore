@@ -83,3 +83,4 @@ ingestion/venv2/**
 # MLFlow
 mlruns/
 /ingestion/tests/integration/source/mlflow/tests/db/
+/.python-version
