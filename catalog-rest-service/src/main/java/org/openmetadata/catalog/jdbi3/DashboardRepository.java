@@ -150,7 +150,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
     // Add owner relationship
-    addOwnerRelationship(dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
+    storeOwner(dashboard, dashboard.getOwner());
 
     // Add tag to dashboard relationship
     applyTags(dashboard);

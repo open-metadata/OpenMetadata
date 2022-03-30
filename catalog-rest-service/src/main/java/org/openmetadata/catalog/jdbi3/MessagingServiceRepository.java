@@ -80,7 +80,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   @Override
   public void storeRelationships(MessagingService entity) {
     // Add owner relationship
-    setOwner(entity, entity.getOwner());
+    storeOwner(entity, entity.getOwner());
   }
 
   @Override

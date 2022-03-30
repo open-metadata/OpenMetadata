@@ -138,7 +138,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   @Override
   public void storeRelationships(Policy policy) {
     // Add policy owner relationship.
-    setOwner(policy, policy.getOwner());
+    storeOwner(policy, policy.getOwner());
     // Add location to which policy is assigned to.
     setLocation(policy, policy.getLocation());
   }

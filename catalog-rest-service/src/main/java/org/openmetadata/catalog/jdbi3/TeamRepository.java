@@ -102,7 +102,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void storeRelationships(Team team) {
     // Add team owner relationship
-    addOwnerRelationship(team.getId(), TEAM, team.getOwner());
+    storeOwner(team, team.getOwner());
     for (EntityReference user : listOrEmpty(team.getUsers())) {
       addRelationship(team.getId(), user.getId(), TEAM, Entity.USER, Relationship.HAS);
     }

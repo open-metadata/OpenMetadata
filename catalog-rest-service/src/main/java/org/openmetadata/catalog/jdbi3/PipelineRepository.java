@@ -181,7 +181,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
 
     // Add owner relationship
-    addOwnerRelationship(pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    storeOwner(pipeline, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);
