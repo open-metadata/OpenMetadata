@@ -49,6 +49,19 @@ v17.3.0
 1.22.17
 ```
 
+### Install pre-commit hooks
+
+We use pre-commit hooks to run checkstyle for Java and Python and format it as per our coding style.&#x20;
+
+Please install the following to format the code during the git commit process
+
+```
+git clone https://github.com/open-metadata/OpenMetadata
+cd openmetadata
+make install_dev
+make install_test precommit_install
+```
+
 ### OpenMetadata API Backend
 
 We use Java for developing OpenMetadata backend server. Following are the key technologies that we use for the backend:
