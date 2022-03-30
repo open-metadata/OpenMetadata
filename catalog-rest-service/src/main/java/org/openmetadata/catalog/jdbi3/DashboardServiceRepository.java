@@ -77,7 +77,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   @Override
   public void storeRelationships(DashboardService entity) {
     // Add owner relationship
-    setOwner(entity, entity.getOwner());
+    storeOwner(entity, entity.getOwner());
   }
 
   @Override

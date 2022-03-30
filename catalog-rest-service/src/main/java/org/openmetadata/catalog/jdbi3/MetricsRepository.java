@@ -94,7 +94,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   public void storeRelationships(Metrics metrics) {
     EntityReference service = metrics.getService();
     addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
-    setOwner(metrics, metrics.getOwner());
+    storeOwner(metrics, metrics.getOwner());
     applyTags(metrics);
   }
 

@@ -100,7 +100,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   @Override
   public void storeRelationships(DatabaseService entity) {
     // Add owner relationship
-    setOwner(entity, entity.getOwner());
+    storeOwner(entity, entity.getOwner());
   }
 
   @Override

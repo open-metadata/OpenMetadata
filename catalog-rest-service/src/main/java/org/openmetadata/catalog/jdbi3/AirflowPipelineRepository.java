@@ -89,7 +89,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
     EntityReference service = airflowPipeline.getService();
     addRelationship(
         service.getId(), airflowPipeline.getId(), service.getType(), Entity.AIRFLOW_PIPELINE, Relationship.CONTAINS);
-    setOwner(airflowPipeline, airflowPipeline.getOwner());
+    storeOwner(airflowPipeline, airflowPipeline.getOwner());
     applyTags(airflowPipeline);
   }
 
