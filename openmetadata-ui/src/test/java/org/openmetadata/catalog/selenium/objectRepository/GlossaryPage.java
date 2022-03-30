@@ -26,6 +26,6 @@ public class GlossaryPage {
   }
 
   public By removeAssociatedTag(int index) {
-    return By.xpath("(//span[@data-testid='remove'])["+ index +"]");
+    return By.xpath("(//span[@data-testid='remove'])[" + index + "]");
   }
 }
