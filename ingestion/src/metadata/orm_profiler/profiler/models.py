@@ -10,10 +10,10 @@
 #  limitations under the License.
 
 """
-Models to map profiles definitions
+Models to map profiler definitions
 JSON workflows to the profiler
 """
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, validator
 
@@ -27,7 +27,12 @@ class ProfilerDef(BaseModel):
     """
 
     name: str  # Profiler name
-    metrics: List[str]  # names of currently supported Static and Composed metrics
+    timeout_seconds: Optional[
+        int
+    ] = None  # Stop running a query after X seconds and continue
+    metrics: Optional[
+        List[str]
+    ] = None  # names of currently supported Static and Composed metrics
     # TBD:
     # time_metrics: List[TimeMetricDef] = None
     # custom_metrics: List[CustomMetricDef] = None
