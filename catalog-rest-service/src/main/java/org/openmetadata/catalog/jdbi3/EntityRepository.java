@@ -13,7 +13,31 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.getEntityFields;
+import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.catalog.type.Include.DELETED;
+import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
+import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
+import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -48,31 +72,6 @@ import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CommonUtil;
-
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.BiPredicate;
-import java.util.regex.Pattern;
-
-import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.Entity.getEntityFields;
-import static org.openmetadata.catalog.type.Include.ALL;
-import static org.openmetadata.catalog.type.Include.DELETED;
-import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
-import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
-import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
-import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
