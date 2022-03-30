@@ -16,6 +16,7 @@ import Markdown from 'markdown-to-jsx';
 import React, { useEffect, useState } from 'react';
 import { Paragraph, UnOrderedList } from '../../../utils/MarkdownUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { ElementProp } from './RichTextEditor.interface';
 
 const MAX_LENGTH = 300;
 
@@ -82,6 +83,34 @@ const RichTextEditorPreviewer = ({
                 className: 'tw-ml-3',
               },
             },
+          },
+          /**
+           * Custom React CreateElement Implementation
+           * @param type - Element type
+           * @param props - Element Props
+           * @param children - Elemeny children
+           * @returns React element of {type} with {props} and {children}
+           */
+          createElement(type, props, children) {
+            const {
+              className,
+              /** disabling eslint rule because class is reserverd keyword
+               * and here we have to give alias that is classes */
+              // eslint-disable-next-line react/prop-types
+              class: classes,
+              ...restProps
+            } = props as ElementProp;
+            const modifiedProps = {
+              ...restProps,
+              /**  react does not accept class attribute,
+               * hence we need to escape class and pass className attribute
+               */
+              className: `${className ? className : ''} ${
+                classes ? classes : ''
+              }`,
+            };
+
+            return React.createElement(type, modifiedProps, children);
           },
         }}>
         {content}
