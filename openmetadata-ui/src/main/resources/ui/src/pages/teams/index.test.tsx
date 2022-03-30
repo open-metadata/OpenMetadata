@@ -34,10 +34,6 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<i>Icon</i>),
-}));
-
 const mockTeamsData = [
   {
     description: '',
