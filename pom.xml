@@ -57,7 +57,7 @@
     <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
-    <flyway.version>8.1.0</flyway.version>
+    <flyway.version>8.5.5</flyway.version>
     <redshift-jdbc.version>2.1.0.4</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.28</mysql.connector.version>
