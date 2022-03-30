@@ -91,7 +91,7 @@ public class GlossaryPageTest {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
     Events.click(webDriver, common.descriptionSaveButton());
-    Events.click(webDriver, common.saveWebhook());
+    Events.click(webDriver, glossary.saveGlossary());
   }
 
   @Test
@@ -143,11 +143,14 @@ public class GlossaryPageTest {
     openGlossaryPage();
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, glossary.editGlossaryTag());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, glossary.editGlossaryTag());
     for (int i = 0; i < 2; i++) {
       Events.click(webDriver, common.removeAssociatedTag());
     }
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
+    webDriver.navigate().refresh();
     Object reviewerCount = webDriver.findElements(common.tagsCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
@@ -190,7 +193,7 @@ public class GlossaryPageTest {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
     Events.click(webDriver, common.descriptionSaveButton());
-    Events.click(webDriver, common.saveWebhook());
+    Events.click(webDriver, glossary.saveGlossaryTerm());
   }
 
   @Test
@@ -218,7 +221,7 @@ public class GlossaryPageTest {
     Events.click(webDriver, common.serviceDetailsTabs("reviewers"));
     Events.click(webDriver, common.addGlossaryReviewer());
     Events.click(webDriver, glossary.checkboxAddUser(3));
-    Events.click(webDriver, common.descriptionSaveButton());
+    Events.click(webDriver, glossary.saveTermReviewer());
     Thread.sleep(waitTime);
     Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "3");
@@ -245,10 +248,10 @@ public class GlossaryPageTest {
     Events.click(webDriver, common.containsText(termName));
     Events.click(webDriver, common.serviceDetailsTabs("reviewers"));
     Events.click(webDriver, common.addGlossaryReviewer());
-    for (int i = 0; i <= 2; i++) {
+    for (int i = 1; i <= 2; i++) {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
-    Events.click(webDriver, common.descriptionSaveButton());
+    Events.click(webDriver, glossary.saveTermReviewer());
     Thread.sleep(waitTime);
     Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");

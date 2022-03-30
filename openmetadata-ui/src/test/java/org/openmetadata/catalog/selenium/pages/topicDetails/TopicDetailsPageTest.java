@@ -36,7 +36,6 @@ public class TopicDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   static String topic = "orders";

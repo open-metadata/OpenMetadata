@@ -24,7 +24,7 @@ public class Common {
   By editDescriptionSaveButton = By.cssSelector("[data-testid='save']");
   By closeWhatsNew = By.cssSelector("[data-testid='closeWhatsNew']");
   By headerSettings = By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']");
-  By explore = By.xpath("[data-testid='appbar-item'][id='explore']");
+  By explore = By.cssSelector("[data-testid='appbar-item'][id='explore']");
   By headerSettingsServices = By.cssSelector("[data-testid='menu-item-Services']");
   By addServiceButton = By.cssSelector("[data-testid='add-service-button']");
   By noServicesAddServiceButton = By.cssSelector("[data-testid='add-new-user-button']");
@@ -55,7 +55,7 @@ public class Common {
   By errorMessage = By.cssSelector("[data-testid='error-message']");
   By matchesInDescription = By.xpath("(//div[@data-testid='matches-stats'][1])/span[3]");
   By tagCountSearch = By.xpath("(//div[@data-testid='description-text'][1])/div/span/span[@class='text-highlighter']");
-  By tagFilterCount = By.xpath("//div[@data-testid='filter-containers-2']/div");
+  By tagFilterCount = By.xpath("//div[@data-testid='filter-containers-2']/label");
   By noSearchResult = By.cssSelector("[data-testid='no-search-results']");
   By resultsCount = By.xpath("//div[@data-testid='search-container']/div");
   By matchesStats = By.cssSelector("[data-testid='matches-stats']");
@@ -84,7 +84,7 @@ public class Common {
   By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])");
   By tagsAdded = By.cssSelector("span[class='tw-no-underline hover:tw-no-underline tw-px-1']");
   By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
-  By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p]");
+  By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p");
   By home = By.cssSelector("[data-testid='image']");
   By saveWebhook = By.xpath("//button[@data-testid='save-webhook']");
   By reviewCount = By.cssSelector("[data-testid='user-card-container']");
@@ -136,7 +136,7 @@ public class Common {
   }
 
   public By exploreFilterCount(String filter) {
-    return By.xpath("//div[@data-testid='filter-container-" + filter + "']//span[@data-testid='filter-count']");
+    return By.xpath("//label[@data-testid='filter-container-" + filter + "']//span[@data-testid='filter-count']");
   }
 
   public By entityTabIndex(int index) {
