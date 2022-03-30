@@ -118,9 +118,7 @@
     },
     "tableName": {
       "description": "Local name (not fully qualified name) of a table. Dots will be escaped automatically.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedColumnName": {
       "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",

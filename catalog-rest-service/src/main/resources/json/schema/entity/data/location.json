@@ -8,9 +8,7 @@
   "definitions": {
     "locationName": {
       "description": "Local name (not fully qualified name) of a location.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "locationType": {
       "javaType": "org.openmetadata.catalog.type.LocationType",

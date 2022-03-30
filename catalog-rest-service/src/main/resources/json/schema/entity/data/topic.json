@@ -7,10 +7,7 @@
   "definitions": {
     "topicName": {
       "description": "Name that identifies a topic.",
-      "type": "string",
-      "javaType": "org.openmetadata.catalog.type.topic.TopicName",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "schemaType": {
       "description": "Schema type used for the message.",

@@ -7,9 +7,7 @@
   "definitions": {
     "name": {
       "description": "Name that identifies a glossary term.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "termReference": {
       "type": "object",

@@ -12,9 +12,7 @@
     },
     "name": {
       "description": "Unique name of the application receiving webhook events.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this webhook.",
