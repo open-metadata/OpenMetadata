@@ -69,7 +69,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public void prepare(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
+    populateOwner(metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
     metrics.setTags(addDerivedTags(metrics.getTags()));
   }

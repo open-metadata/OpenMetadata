@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React from 'react';
@@ -193,12 +194,9 @@ const UserCard = ({
                 })}
                 data-testid="remove"
                 onClick={() => onRemove?.(item.id as string)}>
-                <SVGIcons
-                  alt="delete"
-                  className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-                  icon="icon-delete"
-                  title="Remove"
-                  width="12px"
+                <FontAwesomeIcon
+                  className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
+                  icon="remove"
                 />
               </span>
             </NonAdminAction>

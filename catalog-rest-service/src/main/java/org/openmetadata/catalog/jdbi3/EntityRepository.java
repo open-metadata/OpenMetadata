@@ -557,34 +557,6 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public EntityReference getOriginalOwner(T entity) throws IOException {
-    if (!supportsOwner) {
-      return null;
-    }
-    // Try to find the owner if entity exists
-    try {
-      String fqn = getFullyQualifiedName(entity);
-      entity = getByName(null, fqn, getFields(FIELD_OWNER));
-      return getEntityInterface(entity).getOwner();
-    } catch (EntityNotFoundException e) {
-      // If entity is not found, we can return null for owner and ignore this exception
-    }
-    return null;
-  }
-
-  protected EntityReference getOwner(T entity) throws IOException {
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    return getOwner(entityInterface.getId(), entityType);
-  }
-
-  protected void setOwner(T entity, EntityReference owner) {
-    if (supportsOwner) {
-      EntityInterface<T> entityInterface = getEntityInterface(entity);
-      setOwner(entityInterface.getId(), entityType, owner);
-      entityInterface.setOwner(owner);
-    }
-  }
-
   /** Validate given list of tags and add derived tags to it */
   public final List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) throws IOException {
     if (tagLabels == null || tagLabels.isEmpty()) {
@@ -676,11 +648,16 @@ public abstract class EntityRepository<T> {
   }
 
   protected List<EntityReference> getFollowers(T entity) throws IOException {
+    if (!supportsFollower || entity == null) {
+      return null;
+    }
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    return !supportsFollower || entity == null
-        ? null
-        : EntityUtil.getFollowers(
-            entityInterface, entityType, daoCollection.relationshipDAO(), daoCollection.userDAO());
+    List<EntityReference> followers = findFrom(entityInterface.getId(), entityType, Relationship.FOLLOWS);
+    for (EntityReference follower : followers) {
+      User user = daoCollection.userDAO().findEntityById(follower.getId(), ALL);
+      follower.withName(user.getName()).withDeleted(user.getDeleted());
+    }
+    return followers;
   }
 
   public T withHref(UriInfo uriInfo, T entity) {
@@ -732,14 +709,6 @@ public abstract class EntityRepository<T> {
     return daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal());
   }
 
-  public void setOwner(UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
-    // Add relationship owner --- owns ---> ownedEntity
-    if (owner != null) {
-      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
-      addRelationship(owner.getId(), ownedEntityId, owner.getType(), ownedEntityType, Relationship.OWNS);
-    }
-  }
-
   public List<String> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2) {
     // Find bidirectional relationship
     List<String> ids = new ArrayList<>();
@@ -779,15 +748,6 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public EntityReference getOwner(UUID id, String entityType) throws IOException {
-    if (!supportsOwner) {
-      return null;
-    }
-    List<EntityReference> refs = findFrom(id, entityType, Relationship.OWNS);
-    ensureSingleRelationship(entityType, id, refs, "owners", false);
-    return refs.isEmpty() ? null : Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId(), ALL);
-  }
-
   public List<String> findTo(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
     return daoCollection
         .relationshipDAO()
@@ -821,6 +781,77 @@ public abstract class EntityRepository<T> {
         entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
       }
     }
+  }
+
+  public EntityReference getOwner(T entity) throws IOException {
+    if (!supportsOwner) {
+      return null;
+    }
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    List<EntityReference> refs = findFrom(entityInterface.getId(), entityType, Relationship.OWNS);
+    ensureSingleRelationship(entityType, entityInterface.getId(), refs, "owners", false);
+    return refs.isEmpty() ? null : getOwner(refs.get(0));
+  }
+
+  public EntityReference getOwner(EntityReference ref) throws IOException {
+    return Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+  }
+
+  public EntityReference getOriginalOwner(T entity) throws IOException {
+    if (!supportsOwner) {
+      return null;
+    }
+    // Try to find the owner if entity exists
+    try {
+      String fqn = getFullyQualifiedName(entity);
+      entity = getByName(null, fqn, getFields(FIELD_OWNER));
+      return getEntityInterface(entity).getOwner();
+    } catch (EntityNotFoundException e) {
+      // If entity is not found, we can return null for owner and ignore this exception
+    }
+    return null;
+  }
+
+  public EntityReference populateOwner(EntityReference owner) throws IOException {
+    if (owner == null) {
+      return null;
+    }
+    EntityReference ref = Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+    return owner.withName(ref.getName()).withDisplayName(ref.getDisplayName()).withDeleted(ref.getDeleted());
+  }
+
+  protected void setOwner(T entity, EntityReference owner) {
+    if (supportsOwner) {
+      EntityInterface<T> entityInterface = getEntityInterface(entity);
+      addOwnerRelationship(entityInterface.getId(), entityType, owner);
+      entityInterface.setOwner(owner);
+    }
+  }
+
+  public void addOwnerRelationship(UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
+    // Add relationship owner --- owns ---> ownedEntity
+    if (owner != null) {
+      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
+      addRelationship(owner.getId(), ownedEntityId, owner.getType(), ownedEntityType, Relationship.OWNS);
+    }
+  }
+
+  /** Remove owner relationship for a given entity */
+  private void removeOwnerRelationship(EntityReference owner, String ownedEntityId, String ownedEntityType) {
+    if (owner != null && owner.getId() != null) {
+      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
+      daoCollection
+          .relationshipDAO()
+          .delete(
+              owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
+    }
+  }
+
+  public void updateOwnerRelationship(
+      EntityReference originalOwner, EntityReference newOwner, UUID ownedEntityId, String ownedEntityType) {
+    // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
+    removeOwnerRelationship(originalOwner, ownedEntityId.toString(), ownedEntityType);
+    addOwnerRelationship(ownedEntityId, ownedEntityType, newOwner);
   }
 
   public final Fields getFields(String fields) {
@@ -938,8 +969,7 @@ public abstract class EntityRepository<T> {
       if (operation.isPatch() || updatedOwner != null) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
         if (recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
-          EntityUtil.updateOwner(
-              daoCollection.relationshipDAO(), origOwner, updatedOwner, original.getId(), entityType);
+          updateOwnerRelationship(origOwner, updatedOwner, original.getId(), entityType);
         }
       }
     }

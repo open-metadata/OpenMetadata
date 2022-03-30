@@ -21,7 +21,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -56,11 +55,6 @@ public class TopicRepository extends EntityRepository<Topic> {
         dao,
         TOPIC_PATCH_FIELDS,
         TOPIC_UPDATE_FIELDS);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Topic topic) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), topic.getOwner());
   }
 
   @Override

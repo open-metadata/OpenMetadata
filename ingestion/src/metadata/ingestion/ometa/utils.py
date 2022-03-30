@@ -14,6 +14,7 @@ Helper functions to handle OpenMetadata Entities' properties
 
 import re
 import string
+from functools import singledispatch
 from typing import Type, TypeVar, Union
 
 from pydantic import BaseModel
@@ -54,15 +55,19 @@ def get_entity_type(
     return class_name
 
 
-def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
+@singledispatch
+def model_str(arg) -> str:
     """
-    Given an entity_id, that can be a str or our pydantic
-    definition of Uuid, return a proper str to build
-    the endpoint path
-    :param entity_id: Entity ID to onvert to string
-    :return: str for the ID
+    Default model stringifying method
     """
-    if isinstance(entity_id, basic.Uuid):
-        return str(entity_id.__root__)
+    return str(arg)
 
-    return entity_id
+
+@model_str.register(basic.Uuid)
+@model_str.register(basic.FullyQualifiedEntityName)
+@model_str.register(basic.EntityName)
+def _(arg) -> str:
+    """
+    Models with __root__
+    """
+    return str(arg.__root__)

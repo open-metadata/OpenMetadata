@@ -78,7 +78,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void prepare(Team team) throws IOException {
     // Check if owner is valid and set the relationship
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), team.getOwner()); // Validate owner
+    populateOwner(team.getOwner()); // Validate owner
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
   }
@@ -102,7 +102,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void storeRelationships(Team team) {
     // Add team owner relationship
-    setOwner(team.getId(), TEAM, team.getOwner());
+    addOwnerRelationship(team.getId(), TEAM, team.getOwner());
     for (EntityReference user : listOrEmpty(team.getUsers())) {
       addRelationship(team.getId(), user.getId(), TEAM, Entity.USER, Relationship.HAS);
     }

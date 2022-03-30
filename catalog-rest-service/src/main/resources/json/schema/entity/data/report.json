@@ -12,9 +12,7 @@
     },
     "name": {
       "description": "Name that identifies this report instance uniquely.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a report in the format 'ServiceName.ReportName'.",

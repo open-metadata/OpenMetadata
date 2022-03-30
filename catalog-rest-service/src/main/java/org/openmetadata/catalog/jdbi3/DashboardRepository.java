@@ -22,7 +22,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -61,11 +60,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
     return new DashboardEntityInterface(entity);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner());
   }
 
   @Override
@@ -124,7 +118,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
+    populateOwner(dashboard.getOwner()); // Validate owner
     dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
@@ -156,7 +150,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
     // Add owner relationship
-    setOwner(dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
+    addOwnerRelationship(dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
 
     // Add tag to dashboard relationship
     applyTags(dashboard);

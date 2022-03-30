@@ -12,9 +12,7 @@
     },
     "name": {
       "description": "Name that identifies this dashboard.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Dashboard. It could be title or label from the source services.",

@@ -36,8 +36,8 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiles.core import Profiler
-from metadata.orm_profiler.profiles.default import DefaultProfiler
+from metadata.orm_profiler.profiler.core import Profiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
 from metadata.orm_profiler.validations.core import validate
 from metadata.orm_profiler.validations.models import TestDef
 
@@ -147,7 +147,12 @@ class OrmProfilerProcessor(Processor[Table]):
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
-        metrics = [Metrics.get(name) for name in self.config.profiler.metrics]
+        # TODO: add_props when needed for incoming metrics
+        metrics = (
+            [Metrics.get(name) for name in self.config.profiler.metrics]
+            if self.config.profiler.metrics
+            else get_default_metrics(orm)
+        )
 
         return Profiler(
             *metrics,
@@ -155,6 +160,7 @@ class OrmProfilerProcessor(Processor[Table]):
             table=orm,
             profile_date=self.execution_date,
             profile_sample=profile_sample,
+            timeout_seconds=self.config.profiler.timeout_seconds,
         )
 
     def profile_entity(self, orm: DeclarativeMeta, table: Table) -> TableProfile:
