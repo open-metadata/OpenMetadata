@@ -12,9 +12,7 @@
     },
     "name": {
       "description": "Name that identifies this Custom Metric.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of the Metric.",
