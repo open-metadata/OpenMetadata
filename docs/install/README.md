@@ -49,7 +49,8 @@ Enter following information in ***/conf/openmetadata-security.yaml*** file:
 authorizerConfiguration:
   className: <authorizer_classname>
   containerRequestFilter: <JWT-filter>
-  publicKeyUri: <sign-on_provider_public-key>
+  publicKeyUrls:
+    - <sign-on_provider_public-key>
   clientAuthorizer:
     authority: <sign-on_issuer-url>
     client_id: <sign-on_client_id>

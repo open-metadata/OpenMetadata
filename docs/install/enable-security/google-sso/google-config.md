@@ -7,7 +7,8 @@
 ```
 authenticationConfiguration:
   provider: "google"
-  publicKey: "https://www.googleapis.com/oauth2/v3/certs"
+  publicKeyUrls:
+    - "https://www.googleapis.com/oauth2/v3/certs"
   authority: "https://accounts.google.com"
   clientId: "{client id}"
   callbackUrl: "http://localhost:8585/callback"
