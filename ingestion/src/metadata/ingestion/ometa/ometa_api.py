@@ -64,7 +64,7 @@ from metadata.ingestion.ometa.openmetadata_rest import (
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
 )
-from metadata.ingestion.ometa.utils import fqdn_to_str, get_entity_type, uuid_to_str
+from metadata.ingestion.ometa.utils import model_str, get_entity_type
 
 logger = logging.getLogger(__name__)
 
@@ -396,7 +396,7 @@ class OpenMetadata(
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{fqdn_to_str(fqdn)}", fields=fields)
+        return self._get(entity=entity, path=f"name/{model_str(fqdn)}", fields=fields)
 
     def get_by_id(
         self,
@@ -408,7 +408,7 @@ class OpenMetadata(
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=uuid_to_str(entity_id), fields=fields)
+        return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -463,7 +463,7 @@ class OpenMetadata(
             return EntityReference(
                 id=instance.id,
                 type=get_entity_type(entity),
-                name=fqdn_to_str(instance.fullyQualifiedName),
+                name=model_str(instance.fullyQualifiedName),
                 description=instance.description,
                 href=instance.href,
             )
@@ -509,7 +509,7 @@ class OpenMetadata(
         """
 
         suffix = self.get_suffix(entity)
-        path = f"/{uuid_to_str(entity_id)}/versions"
+        path = f"/{model_str(entity_id)}/versions"
         resp = self.client.get(f"{suffix}{path}")
 
         if self._use_raw_data:
@@ -542,7 +542,7 @@ class OpenMetadata(
         Returns
             None
         """
-        url = f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}"
+        url = f"{self.get_suffix(entity)}/{model_str(entity_id)}"
         url += f"?recursive=true" if recursive else ""
         self.client.delete(url)
 
