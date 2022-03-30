@@ -13,6 +13,15 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static javax.ws.rs.core.Response.Status.CREATED;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.type.Include.ALL;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+import javax.ws.rs.core.Response.Status;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
@@ -26,16 +35,6 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-
-import javax.ws.rs.core.Response.Status;
-import java.io.IOException;
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
-
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.type.Include.ALL;
 
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final String DATABASE_UPDATE_FIELDS = "owner";

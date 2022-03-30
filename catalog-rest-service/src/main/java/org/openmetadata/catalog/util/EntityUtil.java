@@ -13,6 +13,21 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.type.Include.ALL;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import javax.ws.rs.WebApplicationException;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,22 +57,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-
-import javax.ws.rs.WebApplicationException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.BiPredicate;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import static org.openmetadata.catalog.type.Include.ALL;
 
 @Slf4j
 public final class EntityUtil {
