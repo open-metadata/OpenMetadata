@@ -64,7 +64,7 @@ from metadata.ingestion.ometa.openmetadata_rest import (
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
 )
-from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str, fqdn_to_str
+from metadata.ingestion.ometa.utils import fqdn_to_str, get_entity_type, uuid_to_str
 
 logger = logging.getLogger(__name__)
 
@@ -387,7 +387,10 @@ class OpenMetadata(
         return entity_class(**resp)
 
     def get_by_name(
-        self, entity: Type[T], fqdn: Union[str, FullyQualifiedEntityName], fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        fqdn: Union[str, FullyQualifiedEntityName],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
