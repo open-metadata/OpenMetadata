@@ -45,6 +45,7 @@ from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
@@ -63,7 +64,7 @@ from metadata.ingestion.ometa.openmetadata_rest import (
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
 )
-from metadata.ingestion.ometa.utils import get_entity_type, uuid_to_str
+from metadata.ingestion.ometa.utils import get_entity_type, model_str
 
 logger = logging.getLogger(__name__)
 
@@ -386,13 +387,16 @@ class OpenMetadata(
         return entity_class(**resp)
 
     def get_by_name(
-        self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
+        self,
+        entity: Type[T],
+        fqdn: Union[str, FullyQualifiedEntityName],
+        fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{fqdn}", fields=fields)
+        return self._get(entity=entity, path=f"name/{model_str(fqdn)}", fields=fields)
 
     def get_by_id(
         self,
@@ -404,7 +408,7 @@ class OpenMetadata(
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=uuid_to_str(entity_id), fields=fields)
+        return self._get(entity=entity, path=model_str(entity_id), fields=fields)
 
     def _get(
         self, entity: Type[T], path: str, fields: Optional[List[str]] = None
@@ -459,7 +463,7 @@ class OpenMetadata(
             return EntityReference(
                 id=instance.id,
                 type=get_entity_type(entity),
-                name=instance.fullyQualifiedName,
+                name=model_str(instance.fullyQualifiedName),
                 description=instance.description,
                 href=instance.href,
             )
@@ -505,7 +509,7 @@ class OpenMetadata(
         """
 
         suffix = self.get_suffix(entity)
-        path = f"/{uuid_to_str(entity_id)}/versions"
+        path = f"/{model_str(entity_id)}/versions"
         resp = self.client.get(f"{suffix}{path}")
 
         if self._use_raw_data:
@@ -538,7 +542,7 @@ class OpenMetadata(
         Returns
             None
         """
-        url = f"{self.get_suffix(entity)}/{uuid_to_str(entity_id)}"
+        url = f"{self.get_suffix(entity)}/{model_str(entity_id)}"
         url += f"?recursive=true" if recursive else ""
         self.client.delete(url)
 

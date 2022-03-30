@@ -13,7 +13,7 @@ from requests.models import Response
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import uuid_to_str
+from metadata.ingestion.ometa.utils import model_str
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class OMetaVersionMixin(Generic[T]):
         fields: List
             List of fields to return
         """
-        entity_id = uuid_to_str(entity_id)
+        entity_id = model_str(entity_id)
         version = self.version_to_str(version)
 
         path = f"{entity_id}/versions/{version}"
@@ -95,7 +95,7 @@ class OMetaVersionMixin(Generic[T]):
         List
             lists of available versions for a specific entity
         """
-        path = f"{uuid_to_str(entity_id)}/versions"
+        path = f"{model_str(entity_id)}/versions"
 
         resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
 
