@@ -18,9 +18,18 @@ from unittest.mock import patch
 
 from proto import ENUM
 from pymysql.constants import FIELD_TYPE
-from sqlalchemy.types import BIGINT, CHAR, INTEGER, SMALLINT, TEXT, TIMESTAMP, VARCHAR
+from sqlalchemy.types import (
+    BIGINT,
+    CHAR,
+    INTEGER,
+    JSON,
+    SMALLINT,
+    TEXT,
+    TIMESTAMP,
+    VARCHAR,
+)
 
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
@@ -31,10 +40,12 @@ CONFIG = """
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "service_name": "local_mysql",
-      "schema_filter_pattern": {
+      "service_name": "test_mysql",
+       "schema_filter_pattern": {
         "excludes": []
-      }
+      },
+      "dbt_manifest_file": "./examples/sample_data/dbt/manifest_1.0.json",
+      "dbt_catalog_file": "./examples/sample_data/dbt/catalog_1.0.json"
     }
   },
   "sink": {
@@ -55,7 +66,11 @@ CONFIG = """
 """
 
 
-MOCK_GET_TABLE_NAMES = ["accounts", "binary_log_transaction_compression_stats"]
+MOCK_GET_TABLE_NAMES = [
+    "accounts",
+    "binary_log_transaction_compression_stats",
+    "test_table",
+]
 
 GET_TABLE_DESCRIPTIONS = {"text": "Test Description"}
 MOCK_GET_SCHEMA_NAMES = ["information_schema", "openmetadata_db"]
@@ -101,13 +116,13 @@ MOCK_GET_COLUMN = [
     },
     {
         "name": "type",
-        "type": FIELD_TYPE.ENUM,
+        "type": FIELD_TYPE.TINY_BLOB,
         "default": None,
         "comment": None,
         "nullable": False,
     },
     {
-        "name": "LOG_TYPE",
+        "name": "LOG_TYPE.TEST",
         "type": ENUM,
         "default": None,
         "comment": "The log type to which the transactions were written.",
@@ -145,7 +160,7 @@ MOCK_GET_COLUMN = [
     },
     {
         "name": "LAST_TRANSACTION_ID",
-        "type": TEXT,
+        "type": JSON,
         "default": None,
         "comment": "The last transaction written.",
         "nullable": True,
@@ -167,7 +182,7 @@ MOCK_GET_COLUMN = [
     },
     {
         "name": "Column_priv",
-        "type": FIELD_TYPE.SET,
+        "type": FIELD_TYPE.VAR_STRING,
         "default": "''",
         "comment": None,
         "nullable": False,
@@ -184,6 +199,13 @@ CREATE VIEW test_view AS
           UNION
           SELECT * FROM APPLICABLE_ROLES
 """
+
+
+def execute_workflow():
+    workflow = Workflow.create(json.loads(CONFIG))
+    workflow.execute()
+    workflow.print_status()
+    workflow.stop()
 
 
 class MySqlIngestionTest(TestCase):
@@ -216,10 +238,8 @@ class MySqlIngestionTest(TestCase):
         get_columns.return_value = MOCK_GET_COLUMN
         get_view_names.return_value = MOCK_GET_VIEW_NAMES
         get_view_definition.return_value = MOCK_GET_VIEW_DEFINITION
-        workflow = Workflow.create(json.loads(CONFIG))
-        workflow.execute()
-        workflow.print_status()
-        workflow.stop()
+
+        execute_workflow()
 
     def test_file_sink(self):
         config = json.loads(CONFIG)
@@ -227,16 +247,20 @@ class MySqlIngestionTest(TestCase):
         data = json.load(file_data)
         for i in data:
             table = i.get("table")
-            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable(**i)
+            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
             table_obj: Table = Table.parse_obj(table)
+
             assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
+
+            if table.get("tableType") == TableType.Regular.value:
+                assert table.get("name") in MOCK_GET_TABLE_NAMES
+
             for column in table.get("columns"):
                 column_obj: Column = Column.parse_obj(column)
                 if column in MOCK_UNIQUE_CONSTRAINTS[0].get("column_names"):
                     assert Column.constraint.UNIQUE == column.get("constraint")
                 if column in MOCK_PK_CONSTRAINT.get("constrained_columns"):
                     assert Column.constraint.PRIMARY_KEY == column.get("constraint")
-                if table in MOCK_GET_VIEW_NAMES:
-                    assert table.get("tableType") == Table.tableType.View
-
-            assert i.get("viewDefinition") == MOCK_GET_VIEW_DEFINITION
+            if table.get("name") in MOCK_GET_VIEW_NAMES:
+                assert table.get("tableType") == TableType.View.value
+                assert table.get("viewDefinition") == MOCK_GET_VIEW_DEFINITION
