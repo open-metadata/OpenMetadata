@@ -18,6 +18,8 @@ import {
   render,
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
+import { createTeam, getTeamByName, getTeams } from '../../axiosAPIs/teamsAPI';
+import jsonData from '../../jsons/en';
 import TeamsPage from './index';
 
 jest.mock('../../auth-provider/AuthProvider', () => {
@@ -318,5 +320,59 @@ describe('Test Teams page', () => {
     );
 
     expect(await findByText(container, /ManageTab/i)).toBeInTheDocument();
+  });
+});
+
+describe('Test Teams page sad path', () => {
+  it('Should render error placeholder if getTeamByName api fails', async () => {
+    (getTeamByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: {
+            message:
+              jsonData['api-error-messages']['unexpected-server-response'],
+          },
+        },
+      })
+    );
+    const { container } = render(<TeamsPage />);
+
+    const errorPlaceHolder = await findByTestId(container, 'error');
+
+    expect(errorPlaceHolder).toBeInTheDocument();
+  });
+
+  it('Should render error placeholder if getTeams api fails', async () => {
+    (getTeams as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: {
+            message: jsonData['api-error-messages']['fetch-teams-error'],
+          },
+        },
+      })
+    );
+    const { container } = render(<TeamsPage />);
+
+    const errorPlaceHolder = await findByTestId(container, 'error');
+
+    expect(errorPlaceHolder).toBeInTheDocument();
+  });
+
+  it('Should render component if createTeam api fails', async () => {
+    (createTeam as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: {
+            message: jsonData['api-error-messages']['fetch-teams-error'],
+          },
+        },
+      })
+    );
+    const { container } = render(<TeamsPage />);
+
+    const teamComponent = await findByTestId(container, 'team-container');
+
+    expect(teamComponent).toBeInTheDocument();
   });
 });
