@@ -64,7 +64,7 @@ from metadata.ingestion.ometa.openmetadata_rest import (
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
 )
-from metadata.ingestion.ometa.utils import model_str, get_entity_type
+from metadata.ingestion.ometa.utils import get_entity_type, model_str
 
 logger = logging.getLogger(__name__)
 

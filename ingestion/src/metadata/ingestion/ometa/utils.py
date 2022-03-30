@@ -20,7 +20,6 @@ from typing import Type, TypeVar, Union
 from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 

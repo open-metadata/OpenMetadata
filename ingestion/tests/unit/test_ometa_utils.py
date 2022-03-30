@@ -48,5 +48,9 @@ class OMetaUtilsTest(TestCase):
             "9fc58e81-7412-4023-a298-59f2494aab9d",
         )
 
-        self.assertEqual(model_str(basic.EntityName(__root__="EntityName")), "EntityName")
-        self.assertEqual(model_str(basic.FullyQualifiedEntityName(__root__="FQDN")), "FQDN")
+        self.assertEqual(
+            model_str(basic.EntityName(__root__="EntityName")), "EntityName"
+        )
+        self.assertEqual(
+            model_str(basic.FullyQualifiedEntityName(__root__="FQDN")), "FQDN"
+        )
