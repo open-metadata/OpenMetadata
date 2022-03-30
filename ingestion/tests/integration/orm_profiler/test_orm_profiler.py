@@ -119,6 +119,7 @@ class ProfilerWorkflowTest(TestCase):
             "config": {
                 "profiler": {
                     "name": "my_profiler",
+                    "timeout_seconds": 60,
                     "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
                 },
                 "test_suite": {

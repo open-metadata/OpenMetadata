@@ -34,8 +34,8 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
-from metadata.orm_profiler.profiles.default import DefaultProfiler
-from metadata.orm_profiler.profiles.models import ProfilerDef
+from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.orm_profiler.profiler.models import ProfilerDef
 from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 config = {

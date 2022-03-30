@@ -14,3 +14,4 @@ Define constants useful for the metadata ingestion
 """
 
 DOT = "_DOT_"
+TEN_MIN = 10 * 60

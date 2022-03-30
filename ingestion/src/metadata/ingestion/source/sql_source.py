@@ -53,7 +53,7 @@ from metadata.ingestion.source.sql_source_common import (
     SQLSourceStatus,
 )
 from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiles.default import DefaultProfiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine
 from metadata.utils.helpers import get_database_service_or_create, ingest_lineage

@@ -19,7 +19,7 @@ from typing import Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import Table, TableProfile
-from metadata.orm_profiler.profiles.models import ProfilerDef
+from metadata.orm_profiler.profiler.models import ProfilerDef
 from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 
