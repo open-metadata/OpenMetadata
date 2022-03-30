@@ -143,12 +143,14 @@ class MetadataRestSink(Sink[Entity]):
                 ),
             )
             db = self.metadata.create_or_update(db_request)
-            db_ref = EntityReference(id=db.id, name=db.name.__root__, type="database")
+            db_ref = EntityReference(
+                id=db.id.__root__, name=db.name.__root__, type="database"
+            )
             if db_and_table.table.description is not None:
                 db_and_table.table.description = db_and_table.table.description.strip()
 
             table_request = CreateTableRequest(
-                name=db_and_table.table.name,
+                name=db_and_table.table.name.__root__,
                 tableType=db_and_table.table.tableType,
                 columns=db_and_table.table.columns,
                 description=db_and_table.table.description,
@@ -446,10 +448,10 @@ class MetadataRestSink(Sink[Entity]):
                                 )
                             }
                         )
-                    team_ids.append(team_entity.id)
+                    team_ids.append(team_entity.id.__root__)
                 except APIError:
                     team_entity = self._create_team(team)
-                    team_ids.append(team_entity.id)
+                    team_ids.append(team_entity.id.__root__)
                 except Exception as err:
                     logger.error(err)
         else:
