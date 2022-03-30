@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AssetsType } from '../../enums/entity.enum';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import UserCard from '../../pages/teams/UserCard';
+import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Avatar from '../common/avatar/Avatar';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -77,8 +78,7 @@ const Users = ({ userData }: Props) => {
         </div>
         <div className="tw-pb-4 tw-mb-4 tw-border-b">
           <h6 className="tw-heading tw-mb-3">Teams</h6>
-
-          {userData.teams?.map((team, i) => (
+          {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
             <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
               <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
               <span>{team?.displayName || team?.name}</span>
