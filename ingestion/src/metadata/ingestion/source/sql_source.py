@@ -606,8 +606,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = (
                             1 if col_data_length is None else col_data_length
                         )
-                        if col_type == "ARRAY" and arr_data_type is None:
-                            arr_data_type = DataType.VARCHAR.name
+                        if col_type == "ARRAY":
+                            if arr_data_type is None:
+                                arr_data_type = DataType.VARCHAR.name
                             dataTypeDisplay = f"array<{arr_data_type}>"
 
                         om_column = Column(
