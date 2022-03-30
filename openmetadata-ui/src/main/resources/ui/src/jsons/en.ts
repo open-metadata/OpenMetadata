@@ -24,6 +24,7 @@ const jsonData = {
     'create-user-error': 'Error while creating user!',
     'create-conversation-error': 'Error while creating conversation!',
     'create-message-error': 'Error while creating message!',
+    'create-team-error': 'Error while creating team!',
 
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
