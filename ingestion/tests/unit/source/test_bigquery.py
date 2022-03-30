@@ -19,7 +19,9 @@ from unittest.mock import patch
 from sqlalchemy.types import ARRAY, DATE, Float, Integer, Numeric, String
 from sqlalchemy_bigquery._types import STRUCT
 
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 CONFIG = """
 {
@@ -31,15 +33,32 @@ CONFIG = """
       "host_port": "host_port",
       "username": "username",
       "service_name": "gcp_bigquery",
-      "connect_args":{}
+      "connect_args":{},
+      "partition_query": "select * from {}.{} WHERE DATE({}) = '{}' LIMIT 1000",
+      "enable_policy_tags": "True",
+      "duration":1,
+      "options":{
+        "credentials":{
+          "type": "service_account",
+          "project_id": "project_id",
+          "private_key_id": "private_key_id",
+          "private_key": "",
+          "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
+          "client_id": "",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": ""
+        }
+      }
     }
   },
   "sink": {
-    "type": "metadata-rest",
+    "type": "file",
     "config": {
-      "api_endpoint": "http://localhost:8585/api"
-    }
-  },
+      "filename": "/var/tmp/datasets.json"
+        }
+    },
   "metadata_server": {
     "type": "metadata-server",
     "config": {
@@ -55,61 +74,18 @@ CONFIG = """
 MOCK_GET_TABLE_NAMES = [
     "open_metadata.test1",
     "open_metadata.cloudaudit_googleapis_com_data_access_20220122",
-    "open_metadata.cloudaudit_googleapis_com_data_access_20220124",
-    "open_metadata.cloudaudit_googleapis_com_data_access_20220208",
-    "open_metadata.cloudaudit_googleapis_com_data_access_20220216",
-    "open_metadata.cloudaudit_googleapis_com_data_access_20220217",
-    "open_metadata.cloudaudit_googleapis_com_data_access_20220316",
-    "open_metadata.cloudaudit_googleapis_com_data_access_20220317",
-    "open_metadata.copy_covid",
 ]
 
-GET_TABLE_DESCRIPTIONS = {"text": None}
+GET_TABLE_DESCRIPTIONS = {"text": "Test"}
 MOCK_GET_SCHEMA_NAMES = ["open_metadata"]
 MOCK_UNIQUE_CONSTRAINTS = []
 MOCK_PK_CONSTRAINT = {"constrained_columns": []}
 MOCK_GET_COLUMN = [
     {
-        "name": "country_name",
-        "type": String(),
-        "nullable": True,
-        "comment": "Name of the country",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "alpha_3_code",
-        "type": String(),
-        "nullable": True,
-        "comment": "3-letter alpha code abbreviation of the country/region. See `bigquery-public-data.utility_us.country_code_iso` for more details",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
         "name": "region_name",
         "type": String(),
         "nullable": True,
         "comment": "Name of the region within the country",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "region_code",
-        "type": String(),
-        "nullable": True,
-        "comment": "Code of the region within the country",
         "default": None,
         "precision": None,
         "scale": None,
@@ -130,114 +106,6 @@ MOCK_GET_COLUMN = [
         "policy_tags": None,
     },
     {
-        "name": "close_public_transit",
-        "type": String(),
-        "nullable": True,
-        "comment": "C5 - Ordinal scale to record closing of public transportation; 0 - No measures 1 - Recommend closing (or significantly reduce volume/route/means of transport available) 2 - Require closing (or prohibit most citizens from using it)",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "close_public_transit_flag",
-        "type": String(),
-        "nullable": True,
-        "comment": "Are C5 actions targeted at specific areas or general:  0 - Targeted 1- General No data - blank",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "close_public_transit_notes",
-        "type": String(),
-        "nullable": True,
-        "comment": "Additional details about C5 policy actions",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "stay_at_home_requirements",
-        "type": String(),
-        "nullable": True,
-        "comment": "C6 - Ordinal scale record of orders to “shelter-in- place” and otherwise confine to home.",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "stay_at_home_requirements_flag",
-        "type": String(),
-        "nullable": True,
-        "comment": 'Are C6 actions targeted at specific areas or general:  0 - Targeted 1- General No data - blank"\\',
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "testing_policy",
-        "type": String(),
-        "nullable": True,
-        "comment": "H2 - Ordinal scale record of who can get tested;  0 – No testing policy 1 – Only those who both (a) have symptoms AND (b) meet specific criteria (eg key workers, admitted to hospital, came into contact with a known case, returned from overseas) 2 – testing of anyone showing COVID-19 symptoms 3 – open public testing (eg “drive through” testing available to asymptomatic people) No data Nb we are looking for policies about testing for having an infection (PCR tests) - not for policies about testing for immunity (antibody tests).",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "testing_policy_notes",
-        "type": String(),
-        "nullable": True,
-        "comment": "Additional details about H2 policy actions",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "contact_tracing",
-        "type": String(),
-        "nullable": True,
-        "comment": "H3 - Ordinal scale record if governments doing contact tracing; 0 - No contact tracing 1 - Limited contact tracing - not done for all cases 2 - Comprehensive contact tracing - done for all cases No data",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
-        "name": "contact_tracing_notes",
-        "type": String(),
-        "nullable": True,
-        "comment": "Additional details about H3 policy actions",
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
-        "policy_tags": None,
-    },
-    {
         "name": "emergency_healthcare_investment",
         "type": Float(),
         "nullable": True,
@@ -247,18 +115,6 @@ MOCK_GET_COLUMN = [
         "scale": None,
         "max_length": None,
         "raw_data_type": "FLOAT",
-        "policy_tags": None,
-    },
-    {
-        "name": "bigquery_test_datatype",
-        "type": String(),
-        "nullable": True,
-        "comment": None,
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
         "policy_tags": None,
     },
     {
@@ -297,18 +153,6 @@ MOCK_GET_COLUMN = [
         "scale": None,
         "max_length": None,
         "raw_data_type": "ARRAY",
-        "policy_tags": None,
-    },
-    {
-        "name": "bigquery_test_datatype_3.bigquery_test_datatype_31.record_test",
-        "type": String(),
-        "nullable": True,
-        "comment": None,
-        "default": None,
-        "precision": None,
-        "scale": None,
-        "max_length": None,
-        "raw_data_type": "VARCHAR",
         "policy_tags": None,
     },
     {
@@ -365,14 +209,30 @@ MOCK_GET_COLUMN = [
     },
 ]
 
-column = []
-
 
 MOCK_GET_VIEW_NAMES = []
 MOCK_GET_VIEW_DEFINITION = ""
 
+MOCK_GET_INDEXES = [
+    {"name": "partition", "column_names": ["region_name"], "unique": False},
+    {
+        "name": "clustering",
+        "column_names": ["bigquery_test_datatype_5"],
+        "unique": False,
+    },
+]
+
+
+def execute_workflow(config_dict):
+    workflow = Workflow.create(config_dict)
+    workflow.execute()
+    workflow.print_status()
+    workflow.stop()
+
 
 class BigQueryIngestionTest(TestCase):
+    @patch("sqlalchemy.engine.reflection.Inspector.get_indexes")
+    @patch("metadata.ingestion.source.sql_source.SQLSource.fetch_sample_data")
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_definition")
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_names")
     @patch("sqlalchemy.engine.reflection.Inspector.get_table_comment")
@@ -395,6 +255,8 @@ class BigQueryIngestionTest(TestCase):
         get_table_comment,
         get_view_names,
         get_view_definition,
+        fetch_sample_data,
+        get_indexes,
     ):
         get_schema_names.return_value = MOCK_GET_SCHEMA_NAMES
         get_table_names.return_value = MOCK_GET_TABLE_NAMES
@@ -404,7 +266,31 @@ class BigQueryIngestionTest(TestCase):
         get_columns.return_value = MOCK_GET_COLUMN
         get_view_names.return_value = MOCK_GET_VIEW_NAMES
         get_view_definition.return_value = MOCK_GET_VIEW_DEFINITION
-        workflow = Workflow.create(json.loads(CONFIG))
-        workflow.execute()
-        workflow.print_status()
-        workflow.stop()
+        fetch_sample_data.return_value = []
+        get_indexes.return_value = MOCK_GET_INDEXES
+
+        execute_workflow(json.loads(CONFIG))
+
+    def test_file_sink(self):
+        config = json.loads(CONFIG)
+        file_data = open(config["sink"]["config"]["filename"])
+        data = json.load(file_data)
+        for i in data:
+            table = i.get("table")
+            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
+            table_obj: Table = Table.parse_obj(table)
+
+            assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
+            table_name = f"{i.get('database').get('name')}.{table.get('name')}"
+            if table.get("tableType") == TableType.Regular.value:
+                assert table_name in MOCK_GET_TABLE_NAMES
+
+            for column in table.get("columns"):
+                column_obj: Column = Column.parse_obj(column)
+                if column in MOCK_UNIQUE_CONSTRAINTS:
+                    assert Column.constraint.UNIQUE == column.get("constraint")
+                if column in MOCK_PK_CONSTRAINT.get("constrained_columns"):
+                    assert Column.constraint.PRIMARY_KEY == column.get("constraint")
+            if table.get("name") in MOCK_GET_VIEW_NAMES:
+                assert table.get("tableType") == TableType.View.value
+                assert table.get("viewDefinition") == MOCK_GET_VIEW_DEFINITION
