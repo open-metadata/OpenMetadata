@@ -14,6 +14,11 @@
 import { isNil } from 'lodash';
 import { EntityReference } from '../generated/entity/teams/team';
 
+/**
+ * To get filtered list of non-deleted(active) users
+ * @param users List of users
+ * @returns List of non-deleted(active) users
+ */
 export const getActiveUsers = (users?: Array<EntityReference>) => {
   return !isNil(users) ? users.filter((item) => !item.deleted) : [];
 };
