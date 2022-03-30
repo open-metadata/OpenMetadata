@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getUserPath } from '../../constants/constants';
@@ -31,40 +32,42 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
       <div
         className="tw-cursor-pointer"
         onClick={() => setExpanded((pre) => !pre)}>
-        <div
-          className="tw-flex tw-py-1 tw-justify-between"
-          data-testid="query-header">
-          <p>
-            Last run by{' '}
-            <Link
-              className="button-comp"
-              to={getUserPath(query.user?.name as string)}>
-              <button className="tw-font-medium tw-text-grey-body ">
-                {query.user?.displayName ?? query.user?.name}
-              </button>{' '}
-            </Link>
-            and took{' '}
-            <span className="tw-font-medium">{query.duration} seconds</span>
-          </p>
+        {!isUndefined(query.user) && !isUndefined(query.duration) ? (
+          <div
+            className="tw-flex tw-py-1 tw-justify-between"
+            data-testid="query-header">
+            <p>
+              Last run by{' '}
+              <Link
+                className="button-comp"
+                to={getUserPath(query.user?.name as string)}>
+                <button className="tw-font-medium tw-text-grey-body ">
+                  {query.user?.displayName ?? query.user?.name}
+                </button>{' '}
+              </Link>
+              and took{' '}
+              <span className="tw-font-medium">{query.duration} seconds</span>
+            </p>
 
-          <button className="tw-pr-px">
-            {expanded ? (
-              <SVGIcons
-                alt="arrow-up"
-                className="tw-mr-4"
-                icon={Icons.ICON_UP}
-                width="16px"
-              />
-            ) : (
-              <SVGIcons
-                alt="arrow-down"
-                className="tw-mr-4"
-                icon={Icons.ICON_DOWN}
-                width="16px"
-              />
-            )}
-          </button>
-        </div>
+            <button className="tw-pr-px">
+              {expanded ? (
+                <SVGIcons
+                  alt="arrow-up"
+                  className="tw-mr-4"
+                  icon={Icons.ICON_UP}
+                  width="16px"
+                />
+              ) : (
+                <SVGIcons
+                  alt="arrow-down"
+                  className="tw-mr-4"
+                  icon={Icons.ICON_DOWN}
+                  width="16px"
+                />
+              )}
+            </button>
+          </div>
+        ) : null}
       </div>
       <div className="tw-border tw-border-main tw-rounded-md tw-p-px">
         <div
