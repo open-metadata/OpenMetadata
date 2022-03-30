@@ -69,6 +69,10 @@ class Table:
         self.attribute_definitions = attribute_definitions
 
 
+def get_file_path():
+    return json.loads(CONFIG)["sink"]["config"]["filename"]
+
+
 MOCK_GET_COLUMNS = [
     {"AttributeName": "Name", "AttributeType": "S"},
     {"AttributeName": "Location", "AttributeType": "L"},
@@ -76,62 +80,44 @@ MOCK_GET_COLUMNS = [
 
 MOCK_GET_COLUMNS_TWO = [{"AttributeName": 1234, "AttributeType": "S"}]
 
-
 MOCK_GET_TABLE_NAMES = [
     Table(name="Forum", attribute_definitions=MOCK_GET_COLUMNS),
     Table(name="Music", attribute_definitions=MOCK_GET_COLUMNS),
     Table(name="ProductCatalog", attribute_definitions=MOCK_GET_COLUMNS),
     Table(name="Reply", attribute_definitions=MOCK_GET_COLUMNS),
     Table(name="Thread", attribute_definitions=MOCK_GET_COLUMNS),
-]
-
-MOCK_GET_TABLE_NAMES_CHECK_TABLE = [
     Table(name=1234, attribute_definitions=MOCK_GET_COLUMNS),
-]
-
-MOCK_GET_TABLE_NAMES_CHECK_COLUMN = [
-    Table(name="Thread", attribute_definitions=MOCK_GET_COLUMNS_TWO),
+    Table(name="Cars", attribute_definitions=MOCK_GET_COLUMNS_TWO),
 ]
 
 MOCK_GET_TABLE_NAMES_EMPTY = []
 
 MOCK_GET_TABLE_NAMES_OTHER_DATATYPE = None
 
-EXCLUDED_TABLE_NAMES = [
-    Table(name="Music", attribute_definitions=MOCK_GET_COLUMNS),
-]
-
 
 @patch("boto3.resources.collection.CollectionManager.all")
 @patch("sqlalchemy.engine.base.Engine.connect")
 class DynamoDbIngestionTest(TestCase):
-    def test_dynamodb_ingestion(self, mock_connect, all):
-        all.return_value = MOCK_GET_TABLE_NAMES
-        execute_workflow()
-
-    def test_dynamodb_table(self, mock_connect, all):
-        all.return_value = MOCK_GET_TABLE_NAMES_CHECK_TABLE
-        execute_workflow()
-
-    def test_dynamodb_columm(self, mock_connect, all):
-        all.return_value = MOCK_GET_TABLE_NAMES_CHECK_COLUMN
-        execute_workflow()
-
     def test_dynamodb_empty_table(self, mock_connect, all):
         all.return_value = MOCK_GET_TABLE_NAMES_EMPTY
         execute_workflow()
+        file_path = get_file_path()
+        with open(file_path, "r") as file:
+            assert len(json.loads(file.read())) == 0
 
     def test_dynamodb_other_datatype_table(self, mock_connect, all):
         all.return_value = MOCK_GET_TABLE_NAMES_OTHER_DATATYPE
         execute_workflow()
+        file_path = get_file_path()
+        with open(file_path, "r") as file:
+            assert len(json.loads(file.read())) == 0
 
     def test_dynamodb_file_sink(self, mock_connect, all):
         all.return_value = MOCK_GET_TABLE_NAMES
         execute_workflow()
         table_names_list = [i.name for i in MOCK_GET_TABLE_NAMES]
         column_names_list = [i["AttributeName"] for i in MOCK_GET_COLUMNS]
-
-        file_path = json.loads(CONFIG)["sink"]["config"]["filename"]
+        file_path = get_file_path()
         with open(file_path, "r") as file:
             for item in json.loads(file.read()):
                 OMetaDatabaseAndTable.parse_obj(item)
