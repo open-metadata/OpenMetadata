@@ -61,6 +61,10 @@ class DeltalakeSource(Source):
         )
         self.status = SQLSourceStatus()
 
+    def set_spark(self, spark):
+        self.spark = spark
+
+
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = DeltalakeSourceConfig.parse_obj(config_dict)

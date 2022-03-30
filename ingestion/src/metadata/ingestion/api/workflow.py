@@ -214,3 +214,6 @@ class Workflow:
         else:
             click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
+
+    def set_spark(self, spark):
+        self.source.set_spark(spark)
