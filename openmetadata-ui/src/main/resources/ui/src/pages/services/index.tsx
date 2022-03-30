@@ -62,11 +62,13 @@ import {
   EditObj,
   ServiceDataObj,
 } from '../../interface/service.interface';
+import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
   getServiceLogo,
 } from '../../utils/CommonUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 type ServiceRecord = {
@@ -129,6 +131,13 @@ const ServicesPage = () => {
     pipelineServices: 0,
   });
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
   ) => {
@@ -138,16 +147,25 @@ const ServicesPage = () => {
       promiseArr = allServiceCollectionArr.map((obj) => {
         return getServices(obj.value);
       });
-      Promise.allSettled(promiseArr).then(
-        (result: PromiseSettledResult<AxiosResponse>[]) => {
+      Promise.allSettled(promiseArr)
+        .then((result: PromiseSettledResult<AxiosResponse>[]) => {
           if (result.length) {
             let serviceArr = [];
             let servicePagingArr = [];
+            const errors: Array<AxiosError> = [];
+            let unexpectedResponses = 0;
             const serviceRecord = {} as ServiceRecord;
             const servicePaging = {} as ServicePagingRecord;
-            serviceArr = result.map((service) =>
-              service.status === 'fulfilled' ? service.value?.data?.data : []
-            );
+            serviceArr = result.map((service) => {
+              let data = [];
+              if (service.status === 'fulfilled') {
+                data = service.value?.data?.data;
+              } else {
+                errors.push(service.reason);
+              }
+
+              return data;
+            });
             servicePagingArr = result.map((service) =>
               service.status === 'fulfilled' ? service.value?.data?.paging : {}
             );
@@ -169,10 +187,31 @@ const ServicesPage = () => {
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
+            if (errors.length) {
+              for (const err of errors) {
+                const errMsg = getErrorText(err, '');
+                if (errMsg) {
+                  handleShowErrorToast(errMsg);
+                } else {
+                  unexpectedResponses++;
+                }
+              }
+              if (unexpectedResponses > 0) {
+                handleShowErrorToast(
+                  jsonData['api-error-messages']['unexpected-server-response']
+                );
+              }
+            }
           }
           setIsLoading(false);
-        }
-      );
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-services-error']
+          );
+          handleShowErrorToast(errMsg);
+        });
     }
   };
 
@@ -193,18 +232,22 @@ const ServicesPage = () => {
     return new Promise<void>((resolve, reject) => {
       updateService(selectedService, id, dataObj)
         .then(({ data }: { data: AxiosResponse['data'] }) => {
-          const updatedData = {
-            ...data,
-            ...data.jdbc,
-            ...data.brokers,
-            ...data.schemaRegistry,
-          };
-          const updatedServiceList = serviceList.map((s) =>
-            s.id === updatedData.id ? updatedData : s
-          );
-          setServices({ ...services, [serviceName]: updatedServiceList });
-          setServiceList(updatedServiceList);
-          resolve();
+          if (data) {
+            const updatedData = {
+              ...data,
+              ...data.jdbc,
+              ...data.brokers,
+              ...data.schemaRegistry,
+            };
+            const updatedServiceList = serviceList.map((s) =>
+              s.id === updatedData.id ? updatedData : s
+            );
+            setServices({ ...services, [serviceName]: updatedServiceList });
+            setServiceList(updatedServiceList);
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
           reject(err);
@@ -217,20 +260,24 @@ const ServicesPage = () => {
       postService(selectedService, dataObj)
         .then((res: AxiosResponse) => {
           const { data } = res;
-          const updatedData = {
-            ...data,
-            ...data.jdbc,
-            ...data.brokers,
-            ...data.schemaRegistry,
-          };
-          const updatedServiceList = [...serviceList, updatedData];
-          setServices({ ...services, [serviceName]: updatedServiceList });
-          setServicesCount((pre) => ({
-            ...servicesCount,
-            [serviceName]: pre[serviceName] + 1,
-          }));
-          setServiceList(updatedServiceList);
-          resolve(res);
+          if (data) {
+            const updatedData = {
+              ...data,
+              ...data.jdbc,
+              ...data.brokers,
+              ...data.schemaRegistry,
+            };
+            const updatedServiceList = [...serviceList, updatedData];
+            setServices({ ...services, [serviceName]: updatedServiceList });
+            setServicesCount((pre) => ({
+              ...servicesCount,
+              [serviceName]: pre[serviceName] + 1,
+            }));
+            setServiceList(updatedServiceList);
+            resolve(res);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
           reject(err);
@@ -252,43 +299,56 @@ const ServicesPage = () => {
     }
     promiseSave
       .then((serviceRes: AxiosResponse | void) => {
-        const serviceId = serviceRes?.data.id;
-        if (ingestionList?.length && serviceId) {
-          const promises = ingestionList.map((ingestion) => {
-            return addAirflowPipeline({
-              ...ingestion,
-              service: {
-                ...ingestion.service,
-                id: serviceId,
-              },
-              pipelineType: PipelineType.Metadata,
-            });
-          });
-
-          Promise.allSettled(promises).then(
-            (response: PromiseSettledResult<AxiosResponse>[]) => {
-              response.map((data) => {
-                data.status === 'rejected' &&
-                  showToast({
-                    variant: 'error',
-                    body:
-                      data.reason?.response?.data?.message ||
-                      'Something went wrong!',
-                  });
+        if (serviceRes?.data) {
+          const serviceId = serviceRes?.data.id;
+          if (ingestionList?.length && serviceId) {
+            const promises = ingestionList.map((ingestion) => {
+              return addAirflowPipeline({
+                ...ingestion,
+                service: {
+                  ...ingestion.service,
+                  id: serviceId,
+                },
+                pipelineType: PipelineType.Metadata,
               });
-              setIsModalOpen(false);
-              setEditData(undefined);
-            }
-          );
+            });
+
+            Promise.allSettled(promises)
+              .then((response: PromiseSettledResult<AxiosResponse>[]) => {
+                setIsModalOpen(false);
+                setEditData(undefined);
+                response.map((data) => {
+                  if (data.status === 'rejected') {
+                    throw data.reason;
+                  }
+                });
+              })
+              .catch((err: AxiosError) => {
+                const errMsg = getErrorText(
+                  err,
+                  jsonData['api-error-messages']['add-ingestion-error']
+                );
+                showToast({
+                  variant: 'error',
+                  body: errMsg,
+                });
+              });
+          } else {
+            setIsModalOpen(false);
+            setEditData(undefined);
+          }
         } else {
-          setIsModalOpen(false);
-          setEditData(undefined);
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch((err: AxiosError) => {
+      .catch((err: AxiosError | string) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['add-service-error']
+        );
         showToast({
           variant: 'error',
-          body: err.message || 'Something went wrong!',
+          body: errMsg,
         });
       });
   };
@@ -312,14 +372,16 @@ const ServicesPage = () => {
             [serviceName]: pre[serviceName] - 1,
           }));
           setServiceList(updatedServiceList);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = err.response?.data.message || 'Something went wrong!';
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['delete-service-error']
+        );
+        handleShowErrorToast(errMsg);
       });
 
     handleCancelConfirmationModal();
@@ -452,18 +514,29 @@ const ServicesPage = () => {
     }`;
     getServices(pagingString)
       .then((result: AxiosResponse) => {
-        const currentServices = result.data.data;
-        setServiceList(currentServices);
+        if (result.data) {
+          const currentServices = result.data.data;
+          setServiceList(currentServices);
 
-        setServices({
-          ...services,
-          [serviceName]: currentServices,
-        });
+          setServices({
+            ...services,
+            [serviceName]: currentServices,
+          });
 
-        setPaging({
-          ...paging,
-          [serviceName]: result.data.paging,
-        });
+          setPaging({
+            ...paging,
+            [serviceName]: result.data.paging,
+          });
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError | string) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-services-error']
+        );
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -473,25 +546,39 @@ const ServicesPage = () => {
   useEffect(() => {
     //   fetch all service collection
     setIsLoading(true);
-    getServiceDetails().then((res: AxiosResponse) => {
-      let allServiceCollectionArr: Array<ServiceCollection> = [];
-      if (res.data.data?.length) {
-        allServiceCollectionArr = res.data.data.map((service: ServiceData) => {
-          return {
-            name: service.collection.name,
-            value: service.collection.name,
-          };
-        });
-        // Removed "setIsLoading(false)" from here,
-        // If there are service categories available
-        // Loader should wait for each category to fetch list of services
-        // Then only it should stop Loading and show available data or No data template
-        // This is handled in "updateServiceList" method
-      } else {
-        setIsLoading(false);
-      }
-      updateServiceList(allServiceCollectionArr);
-    });
+    getServiceDetails()
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          let allServiceCollectionArr: Array<ServiceCollection> = [];
+          if (res.data.data?.length) {
+            allServiceCollectionArr = res.data.data.map(
+              (service: ServiceData) => {
+                return {
+                  name: service.collection.name,
+                  value: service.collection.name,
+                };
+              }
+            );
+            // Removed "setIsLoading(false)" from here,
+            // If there are service categories available
+            // Loader should wait for each category to fetch list of services
+            // Then only it should stop Loading and show available data or No data template
+            // This is handled in "updateServiceList" method
+          } else {
+            setIsLoading(false);
+          }
+          updateServiceList(allServiceCollectionArr);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError | string) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-services-error']
+        );
+        handleShowErrorToast(errMsg);
+      });
   }, []);
 
   return (

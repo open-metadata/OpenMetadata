@@ -20,6 +20,7 @@ const jsonData = {
     'add-table-test-error': 'Error while adding table test!',
     'add-column-test-error': 'Error while adding column test!',
     'add-ingestion-error': 'Error while adding ingestion workflow!',
+    'add-service-error': 'Error while adding service!',
 
     'create-user-error': 'Error while creating user!',
     'create-conversation-error': 'Error while creating conversation!',
@@ -30,6 +31,7 @@ const jsonData = {
     'delete-ingestion-error': 'Error while deleting ingestion workflow',
     'delete-lineage-error': 'Error while deleting edge!',
     'delete-message-error': 'Error while deleting message!',
+    'delete-service-error': 'Error while deleting service!',
     'delete-team-error': 'Error while deleting team!',
     'delete-test-error': 'Error while deleting test!',
     'delete-user-error': 'Error while deleting user!',
@@ -38,6 +40,7 @@ const jsonData = {
 
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
 
+    'fetch-auth-config-error': 'Error occured while fetching auth configs!',
     'fetch-chart-error': 'Error while fetching charts!',
     'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
     'fetch-data-error': 'Error while fetching data!',
@@ -60,6 +63,7 @@ const jsonData = {
     'fetch-updated-conversation-error':
       'Error while fetching updated conversation!',
     'fetch-service-error': 'Error while fetching service details!',
+    'fetch-services-error': 'Error while fetching services!',
     'fetch-teams-error': 'Error while fetching teams!',
 
     'unexpected-server-response': 'Unexpected response from server!',

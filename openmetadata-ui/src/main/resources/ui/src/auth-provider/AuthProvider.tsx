@@ -52,6 +52,7 @@ import { ClientErrors } from '../enums/axios.enum';
 import { AuthTypes } from '../enums/signin.enum';
 import { User } from '../generated/entity/teams/user';
 import useToastContext from '../hooks/useToastContext';
+import jsonData from '../jsons/en';
 import {
   getAuthConfig,
   getNameFromEmail,
@@ -62,6 +63,7 @@ import {
   setMsalInstance,
 } from '../utils/AuthProvider.util';
 import { getImages } from '../utils/CommonUtils';
+import { getErrorText } from '../utils/StringsUtils';
 import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import OktaAuthProvider from './okta-auth-provider';
@@ -258,7 +260,11 @@ export const AuthProvider = ({
           authorizerConfig,
         ]: PromiseSettledResult<AxiosResponse>[]) => {
           let authRes = {} as AxiosResponse;
-          if (authenticationConfig.status === 'fulfilled') {
+          if (authenticationConfig.status !== 'fulfilled') {
+            throw (authenticationConfig.reason as AxiosError).response?.data;
+          } else if (authorizerConfig.status !== 'fulfilled') {
+            throw (authorizerConfig.reason as AxiosError).response?.data;
+          } else {
             authRes = authenticationConfig.value;
             const authorizerRes =
               authorizerConfig.status === 'fulfilled'
@@ -292,21 +298,17 @@ export const AuthProvider = ({
               setIsAuthDisabled(true);
               fetchAllUsers();
             }
-          } else {
-            authenticationConfig.reason as AxiosError;
-            showToast({
-              variant: 'error',
-              body:
-                (authenticationConfig.reason as AxiosError).response?.data
-                  .message || 'Error occured while fetching auth config',
-            });
           }
         }
       )
-      .catch(() => {
+      .catch((err: AxiosError | string) => {
+        const errorMessage = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-auth-config-error']
+        );
         showToast({
           variant: 'error',
-          body: 'Error occured while fetching auth config',
+          body: errorMessage,
         });
       });
   };
