@@ -15,8 +15,9 @@ Query parser utils tests
 import json
 from unittest import TestCase
 from unittest.mock import patch
-from uuid import UUID
 
+from proto import ENUM
+from pymysql.constants import FIELD_TYPE
 from sqlalchemy.types import (
     CHAR,
     DATE,
@@ -24,11 +25,14 @@ from sqlalchemy.types import (
     INTEGER,
     JSON,
     SMALLINT,
+    TEXT,
     TIMESTAMP,
     VARCHAR,
 )
 
+from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 CONFIG = """
 {
@@ -41,7 +45,12 @@ CONFIG = """
             "host_port": "host_port"
         }
     },
-    "sink": {"type": "metadata-rest", "config": {}},
+    "sink": {
+    "type": "file",
+    "config": {
+      "filename": "/var/tmp/datasets.json"
+        }
+    },
     "metadata_server": {
         "type": "metadata-server",
         "config": {
@@ -60,35 +69,18 @@ MOCK_GET_TABLE_NAMES = [
     "chart_entity",
     "dashboard_entity",
 ]
+
 GET_TABLE_DESCRIPTIONS = {"text": "Test Description"}
+
 MOCK_GET_SCHEMA_NAMES = ["test_openmetadata_db"]
+
 MOCK_UNIQUE_CONSTRAINTS = [
     {"name": "unique_name", "column_names": ["name"], "duplicates_index": "unique_name"}
 ]
-MOCK_PK_CONSTRAINT = {"constrained_columns": ["id"], "name": None}
+
+MOCK_PK_CONSTRAINT = {"constrained_columns": ["id"], "name": "NOT_NULL"}
+
 MOCK_GET_COLUMN = [
-    {
-        "name": "id",
-        "type": VARCHAR(length=36),
-        "default": None,
-        "comment": None,
-        "nullable": True,
-        "computed": {
-            "sqltext": "(json_unquote(json_extract(`json`,_utf8mb4'$.id')))",
-            "persisted": True,
-        },
-    },
-    {
-        "name": "name",
-        "type": VARCHAR(length=256),
-        "default": None,
-        "comment": None,
-        "nullable": True,
-        "computed": {
-            "sqltext": "(json_unquote(json_extract(`json`,_utf8mb4'$.name')))",
-            "persisted": False,
-        },
-    },
     {
         "name": "deleted",
         "type": SMALLINT(),
@@ -109,42 +101,6 @@ MOCK_GET_COLUMN = [
         "nullable": False,
     },
     {
-        "name": "cust_id",
-        "type": UUID,
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "lname",
-        "type": VARCHAR(length=36),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "fname",
-        "type": VARCHAR(length=24),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "date_key",
-        "type": INTEGER(),
-        "nullable": False,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": True,
-    },
-    {
         "name": "date",
         "type": DATE(),
         "nullable": True,
@@ -154,107 +110,8 @@ MOCK_GET_COLUMN = [
         "primary_key": False,
     },
     {
-        "name": "full_date_description",
-        "type": VARCHAR(length=18),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_week_number_in_year",
-        "type": INTEGER(),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_month_name",
-        "type": VARCHAR(length=9),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_month_number_in_year",
-        "type": INTEGER(),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_year_month",
-        "type": CHAR(length=7),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_quarter",
-        "type": INTEGER(),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_year_quarter",
-        "type": CHAR(length=7),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_half_year",
-        "type": INTEGER(),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "calendar_year",
-        "type": INTEGER(),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "holiday_indicator",
-        "type": VARCHAR(length=10),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
         "name": "weekday_indicator",
         "type": CHAR(length=7),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
-    {
-        "name": "selling_season",
-        "type": VARCHAR(length=32),
         "nullable": True,
         "default": "",
         "autoincrement": False,
@@ -297,20 +154,23 @@ MOCK_GET_COLUMN = [
         "comment": None,
         "primary_key": False,
     },
-    {
-        "name": "column_5",
-        "type": VARCHAR(length=20),
-        "nullable": True,
-        "default": "",
-        "autoincrement": False,
-        "comment": None,
-        "primary_key": False,
-    },
 ]
 
 
 MOCK_GET_VIEW_NAMES = ["test_view"]
-MOCK_GET_VIEW_DEFINITION = "SELECT failedpn.metric_date, failedpn.metric_hour, failedpn.game_id, failedpn.game_id_str, failedpn.user_id, failedpn.event_ts, failedpn.bundle_id, failedpn.mkt, failedpn.mkt_str, failedpn.device_token FROM bi_pipeline.failedpn"
+MOCK_GET_VIEW_DEFINITION = """
+CREATE VIEW test_view AS
+          SELECT * FROM accounts
+          UNION
+          SELECT * FROM APPLICABLE_ROLES
+"""
+
+
+def execute_workflow():
+    workflow = Workflow.create(json.loads(CONFIG))
+    workflow.execute()
+    workflow.print_status()
+    workflow.stop()
 
 
 class VerticaIngestionTest(TestCase):
@@ -323,7 +183,7 @@ class VerticaIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_pk_constraint")
     @patch("sqlalchemy.engine.reflection.Inspector.get_columns")
     @patch("sqlalchemy.engine.base.Engine.connect")
-    def test_vertica_ingestion(
+    def test_mysql_ingestion(
         self,
         mock_connect,
         get_columns,
@@ -343,7 +203,29 @@ class VerticaIngestionTest(TestCase):
         get_columns.return_value = MOCK_GET_COLUMN
         get_view_names.return_value = MOCK_GET_VIEW_NAMES
         get_view_definition.return_value = MOCK_GET_VIEW_DEFINITION
-        workflow = Workflow.create(json.loads(CONFIG))
-        workflow.execute()
-        workflow.print_status()
-        workflow.stop()
+
+        execute_workflow()
+
+    def test_file_sink(self):
+        config = json.loads(CONFIG)
+        file_data = open(config["sink"]["config"]["filename"])
+        data = json.load(file_data)
+        for i in data:
+            table = i.get("table")
+            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
+            table_obj: Table = Table.parse_obj(table)
+
+            assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
+
+            if table.get("tableType") == TableType.Regular.value:
+                assert table.get("name") in MOCK_GET_TABLE_NAMES
+
+            for column in table.get("columns"):
+                column_obj: Column = Column.parse_obj(column)
+                if column in MOCK_UNIQUE_CONSTRAINTS[0].get("column_names"):
+                    assert Column.constraint.UNIQUE == column.get("constraint")
+                if column in MOCK_PK_CONSTRAINT.get("constrained_columns"):
+                    assert Column.constraint.PRIMARY_KEY == column.get("constraint")
+            if table.get("name") in MOCK_GET_VIEW_NAMES:
+                assert table.get("tableType") == TableType.View.value
+                assert table.get("viewDefinition") == MOCK_GET_VIEW_DEFINITION
