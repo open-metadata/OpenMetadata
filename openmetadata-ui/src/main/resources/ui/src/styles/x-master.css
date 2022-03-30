@@ -891,6 +891,10 @@ body .profiler-graph .recharts-active-dot circle {
   height: auto !important;
 }
 
+.CodeMirror-wrap pre.CodeMirror-line {
+  padding-right: 40px;
+}
+
 .entity-feed-list {
   grid-template-columns: 200px auto 200px;
 }
