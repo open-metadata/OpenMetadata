@@ -19,6 +19,7 @@ from typing import Type, TypeVar, Union
 from pydantic import BaseModel
 
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 
@@ -66,3 +67,17 @@ def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
         return str(entity_id.__root__)
 
     return entity_id
+
+
+def fqdn_to_str(fqdn: Union[str, FullyQualifiedEntityName]) -> str:
+    """
+    Given a FQDN, that can be a str or our pydantic
+    definitions of FullyQualifiedEntityName. Return a
+    str to build the endpoint path.
+    :param fqdn: FullyQualifiedEntityName or str
+    :return: string of FullyQualifiedEntityName
+    """
+    if isinstance(fqdn, basic.FullyQualifiedEntityName):
+        return str(fqdn.__root__)
+
+    return fqdn
