@@ -8,7 +8,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this database instance uniquely.",
-      "$ref": "../../entity/data/database.json#/definitions/databaseName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of the database instance. What it has and how to use it.",

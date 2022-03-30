@@ -18,7 +18,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "#/definitions/userName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Used for user biography.",

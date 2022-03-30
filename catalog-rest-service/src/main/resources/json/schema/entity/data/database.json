@@ -18,7 +18,7 @@
     },
     "name": {
       "description": "Name that identifies the database.",
-      "$ref": "#/definitions/databaseName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",
