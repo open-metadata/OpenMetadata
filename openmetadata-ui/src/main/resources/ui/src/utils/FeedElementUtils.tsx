@@ -41,6 +41,7 @@ export const getFieldThreadElement = (
   return !isEmpty(threadValue) ? (
     <p
       className="link-text tw-w-8 tw-h-8 tw-flex-none"
+      data-testid="field-thread"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -48,7 +49,9 @@ export const getFieldThreadElement = (
       }}>
       <span className="tw-flex">
         <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
-        <span className="tw-ml-1">{threadValue.count}</span>
+        <span className="tw-ml-1" data-testid="field-thread-count">
+          {threadValue.count}
+        </span>
       </span>
     </p>
   ) : (
@@ -56,6 +59,7 @@ export const getFieldThreadElement = (
       {entityType && entityFqn && entityField && flag ? (
         <p
           className="link-text tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+          data-testid="start-field-thread"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();

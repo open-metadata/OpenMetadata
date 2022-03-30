@@ -25,7 +25,7 @@ import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
-type Props = {
+interface Props {
   entityName?: string;
   owner?: Table['owner'];
   hasEditAccess?: boolean;
@@ -43,7 +43,7 @@ type Props = {
   onDescriptionUpdate?: (value: string) => void;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
-};
+}
 
 const Description = ({
   owner,
@@ -143,12 +143,18 @@ const Description = ({
             {!isUndefined(descriptionThread) ? (
               <p
                 className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
+                data-testid="description-thread"
                 onClick={() =>
                   onThreadLinkSelect?.(descriptionThread.entityLink)
                 }>
                 <span className="tw-flex">
                   <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                  <span className="tw-ml-1"> {descriptionThread.count}</span>
+                  <span
+                    className="tw-ml-1"
+                    data-testid="description-thread-count">
+                    {' '}
+                    {descriptionThread.count}
+                  </span>
                 </span>
               </p>
             ) : (
@@ -156,6 +162,7 @@ const Description = ({
                 {description?.trim() && onThreadLinkSelect ? (
                   <p
                     className="link-text tw-flex-none tw-ml-2"
+                    data-testid="start-description-thread"
                     onClick={() =>
                       onThreadLinkSelect?.(
                         getEntityFeedLink(entityType, entityFqn, 'description')

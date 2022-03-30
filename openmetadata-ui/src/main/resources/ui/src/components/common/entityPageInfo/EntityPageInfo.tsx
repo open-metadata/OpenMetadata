@@ -47,7 +47,7 @@ import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
 
-type Props = {
+interface Props {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
   isFollowing?: boolean;
   deleted?: boolean;
@@ -69,7 +69,7 @@ type Props = {
   followHandler?: () => void;
   tagsHandler?: (selectedTags?: Array<EntityTags>) => void;
   versionHandler?: () => void;
-};
+}
 
 const EntityPageInfo = ({
   titleLinks,
@@ -189,7 +189,10 @@ const EntityPageInfo = ({
 
   const getVersionButton = (version: string) => {
     return (
-      <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2" onClick={versionHandler}>
+      <div
+        className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
+        data-testid="version"
+        onClick={versionHandler}>
         <span
           className={classNames(
             'tw-flex tw-border tw-border-primary tw-rounded',
@@ -214,7 +217,7 @@ const EntityPageInfo = ({
 
           <span
             className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
-            data-testid="getversions">
+            data-testid="version-value">
             {parseFloat(version).toFixed(1)}
           </span>
         </span>
@@ -257,14 +260,16 @@ const EntityPageInfo = ({
   }, [followersList]);
 
   return (
-    <div>
+    <div data-testid="entity-page-info">
       <div className="tw-flex tw-flex-col">
         <div className="tw-flex tw-flex-initial tw-justify-between tw-items-start">
           <div className="tw-flex tw-items-center">
             <TitleBreadcrumb titleLinks={titleLinks} />
             {deleted && (
               <>
-                <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2">
+                <div
+                  className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
+                  data-testid="deleted-badge">
                   <FontAwesomeIcon
                     className="tw-mr-1"
                     icon={faExclamationCircle}
@@ -331,7 +336,7 @@ const EntityPageInfo = ({
                     trigger="click">
                     <span
                       className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
-                      data-testid="getFollowerDetail">
+                      data-testid="follower-value">
                       {followers}
                     </span>
                   </PopOver>
@@ -341,9 +346,14 @@ const EntityPageInfo = ({
           </div>
         </div>
       </div>
-      <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap tw-items-center">
+      <div
+        className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap tw-items-center"
+        data-testid="extrainfo">
         {extraInfo.map((info, index) => (
-          <span className="tw-flex tw-items-center" key={index}>
+          <span
+            className="tw-flex tw-items-center"
+            data-testid={info.key || `info${index}`}
+            key={index}>
             {getInfoElements(info)}
             {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
               <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
@@ -355,7 +365,7 @@ const EntityPageInfo = ({
       </div>
       <div
         className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
-        data-testid="breadcrumb-tags">
+        data-testid="entity-tags">
         {(!isEditable || !isTagEditable || deleted) && (
           <>
             {(tags.length > 0 || !isEmpty(tier)) && (
@@ -435,15 +445,19 @@ const EntityPageInfo = ({
             {!isUndefined(tagThread) ? (
               <p
                 className="link-text tw-ml-1 tw-w-8 tw-flex-none"
+                data-testid="tag-thread"
                 onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
                 <span className="tw-flex">
                   <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
-                  <span className="tw-ml-1">{tagThread.count}</span>
+                  <span className="tw-ml-1" data-testid="tag-thread-count">
+                    {tagThread.count}
+                  </span>
                 </span>
               </p>
             ) : (
               <p
                 className="link-text tw-self-start tw-w-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+                data-testid="start-tag-thread"
                 onClick={() =>
                   onThreadLinkSelect?.(
                     getEntityFeedLink(entityType, entityFqn, 'tags')

@@ -53,6 +53,7 @@ const TabsPane = ({
     <div className={classNames('tw-bg-transparent tw--mx-6', className)}>
       <nav
         className="tw-flex tw-items-center tw-justify-between tw-gh-tabs-container tw-px-7"
+        data-testid="tabs"
         id="tabs">
         <div className="tw-flex tw-flex-grow">
           {tabs.map((tab) =>
@@ -64,7 +65,7 @@ const TabsPane = ({
                   title={TITLE_FOR_NON_OWNER_ACTION}>
                   <button
                     className={getTabClasses(tab.position, activeTab)}
-                    data-testid="tab"
+                    data-testid={tab.name}
                     id={camelCase(tab.name)}
                     onClick={() => setActiveTab?.(tab.position)}>
                     {tab.name}
@@ -73,7 +74,7 @@ const TabsPane = ({
               ) : (
                 <button
                   className={getTabClasses(tab.position, activeTab)}
-                  data-testid="tab"
+                  data-testid={tab.name}
                   id={camelCase(tab.name)}
                   key={tab.position}
                   onClick={() => setActiveTab?.(tab.position)}>
