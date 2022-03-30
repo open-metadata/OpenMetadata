@@ -77,7 +77,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   @Override
   public void storeRelationships(PipelineService entity) {
     // Add owner relationship
-    setOwner(entity, entity.getOwner());
+    storeOwner(entity, entity.getOwner());
   }
 
   @Override

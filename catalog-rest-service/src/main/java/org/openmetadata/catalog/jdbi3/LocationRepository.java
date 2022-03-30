@@ -195,7 +195,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void storeRelationships(Location location) {
     // Add location owner relationship
-    addOwnerRelationship(location.getId(), Entity.LOCATION, location.getOwner());
+    storeOwner(location, location.getOwner());
     EntityReference service = location.getService();
     addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
 
