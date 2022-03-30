@@ -15,7 +15,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "#/definitions/teamName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'Data Science team'.",
