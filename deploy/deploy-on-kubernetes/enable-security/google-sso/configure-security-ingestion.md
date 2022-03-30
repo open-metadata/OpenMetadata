@@ -2,7 +2,7 @@
 description: This is a guide to configure Ingestion Connectors with security.
 ---
 
-# Copy of Configure Ingestion
+# Configure Ingestion
 
 ## Add Metadata Authentication for Connectors
 
@@ -16,8 +16,8 @@ All Connectors have **metadata\_server** config. Pass the JSON file generated in
     "type": "metadata-server",
     "config": {
       "api_endpoint": "http://localhost:8585/api",
-    "auth_provider_type": "google",
-    "secret_key": "/Users/JohnDoe/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
+      "auth_provider_type": "google",
+      "secret_key": "/Users/JohnDoe/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
     }
   },
 ...

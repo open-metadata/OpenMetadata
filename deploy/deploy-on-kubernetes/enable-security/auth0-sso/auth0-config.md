@@ -1,31 +1,25 @@
-# Copy of Configure OpenMetadata Server
+# Configure OpenMetadata Helm
 
-## Update conf/openmetadata-security.yaml
+## Update Helm Values
 
-*   Once the `Client Id` and `Client secret` is generated.
-
-    Add the `Client Id` in openmetadata-security.yaml file in `client_id` field.
+* Once the `client id` and `client secret` are generated, see the snippet below for an example of where to place the `client id` value and update authorizer configurations.
 
 ```
-authenticationConfiguration:
+global:
+  authorizer:
+    className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+    containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+    initialAdmin: "suresh"
+    botPrincipal: "ingestion-bot"
   provider: "auth0"
   publicKeyUrls:
+    provider: "auth0"
     - "https://parth-panchal.us.auth0.com/.well-known/jwks.json"
   authority: "https://parth-panchal.us.auth0.com/"
   clientId: "{Client ID}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-* Update authorizerConfiguration to add adminPrincipals
+### Upgrade Helm Release
 
-```
-authorizerConfiguration:
-  className: "org.openmetadata.catalog.security.DefaultAuthorizer"
-  # JWT Filter
-  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
-  adminPrincipals:
-    - "suresh"
-  botPrincipals:
-    - "ingestion-bot"
-  principalDomain: "open-metadata.org"
-```
+Head towards [upgrade-openmetadata-on-kubernetes.md](../../../../upgrade/upgrade-on-kubernetes/upgrade-openmetadata-on-kubernetes.md "mention") to upgrade your OpenMetadata Helm Release.

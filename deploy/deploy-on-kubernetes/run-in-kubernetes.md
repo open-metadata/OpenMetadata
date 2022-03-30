@@ -26,7 +26,7 @@ Assuming Kubernetes setup is done and your Kubernetes context points to a correc
 
 ```
 kubectl create secret generic mysql-secrets --from-literal=openmetadata-mysql-password=openmetadata_password
-kubectl create secret generic airflow-secrets --from-literal=openmetadata-airflow-admin-password=admin
+kubectl create secret generic airflow-secrets --from-literal=openmetadata-airflow-password=admin
 ```
 
 The above commands sets the passwords as an example. Change to any password of choice.
