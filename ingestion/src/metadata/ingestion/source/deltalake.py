@@ -3,6 +3,8 @@ import re
 import uuid
 from typing import Any, Dict, Iterable, List, Optional
 
+import pyspark
+from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
 from pyspark.sql.catalog import Table as pyTable
 from pyspark.sql.types import ArrayType, MapType, StructField, StructType
@@ -31,6 +33,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 class DeltalakeSourceConfig(ConfigModel):
     database: str = "delta"
     platform_name: str = "deltalake"
+    metastore_host_port: str
+    app_name: str
     schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     service_name: str
@@ -60,6 +64,20 @@ class DeltalakeSource(Source):
             service_name=config.service_name,
         )
         self.status = SQLSourceStatus()
+        logger.info("Establishing Sparks Session")
+        builder = (
+            pyspark.sql.SparkSession.builder.appName(self.config.app_name)
+            .enableHiveSupport()
+            .config(
+                "hive.metastore.uris", f"thrift://{self.config.metastore_host_port}"
+            )
+            .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+            .config(
+                "spark.sql.catalog.spark_catalog",
+                "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+            )
+        )
+        self.spark = configure_spark_with_delta_pip(builder).getOrCreate()
 
     def set_spark(self, spark):
         self.spark = spark
@@ -174,6 +192,58 @@ class DeltalakeSource(Source):
                 col_details = True
         return view_detail.get("View Text")
 
+    def _check_col_length(self, datatype, col_raw_type):
+        if datatype and datatype.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
+            try:
+                return col_raw_type.length if col_raw_type.length else 1
+            except AttributeError:
+                return 1
+
+    def _get_col_info(self, row):
+        parsed_string = ColumnTypeParser._parse_datatype_string(row["data_type"])
+        column = None
+        if parsed_string:
+            parsed_string["dataLength"] = self._check_col_length(
+                parsed_string["dataType"], row["data_type"]
+            )
+            if row["data_type"] == "array":
+                array_data_type_display = (
+                    repr(row["data_type"])
+                    .replace("(", "<")
+                    .replace(")", ">")
+                    .replace("=", ":")
+                    .replace("<>", "")
+                    .lower()
+                )
+                parsed_string["dataTypeDisplay"] = f"{array_data_type_display}"
+                parsed_string[
+                    "arrayDataType"
+                ] = ColumnTypeParser._parse_primitive_datatype_string(
+                    array_data_type_display[6:-1]
+                )[
+                    "dataType"
+                ]
+            column = Column(name=row["col_name"], **parsed_string)
+        else:
+            col_type = re.search(r"^\w+", row["data_type"]).group(0)
+            charlen = re.search(r"\(([\d]+)\)", row["data_type"])
+            if charlen:
+                charlen = int(charlen.group(1))
+            if (
+                col_type.upper() in {"CHAR", "VARCHAR", "VARBINARY", "BINARY"}
+                and charlen is None
+            ):
+                charlen = 1
+
+            column = Column(
+                name=row["col_name"],
+                description=row["comment"] if row["comment"] else None,
+                dataType=col_type,
+                dataLength=charlen,
+                displayName=row["data_type"],
+            )
+        return column
+
     def _fetch_columns(self, schema: str, table: str) -> List[Column]:
         raw_columns = []
         field_dict: Dict[str, Any] = {}
@@ -194,24 +264,7 @@ class DeltalakeSource(Source):
                 partition_cols = True
                 continue
             if not partition_cols:
-                col_type = re.search(r"^\w+", row["data_type"]).group(0)
-                col_type = ColumnTypeParser.get_column_type(col_type)
-                charlen = re.search(r"\(([\d]+)\)", row["data_type"])
-                if charlen:
-                    charlen = int(charlen.group(1))
-                if (
-                    col_type.upper() in {"CHAR", "VARCHAR", "VARBINARY", "BINARY"}
-                    and charlen is None
-                ):
-                    charlen = 1
-
-                column = Column(
-                    name=row["col_name"],
-                    description=row["comment"] if row["comment"] else None,
-                    dataType=col_type,
-                    dataLength=charlen,
-                    displayName=row["data_type"],
-                )
+                column = self._get_col_info(row)
                 parsed_columns.append(column)
                 row_order += 1
 
