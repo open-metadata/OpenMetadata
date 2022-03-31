@@ -35,6 +35,7 @@ import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
+  EntityReference,
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
@@ -498,4 +499,13 @@ export const getRandomColor = (name: string) => {
 
 export const isUrlFriendlyName = (value: string) => {
   return !UrlEntityCharRegEx.test(value);
+};
+
+/**
+ * Take teams data and filter out the non deleted teams
+ * @param teams - teams array
+ * @returns - non deleted team
+ */
+export const getNonDeletedTeams = (teams: EntityReference[]) => {
+  return teams.filter((t) => !t.deleted);
 };
