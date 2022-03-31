@@ -127,7 +127,9 @@ class OMetaLineageMixin(Generic[T]):
             )
             return None
 
-    def _create_lineage_by_table_name(self, from_table, to_table, service_name):
+    def _create_lineage_by_table_name(
+        self, from_table: str, to_table: str, service_name: str
+    ):
         """
         This method is to create a lineage between two tables
         """
