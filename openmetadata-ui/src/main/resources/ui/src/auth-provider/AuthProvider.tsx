@@ -30,14 +30,12 @@ import React, {
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import appState from '../AppState';
-// import GoogleAuthenticator from '../authenticators/GoogleAuthenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
 import axiosClient from '../axiosAPIs';
 import {
   fetchAuthenticationConfig,
-  fetchAuthorizerConfig,
   getLoggedInUserPermissions,
 } from '../axiosAPIs/miscAPI';
 import {
@@ -46,7 +44,7 @@ import {
   updateUser,
 } from '../axiosAPIs/userAPI';
 import Loader from '../components/Loader/Loader';
-import { NOOP_FILTER, NO_AUTH } from '../constants/auth.constants';
+import { NO_AUTH } from '../constants/auth.constants';
 import { isAdminUpdated, oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { AuthTypes } from '../enums/signin.enum';
@@ -250,63 +248,35 @@ export const AuthProvider = ({
   };
 
   const fetchAuthConfig = (): void => {
-    const promises = [fetchAuthenticationConfig(), fetchAuthorizerConfig()];
-    Promise.allSettled(promises)
-      .then(
-        ([
-          authenticationConfig,
-          authorizerConfig,
-        ]: PromiseSettledResult<AxiosResponse>[]) => {
-          let authRes = {} as AxiosResponse;
-          if (authenticationConfig.status === 'fulfilled') {
-            authRes = authenticationConfig.value;
-            const authorizerRes =
-              authorizerConfig.status === 'fulfilled'
-                ? authorizerConfig.value
-                : ({} as AxiosResponse);
-            const isSecureMode =
-              !isNil(authRes.data) &&
-              authorizerRes?.data?.containerRequestFilter &&
-              authRes.data.provider !== NO_AUTH &&
-              authorizerRes.data.containerRequestFilter !== NOOP_FILTER &&
-              Object.values(authRes.data).filter((item) => isNil(item))
-                .length === 0;
-            if (isSecureMode) {
-              const { provider, authority, clientId, callbackUrl } =
-                authRes.data;
-              const configJson = getAuthConfig({
-                authority,
-                clientId,
-                callbackUrl,
-                provider,
-              });
-              setAuthConfig(configJson);
-              updateAuthInstance(configJson);
-              if (!oidcUserToken) {
-                setLoading(false);
-              } else {
-                getAuthenticatedUser(configJson);
-              }
-            } else {
-              setLoading(false);
-              setIsAuthDisabled(true);
-              fetchAllUsers();
-            }
+    fetchAuthenticationConfig()
+      .then((authRes: AxiosResponse) => {
+        const isSecureMode =
+          !isNil(authRes.data) && authRes.data.provider !== NO_AUTH;
+        if (isSecureMode) {
+          const { provider, authority, clientId, callbackUrl } = authRes.data;
+          const configJson = getAuthConfig({
+            authority,
+            clientId,
+            callbackUrl,
+            provider,
+          });
+          setAuthConfig(configJson);
+          updateAuthInstance(configJson);
+          if (!oidcUserToken) {
+            setLoading(false);
           } else {
-            authenticationConfig.reason as AxiosError;
-            showToast({
-              variant: 'error',
-              body:
-                (authenticationConfig.reason as AxiosError).response?.data
-                  .message || 'Error occured while fetching auth config',
-            });
+            getAuthenticatedUser(configJson);
           }
+        } else {
+          setLoading(false);
+          setIsAuthDisabled(true);
+          fetchAllUsers();
         }
-      )
-      .catch(() => {
+      })
+      .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: 'Error occured while fetching auth config',
+          body: `Error occurred while fetching auth config: ${err.message}`,
         });
       });
   };
