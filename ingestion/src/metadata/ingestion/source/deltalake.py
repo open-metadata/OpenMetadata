@@ -8,7 +8,7 @@ from pyspark.sql.catalog import Table
 from pyspark.sql.types import ArrayType, MapType, StructField, StructType
 from pyspark.sql.utils import AnalysisException, ParseException
 
-from metadata.config.common import ConfigModel
+from metadata.config.common import FQDN_SEPARATOR, ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -89,14 +89,14 @@ class DeltaLakeSource(Source):
                     "{}.{}".format(self.config.get_service_name(), table_name)
                 )
                 table_columns = self._fetch_columns(schema, table_name)
-                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
+                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
                 if table.tableType and table.tableType.lower() != "view":
                     table_description = self._fetch_table_description(table_name)
                     table_entity = Table(
                         id=uuid.uuid4(),
                         name=table_name,
                         tableType=table.tableType,
-                        description=" ",
+                        description=table_description,
                         fullyQualifiedName=fqn,
                         columns=table_columns,
                     )

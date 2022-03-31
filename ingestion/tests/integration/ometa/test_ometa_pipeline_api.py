@@ -74,7 +74,7 @@ class OMetaPipelineTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-pipeline.test",
+            fullyQualifiedName="test-service-pipeline:test",
         )
 
         cls.create = CreatePipelineRequest(
@@ -89,7 +89,7 @@ class OMetaPipelineTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Pipeline, fqdn="test-service-pipeline.test"
+                entity=Pipeline, fqdn="test-service-pipeline:test"
             ).id.__root__
         )
 

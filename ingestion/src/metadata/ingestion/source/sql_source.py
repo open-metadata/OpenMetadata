@@ -24,6 +24,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -184,7 +185,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             results = self.connection.execute(query)
             cols = []
             for col in results.keys():
-                cols.append(col.replace(".", "_DOT_"))
+                cols.append(col)
             rows = []
             for res in results:
                 row = list(res)
@@ -200,7 +201,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         yield inspect(self.engine)
 
     def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}.{schema}.{table_name}"
+        return f"{service_name}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
@@ -333,7 +334,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
-                    name=view_name.replace(".", "_DOT_"),
+                    name=view_name,
                     tableType="View",
                     description=_get_table_description(schema, view_name, inspector)
                     or "",
@@ -407,7 +408,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     model_name = (
                         mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                     )
-                    model_name = model_name.replace(".", "_DOT_")
                     schema = mnode["schema"]
                     raw_sql = mnode.get("raw_sql", "")
                     model = DataModel(
@@ -431,7 +431,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    table = table.replace(".", "_DOT_")
                     table_fqn = self.get_table_fqn(
                         self.config.service_name, database, table
                     ).lower()
@@ -444,7 +443,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, schema, table_name):
-        table_fqn = f"{schema}.{table_name}".lower()
+        table_fqn = f"{schema}{FQDN_SEPARATOR}{table_name}".lower()
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
@@ -458,7 +457,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         manifest_columns = mnode.get("columns", {})
         for key in ccolumns:
             ccolumn = ccolumns[key]
-            col_name = ccolumn["name"].lower().replace(".", "_DOT_")
+            col_name = ccolumn["name"].lower()
             try:
                 ctype = ccolumn["type"]
                 col_type = ColumnTypeParser.get_column_type(ctype)
@@ -482,7 +481,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def _get_database(self, schema: str) -> Database:
         return Database(
-            name=schema.replace(".", "_DOT_"),
+            name=schema,
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
@@ -539,7 +538,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for column in columns:
                 try:
                     if "." in column["name"]:
-                        column["name"] = column["name"].replace(".", "_DOT_")
+                        column["name"] = column["name"]
                     children = None
                     data_type_display = None
                     arr_data_type = None
@@ -662,7 +661,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             if column["policy_tags"] and self.config.enable_policy_tags:
                                 col_dict.tags = [
                                     TagLabel(
-                                        tagFQN=f"{self.config.tag_category_name}.{column['policy_tags']}",
+                                        tagFQN=f"{self.config.tag_category_name}{FQDN_SEPARATOR}{column['policy_tags']}",
                                         labelType="Automated",
                                         state="Suggested",
                                         source=TagSource.Tag.name,
