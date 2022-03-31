@@ -58,7 +58,6 @@ jobs:
         SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
         SONARCLOUD_URL: https://sonarcloud.io
     - name: SonarCloud Scan
-      uses: sonarsource/sonarcloud-github-action@master
       if: github.event_name == 'push' && steps.yarn_coverage.outcome == 'success'
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: |
