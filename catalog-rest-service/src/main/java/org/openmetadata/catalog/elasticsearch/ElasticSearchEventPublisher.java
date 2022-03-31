@@ -135,18 +135,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldAddParams = new HashMap<>();
-    ESChangeDescription esChangeDescription =
-        ESChangeDescription.builder()
-            .updatedAt(event.getTimestamp())
-            .updatedBy(event.getUserName())
-            .fieldsAdded(changeDescription.getFieldsAdded())
-            .fieldsUpdated(changeDescription.getFieldsUpdated())
-            .fieldsDeleted(changeDescription.getFieldsDeleted())
-            .build();
-    Map<String, Object> esChangeDescriptionDoc = JsonUtils.getMap(esChangeDescription);
-    fieldAddParams.put("change_description", esChangeDescriptionDoc);
     fieldAddParams.put("last_updated_timestamp", event.getTimestamp());
-    scriptTxt.append("ctx._source.change_descriptions.add(params.change_description); ");
     scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase("followers")) {
@@ -387,10 +376,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void scriptedUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'change_descriptions') "
-            + "{ ctx._source.change_descriptions.addAll(params.change_descriptions) } "
-            + "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);

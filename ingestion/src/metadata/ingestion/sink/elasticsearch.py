@@ -266,17 +266,13 @@ class ElasticsearchSink(Sink[Entity]):
                     request_timeout=self.config.timeout,
                 )
 
-            if hasattr(record.name, "__root__"):
-                self.status.records_written(record.name.__root__)
-            else:
-                self.status.records_written(record.name)
+            self.status.records_written(record.name.__root__)
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
             logger.debug(traceback.print_exc())
 
     def _create_table_es_doc(self, table: Table):
-        fqdn = table.fullyQualifiedName
-        database = table.database.name
+        fqdn = table.fullyQualifiedName.__root__
         table_name = table.name
         suggest = [
             {"input": [fqdn], "weight": 5},
@@ -311,13 +307,11 @@ class ElasticsearchSink(Sink[Entity]):
         table_type = None
         if hasattr(table.tableType, "name"):
             table_type = table.tableType.name
-
-        change_descriptions = self._get_change_descriptions(Table, table.id.__root__)
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
             deleted=table.deleted,
             database=str(database_entity.name.__root__),
-            service=service_entity.name,
+            service=service_entity.name.__root__,
             service_type=service_entity.serviceType.name,
             service_category="databaseService",
             name=table.name.__root__,
@@ -338,12 +332,11 @@ class ElasticsearchSink(Sink[Entity]):
             fqdn=fqdn,
             owner=table_owner,
             followers=table_followers,
-            change_descriptions=change_descriptions,
         )
         return table_doc
 
     def _create_topic_es_doc(self, topic: Topic):
-        fqdn = topic.fullyQualifiedName
+        fqdn = topic.fullyQualifiedName.__root__
         topic_name = topic.name
         suggest = [
             {"input": [fqdn], "weight": 5},
@@ -365,11 +358,11 @@ class ElasticsearchSink(Sink[Entity]):
                 tier = topic_tag.tagFQN.__root__
             else:
                 tags.add(topic_tag.tagFQN.__root__)
-        change_descriptions = self._get_change_descriptions(Topic, topic.id.__root__)
+
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
             deleted=topic.deleted,
-            service=service_entity.name,
+            service=service_entity.name.__root__,
             service_type=service_entity.serviceType.name,
             service_category="messagingService",
             name=topic.name.__root__,
@@ -381,13 +374,11 @@ class ElasticsearchSink(Sink[Entity]):
             fqdn=fqdn,
             owner=topic_owner,
             followers=topic_followers,
-            change_descriptions=change_descriptions,
         )
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
-        fqdn = dashboard.fullyQualifiedName
-        dashboard_name = dashboard.name
+        fqdn = dashboard.fullyQualifiedName.__root__
         suggest = [{"input": [dashboard.displayName], "weight": 10}]
         tags = set()
         timestamp = dashboard.updatedAt.__root__
@@ -417,13 +408,11 @@ class ElasticsearchSink(Sink[Entity]):
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN.__root__)
-        change_descriptions = self._get_change_descriptions(
-            Dashboard, dashboard.id.__root__
-        )
+
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
             deleted=dashboard.deleted,
-            service=service_entity.name,
+            service=service_entity.name.__root__,
             service_type=service_entity.serviceType.name,
             service_category="dashboardService",
             name=dashboard.displayName,
@@ -443,13 +432,12 @@ class ElasticsearchSink(Sink[Entity]):
             weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
             daily_stats=dashboard.usageSummary.dailyStats.count,
             daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
-            change_descriptions=change_descriptions,
         )
 
         return dashboard_doc
 
     def _create_pipeline_es_doc(self, pipeline: Pipeline):
-        fqdn = pipeline.fullyQualifiedName
+        fqdn = pipeline.fullyQualifiedName.__root__
         suggest = [{"input": [pipeline.displayName], "weight": 10}]
         tags = set()
         timestamp = pipeline.updatedAt.__root__
@@ -479,13 +467,11 @@ class ElasticsearchSink(Sink[Entity]):
             if tags in task and len(task.tags) > 0:
                 for col_tag in task.tags:
                     tags.add(col_tag.tagFQN)
-        change_descriptions = self._get_change_descriptions(
-            Pipeline, pipeline.id.__root__
-        )
+
         pipeline_doc = PipelineESDocument(
             pipeline_id=str(pipeline.id.__root__),
             deleted=pipeline.deleted,
-            service=service_entity.name,
+            service=service_entity.name.__root__,
             service_type=service_entity.serviceType.name,
             service_category="pipelineService",
             name=pipeline.displayName,
@@ -499,7 +485,6 @@ class ElasticsearchSink(Sink[Entity]):
             fqdn=fqdn,
             owner=pipeline_owner,
             followers=pipeline_followers,
-            change_descriptions=change_descriptions,
         )
 
         return pipeline_doc
@@ -625,31 +610,6 @@ class ElasticsearchSink(Sink[Entity]):
                     column_descriptions,
                     tags,
                 )
-
-    def _get_change_descriptions(self, entity_type, entity_id):
-        try:
-            entity_versions = self.metadata.list_versions(entity_id, entity_type)
-            change_descriptions = []
-            for version in entity_versions.versions:
-                version_json = json.loads(version)
-                updatedAt = version_json["updatedAt"]
-                change_description = ChangeDescription(
-                    updatedBy=version_json["updatedBy"], updatedAt=updatedAt
-                )
-                if "changeDescription" in version_json:
-                    change_description.fieldsAdded = version_json["changeDescription"][
-                        "fieldsAdded"
-                    ]
-                    change_description.fieldsDeleted = version_json[
-                        "changeDescription"
-                    ]["fieldsDeleted"]
-                    change_description.fieldsUpdated = version_json[
-                        "changeDescription"
-                    ]["fieldsUpdated"]
-                change_descriptions.append(change_description)
-            return change_descriptions
-        except Exception as err:
-            logger.error(repr(err))
 
     def get_status(self):
         return self.status

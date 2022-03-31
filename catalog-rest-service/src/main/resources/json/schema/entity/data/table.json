@@ -116,10 +116,6 @@
       "minLength": 1,
       "maxLength": 128
     },
-    "tableName": {
-      "description": "Local name (not fully qualified name) of a table. Dots will be escaped automatically.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
     "fullyQualifiedColumnName": {
       "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -569,7 +565,7 @@
     },
     "name": {
       "description": "Name of a table. Expected to be unique within a database.",
-      "$ref": "#/definitions/tableName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this table. It could be title or label from the source services.",
@@ -577,7 +573,7 @@
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a table in the form `serviceName.databaseName.tableName`.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of a table.",

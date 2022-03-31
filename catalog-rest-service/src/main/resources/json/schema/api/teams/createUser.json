@@ -7,7 +7,7 @@
 
   "properties": {
     "name": {
-      "$ref": "../../entity/teams/user.json#/definitions/userName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Used for user biography.",
