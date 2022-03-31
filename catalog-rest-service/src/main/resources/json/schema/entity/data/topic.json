@@ -5,10 +5,6 @@
   "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.",
   "type": "object",
   "definitions": {
-    "topicName": {
-      "description": "Name that identifies a topic.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
     "schemaType": {
       "description": "Schema type used for the message.",
       "javaType": "org.openmetadata.catalog.type.topic.SchemaType",
@@ -46,11 +42,11 @@
     },
     "name": {
       "description": "Name that identifies the topic.",
-      "$ref": "#/definitions/topicName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a topic in the format 'messagingServiceName.topicName'.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this topic. It could be title or label from the source services.",
