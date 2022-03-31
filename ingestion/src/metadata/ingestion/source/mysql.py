@@ -13,8 +13,8 @@ from typing import Iterable
 
 from sqlalchemy.inspection import inspect
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -22,12 +22,7 @@ from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class MySQLConfig(SQLConnectionConfig):
-    host_port = "localhost:3306"
-    scheme = "mysql+pymysql"
-    service_type = DatabaseServiceType.MySQL.value
-    connector_type = "mysql"
-
+class MySQLConfig(MysqlConnection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 

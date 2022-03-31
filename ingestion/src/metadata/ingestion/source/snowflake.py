@@ -25,9 +25,6 @@ from sqlalchemy.sql import text
 from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -41,16 +38,14 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 
-class SnowflakeConfig(SQLConnectionConfig):
-    scheme = "snowflake"
-    account: str
-    database: Optional[str]
-    warehouse: Optional[str]
+
+class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
     result_limit: int = 1000
-    role: Optional[str]
     duration: Optional[int]
-    service_type = DatabaseServiceType.Snowflake.value
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()

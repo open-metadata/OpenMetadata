@@ -10,22 +10,15 @@
 #  limitations under the License.
 """AZURE SQL source module"""
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    AzureSQLConnection,
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class AzuresqlConfig(SQLConnectionConfig):
-    """AZURE SQL config -- extends SQLConnectionConfig class"""
-
-    host_port = "localhost:1433"
-    scheme = "mssql+pyodbc"
-    service_type = DatabaseServiceType.AzureSQL.value
-    driver = "{ODBC Driver 17 for SQL Server}"
-
+class AzuresqlConfig(AzureSQLConnection, SQLConnectionConfig):
     def get_connection_url(self):
         url = super().get_connection_url()
         return f"{url}DRIVER={self.driver}"

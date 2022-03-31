@@ -11,20 +11,17 @@
 """MSSQL source module"""
 from typing import Optional
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class MssqlConfig(SQLConnectionConfig):
+class MssqlConfig(MssqlConnection, SQLConnectionConfig):
     """MSSQL config -- extends SQLConnectionConfig class"""
 
-    host_port = "localhost:1433"
-    scheme = "mssql+pytds"
-    service_type = DatabaseServiceType.MSSQL.value
     use_pymssql: bool = False
     use_pyodbc: bool = False
     uri_string: str = ""
@@ -32,7 +29,7 @@ class MssqlConfig(SQLConnectionConfig):
 
     def get_connection_url(self):
         if self.use_pyodbc:
-            self.scheme = "mssql+pyodbc"
+            self.scheme = self.scheme.mssql_pymssql
             return f"{self.scheme}://{self.uri_string}"
         if self.use_pymssql:
             self.scheme = "mssql+pymssql"

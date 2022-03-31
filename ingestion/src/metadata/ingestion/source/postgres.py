@@ -14,9 +14,6 @@ from collections import namedtuple
 import psycopg2
 
 # This import verifies that the dependencies are available.
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -24,16 +21,12 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 
-class PostgresConfig(SQLConnectionConfig):
-    # defaults
-    scheme = "postgresql+psycopg2"
-    service_name = "postgres"
-    service_type = DatabaseServiceType.Postgres.value
 
-    def get_service_type(self) -> DatabaseServiceType:
-        return DatabaseServiceType[self.service_type]
-
+class PostgresConfig(PostgresConnection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
