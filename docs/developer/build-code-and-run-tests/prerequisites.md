@@ -58,6 +58,7 @@ Please install the following to format the code during the git commit process
 ```
 git clone https://github.com/open-metadata/OpenMetadata
 cd openmetadata
+python3 -m venv env  
 make install_dev
 make install_test precommit_install
 ```
