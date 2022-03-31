@@ -125,7 +125,8 @@ authorizerConfiguration:
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
-  publicKey: ${AUTHENTICATION_PUBLIC_KEY:-https://www.googleapis.com/oauth2/v3/certs}
+  publicKeyUrls: 
+    - ${AUTHENTICATION_PUBLIC_KEY:-https://www.googleapis.com/oauth2/v3/certs}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
