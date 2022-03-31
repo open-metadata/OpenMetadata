@@ -47,6 +47,8 @@ const jsonData = {
     'fetch-chart-error': 'Error while fetching charts!',
     'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
     'fetch-data-error': 'Error while fetching data!',
+    'fetch-database-details-error': 'Error while fetching database details!',
+    'fetch-database-tables-error': 'Error while fetching database tables!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
     'fetch-feed-error': 'Error while fetching messages',
@@ -71,11 +73,13 @@ const jsonData = {
     'fetch-user-details-error': 'Error while fetching user details!',
     'fetch-service-error': 'Error while fetching service details!',
     'fetch-teams-error': 'Error while fetching teams!',
+    'fetch-webhook-error': 'Error while fetching webhooks!',
 
     'unexpected-server-response': 'Unexpected response from server!',
 
     'update-chart-error': 'Error while updating charts!',
     'update-description-error': 'Error while updating description!',
+    'update-database-error': 'Error while updating database!',
     'update-entity-error': 'Error while updating entity!',
     'update-entity-follow-error': 'Error while following entity!',
     'update-entity-unfollow-error': 'Error while unfollowing entity!',
