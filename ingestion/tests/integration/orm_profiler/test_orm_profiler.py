@@ -106,7 +106,7 @@ class ProfilerWorkflowTest(TestCase):
         table_entity: Table = self.metadata.get_by_name(
             entity=Table, fqdn="test_sqlite.main.users"
         )
-        assert table_entity.fullyQualifiedName == "test_sqlite.main.users"
+        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.users"
 
     def test_profiler_workflow(self):
         """

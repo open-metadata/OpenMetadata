@@ -369,7 +369,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def delete_tables(self, schema_fqdn: str) -> DeleteTable:
         database_state = self._build_database_state(schema_fqdn)
         for table in database_state:
-            if table.fullyQualifiedName not in self.database_source_state:
+            if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
                 yield DeleteTable(table=table)
 
     def _is_partition(self, table_name: str, schema: str, inspector) -> bool:
