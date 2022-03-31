@@ -66,3 +66,7 @@ def uuid_to_str(entity_id: Union[str, basic.Uuid]) -> str:
         return str(entity_id.__root__)
 
     return entity_id
+
+
+def _get_formmated_table_name(table_name):
+    return table_name.replace("[", "").replace("]", "")

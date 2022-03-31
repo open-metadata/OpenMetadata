@@ -16,7 +16,6 @@ working with OpenMetadata entities.
 """
 
 import logging
-import traceback
 import urllib
 from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
@@ -47,7 +46,6 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
@@ -573,55 +571,3 @@ class OpenMetadata(
             None
         """
         self.client.close()
-
-    def _get_formmated_table_name(self, table_name):
-        return table_name.replace("[", "").replace("]", "")
-
-    def _create_lineage(self, from_table, to_table, service_name):
-        try:
-            from_fqdn = (
-                f"{service_name}.{self._get_formmated_table_name(str(from_table))}"
-            )
-            from_entity: Table = self.get_by_name(entity=Table, fqdn=from_fqdn)
-
-            to_fqdn = f"{service_name}.{self._get_formmated_table_name(str(to_table))}"
-            to_entity: Table = self.get_by_name(entity=Table, fqdn=to_fqdn)
-            if not from_entity or not to_entity:
-                return None
-
-            lineage = AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=from_entity.id.__root__,
-                        type="table",
-                    ),
-                    toEntity=EntityReference(
-                        id=to_entity.id.__root__,
-                        type="table",
-                    ),
-                )
-            )
-
-            created_lineage = self.add_lineage(lineage)
-            logger.info(f"Successfully added Lineage {created_lineage}")
-
-        except Exception as err:
-            logger.debug(traceback.print_exc())
-            logger.error(err)
-
-    def ingest_lineage(self, query, service_name):
-        from sqllineage.runner import LineageRunner
-
-        try:
-            result = LineageRunner(query)
-            for intermediate_table in result.intermediate_tables:
-                for source_table in result.source_tables:
-                    self._create_lineage(source_table, intermediate_table, service_name)
-                for target_table in result.target_tables:
-                    self._create_lineage(intermediate_table, target_table, service_name)
-            if not result.intermediate_tables:
-                for target_table in result.target_tables:
-                    for source_table in result.source_tables:
-                        self._create_lineage(source_table, target_table, service_name)
-        except Exception as err:
-            logger.error(str(err))
