@@ -31,8 +31,6 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'yarn'
-        cache-dependency-path: ${{ env.UI_WORKING_DIRECTORY }}/yarn.lock
     - name: Install Yarn Packages
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: yarn install
