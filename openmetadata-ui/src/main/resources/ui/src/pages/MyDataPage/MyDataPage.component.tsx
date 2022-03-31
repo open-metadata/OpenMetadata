@@ -226,19 +226,19 @@ const MyDataPage = () => {
       !isLoading ? (
         <Fragment>
           <MyData
-          countServices={countServices}
-          entityCounts={entityCounts}
-          error={error}
-          feedData={entityThread || []}
-          feedFilter={feedFilter}
-          feedFilterHandler={feedFilterHandler}
-          followedData={followedData || []}
-          ingestionCount={ingestionCount}
-          isFeedLoading={isFeedLoading}
-          ownedData={ownedData || []}
-          postFeedHandler={postFeedHandler}
-          searchResult={searchResult}
-        />
+            countServices={countServices}
+            entityCounts={entityCounts}
+            error={error}
+            feedData={entityThread || []}
+            feedFilter={feedFilter}
+            feedFilterHandler={feedFilterHandler}
+            followedData={followedData || []}
+            ingestionCount={ingestionCount}
+            isFeedLoading={isFeedLoading}
+            ownedData={ownedData || []}
+            postFeedHandler={postFeedHandler}
+            searchResult={searchResult}
+          />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>
       ) : (
