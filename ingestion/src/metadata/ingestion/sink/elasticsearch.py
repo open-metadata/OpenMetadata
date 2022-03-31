@@ -266,10 +266,7 @@ class ElasticsearchSink(Sink[Entity]):
                     request_timeout=self.config.timeout,
                 )
 
-            if hasattr(record.name, "__root__"):
-                self.status.records_written(record.name.__root__)
-            else:
-                self.status.records_written(record.name.__root__)
+            self.status.records_written(record.name.__root__)
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
             logger.debug(traceback.print_exc())
