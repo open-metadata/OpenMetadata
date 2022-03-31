@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
@@ -127,7 +128,7 @@ public class BotsResource extends EntityResource<Bots, BotsRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bots.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, Bots bot)
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Bots bot)
       throws IOException {
     bot.withId(UUID.randomUUID())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
