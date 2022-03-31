@@ -45,15 +45,15 @@ jest.mock('../../hooks/authHooks', () => ({
 const mockTierData = {
   children: [
     {
-      fullyQualifiedName: 'Tier.Tier1',
+      fullyQualifiedName: 'Tier:Tier1',
       description: 'description for card 1',
     },
     {
-      fullyQualifiedName: 'Tier.Tier2',
+      fullyQualifiedName: 'Tier:Tier2',
       description: 'description for card 2',
     },
     {
-      fullyQualifiedName: 'Tier.Tier3',
+      fullyQualifiedName: 'Tier:Tier3',
       description: 'description for card 3',
     },
   ],

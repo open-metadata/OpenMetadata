@@ -662,7 +662,9 @@ const DatabaseDetails: FunctionComponent = () => {
                                   sizeCap={-1}
                                   tags={(table.tags || []).map((tag) => ({
                                     ...tag,
-                                    tagFQN: tag.tagFQN?.startsWith('Tier.Tier')
+                                    tagFQN: tag.tagFQN?.startsWith(
+                                      `Tier${FQN_SEPARATOR_CHAR}Tier`
+                                    )
                                       ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
                                       : tag.tagFQN,
                                   }))}
