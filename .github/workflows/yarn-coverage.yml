@@ -20,8 +20,6 @@ jobs:
       matrix:
         node-version: [12.x]
     runs-on: ubuntu-latest
-    container:
-      image: sonarsource/sonar-scanner-cli:4.6
     steps:
     - uses: actions/checkout@v2
       with:
