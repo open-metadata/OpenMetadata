@@ -39,6 +39,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -102,10 +103,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // Validate parent
     if (entity.getParent() == null) {
-      entity.setFullyQualifiedName(EntityUtil.getFQN(entity.getGlossary().getName(), entity.getName()));
+      entity.setFullyQualifiedName(EntityNameUtil.getFQN(entity.getGlossary().getName(), entity.getName()));
     } else {
       EntityReference parent = Entity.getEntityReference(entity.getParent());
-      entity.setFullyQualifiedName(EntityUtil.getFQN(parent.getName(), entity.getName()));
+      entity.setFullyQualifiedName(EntityNameUtil.getFQN(parent.getName(), entity.getName()));
       entity.setParent(parent);
     }
 

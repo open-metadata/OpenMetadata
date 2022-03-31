@@ -33,7 +33,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class TopicRepository extends EntityRepository<Topic> {
@@ -42,7 +42,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public static String getFQN(Topic topic) {
     return (topic != null && topic.getService() != null)
-        ? EntityUtil.getFQN(topic.getService().getName(), topic.getName())
+        ? EntityNameUtil.getFQN(topic.getService().getName(), topic.getName())
         : null;
   }
 

@@ -25,7 +25,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline> {
@@ -45,7 +45,7 @@ public class AirflowPipelineRepository extends EntityRepository<AirflowPipeline>
 
   public static String getFQN(AirflowPipeline airflowPipeline) {
     return (airflowPipeline != null && airflowPipeline.getService() != null)
-        ? EntityUtil.getFQN(airflowPipeline.getService().getName(), airflowPipeline.getName())
+        ? EntityNameUtil.getFQN(airflowPipeline.getService().getName(), airflowPipeline.getName())
         : null;
   }
 

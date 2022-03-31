@@ -92,7 +92,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     }
   }
 
-  static final String FIELDS = "owner,tables";
+  static final String FIELDS = "owner,tables,usageSummary";
 
   @GET
   @Operation(

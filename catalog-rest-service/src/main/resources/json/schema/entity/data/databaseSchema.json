@@ -68,6 +68,11 @@
       "description": "References to tables in the schema.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "usageSummary": {
+      "description": "Latest usage information for this database.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

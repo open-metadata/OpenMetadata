@@ -73,7 +73,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
-    Entity.withHref(uriInfo, db.getTables());
+    Entity.withHref(uriInfo, db.getSchemas());
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
@@ -93,7 +93,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     }
   }
 
-  static final String FIELDS = "owner,tables,usageSummary,location";
+  static final String FIELDS = "owner,schemas,usageSummary,location";
 
   @GET
   @Operation(

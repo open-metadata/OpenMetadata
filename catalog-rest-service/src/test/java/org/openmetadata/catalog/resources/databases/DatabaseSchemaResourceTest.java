@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.databases;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -37,6 +38,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -60,11 +62,6 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
   void post_schemaWithoutRequiredDatabase_400(TestInfo test) {
     CreateDatabaseSchema create = createRequest(test).withDatabase(null);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
-  }
-
-  @Test
-  void delete_nonEmptySchema_4xx() {
-    // TODO
   }
 
   /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
@@ -116,6 +113,8 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
     // Validate service
     assertNotNull(schema.getServiceType());
     assertReference(createRequest.getDatabase(), schema.getDatabase());
+    assertEquals(
+        EntityNameUtil.getFQN(schema.getDatabase().getName(), schema.getName()), schema.getFullyQualifiedName());
   }
 
   @Override
@@ -127,6 +126,8 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
         expected.getOwner());
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
+    assertEquals(
+        EntityNameUtil.getFQN(updated.getDatabase().getName(), updated.getName()), updated.getFullyQualifiedName());
   }
 
   @Override

@@ -30,6 +30,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -50,7 +51,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   public static String getFQN(DatabaseSchema schema) {
-    return (schema != null) ? EntityUtil.getFQN(schema.getDatabase().getName(), schema.getName()) : null;
+    return (schema != null) ? EntityNameUtil.getFQN(schema.getDatabase().getName(), schema.getName()) : null;
   }
 
   @Override
@@ -82,7 +83,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void storeRelationships(DatabaseSchema schema) {
     EntityReference database = schema.getDatabase();
-    addRelationship(database.getId(), schema.getId(), database.getType(), Entity.DATABASE, Relationship.CONTAINS);
+    addRelationship(
+        database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
     storeOwner(schema, schema.getOwner());
   }
 
@@ -98,11 +100,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     setDefaultFields(schema);
     schema.setOwner(fields.contains(FIELD_OWNER) ? getOwner(schema) : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
+    schema.setUsageSummary(
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
     return schema;
   }
 
   private void setDefaultFields(DatabaseSchema schema) throws IOException {
-    EntityReference databaseRef = getContainer(schema.getId(), Entity.DATABASE);
+    EntityReference databaseRef = getContainer(schema.getId(), Entity.DATABASE_SCHEMA);
     Database database = Entity.getEntity(databaseRef, Fields.EMPTY_FIELDS, Include.ALL);
     schema.withDatabase(databaseRef).withService(database.getService());
   }
