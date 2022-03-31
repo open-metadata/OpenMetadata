@@ -18,6 +18,8 @@ from typing import IO, Any, Optional
 
 from pydantic import BaseModel
 
+FQDN_SEPARATOR: str = ":"
+
 
 class ConfigModel(BaseModel):
     class Config:

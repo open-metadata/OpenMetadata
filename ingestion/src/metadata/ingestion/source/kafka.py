@@ -107,7 +107,7 @@ class KafkaSource(Source[CreateTopicRequest]):
                     topic_schema = self._parse_topic_metadata(topic_name)
                     logger.info("Fetching topic config {}".format(topic_name))
                     topic_request = CreateTopicRequest(
-                        name=topic_name.replace(".", "_DOT_"),
+                        name=topic_name,
                         service=EntityReference(
                             id=self.service.id, type="messagingService"
                         ),

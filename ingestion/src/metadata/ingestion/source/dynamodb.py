@@ -3,6 +3,7 @@ import traceback
 import uuid
 from typing import Iterable
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -86,7 +87,7 @@ class DynamodbSource(Source[Entity]):
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
 
-                fqn = f"{self.config.service_name}.{database_entity.name}.{table}"
+                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{database_entity.name}{FQDN_SEPARATOR}{table}"
                 self.dataset_name = fqn
                 table_columns = self.get_columns(table.attribute_definitions)
                 table_entity = Table(

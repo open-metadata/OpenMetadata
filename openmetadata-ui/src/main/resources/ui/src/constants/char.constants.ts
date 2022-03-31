@@ -15,4 +15,4 @@
 export const WILD_CARD_CHAR = '*';
 
 // Separator used for fullyQualifiedName of all entities
-export const FQN_SEPARATOR_CHAR = '.';
+export const FQN_SEPARATOR_CHAR = ':';
