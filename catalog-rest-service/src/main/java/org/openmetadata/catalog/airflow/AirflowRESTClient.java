@@ -27,7 +27,6 @@ import org.json.JSONObject;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
 import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
-import org.openmetadata.catalog.airflow.models.IngestionAirflowPipeline;
 import org.openmetadata.catalog.exception.AirflowException;
 import org.openmetadata.catalog.exception.AirflowPipelineDeploymentException;
 import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
