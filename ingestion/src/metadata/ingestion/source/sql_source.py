@@ -184,7 +184,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             results = self.connection.execute(query)
             cols = []
             for col in results.keys():
-                cols.append(col.replace(".", "_DOT_"))
+                cols.append(col)
             rows = []
             for res in results:
                 row = list(res)
@@ -333,7 +333,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
-                    name=view_name.replace(".", "_DOT_"),
+                    name=view_name,
                     tableType="View",
                     description=_get_table_description(schema, view_name, inspector)
                     or "",
@@ -407,7 +407,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     model_name = (
                         mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                     )
-                    model_name = model_name.replace(".", "_DOT_")
+                    model_name = model_name
                     schema = mnode["schema"]
                     raw_sql = mnode.get("raw_sql", "")
                     model = DataModel(
@@ -431,7 +431,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    table = table.replace(".", "_DOT_")
+                    table = table
                     table_fqn = self.get_table_fqn(
                         self.config.service_name, database, table
                     ).lower()
@@ -458,7 +458,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         manifest_columns = mnode.get("columns", {})
         for key in ccolumns:
             ccolumn = ccolumns[key]
-            col_name = ccolumn["name"].lower().replace(".", "_DOT_")
+            col_name = ccolumn["name"].lower()
             try:
                 ctype = ccolumn["type"]
                 col_type = ColumnTypeParser.get_column_type(ctype)
@@ -482,7 +482,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def _get_database(self, schema: str) -> Database:
         return Database(
-            name=schema.replace(".", "_DOT_"),
+            name=schema,
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
@@ -539,7 +539,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for column in columns:
                 try:
                     if "." in column["name"]:
-                        column["name"] = column["name"].replace(".", "_DOT_")
+                        column["name"] = column["name"]
                     children = None
                     data_type_display = None
                     arr_data_type = None

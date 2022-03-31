@@ -26,8 +26,8 @@ from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -74,25 +74,18 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
-class BigQueryConfig(SQLConnectionConfig):
-    scheme = "bigquery"
-    host_port: Optional[str] = "bigquery.googleapis.com"
-    username: Optional[str] = None
-    project_id: Optional[str] = None
+class BigQueryConfig(BigQueryConnection, SQLConnectionConfig):
     duration: int = 1
-    service_type = DatabaseServiceType.BigQuery.value
     partition_query: str = 'select * from {}.{} WHERE {} = "{}" LIMIT 1000'
     partition_field: Optional[str] = "_PARTITIONTIME"
-    enable_policy_tags: bool = False
-    tag_category_name: str = "BigqueryPolicyTags"
 
     def get_connection_url(self):
-        if self.project_id:
-            return f"{self.scheme}://{self.project_id}"
+        if self.projectID:
+            return f"{self.scheme}://{self.projectID}"
         return f"{self.scheme}://"
 
 
-class BigquerySource(SQLSource):
+class BigquerySource(SQLSource, BigQueryConfig):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
         self.temp_credentials = None
@@ -100,10 +93,10 @@ class BigquerySource(SQLSource):
     #  and "policy_tags" in column and column["policy_tags"]
     def prepare(self):
         try:
-            if self.config.enable_policy_tags:
+            if self.enablePolicyTagImport:
                 self.metadata.create_tag_category(
                     CreateTagCategoryRequest(
-                        name=self.config.tag_category_name,
+                        name=self.tagCategoryName,
                         description="",
                         categoryType="Classification",
                     )
@@ -158,18 +151,17 @@ class BigquerySource(SQLSource):
                 partition_details = self.inspector.get_indexes(table, schema)
                 start, end = get_start_and_end(self.config.duration)
 
-                query = self.config.partition_query.format(
+                query = self.partition_query.format(
                     schema,
                     table,
-                    partition_details[0]["column_names"][0]
-                    or self.config.partition_field,
+                    partition_details[0]["column_names"][0] or self.partition_field,
                     start.strftime("%Y-%m-%d"),
                 )
                 logger.info(query)
                 results = self.connection.execute(query)
                 cols = []
                 for col in results.keys():
-                    cols.append(col.replace(".", "_DOT_"))
+                    cols.append(col)
                 rows = []
                 for res in results:
                     row = list(res)

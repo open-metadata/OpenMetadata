@@ -194,7 +194,7 @@ class MetadataRestSink(Sink[Entity]):
                     for pd in tp:
                         if pd[0] == "columnProfile":
                             for col in pd[1]:
-                                col.name = col.name.replace(".", "_DOT_")
+                                col.name = col.name
                 self.metadata.ingest_table_profile_data(
                     table=created_table,
                     table_profile=db_and_table.table.tableProfile,

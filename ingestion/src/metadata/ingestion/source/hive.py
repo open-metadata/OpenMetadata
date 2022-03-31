@@ -10,14 +10,10 @@
 #  limitations under the License.
 
 import re
-from typing import Optional
 
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -60,18 +56,17 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 HiveDialect.get_columns = get_columns
 
+from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveSQLConnection,
+)
 
-class HiveConfig(SQLConnectionConfig):
-    scheme = "hive"
-    auth_options: Optional[str] = None
-    service_type = DatabaseServiceType.Hive.value
 
+class HiveConfig(HiveSQLConnection, SQLConnectionConfig):
     def get_connection_url(self):
         url = super().get_connection_url()
-        if self.auth_options is not None:
-            return f"{url};{self.auth_options}"
-        else:
-            return url
+        if self.authOptions:
+            return f"{url};{self.authOptions}"
+        return url
 
 
 class HiveSource(SQLSource):

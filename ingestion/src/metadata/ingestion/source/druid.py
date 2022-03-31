@@ -9,23 +9,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional
 
 import pydruid
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.druidConnection import (
+    DruidConnection,
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class DruidConfig(SQLConnectionConfig):
-    scheme = "druid"
-    auth_options: Optional[str] = None
-    service_type = DatabaseServiceType.Druid.value
-
+class DruidConfig(DruidConnection, SQLConnectionConfig):
     def get_connection_url(self):
         url = super().get_connection_url()
         return f"{url}/druid/v2/sql"

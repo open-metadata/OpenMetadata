@@ -24,9 +24,6 @@ from sqlalchemy.sql import text
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -40,16 +37,14 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 
-class SnowflakeConfig(SQLConnectionConfig):
-    scheme = "snowflake"
-    account: str
-    database: Optional[str]
-    warehouse: Optional[str]
+
+class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
     result_limit: int = 1000
-    role: Optional[str]
     duration: Optional[int]
-    service_type = DatabaseServiceType.Snowflake.value
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()
@@ -102,7 +97,7 @@ class SnowflakeSource(SQLSource):
 
     def _get_database(self, schema: str) -> Database:
         return Database(
-            name=self.config.database + "_" + schema.replace(".", "_DOT_"),
+            name=self.config.database + "_" + schema,
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
@@ -116,7 +111,7 @@ class SnowflakeSource(SQLSource):
                 results = self.connection.execute(query)
                 cols = []
                 for col in results.keys():
-                    cols.append(col.replace(".", "_DOT_"))
+                    cols.append(col)
                 rows = []
                 for res in results:
                     row = list(res)
