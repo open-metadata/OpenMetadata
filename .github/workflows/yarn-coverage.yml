@@ -61,7 +61,7 @@ jobs:
       if: github.event_name == 'push' && steps.yarn_coverage.outcome == 'success'
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: |
-        sonar-scanner -Dsonar.projectBaseDir=${env.UI_WORKING_DIRECTORY} \
+        sonar-scanner -Dsonar.projectBaseDir=${{ env.UI_WORKING_DIRECTORY }} \
         -Dsonar.host.url=${SONARCLOUD_URL} \
         -Dproject.settings=sonar-project.properties \
         -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
