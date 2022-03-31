@@ -22,6 +22,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -93,7 +94,7 @@ class SnowflakeSource(SQLSource):
                 yield inspect(self.engine)
 
     def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}.{self.config.database}_{schema}.{table_name}"
+        return f"{service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
     def _get_database(self, schema: str) -> Database:
         return Database(

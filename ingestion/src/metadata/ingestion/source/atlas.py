@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -146,7 +147,7 @@ class AtlasSource(Source):
                     ]
                     db = self._get_database(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
-                    fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
                     tbl_description = tbl_attrs["description"]
 
                     om_table_entity = Table(
@@ -216,7 +217,7 @@ class AtlasSource(Source):
                 "table"
             ]["displayText"]
 
-            fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+            fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
             from_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
             )
@@ -237,7 +238,7 @@ class AtlasSource(Source):
                     table_name = tbl_entity["referredEntities"][key][
                         "relationshipAttributes"
                     ]["table"]["displayText"]
-                    fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
                     to_entity_ref = self.get_lineage_entity_ref(
                         fqn, self.metadata_config, "table"
                     )

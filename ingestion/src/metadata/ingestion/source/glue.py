@@ -14,6 +14,7 @@ import traceback
 import uuid
 from typing import Iterable
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -158,7 +159,7 @@ class GlueSource(Source[Entity]):
                     name=table["DatabaseName"],
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
-                fqn = f"{self.config.service_name}.{self.database_name}.{table['Name']}"
+                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{self.database_name}{FQDN_SEPARATOR}{table['Name']}"
                 parameters = table.get("Parameters")
                 location_type = LocationType.Table
                 if parameters:
