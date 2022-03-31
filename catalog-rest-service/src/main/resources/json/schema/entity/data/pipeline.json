@@ -138,7 +138,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of this Pipeline.",

@@ -14,6 +14,7 @@ import traceback
 import uuid
 from typing import Iterable
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -47,6 +48,7 @@ class GlueSourceConfig(AWSClientConfigModel):
     # Glue doesn't have an host_port but the service definition requires it
     host_port: str = ""
     table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -113,6 +115,12 @@ class GlueSource(Source[Entity]):
                 glue_db_resp = self.glue.get_databases(ResourceShareType="ALL")
                 self.assign_next_token_db(glue_db_resp)
             for db in glue_db_resp["DatabaseList"]:
+                if not self.config.schema_filter_pattern.included(db["Name"]):
+                    self.status.filter(
+                        "{}".format(db["Name"]),
+                        "Schema pattern not allowed",
+                    )
+                    continue
                 self.database_name = db["Name"]
                 yield from self.ingest_tables()
         yield from self.ingest_pipelines()
@@ -151,7 +159,7 @@ class GlueSource(Source[Entity]):
                     name=table["DatabaseName"],
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
-                fqn = f"{self.config.service_name}.{self.database_name}.{table['Name']}"
+                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{self.database_name}{FQDN_SEPARATOR}{table['Name']}"
                 parameters = table.get("Parameters")
                 location_type = LocationType.Table
                 if parameters:

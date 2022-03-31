@@ -105,7 +105,7 @@ def ometa_to_orm(
 
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
-        table.fullyQualifiedName.replace(".", "_"),  # Output class name
+        table.fullyQualifiedName.__root__.replace(".", "_"),  # Output class name
         (Base,),  # SQLAlchemy declarative base
         {
             "__tablename__": str(table.name.__root__),

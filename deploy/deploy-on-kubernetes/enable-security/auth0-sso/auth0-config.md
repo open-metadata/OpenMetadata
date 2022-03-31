@@ -9,7 +9,8 @@
 ```
 authenticationConfiguration:
   provider: "auth0"
-  publicKey: "https://parth-panchal.us.auth0.com/.well-known/jwks.json"
+  publicKeyUrls:
+    - "https://parth-panchal.us.auth0.com/.well-known/jwks.json"
   authority: "https://parth-panchal.us.auth0.com/"
   clientId: "{Client ID}"
   callbackUrl: "http://localhost:8585/callback"

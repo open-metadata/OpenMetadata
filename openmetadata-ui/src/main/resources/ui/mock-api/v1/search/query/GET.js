@@ -25,6 +25,8 @@ module.exports = function (request, response) {
     if (q.toString().includes('owner')) {
       targetFileName = 'GET_owner.json';
     }
+  } else {
+    targetFileName = 'GET.json';
   }
   const filePath = path.join(__dirname, targetFileName);
   // If file does not exist then respond with 404 header

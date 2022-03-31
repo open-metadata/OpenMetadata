@@ -19,6 +19,7 @@ import sqlalchemy
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.orm_profiler.orm.converter import get_db_name, ometa_to_orm
 
@@ -40,7 +41,7 @@ def test_simple_conversion():
         id=uuid.uuid4(),
         name="table1",
         database=EntityReference(id=uuid.uuid4(), name="one_db", type="database"),
-        fullyQualifiedName=f"service.one_db.table1",
+        fullyQualifiedName=FullyQualifiedEntityName(__root__=f"service.one_db.table1"),
         columns=[
             Column(name="id", dataType=DataType.BIGINT),
             Column(name="name", dataType=DataType.STRING),

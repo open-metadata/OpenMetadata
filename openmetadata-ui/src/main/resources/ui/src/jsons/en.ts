@@ -28,6 +28,7 @@ const jsonData = {
     'create-rule-error': 'Error while creating rule!',
     'create-tag-category-error': 'Error while creating tag category!',
     'create-tag-error': 'Error while creating tag!',
+    'create-team-error': 'Error while creating team!',
 
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',

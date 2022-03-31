@@ -7,7 +7,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this topic instance uniquely.",
-      "$ref": "../../entity/data/topic.json#/definitions/topicName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of the topic instance. What it has and how to use it.",

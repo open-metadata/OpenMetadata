@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-// To query All results from Elasticsearch
-export const WILD_CARD_CHAR = '*';
+import { isNil } from 'lodash';
+import { EntityReference } from '../generated/entity/teams/team';
 
-// Separator used for fullyQualifiedName of all entities
-export const FQN_SEPARATOR_CHAR = ':';
+/**
+ * To get filtered list of non-deleted(active) users
+ * @param users List of users
+ * @returns List of non-deleted(active) users
+ */
+export const getActiveUsers = (users?: Array<EntityReference>) => {
+  return !isNil(users) ? users.filter((item) => !item.deleted) : [];
+};

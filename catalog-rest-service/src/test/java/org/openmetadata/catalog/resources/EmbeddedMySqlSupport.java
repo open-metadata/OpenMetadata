@@ -22,6 +22,7 @@ import java.time.ZoneId;
 import java.util.TimeZone;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.internal.info.MigrationInfoDumper;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -55,6 +56,7 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
               .load();
       flyway.clean();
       flyway.migrate();
+      LOG.info(MigrationInfoDumper.dumpToAsciiTable(flyway.info().all()));
       LOG.info("Flyway migration is complete");
     } else {
       LOG.info("Embedded MySQL is already running");

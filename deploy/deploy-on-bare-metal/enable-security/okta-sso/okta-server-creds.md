@@ -42,7 +42,8 @@ description: >-
     * **Refresh Token** - For the refresh token behavior, it is recommended to select the option to 'Rotate token after every use'.
     * **Implicit (hybrid)** - Select the options to allow ID Token and Access Token with implicit grant type.
   * Enter the **Sign-in redirect URIs**
-    * [http://localhost:8585/signin      \
+    * [http://localhost:8585/signin
+      \
       http://localhost:8585](http://localhost:8585/signinhttp://localhost:8585)
   * Enter the **Sign-out redirect URIs**
   * Enter the **Base URIs**
@@ -147,7 +148,8 @@ authorizerConfiguration:
 
 authenticationConfiguration:
   provider: "okta"
-  publicKey: "{ISSUER_URL}/v1/keys"
+  publicKeyUrls:
+    - "{ISSUER_URL}/v1/keys"
   authority: "{ISSUER_URL}"
   clientId: "{CLIENT_ID - SPA APP}"
   callbackUrl: "http://localhost:8585/callback"

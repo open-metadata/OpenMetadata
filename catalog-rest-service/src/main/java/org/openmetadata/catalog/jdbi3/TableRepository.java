@@ -588,7 +588,7 @@ public class TableRepository extends EntityRepository<Table> {
     addRelationship(table.getDatabase().getId(), table.getId(), DATABASE, TABLE, Relationship.CONTAINS);
 
     // Add table owner relationship
-    addOwnerRelationship(table.getId(), TABLE, table.getOwner());
+    storeOwner(table, table.getOwner());
 
     // Add tag to table relationship
     applyTags(table);

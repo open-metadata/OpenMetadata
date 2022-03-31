@@ -255,7 +255,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final T get(UriInfo uriInfo, String id, Fields fields) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id)), fields));
+    return get(uriInfo, id, fields, Include.NON_DELETED);
   }
 
   @Transaction
@@ -265,7 +265,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
-    return withHref(uriInfo, setFields(dao.findEntityByName(fqn), fields));
+    return getByName(uriInfo, fqn, fields, Include.NON_DELETED);
   }
 
   @Transaction
@@ -820,38 +820,38 @@ public abstract class EntityRepository<T> {
     return owner.withName(ref.getName()).withDisplayName(ref.getDisplayName()).withDeleted(ref.getDeleted());
   }
 
-  protected void setOwner(T entity, EntityReference owner) {
+  protected void storeOwner(T entity, EntityReference owner) {
     if (supportsOwner) {
       EntityInterface<T> entityInterface = getEntityInterface(entity);
-      addOwnerRelationship(entityInterface.getId(), entityType, owner);
-      entityInterface.setOwner(owner);
-    }
-  }
-
-  public void addOwnerRelationship(UUID ownedEntityId, String ownedEntityType, EntityReference owner) {
-    // Add relationship owner --- owns ---> ownedEntity
-    if (owner != null) {
-      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
-      addRelationship(owner.getId(), ownedEntityId, owner.getType(), ownedEntityType, Relationship.OWNS);
+      // Add relationship owner --- owns ---> ownedEntity
+      if (owner != null) {
+        LOG.info(
+            "Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), entityType, entityInterface.getId());
+        addRelationship(owner.getId(), entityInterface.getId(), owner.getType(), entityType, Relationship.OWNS);
+      }
     }
   }
 
   /** Remove owner relationship for a given entity */
-  private void removeOwnerRelationship(EntityReference owner, String ownedEntityId, String ownedEntityType) {
+  private void removeOwner(T entity, EntityReference owner) {
     if (owner != null && owner.getId() != null) {
-      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
+      EntityInterface<T> entityInterface = getEntityInterface(entity);
+      LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(), entityInterface.getId());
       daoCollection
           .relationshipDAO()
           .delete(
-              owner.getId().toString(), owner.getType(), ownedEntityId, ownedEntityType, Relationship.OWNS.ordinal());
+              owner.getId().toString(),
+              owner.getType(),
+              entityInterface.getId().toString(),
+              entityType,
+              Relationship.OWNS.ordinal());
     }
   }
 
-  public void updateOwnerRelationship(
-      EntityReference originalOwner, EntityReference newOwner, UUID ownedEntityId, String ownedEntityType) {
+  public void updateOwner(T ownedEntity, EntityReference originalOwner, EntityReference newOwner) {
     // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
-    removeOwnerRelationship(originalOwner, ownedEntityId.toString(), ownedEntityType);
-    addOwnerRelationship(ownedEntityId, ownedEntityType, newOwner);
+    removeOwner(ownedEntity, originalOwner);
+    storeOwner(ownedEntity, newOwner);
   }
 
   public final Fields getFields(String fields) {
@@ -969,7 +969,7 @@ public abstract class EntityRepository<T> {
       if (operation.isPatch() || updatedOwner != null) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
         if (recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
-          updateOwnerRelationship(origOwner, updatedOwner, original.getId(), entityType);
+          EntityRepository.this.updateOwner(original.getEntity(), origOwner, updatedOwner);
         }
       }
     }

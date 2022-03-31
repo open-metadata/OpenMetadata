@@ -55,6 +55,9 @@ class AppState {
     });
   }
 
+  addUser(data: User) {
+    this.users = [...this.users, data];
+  }
   updateUsers(data: Array<User>) {
     this.users = data;
   }

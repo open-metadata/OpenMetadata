@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
 
-from metadata.config.common import ConfigModel
+from metadata.config.common import FQDN_SEPARATOR, ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -162,7 +162,7 @@ class AmundsenSource(Source[Entity]):
                 col = Column(**parsed_string)
                 columns.append(col)
 
-            fqn = f"{service_name}.{database.name}.{table['schema']}.{table['name']}"
+            fqn = f"{service_name}{FQDN_SEPARATOR}{database.name}{FQDN_SEPARATOR}{table['schema']}{FQDN_SEPARATOR}{table['name']}"
             table_entity = Table(
                 id=uuid.uuid4(),
                 name=table["name"],

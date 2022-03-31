@@ -87,7 +87,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
-    setOwner(chart, chart.getOwner());
+    storeOwner(chart, chart.getOwner());
     applyTags(chart);
   }
 

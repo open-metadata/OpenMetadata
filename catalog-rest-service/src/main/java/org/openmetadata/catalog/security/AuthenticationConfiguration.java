@@ -19,7 +19,14 @@ import lombok.Setter;
 
 public class AuthenticationConfiguration {
   @Getter @Setter private String provider;
-  @Getter @Setter private String publicKey;
+
+  /** @deprecated Use publicKeyUrls */
+  @Deprecated(since = "0.9.1", forRemoval = true)
+  @Getter
+  @Setter
+  private String publicKey;
+
+  @Getter @Setter private List<String> publicKeyUrls;
   @Getter @Setter private String authority;
   @Getter @Setter private String clientId;
   @Getter @Setter private String callbackUrl;
@@ -31,9 +38,8 @@ public class AuthenticationConfiguration {
         + "provider='"
         + provider
         + '\''
-        + ", publicKey='"
-        + publicKey
-        + '\''
+        + ", publicKeyUrls="
+        + publicKeyUrls
         + ", authority='"
         + authority
         + '\''

@@ -169,7 +169,7 @@ class BigquerySource(SQLSource):
                 results = self.connection.execute(query)
                 cols = []
                 for col in results.keys():
-                    cols.append(col.replace(".", "_DOT_"))
+                    cols.append(col)
                 rows = []
                 for res in results:
                     row = list(res)

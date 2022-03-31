@@ -123,13 +123,13 @@ class OMetaLineageTest(TestCase):
         """
         table_id = str(
             cls.metadata.get_by_name(
-                entity=Table, fqdn="test-service-db-lineage.test-db.test"
+                entity=Table, fqdn="test-service-db-lineage:test-db:test"
             ).id.__root__
         )
 
         database_id = str(
             cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service-db-lineage.test-db"
+                entity=Database, fqdn="test-service-db-lineage:test-db"
             ).id.__root__
         )
 
@@ -147,7 +147,7 @@ class OMetaLineageTest(TestCase):
 
         pipeline_id = str(
             cls.metadata.get_by_name(
-                entity=Pipeline, fqdn="test-service-pipeline-lineage.test"
+                entity=Pipeline, fqdn="test-service-pipeline-lineage:test"
             ).id.__root__
         )
 

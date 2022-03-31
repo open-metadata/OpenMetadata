@@ -25,6 +25,7 @@ from tableau_api_lib.utils.querying import (
     get_workbooks_dataframe,
 )
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Dashboard_Entity,
@@ -261,7 +262,7 @@ class TableauSource(Source[Entity]):
                 f"{self.all_dashboard_details['contentUrl'][index]}"
             )
             chart_owner = self.all_dashboard_details["owner"][index]
-            chart_datasource_fqn = chart_url.replace("/", ".")
+            chart_datasource_fqn = chart_url.replace("/", FQDN_SEPARATOR)
             chart_last_modified = self.all_dashboard_details["updatedAt"][index]
             tag_labels = []
             if hasattr(chart_tags, "tag"):
