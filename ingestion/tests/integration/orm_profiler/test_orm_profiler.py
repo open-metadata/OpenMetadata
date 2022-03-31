@@ -104,9 +104,9 @@ class ProfilerWorkflowTest(TestCase):
         """
 
         table_entity: Table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.users"
+            entity=Table, fqdn="test_sqlite:main:users"
         )
-        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.users"
+        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite:main:users"
 
     def test_profiler_workflow(self):
         """
@@ -126,7 +126,7 @@ class ProfilerWorkflowTest(TestCase):
                     "name": "My Test Suite",
                     "tests": [
                         {
-                            "table": "test_sqlite.main.users",  # FQDN
+                            "table": "test_sqlite:main:users",  # FQDN
                             "profile_sample": 75,
                             "table_tests": [
                                 {
@@ -167,7 +167,7 @@ class ProfilerWorkflowTest(TestCase):
 
         # The profileSample should have been updated
         table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.users", fields=["profileSample"]
+            entity=Table, fqdn="test_sqlite:main:users", fields=["profileSample"]
         )
         assert table.profileSample == 75.0
 

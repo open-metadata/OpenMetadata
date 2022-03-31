@@ -66,7 +66,7 @@ class OMetaTopicTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-topic.test",
+            fullyQualifiedName="test-service-topic:test",
             partitions=2,
         )
 
@@ -83,7 +83,7 @@ class OMetaTopicTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Topic, fqdn="test-service-topic.test"
+                entity=Topic, fqdn="test-service-topic:test"
             ).id.__root__
         )
 

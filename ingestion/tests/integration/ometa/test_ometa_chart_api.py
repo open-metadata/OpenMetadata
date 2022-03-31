@@ -66,7 +66,7 @@ class OMetaChartTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-chart.test",
+            fullyQualifiedName="test-service-chart:test",
         )
 
         cls.create = CreateChartRequest(
@@ -81,7 +81,7 @@ class OMetaChartTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Chart, fqdn="test-service-chart.test"
+                entity=Chart, fqdn="test-service-chart:test"
             ).id.__root__
         )
 
