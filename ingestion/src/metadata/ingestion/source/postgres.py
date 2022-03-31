@@ -9,9 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 from collections import namedtuple
+from typing import Iterable, Optional
 
 import psycopg2
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+
+from metadata.generated.schema.entity.data.database import Database
 
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -26,8 +32,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.sql_source import SQLSource
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.utils.engines import get_engine
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class PostgresSource(SQLSource):
@@ -46,6 +58,35 @@ class PostgresSource(SQLSource):
 
         return cls(config, metadata_config)
 
+    def get_databases(self) -> Iterable[Inspector]:
+        if self.config.database != None:
+            yield from super().get_databases()
+        else:
+            query = "select datname from pg_catalog.pg_database;"
+
+            results = self.connection.execute(query)
+
+            for res in results:
+
+                row = list(res)
+                try:
+
+                    logger.info(f"Ingesting from database: {row[0]}")
+                    self.config.database = row[0]
+                    self.engine = get_engine(self.config)
+                    self.connection = self.engine.connect()
+                    yield inspect(self.engine)
+
+                except Exception as err:
+                    logger.error(f"Failed to Connect: {row[0]} due to error {err}")
+
+
+    def _get_database(self, schema: str) -> Database:
+        return Database(
+            name=self.config.database + "_" + schema.replace(".", "_DOT_"),
+            service=EntityReference(id=self.service.id, type=self.config.service_type),
+        )
+
     def get_status(self) -> SourceStatus:
         return self.status
 
@@ -61,7 +102,8 @@ class PostgresSource(SQLSource):
             """,
             (table_name, schema),
         )
-        is_partition = cur.fetchone()[0]
+        obj = cur.fetchone()
+        is_partition = obj[0] if obj else False
         return is_partition
 
     def type_of_column_name(self, sa_type, table_name: str, column_name: str):
