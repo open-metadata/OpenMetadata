@@ -69,7 +69,7 @@ class MetadataUsageBulkSink(BulkSink):
 
     def ingest_sql_queries(self, queries):
         for query in queries:
-            self.metadata.ingest_lineage(query.query, self.service_name)
+            self.metadata.ingest_lineage_by_query(query.query, self.service_name)
 
     def write_records(self) -> None:
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]

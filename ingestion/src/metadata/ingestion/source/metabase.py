@@ -42,11 +42,18 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create, ingest_lineage
+from metadata.utils.helpers import get_dashboard_service_or_create
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+# Prevent sqllineage from modifying the logger config
+def configure(self):
+    pass
+
+
+DictConfigurator.configure = configure
 
 
 class MetabaseSource(Source[Entity]):
@@ -122,7 +129,7 @@ class MetabaseSource(Source[Entity]):
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.get_dashboards()
-        self.get_cards()
+        yield from self.get_cards()
 
     def get_charts(self, charts) -> Iterable[Chart]:
         """Get chart method
@@ -258,6 +265,62 @@ class MetabaseSource(Source[Entity]):
     def prepare(self):
         pass
 
+    def _create_lineage_by_table_name(self, from_table, to_table, metadata):
+        """
+        This method is to create a lineage between two tables
+        """
+        try:
+            from_fqdn = f"{self.config.service_name}.{str(from_table)}"
+            from_entity: Table = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
+
+            to_fqdn = f"{self.config.service_name}.{str(to_table)}"
+            to_entity: Table = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
+            if from_entity and to_entity:
+                lineage = AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=from_entity.id.__root__,
+                            type="table",
+                        ),
+                        toEntity=EntityReference(
+                            id=to_entity.id.__root__,
+                            type="table",
+                        ),
+                    )
+                )
+                yield lineage
+
+        except Exception as err:
+            logger.debug(traceback.print_exc())
+            logger.error(err)
+
+    def ingest_lineage_by_query(self, query: str):
+        """
+        This method parses the query to get source, target and intermediate table names to create lineage
+        """
+        from sqllineage.runner import LineageRunner
+
+        metadata = OpenMetadata(self.metadata_config)
+        try:
+            result = LineageRunner(query)
+            for intermediate_table in result.intermediate_tables:
+                for source_table in result.source_tables:
+                    yield from self._create_lineage_by_table_name(
+                        source_table, intermediate_table, metadata
+                    )
+                for target_table in result.target_tables:
+                    yield from self._create_lineage_by_table_name(
+                        intermediate_table, target_table, metadata
+                    )
+            if not result.intermediate_tables:
+                for target_table in result.target_tables:
+                    for source_table in result.source_tables:
+                        yield from self._create_lineage_by_table_name(
+                            source_table, target_table, metadata
+                        )
+        except Exception as err:
+            logger.error(str(err))
+
     def get_card_detail(self, card_list):
         for card in card_list:
             try:
@@ -271,13 +334,8 @@ class MetabaseSource(Source[Entity]):
                         .get("native", {})
                         .get("query", "")
                     )
-                    query_info = {
-                        "sql": raw_query,
-                        "from_type": "table",
-                        "to_type": "table",
-                        "service_name": self.config.serviceName,
-                    }
-                    ingest_lineage(query_info, self.metadata_config)
+                    yield from self.ingest_lineage_by_query(raw_query)
+
             except Exception as e:
                 logger.error(repr(e))
 
@@ -289,4 +347,4 @@ class MetabaseSource(Source[Entity]):
                 resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
                 dashboard_details = resp_dashboard.json()
                 card_list = dashboard_details["ordered_cards"]
-                self.get_card_detail(card_list)
+                yield from self.get_card_detail(card_list)
