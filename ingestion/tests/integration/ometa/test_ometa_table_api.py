@@ -526,7 +526,7 @@ class OMetaTableTest(TestCase):
         assert table.profileSample is None
 
         updated = self.metadata.update_profile_sample(
-            fqdn=table.fullyQualifiedName, profile_sample=50.0
+            fqdn=table.fullyQualifiedName.__root__, profile_sample=50.0
         )
         assert updated.profileSample == 50.0
 

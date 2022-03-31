@@ -37,7 +37,6 @@ from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.common import Entity, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
-    ChangeDescription,
     DashboardESDocument,
     GlossaryTermESDocument,
     PipelineESDocument,

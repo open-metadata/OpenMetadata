@@ -58,7 +58,7 @@ class FileSink(Sink[Entity]):
         if self.wrote_something:
             self.file.write("\n")
 
-        self.file.write(f"Profile for: {record.table.fullyQualifiedName}\n")
+        self.file.write(f"Profile for: {record.table.fullyQualifiedName.__root__}\n")
         self.file.write(f"{record.profile.json()}\n")
 
         if record.record_tests:
@@ -66,7 +66,7 @@ class FileSink(Sink[Entity]):
             self.file.write(f"{record.record_tests.json()}\n")
 
         self.wrote_something = True
-        self.report.records_written(record.table.fullyQualifiedName)
+        self.report.records_written(record.table.fullyQualifiedName.__root__)
 
     def get_status(self):
         return self.report
