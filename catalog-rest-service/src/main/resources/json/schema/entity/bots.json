@@ -12,9 +12,7 @@
     },
     "name": {
       "description": "Name of the bot.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'.",

@@ -58,9 +58,7 @@
     },
     "name": {
       "description": "Name that identifies this test case. Name passed by client will be  overridden by  auto generating based on table/column name and test name",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of the testcase.",

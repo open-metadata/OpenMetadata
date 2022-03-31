@@ -23,7 +23,7 @@ interface TableQueriesProp extends HTMLAttributes<HTMLDivElement> {
 
 const TableQueries: FC<TableQueriesProp> = ({ queries, className }) => {
   return (
-    <div className={className}>
+    <div className={className} data-testid="table-queries">
       <div className="tw-my-6" data-testid="queries-container">
         {!isUndefined(queries) && queries.length > 0 ? (
           queries.map((query, index) => <QueryCard key={index} query={query} />)
