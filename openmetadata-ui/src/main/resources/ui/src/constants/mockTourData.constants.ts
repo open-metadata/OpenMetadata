@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { FQN_SEPARATOR_CHAR } from './char.constants';
+
 /* eslint-disable */
 
 export const mockFeedData = [
@@ -3746,7 +3748,7 @@ export const mockSearchData = {
                 'User.CreditCardNumber',
               ],
               fqdn: 'bigquery.shopify.fact_sale',
-              tier: 'Tier.Tier1',
+              tier: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
               schema_description: null,
               owner: '',
               followers: [],
@@ -3787,7 +3789,7 @@ export const mockSearchData = {
           sum_other_doc_count: 0,
           buckets: [
             {
-              key: 'Tier.Tier1',
+              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
               doc_count: 1,
             },
           ],
@@ -3894,7 +3896,7 @@ export const mockSearchData = {
           sum_other_doc_count: 0,
           buckets: [
             {
-              key: 'Tier.Tier1',
+              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
               doc_count: 1,
             },
           ],
@@ -4001,7 +4003,7 @@ export const mockSearchData = {
           sum_other_doc_count: 0,
           buckets: [
             {
-              key: 'Tier.Tier1',
+              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
               doc_count: 1,
             },
           ],
@@ -4108,7 +4110,7 @@ export const mockSearchData = {
           sum_other_doc_count: 0,
           buckets: [
             {
-              key: 'Tier.Tier1',
+              key: `Tier${FQN_SEPARATOR_CHAR}Tier1`,
               doc_count: 1,
             },
           ],

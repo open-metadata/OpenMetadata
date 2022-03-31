@@ -21,6 +21,7 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
 import { getUserTeams } from '../../utils/CommonUtils';
@@ -193,7 +194,7 @@ const ManageTab: FunctionComponent<Props> = ({
       if (res.data) {
         const tierData = res.data.children.map(
           (tier: { name: string; description: string }) => ({
-            id: `Tier.${tier.name}`,
+            id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
             title: tier.name,
             description: tier.description.substring(
               0,
