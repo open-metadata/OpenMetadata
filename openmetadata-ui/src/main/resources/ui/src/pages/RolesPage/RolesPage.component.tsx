@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -40,10 +41,7 @@ import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import AddRuleModal from '../../components/Modals/RulesModal/AddRuleModal';
-import {
-  ERROR404,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import {
   Operation,
   Rule,
@@ -53,17 +51,18 @@ import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from '../teams/AddUsersModal';
 import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
 import { Policy } from './policy.interface';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const getActiveTabClass = (tab: number, currentTab: number) => {
   return tab === currentTab ? 'active' : '';
@@ -102,6 +101,13 @@ const RolesPage = () => {
 
   const [teamList, setTeamList] = useState<Array<Team>>([]);
   const [isAddingTeams, setIsAddingTeams] = useState<boolean>(false);
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const onNewDataChange = (data: Role, forceSet = false) => {
     if (errorData || forceSet) {
@@ -161,13 +167,18 @@ const RolesPage = () => {
       'displayName,description,owner,policyUrl,enabled,rules,location'
     )
       .then((res: AxiosResponse) => {
-        setCurrentPolicy(res.data);
+        if (res.data) {
+          setCurrentPolicy(res.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while getting policy',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-policy-error']
+        );
+        handleShowErrorToast(errMsg);
       })
       .finally(() => setIsLoadingPolicy(false));
   };
@@ -176,18 +187,23 @@ const RolesPage = () => {
     setIsLoading(true);
     getRoles(['policy', 'users', 'teams'])
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
-        setRoles(data);
-        setDefaultRole(data.find((role: Role) => role.defaultRole));
-        setCurrentRole(data[0]);
-        AppState.updateUserRole(data);
+        if (res.data) {
+          const { data } = res.data;
+          setRoles(data);
+          setDefaultRole(data.find((role: Role) => role.defaultRole));
+          setCurrentRole(data[0]);
+          AppState.updateUserRole(data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
-      .catch(() => {
-        setError('Error while getting roles');
-        showToast({
-          variant: 'error',
-          body: 'Error while getting roles',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-roles-error']
+        );
+        handleShowErrorToast(errMsg);
+        setError(errMsg);
       })
       .finally(() => setIsLoading(false));
   };
@@ -204,13 +220,16 @@ const RolesPage = () => {
         .then((res: AxiosResponse) => {
           if (res.data) {
             fetchRoles();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
-        .catch((error: AxiosError) => {
-          showToast({
-            variant: 'error',
-            body: error.message ?? 'Something went wrong!',
-          });
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['create-role-error']
+          );
+          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsAddingRole(false);
@@ -223,24 +242,31 @@ const RolesPage = () => {
       setIsLoading(true);
       getRoleByName(name, ['users', 'policy', 'teams'])
         .then((res: AxiosResponse) => {
-          setCurrentRole(res.data);
-          setRoles((pre) => {
-            return pre.map((role) => {
-              if (role.id === res.data.id) {
-                return { ...res.data };
-              } else {
-                return role;
-              }
+          if (res.data) {
+            setCurrentRole(res.data);
+            setRoles((pre) => {
+              return pre.map((role) => {
+                if (role.id === res.data.id) {
+                  return { ...res.data };
+                } else {
+                  return role;
+                }
+              });
             });
-          });
-          if (roles.length <= 0) {
-            fetchRoles();
+            if (roles.length <= 0) {
+              fetchRoles();
+            }
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
         .catch((err: AxiosError) => {
-          if (err?.response?.data.code) {
-            setError(ERROR404);
-          }
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-roles-error']
+          );
+          handleShowErrorToast(errMsg);
+          setError(errMsg);
         })
         .finally(() => {
           setIsLoading(false);
@@ -252,15 +278,24 @@ const RolesPage = () => {
     if (currentRole?.description !== updatedHTML) {
       const updatedRole = { ...currentRole, description: updatedHTML };
       const jsonPatch = compare(currentRole as Role, updatedRole);
-      updateRole(currentRole?.id as string, jsonPatch).then(
-        (res: AxiosResponse) => {
+      updateRole(currentRole?.id as string, jsonPatch)
+        .then((res: AxiosResponse) => {
           if (res.data) {
             fetchCurrentRole(res.data.name, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
-        }
-      );
-
-      setIsEditable(false);
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['update-role-error']
+          );
+          handleShowErrorToast(errMsg);
+        })
+        .finally(() => {
+          setIsEditable(false);
+        });
     } else {
       setIsEditable(false);
     }
@@ -296,11 +331,12 @@ const RolesPage = () => {
         setIsAddingTeams(false);
         fetchCurrentRole(currentRole?.name as string, true);
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while adding teams to the role',
-        });
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-role-error']
+        );
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsAddingTeams(false);
@@ -321,13 +357,16 @@ const RolesPage = () => {
                 defaultRole: false,
               }));
             });
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
-        .catch(() => {
-          showToast({
-            variant: 'error',
-            body: 'Error while setting role as default.',
-          });
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['update-role-error']
+          );
+          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           cancelSetDefaultRole();
@@ -351,13 +390,18 @@ const RolesPage = () => {
 
       updatePolicy(updatedPolicy)
         .then((res: AxiosResponse) => {
-          setCurrentPolicy(res.data);
+          if (res.data) {
+            setCurrentPolicy(res.data);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
-          showToast({
-            variant: 'error',
-            body: err.response?.data?.message ?? 'Error while adding new rule',
-          });
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['create-rule-error']
+          );
+          handleShowErrorToast(errMsg);
         })
         .finally(() => setIsAddingRule(false));
     }
@@ -379,15 +423,18 @@ const RolesPage = () => {
     };
     updatePolicy(updatedPolicy)
       .then((res: AxiosResponse) => {
-        setCurrentPolicy(res.data);
+        if (res.data) {
+          setCurrentPolicy(res.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body:
-            err.response?.data?.message ??
-            `Error while updating ${data.name} rule`,
-        });
+        const errMsg = getErrorText(
+          err,
+          `Error while updating ${data.name} rule`
+        );
+        handleShowErrorToast(errMsg);
       })
       .finally(() => setEditingRule({ rule: undefined, state: false }));
   };
@@ -402,13 +449,18 @@ const RolesPage = () => {
     };
     updatePolicy(updatedPolicy)
       .then((res: AxiosResponse) => {
-        setCurrentPolicy(res.data);
+        if (res.data) {
+          setCurrentPolicy(res.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message ?? 'Error while deleting rule',
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['delete-rule-error']
+        );
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setDeletingRule({ rule: undefined, state: false });

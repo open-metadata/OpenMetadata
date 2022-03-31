@@ -20,6 +20,8 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import TagsPage from '.';
+import { updateTagCategory } from '../../axiosAPIs/tagAPI';
+import { getTagCategories } from '../../utils/TagsUtils';
 
 jest.mock('../../auth-provider/AuthProvider', () => {
   return {
@@ -242,5 +244,58 @@ describe('Test TagsPage page', () => {
     expect(description).toBeInTheDocument();
     expect(associatedTags).toBeInTheDocument();
     expect(tableBody).toBeInTheDocument();
+  });
+
+  it('Should render error placeholder if categories api fails', async () => {
+    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: { message: 'Error!' },
+        },
+      })
+    );
+    const { container } = render(<TagsPage />);
+
+    const errorPlaceholder = await findByTestId(container, 'error');
+
+    expect(errorPlaceholder).toBeInTheDocument();
+  });
+
+  it('Should render error placeholder if update categories api fails', async () => {
+    (updateTagCategory as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: { message: 'Error!' },
+        },
+      })
+    );
+    const { container } = render(<TagsPage />);
+    const tagsComponent = await findByTestId(container, 'tags-container');
+    const pageContainerComponent = await findByTestId(
+      container,
+      'PageContainerV1'
+    );
+    const leftPanelContent = await findByTestId(
+      container,
+      'left-panel-content'
+    );
+    const header = await findByTestId(container, 'header');
+    const descriptionContainer = await findByTestId(
+      container,
+      'description-container'
+    );
+    const table = await findByTestId(container, 'table');
+    const sidePanelCategories = await findAllByTestId(
+      container,
+      'side-panel-category'
+    );
+
+    expect(tagsComponent).toBeInTheDocument();
+    expect(pageContainerComponent).toBeInTheDocument();
+    expect(leftPanelContent).toBeInTheDocument();
+    expect(header).toBeInTheDocument();
+    expect(descriptionContainer).toBeInTheDocument();
+    expect(table).toBeInTheDocument();
+    expect(sidePanelCategories.length).toBe(2);
   });
 });

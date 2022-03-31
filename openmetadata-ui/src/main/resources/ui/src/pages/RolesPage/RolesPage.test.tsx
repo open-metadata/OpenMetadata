@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getRoles } from '../../axiosAPIs/rolesAPI';
 import {
   mockGetPolicyNoRuleData,
   mockGetPolicyWithRuleData,
@@ -224,5 +225,23 @@ describe('Test RolesPage component', () => {
     expect(
       await findByText(container, /AddRuleModal component/i)
     ).toBeInTheDocument();
+  });
+
+  it('Should render error placeholder if roles api fails', async () => {
+    (getRoles as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: { message: 'Error!' },
+        },
+      })
+    );
+
+    const { container } = render(<RolesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const errorPlaceholder = await findByTestId(container, 'error');
+
+    expect(errorPlaceholder).toBeInTheDocument();
   });
 });
