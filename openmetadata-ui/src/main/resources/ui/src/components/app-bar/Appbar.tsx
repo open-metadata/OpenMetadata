@@ -30,7 +30,10 @@ import {
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
-import { addToRecentSearched } from '../../utils/CommonUtils';
+import {
+  addToRecentSearched,
+  getNonDeletedTeams,
+} from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
@@ -146,7 +149,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
     const roles = currentUser?.roles;
 
-    const teams = currentUser?.teams;
+    const teams = getNonDeletedTeams(currentUser?.teams ?? []);
 
     return (
       <div data-testid="greeting-text">
@@ -166,10 +169,10 @@ const Appbar: React.FC = (): JSX.Element => {
             <hr className="tw-my-1.5" />
           </div>
         ) : null}
-        {(teams?.length ?? 0) > 0 ? (
+        {teams.length > 0 ? (
           <div>
             <span className="tw-font-medium tw-text-xs">Teams</span>
-            {teams?.map((t, i) => (
+            {teams.map((t, i) => (
               <p key={i}>
                 <Link to={getTeamDetailsPath(t.name as string)}>
                   {t.displayName}

@@ -60,6 +60,7 @@ const jsonData = {
     'fetch-thread-error': 'Error while fetching threads!',
     'fetch-updated-conversation-error':
       'Error while fetching updated conversation!',
+    'fetch-user-details-error': 'Error while fetching user details!',
     'fetch-service-error': 'Error while fetching service details!',
     'fetch-teams-error': 'Error while fetching teams!',
 
