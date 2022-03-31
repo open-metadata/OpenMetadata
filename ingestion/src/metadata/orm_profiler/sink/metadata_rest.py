@@ -71,7 +71,7 @@ class MetadataRestSink(Sink[Entity]):
             if record.record_tests:
                 if record.record_tests.profile_sample:
                     self.metadata.update_profile_sample(
-                        fqdn=record.table.fullyQualifiedName,
+                        fqdn=record.table.fullyQualifiedName.__root__,
                         profile_sample=record.record_tests.profile_sample,
                     )
                 for table_test in record.record_tests.table_tests:
@@ -83,13 +83,15 @@ class MetadataRestSink(Sink[Entity]):
                     self.metadata.add_column_test(table=record.table, col_test=col_test)
 
             logger.info(
-                f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName}"
+                f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName.__root__}"
             )
-            self.status.records_written(f"Table: {record.table.fullyQualifiedName}")
+            self.status.records_written(
+                f"Table: {record.table.fullyQualifiedName.__root__}"
+            )
 
         except APIError as err:
             logger.error(
-                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName} - {err}"
+                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__} - {err}"
             )
             logger.debug(traceback.print_exc())
-            self.status.failure(f"Table: {record.table.fullyQualifiedName}")
+            self.status.failure(f"Table: {record.table.fullyQualifiedName.__root__}")

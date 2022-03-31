@@ -370,7 +370,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def delete_tables(self, schema_fqdn: str) -> DeleteTable:
         database_state = self._build_database_state(schema_fqdn)
         for table in database_state:
-            if table.fullyQualifiedName not in self.database_source_state:
+            if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
                 yield DeleteTable(table=table)
 
     def _is_partition(self, table_name: str, schema: str, inspector) -> bool:
@@ -605,8 +605,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         col_data_length = (
                             1 if col_data_length is None else col_data_length
                         )
-                        if col_type == "ARRAY" and arr_data_type is None:
-                            arr_data_type = DataType.VARCHAR.name
+                        if col_type == "ARRAY":
+                            if arr_data_type is None:
+                                arr_data_type = DataType.VARCHAR.name
                             dataTypeDisplay = f"array<{arr_data_type}>"
 
                         om_column = Column(

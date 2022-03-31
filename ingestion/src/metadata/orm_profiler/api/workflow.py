@@ -156,11 +156,11 @@ class ProfilerWorkflow:
                 str(table.name.__root__)
             ):
                 self.source_status.filter(
-                    table.fullyQualifiedName, "Table name pattern not allowed"
+                    table.fullyQualifiedName.__root__, "Table name pattern not allowed"
                 )
                 continue
 
-            self.source_status.scanned(table.fullyQualifiedName)
+            self.source_status.scanned(table.fullyQualifiedName.__root__)
             yield table
 
     def list_entities(self) -> Iterable[Table]:
