@@ -40,17 +40,30 @@ jobs:
       id: yarn_coverage
     - name: SonarCloud Scan On PR
       if: steps.yarn_coverage.outcome == 'success' && github.event_name == 'pull_request'
-      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-      run: |
-        sonar-scanner -Dsonar.projectBaseDir=${env.UI_WORKING_DIRECTORY} \
-        -Dsonar.host.url=${SONARCLOUD_URL} \
-        -Dproject.settings=sonar-project.properties \
-        -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-        -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-        -Dsonar.pullrequest.base=main \
-        -Donar.pullrequest.github.repository=OpenMetadata" \
-        -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-        -Dsonar.pullrequest.provider=github
+      uses: docker://sonarsource/sonar-scanner-cli:4.6
+      with:
+        entrypoint: /usr/bin/entrypoint.sh
+        args: | 
+          sonar-scanner -Dsonar.projectBaseDir=${env.UI_WORKING_DIRECTORY} \
+          -Dsonar.host.url=${SONARCLOUD_URL} \
+          -Dproject.settings=sonar-project.properties \
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+          -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+          -Dsonar.pullrequest.base=main \
+          -Donar.pullrequest.github.repository=OpenMetadata" \
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
+          -Dsonar.pullrequest.provider=github
+      # working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+      # run: |
+      #   sonar-scanner -Dsonar.projectBaseDir=${env.UI_WORKING_DIRECTORY} \
+      #   -Dsonar.host.url=${SONARCLOUD_URL} \
+      #   -Dproject.settings=sonar-project.properties \
+      #   -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+      #   -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+      #   -Dsonar.pullrequest.base=main \
+      #   -Donar.pullrequest.github.repository=OpenMetadata" \
+      #   -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
+      #   -Dsonar.pullrequest.provider=github
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
