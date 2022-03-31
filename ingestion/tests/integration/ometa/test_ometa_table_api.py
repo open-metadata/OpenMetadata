@@ -341,7 +341,7 @@ class OMetaTableTest(TestCase):
                     columnName="id",
                     joinedWith=[
                         JoinedWithItem(
-                            fullyQualifiedName="test-service-table:test-db.another-test:another_id",
+                            fullyQualifiedName="test-service-table:test-db:another-test:another_id",
                             joinCount=2,
                         )
                     ],
