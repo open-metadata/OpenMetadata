@@ -36,7 +36,7 @@ export interface FeedListBodyProp
       'isEntityFeed' | 'withSidePanel' | 'deletePostHandler'
     > {
   updatedFeedList: Array<EntityThread & { relativeDay: string }>;
-  selctedThreadId: string;
+  selectedThreadId: string;
   onThreadIdSelect: (value: string) => void;
   onThreadIdDeselect: () => void;
   onThreadSelect: (value: string) => void;
